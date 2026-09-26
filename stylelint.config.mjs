@@ -6,6 +6,18 @@ export default {
     'max-nesting-depth': 3,
     'selector-class-pattern': '^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$',
     'selector-max-id': 0,
-    'selector-max-specificity': '0,3,0'
+    'selector-max-specificity': '0,3,0',
+    'selector-type-no-unknown': [
+      true,
+      {
+        ignoreTypes: ['page']
+      }
+    ],
+    'unit-no-unknown': [
+      true,
+      {
+        ignoreUnits: ['rpx']
+      }
+    ]
   }
 }

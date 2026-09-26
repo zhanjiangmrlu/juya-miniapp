@@ -1,0 +1,15 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "句芽英语"
+      }
+    }
+  ],
+  "globalStyle": {
+    "backgroundColor": "#f5f7fb",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black"
+  }
+}
