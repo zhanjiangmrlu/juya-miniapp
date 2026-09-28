@@ -39,7 +39,61 @@ export class MockTransport implements HttpTransport {
                   }
                 : routeKey.match(/^POST \/api\/v1\/favorites$/)
                   ? { ...(request.body as object), id: 'mock-favorite' }
-                  : undefined)
+                  : routeKey === 'GET /api/v1/favorites'
+                    ? {
+                        has_more: false,
+                        items: [
+                          {
+                            entry_stable_id: 'word-evolved',
+                            entry_type: 'VOCABULARY',
+                            favorited_at: '2026-09-28T08:30:00Z',
+                            id: 'favorite-evolved',
+                            last_reviewed_at: null,
+                            normalized_key: 'evolved',
+                            sources: [
+                              {
+                                original_link: '/scenes/scene-castle#sentence-2',
+                                scene_id: 'scene-castle',
+                                sentence_snapshot: 'The castle evolved.',
+                                source_locator: 'sentence-2'
+                              }
+                            ]
+                          }
+                        ],
+                        next_cursor: null
+                      }
+                    : routeKey.match(/^GET \/api\/v1\/favorites\/[^/]+$/)
+                      ? {
+                          entry_stable_id: 'word-evolved',
+                          entry_type: 'VOCABULARY',
+                          favorited_at: '2026-09-28T08:30:00Z',
+                          id: 'favorite-evolved',
+                          last_reviewed_at: null,
+                          normalized_key: 'evolved',
+                          sources: [
+                            {
+                              original_link: '/scenes/scene-castle#sentence-2',
+                              scene_id: 'scene-castle',
+                              sentence_snapshot: 'The castle evolved.',
+                              source_locator: 'sentence-2'
+                            }
+                          ]
+                        }
+                      : routeKey === 'GET /api/v1/history/scenes'
+                        ? {
+                            items: [
+                              {
+                                completed_at: '2026-09-28T08:40:00Z',
+                                last_learned_at: '2026-09-28T08:40:00Z',
+                                scene_id: 'scene-castle'
+                              }
+                            ]
+                          }
+                        : routeKey === 'POST /api/v1/reviews'
+                          ? { card_count: 1, id: 'mock-review', started_at: '2026-09-28T08:30:00Z' }
+                          : routeKey.match(/^POST \/api\/v1\/reviews\/[^/]+\/complete$/)
+                            ? { completed_at: '2026-09-28T08:40:00Z', created: true }
+                            : undefined)
     if (fixture === undefined) {
       return {
         data: { code: 'MOCK_ROUTE_NOT_FOUND', message: `未配置 ${url.pathname}` } as T,

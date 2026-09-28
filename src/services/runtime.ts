@@ -1,3 +1,4 @@
+import { createFavoriteService } from '@/features/favorites/favorite-service'
 import { createHomeService } from '@/features/home/home-service'
 import { createCatalogService } from '@/features/learning/catalog-service'
 import { createResultService } from '@/features/learning-result/result-service'
@@ -13,6 +14,7 @@ export interface RuntimeServices {
   catalog: ReturnType<typeof createCatalogService>
   client: HttpClient
   home: ReturnType<typeof createHomeService>
+  favorites: ReturnType<typeof createFavoriteService>
   result: ReturnType<typeof createResultService>
   scene: ReturnType<typeof createSceneService>
 }
@@ -59,6 +61,7 @@ export function getRuntimeServices(): RuntimeServices {
   services = {
     catalog: createCatalogService(client),
     client,
+    favorites: createFavoriteService(client),
     home: createHomeService(client),
     result: createResultService(client),
     scene: createSceneService(client)

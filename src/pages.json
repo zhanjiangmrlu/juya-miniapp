@@ -91,6 +91,48 @@
       }
     },
     {
+      "path": "pages/favorites/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/favorites/phrases",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/favorites/detail",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/favorites/sources",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/favorites/review-front",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/favorites/review-back",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/favorites/history",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/compat/index",
       "style": {
         "navigationStyle": "custom"
