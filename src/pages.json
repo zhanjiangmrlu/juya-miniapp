@@ -211,6 +211,22 @@
       "style": { "navigationStyle": "custom" }
     },
     {
+      "path": "pages/account/index",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/account/clear-confirm",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/account/delete-confirm",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/account/deletion-pending",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
       "path": "pages/compat/index",
       "style": {
         "navigationStyle": "custom"

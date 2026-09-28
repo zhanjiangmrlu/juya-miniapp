@@ -1,3 +1,4 @@
+import { createAccountService } from '@/features/account/account-service'
 import { createContactService } from '@/features/contact-profile/contact-service'
 import { createEntitlementService } from '@/features/entitlements/entitlement-service'
 import { createFavoriteService } from '@/features/favorites/favorite-service'
@@ -16,6 +17,7 @@ import { useSessionStore } from '@/stores/session'
 import type { SessionResponse } from '@/shared/contracts/session'
 
 export interface RuntimeServices {
+  account: ReturnType<typeof createAccountService>
   catalog: ReturnType<typeof createCatalogService>
   client: HttpClient
   contact: ReturnType<typeof createContactService>
@@ -69,6 +71,7 @@ export function getRuntimeServices(): RuntimeServices {
 
   const client = createRuntimeClient()
   services = {
+    account: createAccountService(client),
     catalog: createCatalogService(client),
     client,
     contact: createContactService(client),

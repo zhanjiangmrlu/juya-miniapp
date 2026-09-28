@@ -63,6 +63,23 @@ const ROUTES: Record<string, unknown> = {
     ],
     next_cursor: null
   },
+  'DELETE /api/v1/me/learning-data': null,
+  'POST /api/v1/me/deletion': {
+    completed_at: null,
+    effective_at: '2026-10-05T08:30:00Z',
+    id: 'deletion-1',
+    requested_at: '2026-09-28T08:30:00Z',
+    revoked_at: null,
+    status: 'PENDING'
+  },
+  'POST /api/v1/me/deletion/revoke': {
+    completed_at: null,
+    effective_at: '2026-10-05T08:30:00Z',
+    id: 'deletion-1',
+    requested_at: '2026-09-28T08:30:00Z',
+    revoked_at: '2026-09-28T11:30:00Z',
+    status: 'REVOKED'
+  },
   'POST /api/v1/feedback': { ...MOCK_FEEDBACK, id: 'feedback-created', status: 'PENDING' },
   'POST /api/v1/feedback/uploads': {
     access_key_id: 'mock-access-key',

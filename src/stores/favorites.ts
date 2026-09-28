@@ -66,5 +66,24 @@ export const useFavoriteStore = defineStore('favorites', () => {
     }
   }
 
-  return { activeTab, items, load, loading, selectTab, tabState, updateTabState, visibleGroups }
+  /** 清空收藏与复习页面缓存，等待服务端重新读取空数据。 */
+  function clear() {
+    activeTab.value = 'VOCABULARY'
+    items.value = []
+    loading.value = false
+    Object.assign(tabState.PHRASE, createTabState())
+    Object.assign(tabState.VOCABULARY, createTabState())
+  }
+
+  return {
+    activeTab,
+    clear,
+    items,
+    load,
+    loading,
+    selectTab,
+    tabState,
+    updateTabState,
+    visibleGroups
+  }
 })

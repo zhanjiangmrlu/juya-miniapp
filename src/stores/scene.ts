@@ -68,7 +68,17 @@ export const useSceneStore = defineStore('scene', () => {
     return position
   }
 
+  /** 清空当前场景正文、弹层和阅读状态。 */
+  function clear() {
+    error.value = false
+    loading.value = false
+    model.value = undefined
+    sheet.value = undefined
+    viewState.value = createSceneViewState()
+  }
+
   return {
+    clear,
     closeSheet,
     dialogueEntries,
     error,

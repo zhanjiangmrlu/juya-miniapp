@@ -38,5 +38,13 @@ export const useLearningStore = defineStore('learning', () => {
     }
   }
 
-  return { catalog, error, load, loading, modules, sections }
+  /** 清除目录页面缓存，后续显示时从服务端重新获取权限投影。 */
+  function clear() {
+    catalog.value = EMPTY_CATALOG
+    modules.value = []
+    error.value = false
+    loading.value = false
+  }
+
+  return { catalog, clear, error, load, loading, modules, sections }
 })

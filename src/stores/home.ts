@@ -34,5 +34,12 @@ export const useHomeStore = defineStore('home', () => {
     error.value = false
   }
 
-  return { data, dismissError, error, load, loading, view }
+  /** 清除首页学习快照，保留账号会话供后续重新拉取。 */
+  function clear() {
+    data.value = null
+    error.value = false
+    loading.value = false
+  }
+
+  return { clear, data, dismissError, error, load, loading, view }
 })
