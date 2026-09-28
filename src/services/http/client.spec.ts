@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createHttpClient } from './client'
 import { type HttpTransport, NetworkTransportError, type TransportRequest } from './types'
 
+/** 创建可记录调用次数的测试传输层，用于精确验证重试和刷新行为。 */
 function createTransport(
   handler: (request: TransportRequest, attempt: number) => Promise<unknown>
 ): HttpTransport {

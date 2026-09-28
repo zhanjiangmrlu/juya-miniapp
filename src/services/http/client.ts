@@ -30,15 +30,23 @@ export interface HttpClientOptions {
   session: SessionAdapter
   transport: HttpTransport
 }
+
+/**
+ * 创建统一 HTTP 客户端，负责认证头、幂等键、请求追踪、GET 重试和单飞刷新。
+ */
 export function createHttpClient(options: HttpClientOptions): HttpClient {
   const idFactory = options.idFactory ?? createRequestId
   let refreshPromise: Promise<string | undefined> | undefined
+
+  /** 复用进行中的刷新请求，避免多个 401 同时触发令牌刷新风暴。 */
   async function refreshOnce() {
     refreshPromise ??= options.session.refresh().finally(() => {
       refreshPromise = undefined
     })
     return refreshPromise
   }
+
+  /** 组装并发送单次业务请求，只对幂等 GET 的瞬时网络失败重试一次。 */
   async function send<T>(
     method: HttpMethod,
     path: string,
@@ -51,6 +59,8 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
       method === 'GET' || requestOptions.idempotencyKey === false
         ? undefined
         : (requestOptions.idempotencyKey ?? idFactory())
+
+    /** 执行请求并保留网络重试次数及令牌刷新资格，防止无界递归。 */
     const execute = async (networkAttempt: number, canRefresh: boolean): Promise<T> => {
       const tokenUsed = requiresAuth ? options.session.getAccessToken() : undefined
       const headers: Record<string, string> = {

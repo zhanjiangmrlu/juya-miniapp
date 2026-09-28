@@ -20,7 +20,7 @@
 - 微信号、反馈内容、录音路径不得进入通用日志、埋点或长期 Store。
 - 服务端权限、权益、联系方式修改次数和反馈状态是唯一事实源，客户端不得自行扩大权限。
 - 页面公共逻辑、跨页面业务组件和无业务基础组件必须按职责抽取；单页只保留页面专属编排。
-- 所有提交直接落在 `main`，提交信息使用中文，不重写已有历史。
+- 所有提交直接落在 `main`；提交类型保留 Conventional Commits 英文前缀，冒号后的说明使用中文。
 
 ## Review Focus
 
@@ -74,7 +74,7 @@ Expected: FAIL，组件模块尚不存在。
 - [ ] **Step 5: 验证并提交**
 
 Run: `pnpm test -- src/components/component-contracts.spec.ts && pnpm check && git diff --check`
-Commit: `基础：建立设计令牌与公共组件`
+Commit: `feat: 建立设计令牌与公共组件`
 
 ### Task 2: API 契约、请求层、会话与开发 mock
 
@@ -127,7 +127,7 @@ DTO 字段使用接口文档原名；UI ViewModel 在领域层转换。`MockTran
 - [ ] **Step 4: 验证并提交**
 
 Run: `pnpm test -- src/services/http/client.spec.ts src/app/bootstrap.spec.ts && pnpm typecheck && git diff --check`
-Commit: `基础：完成接口契约与会话请求层`
+Commit: `feat: 完成接口契约与会话请求层`
 
 ### Task 3: 路由兼容、国际化、应用壳与底部导航
 
@@ -167,7 +167,7 @@ Expected: FAIL，路由解析器尚不存在。
 - [ ] **Step 4: 验证并提交**
 
 Run: `pnpm test -- src/shared/navigation/legacy-routes.spec.ts && pnpm build:mp-weixin && git diff --check`
-Commit: `基础：完成应用导航与旧路由兼容`
+Commit: `feat: 完成应用导航与旧路由兼容`
 
 ### Task 4: 首页与学习目录 M01-M07
 
@@ -216,7 +216,7 @@ M01 网络异常为当前页弹层；M07 仅承接直接链接或历史入口；
 - [ ] **Step 4: 验证并提交**
 
 Run: `pnpm test -- src/shared/utils/beijing-time.spec.ts src/features/home/home-presenter.spec.ts src/features/learning/catalog-presenter.spec.ts && pnpm check && pnpm build:mp-weixin`
-Commit: `功能：完成首页与学习目录`
+Commit: `feat: 完成首页与学习目录`
 
 ### Task 5: 场景、音频与词汇弹层 M08-M13、M15、M17-M18
 
@@ -272,7 +272,7 @@ M10/M11 不建正式页面；M12/M13 与 M09 共用 `VocabularySheet`；语块�
 - [ ] **Step 5: 验证并提交**
 
 Run: `pnpm test -- src/features/audio src/features/scene src/features/vocabulary-sheet src/features/learning-progress && pnpm check && pnpm build:mp-weixin`
-Commit: `功能：完成场景学习与统一音频状态`
+Commit: `feat: 完成场景学习与统一音频状态`
 
 ### Task 6: 逐句跟读与学习成果 M14、M16
 
@@ -311,7 +311,7 @@ Expected: FAIL，模块尚不存在。
 M14 展示全部句子且不评分；M16 复用成果卡组件，不新增装饰性统计逻辑。
 
 Run: `pnpm test -- src/features/recording src/features/learning-result && pnpm check && pnpm build:mp-weixin`
-Commit: `功能：完成逐句跟读与学习成果`
+Commit: `feat: 完成逐句跟读与学习成果`
 
 ### Task 7: 收藏、翻卡与学习历史 M19-M25
 
@@ -351,7 +351,7 @@ Expected: FAIL，收藏领域模块尚不存在。
 - [ ] **Step 3: 实现 M19-M25 并验证**
 
 Run: `pnpm test -- src/features/favorites && pnpm check && pnpm build:mp-weixin`
-Commit: `功能：完成收藏复习与学习历史`
+Commit: `feat: 完成收藏复习与学习历史`
 
 ### Task 8: 学习档案与联系方式 M27-M31
 
@@ -391,7 +391,7 @@ Expected: FAIL，脱敏与表单模块尚不存在。
 M27 固定显示句芽号和微信号双行身份信息；M26 继续只做跳转。
 
 Run: `pnpm test -- src/shared/utils/redact.spec.ts src/features/contact-profile && pnpm check && pnpm build:mp-weixin`
-Commit: `功能：完成学习档案与联系资料`
+Commit: `feat: 完成学习档案与联系资料`
 
 ### Task 9: 正式与限时权益 M32-M37
 
@@ -431,7 +431,7 @@ Expected: FAIL，权益 presenter 尚不存在。
 M36 三项成果只展示数字、文字和明细跳转，不增加装饰图标。
 
 Run: `pnpm test -- src/shared/utils/server-clock.spec.ts src/features/entitlements && pnpm check && pnpm build:mp-weixin`
-Commit: `功能：完成学习权益与限时状态`
+Commit: `feat: 完成学习权益与限时状态`
 
 ### Task 10: 站内消息与反馈闭环 M38-M43
 
@@ -472,7 +472,7 @@ Expected: FAIL，反馈校验模块尚不存在。
 消息点击先标记已读再按 related_type/related_id 导航；M43 不显示内部安全规则。
 
 Run: `pnpm test -- src/features/feedback && pnpm check && pnpm build:mp-weixin`
-Commit: `功能：完成站内消息与反馈闭环`
+Commit: `feat: 完成站内消息与反馈闭环`
 
 ### Task 11: 数据清空与账号注销 M44-M47
 
@@ -506,7 +506,7 @@ Expected: FAIL，账号领域模块尚不存在。
 - [ ] **Step 3: 实现 M44-M47 并验证**
 
 Run: `pnpm test -- src/features/account && pnpm check && pnpm build:mp-weixin`
-Commit: `功能：完成数据清理与账号注销`
+Commit: `feat: 完成数据清理与账号注销`
 
 ### Task 12: 响应式、视觉回归、端到端链路与最终门禁
 
@@ -557,7 +557,7 @@ Expected: 无输出，exit 0。
 
 - [ ] **Step 6: 提交最终验收修正**
 
-Commit: `优化：完成平板适配与全量验收`
+Commit: `refactor: 完成平板适配与全量验收`
 
 ## Plan Self-Review
 

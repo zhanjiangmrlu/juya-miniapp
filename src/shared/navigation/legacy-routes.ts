@@ -6,6 +6,7 @@ export interface LegacyRouteInput {
   sourceLocator?: string
 }
 
+/** 将有效查询参数安全编码后追加到目标路径。 */
 function appendQuery(path: string, query: Record<string, string | undefined>) {
   const parameters = Object.entries(query)
     .filter((entry): entry is [string, string] => entry[1] !== undefined)
@@ -13,6 +14,7 @@ function appendQuery(path: string, query: Record<string, string | undefined>) {
   return parameters.length > 0 ? `${path}?${parameters.join('&')}` : path
 }
 
+/** 将旧版页面编号映射为 V1.3 的唯一导航意图，集中承接历史入口。 */
 export function resolveLegacyRoute(input: LegacyRouteInput): NavigationIntent {
   if (input.pageId === 'M04') {
     return { type: 'reLaunch', url: appendQuery(ROUTES.home, { networkError: '1' }) }

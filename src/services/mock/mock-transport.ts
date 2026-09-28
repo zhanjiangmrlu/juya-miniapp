@@ -15,6 +15,7 @@ const ROUTES: Record<string, unknown> = {
   }
 }
 export class MockTransport implements HttpTransport {
+  /** 按请求方法与路径返回隔离副本，未配置接口明确返回标准 404 错误。 */
   async request<T>(request: TransportRequest): Promise<TransportResponse<T>> {
     const url = new URL(request.url)
     const fixture = ROUTES[`${request.method} ${url.pathname}`]

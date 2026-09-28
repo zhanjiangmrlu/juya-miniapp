@@ -6,6 +6,7 @@ import { useSessionStore } from '@/stores/session'
 
 export default defineComponent({
   name: 'App',
+  /** 注册应用级生命周期，在冷启动时恢复本地登录态。 */
   setup() {
     onLaunch(() => {
       useSessionStore().restore()

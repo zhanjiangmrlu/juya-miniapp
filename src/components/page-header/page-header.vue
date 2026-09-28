@@ -13,6 +13,7 @@ withDefaults(
   }
 )
 
+/** 返回上一页；没有可返回页面时回到首页，避免用户停留在空白入口。 */
 function goBack() {
   uni.navigateBack({ fail: () => uni.reLaunch({ url: '/pages/home/index' }) })
 }

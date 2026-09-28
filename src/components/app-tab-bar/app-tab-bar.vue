@@ -12,6 +12,7 @@ const tabs = [
   { key: 'profile', label: '我的', route: ROUTES.profile }
 ] as const
 
+/** 使用重启式导航切换一级页面，避免 Tab 历史栈持续增长。 */
 function selectTab(route: string) {
   uni.reLaunch({ url: route })
 }

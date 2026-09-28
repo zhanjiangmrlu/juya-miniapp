@@ -19,6 +19,7 @@ const emit = defineEmits<{
   press: []
 }>()
 
+/** 在禁用或处理中阻止重复操作，其余点击统一转换为 press 事件。 */
 function handlePress() {
   if (props.disabled || props.loading) {
     return

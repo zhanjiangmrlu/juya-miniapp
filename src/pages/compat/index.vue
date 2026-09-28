@@ -5,6 +5,7 @@ import AppState from '@/components/app-state/app-state.vue'
 import { resolveLegacyRoute } from '@/shared/navigation/legacy-routes'
 import { navigate } from '@/shared/navigation/navigate'
 
+/** 页面加载后立即解析旧版参数，并跳转到 V1.3 对应页面。 */
 onLoad((query) => {
   void navigate(
     resolveLegacyRoute({

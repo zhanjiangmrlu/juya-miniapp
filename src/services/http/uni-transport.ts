@@ -5,6 +5,7 @@ import {
   type TransportResponse
 } from './types'
 export class UniTransport implements HttpTransport {
+  /** 将 uni.request 回调接口适配为请求层使用的 Promise 传输协议。 */
   request<T>(request: TransportRequest): Promise<TransportResponse<T>> {
     return new Promise((resolve, reject) => {
       uni.request({
