@@ -35,6 +35,7 @@
 ### Task 1: 固定运行环境、测试能力与设计系统
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `pnpm-lock.yaml`
 - Create: `src/styles/tokens.scss`
@@ -49,6 +50,7 @@
 - Create: `src/components/component-contracts.spec.ts`
 
 **Interfaces:**
+
 - Produces: `AppPage`, `SurfaceCard`, `AppButton`, `BottomActionBar`, `AppState`；全局 SCSS token 与安全区 mixin。
 - Consumes: 已有 Vue/uni-app 工程和设计稿视觉值。
 
@@ -77,6 +79,7 @@ Commit: `基础：建立设计令牌与公共组件`
 ### Task 2: API 契约、请求层、会话与开发 mock
 
 **Files:**
+
 - Create: `src/shared/contracts/common.ts`
 - Create: `src/shared/contracts/session.ts`
 - Create: `src/shared/contracts/home.ts`
@@ -104,6 +107,7 @@ Commit: `基础：建立设计令牌与公共组件`
 - Modify: `src/App.vue`
 
 **Interfaces:**
+
 - Produces: `HttpTransport.request<T>(request: TransportRequest): Promise<TransportResponse<T>>`；`createHttpClient(options): HttpClient`；`bootstrapApp(): Promise<BootstrapResult>`；`useSessionStore()`。
 - Consumes: `uni.request`、`uni.login`、`uni.getStorageSync`、`uni.setStorageSync`。
 
@@ -128,6 +132,7 @@ Commit: `基础：完成接口契约与会话请求层`
 ### Task 3: 路由兼容、国际化、应用壳与底部导航
 
 **Files:**
+
 - Create: `src/shared/navigation/routes.ts`
 - Create: `src/shared/navigation/legacy-routes.ts`
 - Create: `src/shared/navigation/legacy-routes.spec.ts`
@@ -142,6 +147,7 @@ Commit: `基础：完成接口契约与会话请求层`
 - Modify: `src/pages.json`
 
 **Interfaces:**
+
 - Produces: `resolveLegacyRoute(input: LegacyRouteInput): NavigationIntent`；`navigate(intent: NavigationIntent): Promise<void>`；四项固定 Tab 应用壳。
 - Consumes: Task 1 基础组件。
 
@@ -166,6 +172,7 @@ Commit: `基础：完成应用导航与旧路由兼容`
 ### Task 4: 首页与学习目录 M01-M07
 
 **Files:**
+
 - Create: `src/shared/utils/beijing-time.ts`
 - Create: `src/shared/utils/beijing-time.spec.ts`
 - Create: `src/features/home/home-service.ts`
@@ -189,6 +196,7 @@ Commit: `基础：完成应用导航与旧路由兼容`
 - Modify: `src/pages.json`
 
 **Interfaces:**
+
 - Produces: `getBeijingGreeting(now: Date): Greeting`；`presentHome(dto, session): HomeViewModel`；`presentCatalog(dto): CatalogSections`；M01-M03、M05-M07 页面。
 - Consumes: Task 2 `HttpClient`、Task 3 路由、Task 1 组件。
 
@@ -213,6 +221,7 @@ Commit: `功能：完成首页与学习目录`
 ### Task 5: 场景、音频与词汇弹层 M08-M13、M15、M17-M18
 
 **Files:**
+
 - Create: `src/features/audio/audio-machine.ts`
 - Create: `src/features/audio/audio-controller.ts`
 - Create: `src/features/audio/audio-machine.spec.ts`
@@ -239,6 +248,7 @@ Commit: `功能：完成首页与学习目录`
 - Modify: `src/pages.json`
 
 **Interfaces:**
+
 - Produces: `AudioController.play(target): Promise<void>`、`pause()`、`stop()`、`dispose()`；`createProgressQueue(storage, sender)`；`openSheet(entry, returnPosition)`；M08-M13、M15、M17-M18。
 - Consumes: 媒体签名地址接口、场景 open/entries/progress 接口、稳定定位字段。
 
@@ -267,6 +277,7 @@ Commit: `功能：完成场景学习与统一音频状态`
 ### Task 6: 逐句跟读与学习成果 M14、M16
 
 **Files:**
+
 - Create: `src/features/recording/recording-machine.ts`
 - Create: `src/features/recording/recording-controller.ts`
 - Create: `src/features/recording/recording-machine.spec.ts`
@@ -280,6 +291,7 @@ Commit: `功能：完成场景学习与统一音频状态`
 - Modify: `src/pages.json`
 
 **Interfaces:**
+
 - Produces: `RecordingController.selectSentence(id)`、`start()`、`stop()`、`playback()`、`rerecord()`、`dispose()`；`presentLearningResult(dto): LearningResultViewModel`；M14、M16。
 - Consumes: Task 5 AudioController、场景 complete/result 接口。
 
@@ -304,6 +316,7 @@ Commit: `功能：完成逐句跟读与学习成果`
 ### Task 7: 收藏、翻卡与学习历史 M19-M25
 
 **Files:**
+
 - Create: `src/features/favorites/favorite-service.ts`
 - Create: `src/features/favorites/favorite-presenter.ts`
 - Create: `src/features/favorites/review-session.ts`
@@ -322,6 +335,7 @@ Commit: `功能：完成逐句跟读与学习成果`
 - Modify: `src/pages.json`
 
 **Interfaces:**
+
 - Produces: `useFavoriteStore()` 独立保存双标签筛选、滚动位置、游标；`createReviewSession(cardIds)`；M19-M25。
 - Consumes: favorites、reviews、open-history 接口；Task 5 AudioButton 和稳定定位导航。
 
@@ -342,6 +356,7 @@ Commit: `功能：完成收藏复习与学习历史`
 ### Task 8: 学习档案与联系方式 M27-M31
 
 **Files:**
+
 - Create: `src/shared/utils/redact.ts`
 - Create: `src/shared/utils/redact.spec.ts`
 - Create: `src/features/profile/profile-service.ts`
@@ -358,6 +373,7 @@ Commit: `功能：完成收藏复习与学习历史`
 - Modify: `src/pages.json`
 
 **Interfaces:**
+
 - Produces: `redactSensitive(value, kind)`；`validateContactForm(input)`；M27-M31。
 - Consumes: me、contact、corrections 接口。
 
@@ -380,6 +396,7 @@ Commit: `功能：完成学习档案与联系资料`
 ### Task 9: 正式与限时权益 M32-M37
 
 **Files:**
+
 - Create: `src/shared/utils/server-clock.ts`
 - Create: `src/shared/utils/server-clock.spec.ts`
 - Create: `src/features/entitlements/entitlement-service.ts`
@@ -396,6 +413,7 @@ Commit: `功能：完成学习档案与联系资料`
 - Modify: `src/pages.json`
 
 **Interfaces:**
+
 - Produces: `createServerClock(serverNow, clientNow)`；`presentEntitlements(dto, clock)`；M32-M37。
 - Consumes: entitlements、catalog、scene open、result 接口。
 
@@ -418,6 +436,7 @@ Commit: `功能：完成学习权益与限时状态`
 ### Task 10: 站内消息与反馈闭环 M38-M43
 
 **Files:**
+
 - Create: `src/features/messages/message-service.ts`
 - Create: `src/features/feedback/feedback-service.ts`
 - Create: `src/features/feedback/feedback-form.ts`
@@ -435,6 +454,7 @@ Commit: `功能：完成学习权益与限时状态`
 - Modify: `src/pages.json`
 
 **Interfaces:**
+
 - Produces: `validateFeedbackDraft(draft)`；`uploadFeedbackImage(file): Promise<string>`；M38-M43。
 - Consumes: messages、feedback、feedback upload credential 接口和 OSS 表单上传。
 
@@ -457,6 +477,7 @@ Commit: `功能：完成站内消息与反馈闭环`
 ### Task 11: 数据清空与账号注销 M44-M47
 
 **Files:**
+
 - Create: `src/features/account/account-service.ts`
 - Create: `src/features/account/local-data-cleaner.ts`
 - Create: `src/features/account/local-data-cleaner.spec.ts`
@@ -469,6 +490,7 @@ Commit: `功能：完成站内消息与反馈闭环`
 - Modify: `src/pages.json`
 
 **Interfaces:**
+
 - Produces: `clearLocalLearningData(scope)`；`presentDeletionState(dto, clock)`；M44-M47。
 - Consumes: DELETE learning-data、POST deletion、POST deletion/revoke；Task 5 队列、Task 6 录音、Task 10 草稿清理接口。
 
@@ -489,6 +511,7 @@ Commit: `功能：完成数据清理与账号注销`
 ### Task 12: 响应式、视觉回归、端到端链路与最终门禁
 
 **Files:**
+
 - Create: `tests/e2e/learning-flow.spec.ts`
 - Create: `tests/e2e/entitlement-flow.spec.ts`
 - Create: `tests/e2e/feedback-account-flow.spec.ts`
@@ -497,6 +520,7 @@ Commit: `功能：完成数据清理与账号注销`
 - Modify: all pages/components only where screenshot comparison finds material deviations
 
 **Interfaces:**
+
 - Produces: 可重复执行的学习、权益、反馈、注销冒烟流程和 375x812、390x844、768x1024 截图清单。
 - Consumes: Tasks 1-11 全部页面和 mock transport。
 

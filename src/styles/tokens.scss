@@ -1,0 +1,41 @@
+$color-page-primary: #f7f1e4;
+$color-page-primary-glow: #e4f0df;
+$color-page-secondary: #f8f1e2;
+$color-module: #e3efe6;
+$color-card: #f8faf5;
+$color-border: #c9ded1;
+$color-primary: #2f7d61;
+$color-primary-strong: #1d6049;
+$color-text: #173f33;
+$color-text-muted: #64796f;
+$color-danger: #bd5f59;
+$color-warning: #c78138;
+$color-white: #fff;
+$space-1: 8rpx;
+$space-2: 16rpx;
+$space-3: 24rpx;
+$space-4: 32rpx;
+$space-5: 40rpx;
+$space-6: 48rpx;
+$radius-small: 12rpx;
+$radius-medium: 24rpx;
+$radius-large: 32rpx;
+$radius-pill: 999rpx;
+$shadow-card: 0 12rpx 36rpx rgb(23 63 51 / 8%);
+$safe-area-bottom: env(safe-area-inset-bottom);
+
+@mixin css-variables {
+  --color-page-primary: #{$color-page-primary};
+  --color-page-primary-glow: #{$color-page-primary-glow};
+  --color-page-secondary: #{$color-page-secondary};
+  --color-module: #{$color-module};
+  --color-card: #{$color-card};
+  --color-border: #{$color-border};
+  --color-primary: #{$color-primary};
+  --color-primary-strong: #{$color-primary-strong};
+  --color-text: #{$color-text};
+  --color-text-muted: #{$color-text-muted};
+  --color-danger: #{$color-danger};
+  --color-warning: #{$color-warning};
+  --safe-area-bottom: #{$safe-area-bottom};
+}
