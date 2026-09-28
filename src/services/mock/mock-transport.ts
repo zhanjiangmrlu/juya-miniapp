@@ -28,9 +28,18 @@ export class MockTransport implements HttpTransport {
           ? MOCK_FIXTURES.signedMedia
           : routeKey.match(/^PUT \/api\/v1\/scenes\/[^/]+\/progress$/)
             ? { ...(request.body as object), scene_id: 'scene-castle' }
-            : routeKey.match(/^POST \/api\/v1\/favorites$/)
-              ? { ...(request.body as object), id: 'mock-favorite' }
-              : undefined)
+            : routeKey.match(/^POST \/api\/v1\/scenes\/[^/]+\/complete$/)
+              ? { checkin_date: '2026-09-28', created: true, progress: {} }
+              : routeKey.match(/^GET \/api\/v1\/scenes\/[^/]+\/result$/)
+                ? {
+                    completed_scenes: 1,
+                    favorite_phrases: 3,
+                    favorite_vocabulary: 6,
+                    streak_days: 12
+                  }
+                : routeKey.match(/^POST \/api\/v1\/favorites$/)
+                  ? { ...(request.body as object), id: 'mock-favorite' }
+                  : undefined)
     if (fixture === undefined) {
       return {
         data: { code: 'MOCK_ROUTE_NOT_FOUND', message: `未配置 ${url.pathname}` } as T,

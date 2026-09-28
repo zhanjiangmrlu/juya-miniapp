@@ -79,6 +79,18 @@
       }
     },
     {
+      "path": "pages/scene/shadowing",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/scene/completed",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/compat/index",
       "style": {
         "navigationStyle": "custom"

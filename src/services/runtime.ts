@@ -1,5 +1,6 @@
 import { createHomeService } from '@/features/home/home-service'
 import { createCatalogService } from '@/features/learning/catalog-service'
+import { createResultService } from '@/features/learning-result/result-service'
 import { createSceneService } from '@/features/scene/scene-service'
 import { createHttpClient, type HttpClient } from '@/services/http/client'
 import { UniTransport } from '@/services/http/uni-transport'
@@ -12,6 +13,7 @@ export interface RuntimeServices {
   catalog: ReturnType<typeof createCatalogService>
   client: HttpClient
   home: ReturnType<typeof createHomeService>
+  result: ReturnType<typeof createResultService>
   scene: ReturnType<typeof createSceneService>
 }
 
@@ -58,6 +60,7 @@ export function getRuntimeServices(): RuntimeServices {
     catalog: createCatalogService(client),
     client,
     home: createHomeService(client),
+    result: createResultService(client),
     scene: createSceneService(client)
   }
   return services
