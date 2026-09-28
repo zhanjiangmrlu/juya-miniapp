@@ -1,9 +1,11 @@
 import { createContactService } from '@/features/contact-profile/contact-service'
 import { createEntitlementService } from '@/features/entitlements/entitlement-service'
 import { createFavoriteService } from '@/features/favorites/favorite-service'
+import { createFeedbackService } from '@/features/feedback/feedback-service'
 import { createHomeService } from '@/features/home/home-service'
 import { createCatalogService } from '@/features/learning/catalog-service'
 import { createResultService } from '@/features/learning-result/result-service'
+import { createMessageService } from '@/features/messages/message-service'
 import { createProfileService } from '@/features/profile/profile-service'
 import { createSceneService } from '@/features/scene/scene-service'
 import { createHttpClient, type HttpClient } from '@/services/http/client'
@@ -20,7 +22,9 @@ export interface RuntimeServices {
   home: ReturnType<typeof createHomeService>
   favorites: ReturnType<typeof createFavoriteService>
   entitlements: ReturnType<typeof createEntitlementService>
+  feedback: ReturnType<typeof createFeedbackService>
   result: ReturnType<typeof createResultService>
+  messages: ReturnType<typeof createMessageService>
   profile: ReturnType<typeof createProfileService>
   scene: ReturnType<typeof createSceneService>
 }
@@ -69,8 +73,10 @@ export function getRuntimeServices(): RuntimeServices {
     client,
     contact: createContactService(client),
     entitlements: createEntitlementService(client),
+    feedback: createFeedbackService(client),
     favorites: createFavoriteService(client),
     home: createHomeService(client),
+    messages: createMessageService(client),
     result: createResultService(client),
     profile: createProfileService(client),
     scene: createSceneService(client)

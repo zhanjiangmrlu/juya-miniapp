@@ -6,6 +6,7 @@ import NetworkReconnectDialog from '@/components/network-reconnect-dialog/networ
 import HomeDashboard from '@/features/home/components/home-dashboard.vue'
 import { useHomePage } from '@/features/home/use-home-page'
 import TabPageLayout from '@/layouts/tab-page-layout.vue'
+import { navigate } from '@/shared/navigation/navigate'
 
 const props = withDefaults(
   defineProps<{
@@ -40,6 +41,11 @@ async function handleRetry() {
   await retry()
 }
 
+/** 打开首页铃铛对应的站内消息列表。 */
+async function openMessages() {
+  await navigate({ type: 'navigateTo', url: '/pages/feedback/messages' })
+}
+
 watch(() => props.networkError, handleNetworkErrorChange)
 onShow(handleShow)
 </script>
@@ -55,6 +61,7 @@ onShow(handleShow)
     <HomeDashboard
       :featured-scene="featuredScene"
       :view="home.view"
+      @open-messages="openMessages"
       @open-scene="openScene"
       @start-task="startTask"
     />

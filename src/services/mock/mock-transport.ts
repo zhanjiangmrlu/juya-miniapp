@@ -1,7 +1,21 @@
 import type { HttpTransport, TransportRequest, TransportResponse } from '../http/types'
 
 import { MOCK_FIXTURES } from './fixtures'
+const MOCK_FEEDBACK = {
+  category: 'CONTENT',
+  created_at: '2026-09-28T08:30:00Z',
+  description: 'Castle Exhibit 第二句的中文释义似乎不准确。',
+  id: 'feedback-001',
+  reopen_count: 0,
+  reply: '已核对并修正释义，感谢你的反馈。',
+  resolved_at: '2026-09-28T10:30:00Z',
+  screenshots: [],
+  status: 'RESOLVED',
+  supplements: [],
+  title: 'Castle Exhibit 第二句释义'
+}
 const ROUTES: Record<string, unknown> = {
+  'GET /api/v1/feedback': { has_more: false, items: [MOCK_FEEDBACK] },
   'GET /api/v1/home': MOCK_FIXTURES.home,
   'GET /api/v1/learning/catalog': MOCK_FIXTURES.catalog,
   'GET /api/v1/learning/modules': MOCK_FIXTURES.modules,
@@ -33,6 +47,32 @@ const ROUTES: Record<string, unknown> = {
       }
     ],
     version: 'v1'
+  },
+  'GET /api/v1/messages': {
+    items: [
+      {
+        created_at: '2026-09-28T10:30:00Z',
+        id: 'message-1',
+        read_at: null,
+        related_id: 'feedback-001',
+        related_type: 'FEEDBACK',
+        summary: 'Castle Exhibit 第二句释义已核对处理。',
+        title: '你的问题已有处理结果',
+        type: 'SYSTEM'
+      }
+    ],
+    next_cursor: null
+  },
+  'POST /api/v1/feedback': { ...MOCK_FEEDBACK, id: 'feedback-created', status: 'PENDING' },
+  'POST /api/v1/feedback/uploads': {
+    access_key_id: 'mock-access-key',
+    content_type: 'image/jpeg',
+    expires_at: '2026-09-28T08:35:00Z',
+    host: 'https://mock-upload.juya.local',
+    key: 'feedback/mock-user/mock-image.jpg',
+    max_bytes: 5242880,
+    policy: 'mock-policy',
+    signature: 'mock-signature'
   },
   'POST /api/v1/session/refresh': {
     access_token: 'mock-access-token',
@@ -131,7 +171,47 @@ export class MockTransport implements HttpTransport {
                                       id: 'mock-correction',
                                       status: 'PENDING'
                                     }
-                                  : undefined)
+                                  : routeKey.match(/^GET \/api\/v1\/feedback\/[^/]+$/)
+                                    ? MOCK_FEEDBACK
+                                    : routeKey.match(
+                                          /^POST \/api\/v1\/feedback\/[^/]+\/supplements$/
+                                        )
+                                      ? {
+                                          ...MOCK_FEEDBACK,
+                                          status: 'SUPPLEMENTED',
+                                          supplements: [
+                                            {
+                                              created_at: '2026-09-28T11:00:00Z',
+                                              text: (request.body as { text: string }).text
+                                            }
+                                          ]
+                                        }
+                                      : routeKey.match(
+                                            /^POST \/api\/v1\/feedback\/[^/]+\/resolution$/
+                                          )
+                                        ? {
+                                            ...MOCK_FEEDBACK,
+                                            reopen_count:
+                                              (request.body as { action: string }).action ===
+                                              'REOPEN'
+                                                ? 1
+                                                : 0,
+                                            status:
+                                              (request.body as { action: string }).action ===
+                                              'REOPEN'
+                                                ? 'REOPENED'
+                                                : 'RESOLVED'
+                                          }
+                                        : routeKey.match(/^POST \/api\/v1\/messages\/[^/]+\/read$/)
+                                          ? {
+                                              ...(
+                                                ROUTES['GET /api/v1/messages'] as {
+                                                  items: object[]
+                                                }
+                                              ).items[0],
+                                              read_at: '2026-09-28T11:00:00Z'
+                                            }
+                                          : undefined)
     if (fixture === undefined) {
       return {
         data: { code: 'MOCK_ROUTE_NOT_FOUND', message: `未配置 ${url.pathname}` } as T,

@@ -187,6 +187,30 @@
       "style": { "navigationStyle": "custom" }
     },
     {
+      "path": "pages/feedback/messages",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/feedback/index",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/feedback/create",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/feedback/detail",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/feedback/resolution",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/feedback/content-blocked",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
       "path": "pages/compat/index",
       "style": {
         "navigationStyle": "custom"

@@ -3,6 +3,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import { presentContact } from '@/features/contact-profile/contact-form'
+import ProfileActionList from '@/features/profile/components/profile-action-list.vue'
 import ProfileIdentity from '@/features/profile/components/profile-identity.vue'
 import TabPageLayout from '@/layouts/tab-page-layout.vue'
 import { getRuntimeServices } from '@/services/runtime'
@@ -32,6 +33,21 @@ async function openContact() {
   })
 }
 
+/** 从档案页打开学习权益。 */
+async function openEntitlements() {
+  await navigate({ type: 'navigateTo', url: '/pages/entitlement/index' })
+}
+
+/** 从档案页打开反馈记录。 */
+async function openFeedback() {
+  await navigate({ type: 'navigateTo', url: '/pages/feedback/index' })
+}
+
+/** 从档案页打开数据与账号管理。 */
+async function openAccount() {
+  await navigate({ type: 'navigateTo', url: '/pages/account/index' })
+}
+
 onShow(loadProfile)
 </script>
 
@@ -44,6 +60,11 @@ onShow(loadProfile)
       :juya-id="profile?.juya_id ?? '正在加载'"
       :wechat-label="contact.wechatId ? `微信号：${contact.wechatId}` : contact.statusLabel"
       @contact="openContact"
+    />
+    <ProfileActionList
+      @account="openAccount"
+      @entitlements="openEntitlements"
+      @feedback="openFeedback"
     />
   </TabPageLayout>
 </template>

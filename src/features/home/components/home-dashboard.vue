@@ -12,6 +12,7 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
+  openMessages: []
   openScene: [scene: SceneCardViewModel]
   startTask: []
 }>()
@@ -25,6 +26,11 @@ function handleStartTask() {
 function handleScene(scene: SceneCardViewModel) {
   emit('openScene', scene)
 }
+
+/** 打开站内消息列表。 */
+function handleMessages() {
+  emit('openMessages')
+}
 </script>
 
 <template>
@@ -34,12 +40,12 @@ function handleScene(scene: SceneCardViewModel) {
         <text class="home-dashboard__date">{{ view.dateLabel }}</text>
         <text class="home-dashboard__salutation">{{ view.salutation }}</text>
       </view>
-      <view class="home-dashboard__message" aria-label="站内消息">
+      <button class="home-dashboard__message" aria-label="站内消息" @click="handleMessages">
         <view class="home-dashboard__message-mark" />
         <text v-if="view.unreadMessageCount" class="home-dashboard__unread">
           {{ view.unreadMessageCount > 99 ? '99+' : view.unreadMessageCount }}
         </text>
-      </view>
+      </button>
     </view>
 
     <StreakCard :checkins="view.checkins" />
@@ -98,6 +104,8 @@ function handleScene(scene: SceneCardViewModel) {
     place-items: center;
     border-radius: 50%;
     background: rgb(255 255 255 / 78%);
+    margin: 0;
+    padding: 0;
   }
 
   &__message-mark {

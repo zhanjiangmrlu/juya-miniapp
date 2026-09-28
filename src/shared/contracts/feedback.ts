@@ -4,6 +4,8 @@ export interface FeedbackItem {
   description: string
   id: string
   reply?: string | null
+  reopen_count?: number
+  resolved_at?: string | null
   screenshots: string[]
   status: string
   supplements?: Array<{ created_at: string; text: string }>
@@ -22,4 +24,16 @@ export interface FeedbackUploadCredential {
   max_bytes: number
   policy: string
   signature: string
+}
+
+export interface CreateFeedbackRequest {
+  category: string
+  description: string
+  screenshots: string[]
+  source?: Record<string, string>
+}
+
+export interface FeedbackResolutionRequest {
+  action: 'RESOLVED' | 'REOPEN'
+  reason?: string | null
 }
