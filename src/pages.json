@@ -37,6 +37,48 @@
       }
     },
     {
+      "path": "pages/scene/detail",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/scene/dialogue",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/scene/vocabulary",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/scene/chunks",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/scene/audio-failed",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/scene/restore-position",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/scene/return-source",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/compat/index",
       "style": {
         "navigationStyle": "custom"

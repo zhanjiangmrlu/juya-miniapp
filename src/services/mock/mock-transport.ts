@@ -19,7 +19,18 @@ export class MockTransport implements HttpTransport {
   /** 按请求方法与路径返回隔离副本，未配置接口明确返回标准 404 错误。 */
   async request<T>(request: TransportRequest): Promise<TransportResponse<T>> {
     const url = new URL(request.url)
-    const fixture = ROUTES[`${request.method} ${url.pathname}`]
+    const routeKey = `${request.method} ${url.pathname}`
+    const fixture =
+      ROUTES[routeKey] ??
+      (routeKey.match(/^POST \/api\/v1\/scenes\/[^/]+\/open$/)
+        ? MOCK_FIXTURES.scene
+        : routeKey.match(/^POST \/api\/v1\/media\/[^/]+\/signed-url$/)
+          ? MOCK_FIXTURES.signedMedia
+          : routeKey.match(/^PUT \/api\/v1\/scenes\/[^/]+\/progress$/)
+            ? { ...(request.body as object), scene_id: 'scene-castle' }
+            : routeKey.match(/^POST \/api\/v1\/favorites$/)
+              ? { ...(request.body as object), id: 'mock-favorite' }
+              : undefined)
     if (fixture === undefined) {
       return {
         data: { code: 'MOCK_ROUTE_NOT_FOUND', message: `未配置 ${url.pathname}` } as T,

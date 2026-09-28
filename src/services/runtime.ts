@@ -1,5 +1,6 @@
 import { createHomeService } from '@/features/home/home-service'
 import { createCatalogService } from '@/features/learning/catalog-service'
+import { createSceneService } from '@/features/scene/scene-service'
 import { createHttpClient, type HttpClient } from '@/services/http/client'
 import { UniTransport } from '@/services/http/uni-transport'
 import { MockTransport } from '@/services/mock/mock-transport'
@@ -11,6 +12,7 @@ export interface RuntimeServices {
   catalog: ReturnType<typeof createCatalogService>
   client: HttpClient
   home: ReturnType<typeof createHomeService>
+  scene: ReturnType<typeof createSceneService>
 }
 
 let services: RuntimeServices | undefined
@@ -55,7 +57,8 @@ export function getRuntimeServices(): RuntimeServices {
   services = {
     catalog: createCatalogService(client),
     client,
-    home: createHomeService(client)
+    home: createHomeService(client),
+    scene: createSceneService(client)
   }
   return services
 }
