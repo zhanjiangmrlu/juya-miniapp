@@ -18,8 +18,8 @@ withDefaults(
 </template>
 
 <style scoped lang="scss">
-@use '@/styles/mixins' as mixins;
-@use '@/styles/tokens' as tokens;
+@use '@/styles/mixins.scss' as mixins;
+@use '@/styles/tokens.scss' as tokens;
 
 .app-page {
   position: relative;

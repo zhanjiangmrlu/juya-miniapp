@@ -23,6 +23,9 @@ export default tseslint.config(
   {
     files: ['**/*.{js,mjs,cjs,ts,tsx,vue}'],
     languageOptions: {
+      globals: {
+        uni: 'readonly'
+      },
       parserOptions: {
         extraFileExtensions: ['.vue'],
         parser: tseslint.parser,

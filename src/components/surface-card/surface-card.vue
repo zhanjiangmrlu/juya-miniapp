@@ -21,7 +21,7 @@ withDefaults(
 </template>
 
 <style scoped lang="scss">
-@use '@/styles/tokens' as tokens;
+@use '@/styles/tokens.scss' as tokens;
 
 .surface-card {
   border: 2rpx solid tokens.$color-border;

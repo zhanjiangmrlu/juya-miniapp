@@ -5,11 +5,17 @@
       "style": {
         "navigationBarTitleText": "句芽英语"
       }
+    },
+    {
+      "path": "pages/compat/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
     }
   ],
   "globalStyle": {
-    "backgroundColor": "#f5f7fb",
-    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f8f1e2",
+    "navigationBarBackgroundColor": "#f8f1e2",
     "navigationBarTextStyle": "black"
   }
 }
