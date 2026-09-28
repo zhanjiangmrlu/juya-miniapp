@@ -1,9 +1,39 @@
 {
   "pages": [
     {
-      "path": "pages/index/index",
+      "path": "pages/home/index",
       "style": {
-        "navigationBarTitleText": "句芽英语"
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/home/first-visit",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/home/today-task",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/learning/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/learning/explore",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/learning/no-access",
+      "style": {
+        "navigationStyle": "custom"
       }
     },
     {

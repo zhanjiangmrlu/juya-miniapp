@@ -6,6 +6,9 @@ export interface LearningModule {
   public_id: string
   title: string
 }
+export interface LearningModulesResponse {
+  items: LearningModule[]
+}
 export interface SceneSummary {
   access: AccessLevel
   category?: string
@@ -22,6 +25,7 @@ export interface SceneSummary {
 export interface LearningCatalogResponse {
   authorization_pending: boolean
   items: SceneSummary[]
+  profile_completion_enabled?: boolean
 }
 export type SceneEntryType = 'DIALOGUE' | 'VOCABULARY' | 'PHRASE'
 export interface AudioTarget {

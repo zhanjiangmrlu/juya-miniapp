@@ -4,6 +4,7 @@ import { MOCK_FIXTURES } from './fixtures'
 const ROUTES: Record<string, unknown> = {
   'GET /api/v1/home': MOCK_FIXTURES.home,
   'GET /api/v1/learning/catalog': MOCK_FIXTURES.catalog,
+  'GET /api/v1/learning/modules': MOCK_FIXTURES.modules,
   'GET /api/v1/me': MOCK_FIXTURES.user,
   'POST /api/v1/session/refresh': {
     access_token: 'mock-access-token',
