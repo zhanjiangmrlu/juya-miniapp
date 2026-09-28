@@ -5,6 +5,7 @@ import { computed, ref } from 'vue'
 import AppButton from '@/components/app-button/app-button.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import AppTabBar from '@/components/app-tab-bar/app-tab-bar.vue'
 import PageHeader from '@/components/page-header/page-header.vue'
 import { reloadAfterDeletionRevoke } from '@/features/account/account-recovery'
 import { presentDeletionState } from '@/features/account/deletion-presenter'
@@ -76,7 +77,12 @@ onShow(loadDeletion)
 
 <template>
   <AppPage>
-    <PageHeader eyebrow="将在七天后生效" :show-back="false" title="账号处于注销期" />
+    <PageHeader
+      :centered="false"
+      eyebrow="将在七天后生效"
+      :show-back="false"
+      title="账号处于注销期"
+    />
     <view v-if="view" class="deletion-pending">
       <text class="deletion-pending__title">预计生效：{{ view.effectiveLabel }}</text>
       <text class="deletion-pending__description">
@@ -96,6 +102,7 @@ onShow(loadDeletion)
         title="账号状态处理中"
       />
     </view>
+    <AppTabBar active="profile" />
   </AppPage>
 </template>
 
@@ -103,6 +110,7 @@ onShow(loadDeletion)
 @use '@/styles/tokens.scss' as tokens;
 
 .deletion-pending {
+  margin-bottom: calc(132rpx + env(safe-area-inset-bottom));
   padding: 32rpx;
   border: 2rpx solid #ead4ad;
   border-radius: tokens.$radius-large;

@@ -17,3 +17,9 @@
 @mixin text-wrap {
   overflow-wrap: anywhere;
 }
+
+@mixin tablet {
+  @media (width >= 700px) {
+    @content;
+  }
+}

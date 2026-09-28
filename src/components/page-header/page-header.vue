@@ -2,12 +2,14 @@
 withDefaults(
   defineProps<{
     backLabel?: string
+    centered?: boolean
     eyebrow?: string
     showBack?: boolean
     title: string
   }>(),
   {
     backLabel: '返回',
+    centered: true,
     eyebrow: undefined,
     showBack: true
   }
@@ -24,11 +26,19 @@ function goBack() {
     <button v-if="showBack" class="page-header__back" :aria-label="backLabel" @click="goBack">
       <view class="page-header__chevron" aria-hidden="true" />
     </button>
-    <view class="page-header__content">
+    <view
+      v-else
+      class="page-header__back-placeholder"
+      :class="{ 'page-header__back-placeholder--hidden': !centered }"
+      aria-hidden="true"
+    />
+    <view class="page-header__content" :class="{ 'page-header__content--leading': !centered }">
       <text v-if="eyebrow" class="page-header__eyebrow">{{ eyebrow }}</text>
       <text class="page-header__title">{{ title }}</text>
     </view>
-    <view class="page-header__aside"><slot name="aside" /></view>
+    <view class="page-header__aside" :class="{ 'page-header__aside--leading': !centered }">
+      <slot name="aside" />
+    </view>
   </view>
 </template>
 
@@ -66,6 +76,11 @@ function goBack() {
   &__content {
     min-width: 0;
     text-align: center;
+
+    &--leading {
+      grid-column: 1 / 3;
+      text-align: left;
+    }
   }
 
   &__eyebrow {
@@ -76,18 +91,28 @@ function goBack() {
 
   &__title {
     display: block;
-    overflow: hidden;
     color: tokens.$color-text;
     font-family: Georgia, 'Noto Serif SC', serif;
     font-size: 38rpx;
     font-weight: 700;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   &__aside {
     display: flex;
     justify-content: flex-end;
+
+    &--leading {
+      grid-column: 3;
+    }
+  }
+
+  &__back-placeholder {
+    &--hidden {
+      display: none;
+    }
   }
 }
 </style>

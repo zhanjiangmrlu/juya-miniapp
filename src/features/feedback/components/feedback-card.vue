@@ -45,11 +45,9 @@ function handleOpen(item: FeedbackItem) {
   }
 
   &__title {
-    overflow: hidden;
     font-size: 28rpx;
     font-weight: 700;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   &__description,

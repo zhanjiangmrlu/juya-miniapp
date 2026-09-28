@@ -94,6 +94,7 @@ onShow(load)
 </template>
 
 <style scoped lang="scss">
+@use '@/styles/mixins.scss' as mixins;
 @use '@/styles/tokens.scss' as tokens;
 
 .entitlement-page {
@@ -124,6 +125,10 @@ onShow(load)
     display: grid;
     margin: 20rpx 0;
     gap: 16rpx;
+
+    @include mixins.tablet {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 }
 </style>

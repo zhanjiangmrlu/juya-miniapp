@@ -23,6 +23,7 @@ function handleSelect() {
   <button
     class="scene-card"
     :class="{ 'scene-card--compact': compact }"
+    :data-compact="compact"
     :aria-label="`${scene.title}，${scene.accessLabel}`"
     @click="handleSelect"
   >
@@ -70,6 +71,13 @@ function handleSelect() {
   grid-template-columns: 184rpx minmax(0, 1fr);
   text-align: left;
 
+  &[data-compact='false'] {
+    @include mixins.tablet {
+      align-items: stretch;
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
   &--compact {
     min-height: 156rpx;
     grid-template-columns: 164rpx minmax(0, 1fr);
@@ -84,6 +92,11 @@ function handleSelect() {
     height: 124rpx;
     border-radius: tokens.$radius-small;
     background: tokens.$color-module;
+
+    @include mixins.tablet {
+      width: 100%;
+      height: 220rpx;
+    }
 
     &--placeholder {
       display: grid;
@@ -101,6 +114,21 @@ function handleSelect() {
 
   &__body {
     min-width: 0;
+    padding-left: 18rpx;
+
+    @include mixins.tablet {
+      padding-top: 18rpx;
+      padding-left: 0;
+    }
+  }
+
+  &--compact &__image {
+    width: 144rpx;
+    height: 116rpx;
+  }
+
+  &--compact &__body {
+    padding-top: 0;
     padding-left: 18rpx;
   }
 

@@ -57,11 +57,16 @@ onShow(loadAccountState)
 </template>
 
 <style scoped lang="scss">
+@use '@/styles/mixins.scss' as mixins;
 @use '@/styles/tokens.scss' as tokens;
 
 .account-page {
   display: grid;
   gap: 24rpx;
+
+  @include mixins.tablet {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
   &__card {
     padding: 30rpx;

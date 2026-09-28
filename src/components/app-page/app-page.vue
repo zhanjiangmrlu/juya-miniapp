@@ -38,6 +38,11 @@ withDefaults(
 
   &--padded {
     @include mixins.page-padding;
+
+    @include mixins.tablet {
+      padding-right: 48rpx;
+      padding-left: 48rpx;
+    }
   }
 }
 </style>

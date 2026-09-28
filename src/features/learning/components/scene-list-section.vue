@@ -45,6 +45,7 @@ function handleSelect(scene: SceneCardViewModel) {
 </template>
 
 <style scoped lang="scss">
+@use '@/styles/mixins.scss' as mixins;
 @use '@/styles/tokens.scss' as tokens;
 
 .scene-list-section {
@@ -76,6 +77,10 @@ function handleSelect(scene: SceneCardViewModel) {
   &__list {
     display: grid;
     gap: tokens.$space-3;
+
+    @include mixins.tablet {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 }
 </style>

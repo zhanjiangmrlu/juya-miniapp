@@ -54,9 +54,15 @@ onShow(loadMessages)
 </template>
 
 <style scoped lang="scss">
+@use '@/styles/mixins.scss' as mixins;
+
 .message-list {
   display: grid;
   margin-bottom: 24rpx;
   gap: 18rpx;
+
+  @include mixins.tablet {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 </style>

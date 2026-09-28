@@ -34,12 +34,17 @@ function handleSelect(group: FavoriteGroup) {
 </template>
 
 <style scoped lang="scss">
+@use '@/styles/mixins.scss' as mixins;
 @use '@/styles/tokens.scss' as tokens;
 
 .favorite-list {
   display: grid;
   margin-top: 24rpx;
   gap: 16rpx;
+
+  @include mixins.tablet {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
   &__item {
     display: flex;
