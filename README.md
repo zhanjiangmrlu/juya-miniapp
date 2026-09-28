@@ -27,6 +27,8 @@ pnpm build:mp-weixin
 - `VITE_CLIENT_VERSION`：请求头中的客户端版本，默认 `1.3.0`。
 - `VITE_USE_MOCK_API=true`：仅在本地开发或视觉验收时显式启用契约 mock；生产构建不要开启。
 
+本地微信开发者工具调试默认读取 `.env.development`，连接 `http://127.0.0.1:8000`。先在 `juya-miniapp-api` 执行 `./scripts/start-local.ps1`，并在微信开发者工具中开启“不校验合法域名”。真机调试需把地址改为电脑局域网地址，例如 `http://192.168.33.5:8000`。
+
 所有 API 调用通过 `src/services/runtime.ts` 创建的共享服务进入统一请求层。页面不直接维护授权、权益、反馈或注销等服务端事实。
 
 ## 验收

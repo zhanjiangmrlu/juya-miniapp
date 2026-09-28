@@ -3,9 +3,12 @@ dist/
 coverage/
 package-lock.json
 yarn.lock
+project.config.json
+project.private.config.json
 .env
 .env.*
 !.env.example
+!.env.development
 *.tsbuildinfo
 *.local
 .DS_Store
