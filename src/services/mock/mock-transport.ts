@@ -6,6 +6,7 @@ const ROUTES: Record<string, unknown> = {
   'GET /api/v1/learning/catalog': MOCK_FIXTURES.catalog,
   'GET /api/v1/learning/modules': MOCK_FIXTURES.modules,
   'GET /api/v1/me': MOCK_FIXTURES.user,
+  'GET /api/v1/me/contact': MOCK_FIXTURES.contact,
   'POST /api/v1/session/refresh': {
     access_token: 'mock-access-token',
     refresh_token: 'mock-refresh-token'
@@ -93,7 +94,17 @@ export class MockTransport implements HttpTransport {
                           ? { card_count: 1, id: 'mock-review', started_at: '2026-09-28T08:30:00Z' }
                           : routeKey.match(/^POST \/api\/v1\/reviews\/[^/]+\/complete$/)
                             ? { completed_at: '2026-09-28T08:40:00Z', created: true }
-                            : undefined)
+                            : routeKey === 'PUT /api/v1/me/contact'
+                              ? { ...MOCK_FIXTURES.contact, ...(request.body as object) }
+                              : routeKey === 'DELETE /api/v1/me/contact'
+                                ? null
+                                : routeKey === 'POST /api/v1/me/contact/corrections'
+                                  ? {
+                                      created_at: '2026-09-28T08:30:00Z',
+                                      id: 'mock-correction',
+                                      status: 'PENDING'
+                                    }
+                                  : undefined)
     if (fixture === undefined) {
       return {
         data: { code: 'MOCK_ROUTE_NOT_FOUND', message: `未配置 ${url.pathname}` } as T,

@@ -5,7 +5,7 @@ import type {
   SceneOpenResponse,
   SignedMediaResponse
 } from '@/shared/contracts/learning'
-import type { UserProfile } from '@/shared/contracts/profile'
+import type { ContactProfile, UserProfile } from '@/shared/contracts/profile'
 export const MOCK_FIXTURES = {
   catalog: {
     authorization_pending: false,
@@ -53,6 +53,14 @@ export const MOCK_FIXTURES = {
     ],
     profile_completion_enabled: true
   } satisfies LearningCatalogResponse,
+  contact: {
+    can_self_edit: true,
+    change_pending: false,
+    consent_version: 'v1',
+    contact_status: 'VERIFIED',
+    self_edit_count: 0,
+    wechat_id: 'juya_english'
+  } satisfies ContactProfile,
   home: {
     checkins: { current_streak: 12, longest_streak: 18, total_days: 36 },
     greeting: '下午好',

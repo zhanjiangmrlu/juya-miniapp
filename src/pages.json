@@ -133,6 +133,36 @@
       }
     },
     {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/contact-prompt",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/contact-edit",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/contact-manage",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/contact-correction",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/compat/index",
       "style": {
         "navigationStyle": "custom"

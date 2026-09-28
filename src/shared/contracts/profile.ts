@@ -6,10 +6,15 @@ export interface UserProfile {
   wechat_nickname?: string | null
 }
 export interface ContactProfile {
-  can_modify: boolean
+  can_self_edit: boolean
+  change_pending: boolean
+  consent_version: string
   contact_status: string
-  modified_at: string | null
-  wechat_id: string | null
+  requires_correction?: boolean
+  self_edit_count: number
+  updated_at?: string
+  wechat_id: string
+  withdrawn_at?: string | null
 }
 export interface ContactCorrection {
   created_at: string

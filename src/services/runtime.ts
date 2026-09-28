@@ -1,7 +1,9 @@
+import { createContactService } from '@/features/contact-profile/contact-service'
 import { createFavoriteService } from '@/features/favorites/favorite-service'
 import { createHomeService } from '@/features/home/home-service'
 import { createCatalogService } from '@/features/learning/catalog-service'
 import { createResultService } from '@/features/learning-result/result-service'
+import { createProfileService } from '@/features/profile/profile-service'
 import { createSceneService } from '@/features/scene/scene-service'
 import { createHttpClient, type HttpClient } from '@/services/http/client'
 import { UniTransport } from '@/services/http/uni-transport'
@@ -13,9 +15,11 @@ import type { SessionResponse } from '@/shared/contracts/session'
 export interface RuntimeServices {
   catalog: ReturnType<typeof createCatalogService>
   client: HttpClient
+  contact: ReturnType<typeof createContactService>
   home: ReturnType<typeof createHomeService>
   favorites: ReturnType<typeof createFavoriteService>
   result: ReturnType<typeof createResultService>
+  profile: ReturnType<typeof createProfileService>
   scene: ReturnType<typeof createSceneService>
 }
 
@@ -61,9 +65,11 @@ export function getRuntimeServices(): RuntimeServices {
   services = {
     catalog: createCatalogService(client),
     client,
+    contact: createContactService(client),
     favorites: createFavoriteService(client),
     home: createHomeService(client),
     result: createResultService(client),
+    profile: createProfileService(client),
     scene: createSceneService(client)
   }
   return services
