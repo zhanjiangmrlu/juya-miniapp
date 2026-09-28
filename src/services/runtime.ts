@@ -1,4 +1,5 @@
 import { createContactService } from '@/features/contact-profile/contact-service'
+import { createEntitlementService } from '@/features/entitlements/entitlement-service'
 import { createFavoriteService } from '@/features/favorites/favorite-service'
 import { createHomeService } from '@/features/home/home-service'
 import { createCatalogService } from '@/features/learning/catalog-service'
@@ -18,6 +19,7 @@ export interface RuntimeServices {
   contact: ReturnType<typeof createContactService>
   home: ReturnType<typeof createHomeService>
   favorites: ReturnType<typeof createFavoriteService>
+  entitlements: ReturnType<typeof createEntitlementService>
   result: ReturnType<typeof createResultService>
   profile: ReturnType<typeof createProfileService>
   scene: ReturnType<typeof createSceneService>
@@ -66,6 +68,7 @@ export function getRuntimeServices(): RuntimeServices {
     catalog: createCatalogService(client),
     client,
     contact: createContactService(client),
+    entitlements: createEntitlementService(client),
     favorites: createFavoriteService(client),
     home: createHomeService(client),
     result: createResultService(client),

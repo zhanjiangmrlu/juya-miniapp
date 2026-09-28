@@ -7,6 +7,33 @@ const ROUTES: Record<string, unknown> = {
   'GET /api/v1/learning/modules': MOCK_FIXTURES.modules,
   'GET /api/v1/me': MOCK_FIXTURES.user,
   'GET /api/v1/me/contact': MOCK_FIXTURES.contact,
+  'GET /api/v1/me/entitlements': {
+    authorization_pending: false,
+    formal: [
+      {
+        content_pack_id: 'pack-1',
+        effective_at: '2026-09-01T00:00:00Z',
+        expires_at: null,
+        id: 'formal-1',
+        status: 'ACTIVE',
+        title: '正式内容包'
+      }
+    ],
+    limited: [
+      {
+        activated_at: null,
+        activity_id: 'activity-1',
+        duration_days: 3,
+        expires_at: null,
+        id: 'limited-1',
+        scene_count: 3,
+        starts_before: '2026-10-01T08:00:00Z',
+        status: 'PENDING',
+        title: '3 天限时学习'
+      }
+    ],
+    version: 'v1'
+  },
   'POST /api/v1/session/refresh': {
     access_token: 'mock-access-token',
     refresh_token: 'mock-refresh-token'

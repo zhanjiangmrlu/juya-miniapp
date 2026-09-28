@@ -163,6 +163,30 @@
       }
     },
     {
+      "path": "pages/entitlement/index",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/entitlement/pending",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/entitlement/active",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/entitlement/ending",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/entitlement/ended",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/entitlement/exception",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
       "path": "pages/compat/index",
       "style": {
         "navigationStyle": "custom"
