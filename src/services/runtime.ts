@@ -37,7 +37,7 @@ let services: RuntimeServices | undefined
 function createRuntimeClient(): HttpClient {
   const session = useSessionStore()
   const client = createHttpClient({
-    baseUrl: import.meta.env.VITE_API_BASE_URL || 'https://mock.juya.local',
+    baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000',
     clientVersion: import.meta.env.VITE_CLIENT_VERSION || '1.3.0',
     session: {
       clear: session.clear,

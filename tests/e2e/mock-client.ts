@@ -5,7 +5,7 @@ import { MockTransport } from '@/services/mock/mock-transport'
 export function createE2eClient() {
   let accessToken = 'e2e-access-token'
   return createHttpClient({
-    baseUrl: 'https://mock.juya.local',
+    baseUrl: 'http://127.0.0.1:8000',
     clientVersion: '1.3.0-e2e',
     idFactory: (() => {
       let sequence = 0
