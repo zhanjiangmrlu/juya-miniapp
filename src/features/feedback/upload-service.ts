@@ -17,10 +17,8 @@ export function uploadWithUni(
       fail: reject,
       filePath: file.path,
       formData: {
-        OSSAccessKeyId: credential.access_key_id,
-        key: credential.key,
-        policy: credential.policy,
-        signature: credential.signature,
+        ...credential.fields,
+        'Content-Type': credential.content_type,
         success_action_status: '200'
       },
       name: 'file',

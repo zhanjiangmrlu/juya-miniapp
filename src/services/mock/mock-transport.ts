@@ -82,6 +82,13 @@ const ROUTES: Record<string, unknown> = {
   },
   'POST /api/v1/feedback': { ...MOCK_FEEDBACK, id: 'feedback-created', status: 'PENDING' },
   'POST /api/v1/feedback/uploads': {
+    fields: {
+      key: 'feedback/mock-user/mock-image.jpg',
+      policy: 'mock-policy',
+      'Content-Type': 'image/jpeg',
+      'x-oss-signature-version': 'OSS4-HMAC-SHA256',
+      'x-oss-signature': 'mock-signature'
+    },
     access_key_id: 'mock-access-key',
     content_type: 'image/jpeg',
     expires_at: '2026-09-28T08:35:00Z',

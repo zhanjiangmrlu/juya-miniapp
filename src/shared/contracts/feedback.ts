@@ -16,6 +16,7 @@ export interface FeedbackListResponse {
   items: FeedbackItem[]
 }
 export interface FeedbackUploadCredential {
+  fields: Record<string, string>
   access_key_id: string
   content_type: 'image/jpeg' | 'image/png' | 'image/webp'
   expires_at: string
