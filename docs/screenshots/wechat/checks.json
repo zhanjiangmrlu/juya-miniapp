@@ -1,0 +1,18 @@
+[
+  {
+    "action": "whole play",
+    "label": "整段播放中"
+  },
+  {
+    "action": "whole pause",
+    "label": "继续"
+  },
+  {
+    "action": "word card opened",
+    "hasClose": true
+  },
+  {
+    "action": "shadowing navigation",
+    "path": "pages/scene/shadowing"
+  }
+]

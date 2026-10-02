@@ -92,3 +92,5 @@
 个人范围已完成实现、自动化检查、三个尺寸 H5 截图和本地真实 HTTP 读取集成。共享壳、路由、后端字段及正式接口扩展由统筹范围负责，本次提交不包含其文件。微信开发者工具的整体联调由统筹统一执行。
 
 生产权限与数据写入、真实 OSS 上传、微信真机图片选择、音频试听与录音、弱网和真实七天注销期仍需对应环境验收。本次未把构建通过、fixture 写操作或本地读取验证当作这些验收结果。
+
+统筹已将最终截图与 report/flows/live.json 从忽略构建目录归档至 [稳定证据目录](C:/Users/Administrator/.codex/visualizations/2026/10/02/01a0fb37-f720-7460-bb49-94586f3b6d5d/personal-final/personal-visual)。最新全仓门禁以 [集成验收记录](figma-integration-acceptance.md) 为准。

@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-02",
+  "sourceCommit": "cbe1008",
+  "formalPages": 43,
+  "compatibilityRoutes": 1,
+  "figmaStates": 69,
+  "frontend": {
+    "check": "passed",
+    "testFiles": 58,
+    "testsPassed": 175,
+    "h5Build": "passed",
+    "weixinBuild": "passed",
+    "weixinBytes": 470282,
+    "nativeWxssFilesPassed": 71
+  },
+  "http": {
+    "miniappApiTestsPassed": 137,
+    "miniappApiTestsSkipped": 1,
+    "adminApiGeneralPassed": 393,
+    "adminApiGeneralSkipped": 4,
+    "adminApiOperationsPassed": 1,
+    "socketRefreshRetest": "passed",
+    "isolatedDatabaseAndRedis": true,
+    "normalServerRoutes": true,
+    "externalWechatProvider": "fixture",
+    "ossBytesFetched": false
+  },
+  "visual": {
+    "all69StatesAt390": true,
+    "entryAndPersonalAllStatesAt375And768": true,
+    "sceneResponsiveBasePages": true,
+    "sceneSheetsAndOriginalResponsive": true,
+    "extraAudioStatesUseBaseResponsiveEvidence": true
+  },
+  "wechatTool": {
+    "version": "2.02.2608040",
+    "sdk": "3.17.2",
+    "viewport": [390, 844],
+    "wholeAudioPlayPause": "passed",
+    "sentenceSwitchPauseResumeEnd": "passed",
+    "wordSheet": "passed",
+    "shadowingNavigation": "passed",
+    "mainPageNavigation": "passed",
+    "media": "local silent sample"
+  },
+  "manualPending": [
+    "iPhone and Android recording permission, background, playback and cleanup",
+    "audible published media and sentence timing precision on physical devices",
+    "production WeChat exchange, OSS upload, expiry and authorization",
+    "real seven-day deletion interval and device font/capsule/safe-area review"
+  ],
+  "deployed": false
+}

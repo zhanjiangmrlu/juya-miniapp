@@ -1,0 +1,58 @@
+{
+  "checks": [
+    {
+      "action": "first sentence plays",
+      "label": "暂停"
+    },
+    {
+      "action": "switch to second",
+      "first": "播放",
+      "second": "暂停"
+    },
+    {
+      "action": "pause second",
+      "label": "继续"
+    },
+    {
+      "action": "interval naturally ends",
+      "label": "播放"
+    },
+    {
+      "action": "original",
+      "path": "pages/scene/detail"
+    },
+    {
+      "action": "learning",
+      "path": "pages/learning/index"
+    },
+    {
+      "action": "explore",
+      "path": "pages/learning/explore"
+    },
+    {
+      "action": "favorites",
+      "path": "pages/favorites/index"
+    },
+    {
+      "action": "profile",
+      "path": "pages/profile/index"
+    },
+    {
+      "action": "entitlements",
+      "path": "pages/entitlement/index"
+    },
+    {
+      "action": "messages",
+      "path": "pages/feedback/messages"
+    },
+    {
+      "action": "feedback",
+      "path": "pages/feedback/index"
+    },
+    {
+      "action": "account",
+      "path": "pages/account/index"
+    }
+  ],
+  "errors": []
+}
