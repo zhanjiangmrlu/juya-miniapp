@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onHide, onShow } from '@dcloudio/uni-app'
+import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
 import { nextTick, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
@@ -90,7 +90,7 @@ const show = async () => {
   visible = true
   await load()
 }
-/** 离页使所有旧请求失效，隐藏提示不得记为曝光 */
+/** 隐藏或销毁档案页时使旧请求失效，未显示的提示不得记为曝光 */
 const hide = () => {
   visible = false
   generation++
@@ -98,6 +98,7 @@ const hide = () => {
 }
 onShow(show)
 onHide(hide)
+onUnload(hide)
 </script>
 <template>
   <PersonalPage title="我的学习档案" subtitle="个人学习信息仅向你本人显示">

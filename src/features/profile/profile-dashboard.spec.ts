@@ -6,6 +6,7 @@ import ProfileDashboard from './components/profile-dashboard.vue'
 const dependencies = vi.hoisted(() => ({
   show: undefined as (() => Promise<void>) | undefined,
   hide: undefined as (() => void) | undefined,
+  unload: undefined as (() => void) | undefined,
   profile: vi.fn(),
   exposure: vi.fn(),
   storage: vi.fn()
@@ -16,6 +17,9 @@ vi.mock('@dcloudio/uni-app', () => ({
   },
   onHide: (callback: () => void) => {
     dependencies.hide = callback
+  },
+  onUnload: (callback: () => void) => {
+    dependencies.unload = callback
   }
 }))
 vi.mock('@/services/runtime', () => ({
@@ -42,25 +46,28 @@ const options = {
   }
 }
 describe('联系提示真实曝光', () => {
-  it('资料请求期间离页，异步返回不得消耗唯一提示机会', async () => {
-    let resolve!: (value: unknown) => void
-    dependencies.profile.mockImplementation(
-      () =>
-        new Promise((done) => {
-          resolve = done
-        })
-    )
-    const wrapper = mount(ProfileDashboard, options)
-    const request = dependencies.show?.()
-    dependencies.hide?.()
-    resolve({ juya_id: 'one', contact_prompt_eligible: true })
-    await request
-    await flushPromises()
-    expect(dependencies.storage).not.toHaveBeenCalled()
-    expect(dependencies.exposure).not.toHaveBeenCalled()
-    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
-    wrapper.unmount()
-  })
+  it.each(['hide', 'unload'] as const)(
+    '资料请求期间%s，异步返回不得消耗唯一提示机会',
+    async (leave) => {
+      let resolve!: (value: unknown) => void
+      dependencies.profile.mockImplementation(
+        () =>
+          new Promise((done) => {
+            resolve = done
+          })
+      )
+      const wrapper = mount(ProfileDashboard, options)
+      const request = dependencies.show?.()
+      dependencies[leave]?.()
+      resolve({ juya_id: 'one', contact_prompt_eligible: true })
+      await request
+      await flushPromises()
+      expect(dependencies.storage).not.toHaveBeenCalled()
+      expect(dependencies.exposure).not.toHaveBeenCalled()
+      expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+      wrapper.unmount()
+    }
+  )
   it('当前可见页实际渲染提示后才写本机标记和服务端曝光', async () => {
     dependencies.profile.mockResolvedValue({ juya_id: 'one', contact_prompt_eligible: true })
     const wrapper = mount(ProfileDashboard, options)

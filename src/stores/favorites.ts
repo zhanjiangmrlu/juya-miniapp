@@ -24,6 +24,7 @@ export const useFavoriteStore = defineStore('favorites', () => {
   const activeTab = ref<FavoriteType>('VOCABULARY')
   const items = ref<FavoriteItem[]>([])
   const loading = ref(false)
+  let generation = 0
   const tabState = reactive<Record<FavoriteType, FavoriteTabState>>({
     PHRASE: createTabState(),
     VOCABULARY: createTabState()
@@ -50,6 +51,7 @@ export const useFavoriteStore = defineStore('favorites', () => {
   /** 加载全部游标页供不限量复习，service 为收藏接口，reset 为是否刷新完整列表 */
   const load = async (service: FavoriteService, reset = false) => {
     if (loading.value) return
+    const current = ++generation
     loading.value = true
     const type = activeTab.value
     const state = tabState[type]
@@ -62,6 +64,7 @@ export const useFavoriteStore = defineStore('favorites', () => {
         if (cursor && visited.has(cursor)) throw new Error('收藏分页游标重复，请重试')
         if (cursor) visited.add(cursor)
         const page = await service.list(cursor ?? undefined)
+        if (current !== generation) return
         for (const item of page.items) {
           if (!known.has(item.id)) {
             collected.push(item)
@@ -73,11 +76,12 @@ export const useFavoriteStore = defineStore('favorites', () => {
       items.value = collected
       state.cursor = cursor
     } finally {
-      loading.value = false
+      if (current === generation) loading.value = false
     }
   }
   /** 清空学习缓存时移除收藏与银行状态 */
   const clear = () => {
+    generation++
     activeTab.value = 'VOCABULARY'
     items.value = []
     loading.value = false

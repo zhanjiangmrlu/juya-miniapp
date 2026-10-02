@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onHide, onShow } from '@dcloudio/uni-app'
+import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
@@ -28,6 +28,8 @@ const revoked = ref(false)
 const tick = ref(0)
 const clock = ref<ServerClock>()
 let timer: ReturnType<typeof globalThis.setInterval> | undefined
+let visible = false
+let generation = 0
 const view = computed(() => {
   void tick.value
   return deletion.request
@@ -37,6 +39,9 @@ const view = computed(() => {
 
 /** 恢复最近注销响应；缺失时从本人档案补足当前服务端状态 */
 const loadDeletion = async () => {
+  const current = ++generation
+  if (timer) globalThis.clearInterval(timer)
+  timer = undefined
   deletion.restore()
   try {
     const runtime = getRuntimeServices()
@@ -44,6 +49,7 @@ const loadDeletion = async () => {
       runtime.profile.get(),
       runtime.entitlements.get().catch(() => undefined)
     ])
+    if (!visible || current !== generation) return
     clock.value = entitlements?.server_now
       ? createServerClock(new Date(entitlements.server_now))
       : undefined
@@ -62,6 +68,7 @@ const loadDeletion = async () => {
     })
     error.value = ''
   } catch {
+    if (!visible || current !== generation) return
     error.value = '账号状态刷新失败，请重试'
   }
   if (timer) globalThis.clearInterval(timer)
@@ -77,6 +84,9 @@ const revokeDeletion = async () => {
   error.value = ''
   try {
     await getRuntimeServices().account.revokeDeletion()
+    generation++
+    if (timer) globalThis.clearInterval(timer)
+    timer = undefined
     deletion.clear()
     revoked.value = true
     const runtime = getRuntimeServices()
@@ -103,11 +113,20 @@ const revokeDeletion = async () => {
   }
 }
 
-onShow(loadDeletion)
-onHide(() => {
+/** 当前页重新显示时刷新服务端注销状态 */
+onShow(async () => {
+  visible = true
+  await loadDeletion()
+})
+/** 隐藏或销毁注销页时使旧响应失效并停止倒计时 */
+const leave = () => {
+  visible = false
+  generation++
   if (timer) globalThis.clearInterval(timer)
   timer = undefined
-})
+}
+onHide(leave)
+onUnload(leave)
 </script>
 <template>
   <PersonalPage navigation="账号状态" title="账号注销期" subtitle="7 天内可以撤回注销"

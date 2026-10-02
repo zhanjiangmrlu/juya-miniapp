@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onLoad, onPageScroll, onShow } from '@dcloudio/uni-app'
+import { onHide, onLoad, onPageScroll, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
@@ -17,18 +17,22 @@ const props = withDefaults(defineProps<{ initialTab?: FavoriteType }>(), {
 })
 const favorites = useFavoriteStore()
 const error = ref('')
+let visible = false
+let generation = 0
 const title = computed(() => (favorites.activeTab === 'PHRASE' ? '语块银行' : '词汇银行'))
 /** 恢复路由选择的银行，query 为入口携带的标签参数 */
 const handleLoad = (query?: Record<string, string>) =>
   favorites.selectTab(query?.tab === 'phrases' ? 'PHRASE' : props.initialTab)
 /** 刷新完整收藏并恢复当前银行滚动位置 */
 const handleShow = async () => {
+  const current = ++generation
   try {
     await favorites.load(getRuntimeServices().favorites, true)
+    if (!visible || current !== generation) return
     error.value = ''
     uni.pageScrollTo({ scrollTop: favorites.tabState[favorites.activeTab].scrollTop, duration: 0 })
   } catch {
-    error.value = '收藏加载失败，请重试'
+    if (visible && current === generation) error.value = '收藏加载失败，请重试'
   }
 }
 /** 切换银行并恢复独立滚动位置，type 为目标收藏类型 */
@@ -75,7 +79,18 @@ const startReview = async () => {
   })
 }
 onLoad(handleLoad)
-onShow(handleShow)
+/** 显示银行时刷新收藏和当前阅读位置 */
+onShow(async () => {
+  visible = true
+  await handleShow()
+})
+/** 隐藏或销毁银行后阻止旧请求操作当前新页面 */
+const leave = () => {
+  visible = false
+  generation++
+}
+onHide(leave)
+onUnload(leave)
 onPageScroll((event) =>
   favorites.updateTabState(favorites.activeTab, { scrollTop: event.scrollTop })
 )

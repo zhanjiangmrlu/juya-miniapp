@@ -25,6 +25,68 @@ const favorite = (
 beforeEach(() => setActivePinia(createPinia()))
 
 describe('favorite store', () => {
+  it('清空缓存后忽略旧请求的迟到收藏响应', async () => {
+    const store = useFavoriteStore()
+    let finish!: (page: { items: FavoriteItem[]; next_cursor: null; has_more: false }) => void
+    const request = store.load(
+      {
+        list: () =>
+          new Promise((resolve) => {
+            finish = resolve
+          })
+      } as Parameters<typeof store.load>[0],
+      true
+    )
+    store.clear()
+    finish({
+      items: [favorite({ id: 'old', normalized_key: 'old' })],
+      next_cursor: null,
+      has_more: false
+    })
+    await request
+    expect(store.items).toEqual([])
+  })
+  it('清空后的新请求保持加载状态且不被旧请求覆盖', async () => {
+    const store = useFavoriteStore()
+    type Page = { items: FavoriteItem[]; next_cursor: null; has_more: false }
+    let oldFinish!: (page: Page) => void
+    let newFinish!: (page: Page) => void
+    const previous = store.load(
+      {
+        list: () =>
+          new Promise((resolve) => {
+            oldFinish = resolve
+          })
+      } as Parameters<typeof store.load>[0],
+      true
+    )
+    store.clear()
+    const current = store.load(
+      {
+        list: () =>
+          new Promise((resolve) => {
+            newFinish = resolve
+          })
+      } as Parameters<typeof store.load>[0],
+      true
+    )
+    oldFinish({
+      items: [favorite({ id: 'old', normalized_key: 'old' })],
+      next_cursor: null,
+      has_more: false
+    })
+    await previous
+    expect(store.loading).toBe(true)
+    expect(store.items).toEqual([])
+    newFinish({
+      items: [favorite({ id: 'new', normalized_key: 'new' })],
+      next_cursor: null,
+      has_more: false
+    })
+    await current
+    expect(store.items.map((item) => item.id)).toEqual(['new'])
+    expect(store.loading).toBe(false)
+  })
   it('翻卡数据遍历全部游标页，超过十张不截断并按标识去重', async () => {
     const store = useFavoriteStore()
     const page = Array.from({ length: 24 }, (_, index) =>

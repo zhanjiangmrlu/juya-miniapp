@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { onLoad } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import AudioButton from '@/features/audio/components/audio-button.vue'
-import { loadFavoriteGroup } from '@/features/favorites/load-favorite-group'
+import { useFavoriteGroup } from '@/features/favorites/use-favorite-group'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
@@ -13,26 +12,10 @@ import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 import { useAudioStore } from '@/stores/audio'
 
-import type { FavoriteGroup } from '@/features/favorites/favorite-presenter'
-import type { FavoriteItem } from '@/shared/contracts/favorites'
 import type { AudioTarget } from '@/shared/contracts/learning'
-const item = ref<FavoriteItem>()
-const error = ref('')
+const { item, group, error } = useFavoriteGroup('收藏加载失败，请返回收藏后重试')
 const removing = ref(false)
 const audio = useAudioStore()
-const group = ref<FavoriteGroup>()
-/** 加载收藏完整快照，query 为收藏标识 */
-const load = async (query?: Record<string, string>) => {
-  try {
-    if (query?.id) {
-      const loaded = await loadFavoriteGroup(getRuntimeServices().favorites, query.id)
-      item.value = loaded.item
-      group.value = loaded.group
-    }
-  } catch {
-    error.value = '收藏加载失败'
-  }
-}
 /** 多来源时进入来源选择，单来源时进入稳定原文位置 */
 const returnSource = async () => {
   if (!item.value || !group.value) return
@@ -61,7 +44,6 @@ const remove = async () => {
 }
 /** 独立播放发音，target 为当前收藏的音频引用 */
 const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().scene)
-onLoad(load)
 </script>
 <template>
   <PersonalPage

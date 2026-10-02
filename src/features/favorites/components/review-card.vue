@@ -5,11 +5,16 @@ import { useAudioStore } from '@/stores/audio'
 
 import type { FavoriteItem } from '@/shared/contracts/favorites'
 import type { AudioTarget } from '@/shared/contracts/learning'
-defineProps<{ face: 'BACK' | 'FRONT'; item: FavoriteItem }>()
+const props = defineProps<{ face: 'BACK' | 'FRONT'; item: FavoriteItem }>()
 const emit = defineEmits<{ flip: [] }>()
 const audio = useAudioStore()
 /** 播放独立发音，target 为该收藏版本的音频目标 */
 const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().scene)
+/** 正面英文翻面，答案英文只在有独立发音时播放且不冒泡翻卡 */
+const pressWord = () => {
+  if (props.face === 'FRONT') emit('flip')
+  else if (props.item.audio) void play(props.item.audio)
+}
 </script>
 <template>
   <view class="review-card" :class="{ back: face === 'BACK' }">
@@ -18,7 +23,9 @@ const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().sc
         >{{ face === 'FRONT' ? '正面' : '背面' }} ·
         {{ item.sources[0]?.scene_title || '来源场景' }}</text
       >
-      <text class="card-word">{{ item.english || item.normalized_key }}</text>
+      <text class="card-word" @click.stop="pressWord">{{
+        item.english || item.normalized_key
+      }}</text>
       <template v-if="face === 'BACK'">
         <text v-if="item.phonetic" class="card-phonetic">{{ item.phonetic }}</text>
         <text class="card-translation">{{ item.chinese || '' }}</text>
@@ -60,6 +67,10 @@ const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().sc
     background: #fffdf7;
     color: #254733;
     text-align: center;
+
+    &::after {
+      pointer-events: none;
+    }
   }
 
   .card-face {

@@ -1,33 +1,13 @@
 <script setup lang="ts">
-import { onLoad } from '@dcloudio/uni-app'
-import { ref } from 'vue'
-
 import AppButton from '@/components/app-button/app-button.vue'
 import SourceList from '@/features/favorites/components/source-list.vue'
-import { loadFavoriteGroup } from '@/features/favorites/load-favorite-group'
+import { useFavoriteGroup } from '@/features/favorites/use-favorite-group'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
-import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 
-import type { FavoriteGroup } from '@/features/favorites/favorite-presenter'
-import type { FavoriteItem } from '@/shared/contracts/favorites'
-const item = ref<FavoriteItem>()
-const error = ref('')
-const group = ref<FavoriteGroup>()
-/** 加载收藏的全部来源，query 为收藏标识 */
-const load = async (query?: Record<string, string>) => {
-  try {
-    if (query?.id) {
-      const loaded = await loadFavoriteGroup(getRuntimeServices().favorites, query.id)
-      item.value = loaded.item
-      group.value = loaded.group
-    }
-  } catch {
-    error.value = '来源加载失败，请返回收藏后重试'
-  }
-}
+const { item, group, error } = useFavoriteGroup('来源加载失败，请返回收藏后重试')
 /** 进入原文稳定位置，url 为已校验权限的来源地址 */
 const open = (url: string) => navigate({ type: 'navigateTo', url })
 /** 返回收藏银行 */
@@ -36,7 +16,6 @@ const back = () =>
     type: 'reLaunch',
     url: item.value?.entry_type === 'PHRASE' ? '/pages/favorites/phrases' : '/pages/favorites/index'
   })
-onLoad(load)
 </script>
 <template>
   <PersonalPage
