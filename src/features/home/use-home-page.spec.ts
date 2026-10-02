@@ -12,12 +12,13 @@ const fixture = vi.hoisted(() => ({
   requests: 0,
   forced: [] as boolean[],
   destinations: [] as string[],
-  items: [] as SceneSummary[]
+  items: [] as SceneSummary[],
+  pendingSession: undefined as Promise<boolean> | undefined
 }))
 vi.mock('@/services/startup', () => ({
   ensureSession: async (force = false) => {
     fixture.forced.push(force)
-    return fixture.ready
+    return fixture.pendingSession ?? fixture.ready
   }
 }))
 vi.mock('@/services/runtime', () => ({
@@ -47,6 +48,7 @@ describe('首页静默身份及任务入口', () => {
     fixture.forced = []
     fixture.items = []
     fixture.destinations = []
+    fixture.pendingSession = undefined
     vi.stubGlobal('uni', {
       removeStorageSync: vi.fn(),
       /** 记录实际导航目的地，options 为平台路由与成功回调 */
@@ -55,6 +57,37 @@ describe('首页静默身份及任务入口', () => {
         options.success()
       }
     })
+  })
+  it('首页隐藏后迟到身份成功不得再发首页请求', async () => {
+    let resolve!: (ready: boolean) => void
+    fixture.pendingSession = new Promise((done) => {
+      resolve = done
+    })
+    const page = useHomePage()
+    const pending = page.load()
+    page.cancel()
+    resolve(true)
+    await pending
+    expect(fixture.requests).toBe(0)
+    expect(page.home.loading).toBe(false)
+  })
+  it('首页隐藏后迟到身份失败不得清空新页面目录', async () => {
+    let resolve!: (ready: boolean) => void
+    fixture.pendingSession = new Promise((done) => {
+      resolve = done
+    })
+    const page = useHomePage()
+    const pending = page.load()
+    page.cancel()
+    const learning = useLearningStore()
+    await learning.load({
+      getModules: async () => ({ items: [] }),
+      getCatalog: async () => ({ authorization_pending: true, items: [] })
+    })
+    resolve(false)
+    await pending
+    expect(learning.catalog.authorization_pending).toBe(true)
+    expect(page.home.error).toBe(false)
   })
   it('目录已经变为PREVIEW时，旧首页任务不得进入正文', async () => {
     fixture.ready = true

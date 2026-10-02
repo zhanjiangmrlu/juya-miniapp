@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
-import { computed } from 'vue'
+import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
+import { computed, onBeforeUnmount } from 'vue'
 
 import NetworkReconnectDialog from '@/components/network-reconnect-dialog/network-reconnect-dialog.vue'
 import { resolveOpenSample } from '@/features/home/open-sample'
@@ -14,7 +14,7 @@ import { useLearningStore } from '@/stores/learning'
 const props = withDefaults(defineProps<{ mode: 'first' | 'today'; embedded?: boolean }>(), {
   embedded: false
 })
-const { canStartTask, home, load, openScene, startTask, taskScene } = useHomePage()
+const { cancel, canStartTask, home, load, openScene, startTask, taskScene } = useHomePage()
 const sample = computed(() => (home.error ? null : resolveOpenSample(learning.catalog)))
 const openScenes = computed(() => learning.catalog.items.filter((scene) => scene.access === 'OPEN'))
 const learning = useLearningStore()
@@ -65,7 +65,12 @@ const openStep = async (kind: 'dialogue' | 'shadowing' | 'favorites') => {
   })
 }
 // 动态首页子组件共享父页刷新，不向页面根注册卸载后残留的生命周期
-if (!props.embedded) onShow(handleShow)
+if (!props.embedded) {
+  onShow(handleShow)
+  onHide(cancel)
+  onUnload(cancel)
+}
+onBeforeUnmount(cancel)
 </script>
 <template>
   <EntryPageShell active="home">

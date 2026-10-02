@@ -15,6 +15,8 @@ export const useHomePage = () => {
   const home = useHomeStore()
   const learning = useLearningStore()
   const runtime = getRuntimeServices()
+  const owner = Symbol('home-page')
+  let generation = 0
   const featuredScene = computed(
     () => learning.sections.openScenes[0] ?? learning.sections.currentLearning[0]
   )
@@ -47,13 +49,23 @@ export const useHomePage = () => {
 
   /** 建立身份后刷新首页，forceWechat 表示网络重连时重新静默登录 */
   const load = async (forceWechat = false) => {
-    if (!(await ensureSession(forceWechat))) {
+    const request = ++generation
+    const ready = await ensureSession(forceWechat)
+    if (request !== generation) return
+    if (!ready) {
       home.clear()
       learning.clear()
       home.error = true
       return
     }
-    await Promise.all([home.load(runtime.home), learning.load(runtime.catalog)])
+    await Promise.all([home.load(runtime.home, owner), learning.load(runtime.catalog, owner)])
+  }
+
+  /** 页面离开时取消本页请求，保留其他页面正在刷新及已缓存的数据 */
+  const cancel = () => {
+    generation++
+    home.cancel(owner)
+    learning.cancel(owner)
   }
 
   /** 打开真实今日任务，场景权限待确认或已失效时保持当前页面 */
@@ -74,6 +86,7 @@ export const useHomePage = () => {
   }
 
   return {
+    cancel,
     canStartTask,
     featuredScene,
     home,

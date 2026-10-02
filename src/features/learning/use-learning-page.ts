@@ -6,16 +6,20 @@ import { useLearningStore } from '@/stores/learning'
 
 import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
 
-/** 复用学习列表与探索页的数据加载、权限提示和导航逻辑。 */
-export function useLearningPage() {
+/** 复用学习列表与探索页的数据加载、权限提示和导航逻辑 */
+export const useLearningPage = () => {
   const learning = useLearningStore()
   const noticeVisible = ref(false)
   const runtime = getRuntimeServices()
+  const owner = Symbol('learning-page')
 
-  /** 从服务端并行刷新模块入口和个性化目录。 */
-  async function load() {
-    await learning.load(runtime.catalog)
+  /** 从服务端并行刷新模块入口和个性化目录 */
+  const load = async () => {
+    await learning.load(runtime.catalog, owner)
   }
+
+  /** 页面离开时取消本页目录请求，保留其他页面的刷新 */
+  const cancel = () => learning.cancel(owner)
 
   /** 有权限时进入场景，无权限时停留当前页打开统一提示。 */
   async function selectScene(scene: SceneCardViewModel) {
@@ -49,6 +53,7 @@ export function useLearningPage() {
   }
 
   return {
+    cancel,
     closeNotice,
     learning,
     load,

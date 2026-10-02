@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
+import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed } from 'vue'
 
 import AppState from '@/components/app-state/app-state.vue'
@@ -10,6 +10,7 @@ import LearningPageHeading from '@/features/learning/components/learning-page-he
 import SceneListSection from '@/features/learning/components/scene-list-section.vue'
 import { useLearningPage } from '@/features/learning/use-learning-page'
 const {
+  cancel,
   closeNotice,
   learning,
   load,
@@ -31,6 +32,8 @@ const handleShow = () => {
   void load()
 }
 onShow(handleShow)
+onHide(cancel)
+onUnload(cancel)
 </script>
 <template>
   <EntryPageShell active="learning">

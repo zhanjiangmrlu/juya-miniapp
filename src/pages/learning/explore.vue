@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
+import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
 
 import AppState from '@/components/app-state/app-state.vue'
 import AccessNotice from '@/features/learning/components/access-notice.vue'
@@ -8,13 +8,16 @@ import LearningPageHeading from '@/features/learning/components/learning-page-he
 import SceneListSection from '@/features/learning/components/scene-list-section.vue'
 import { useLearningPage } from '@/features/learning/use-learning-page'
 const props = withDefaults(defineProps<{ initialNotice?: boolean }>(), { initialNotice: false })
-const { closeNotice, learning, load, noticeVisible, openProfile, selectScene } = useLearningPage()
+const { cancel, closeNotice, learning, load, noticeVisible, openProfile, selectScene } =
+  useLearningPage()
 noticeVisible.value = props.initialNotice
 /** 进入探索页时刷新安全封面与简介目录 */
 const handleShow = () => {
   void load()
 }
 onShow(handleShow)
+onHide(cancel)
+onUnload(cancel)
 </script>
 <template>
   <EntryPageShell active="learning">

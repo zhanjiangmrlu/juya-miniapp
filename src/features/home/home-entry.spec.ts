@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import HomePageView from './components/home-page-view.vue'
 import TodayTaskCard from './components/today-task-card.vue'
-vi.mock('@dcloudio/uni-app', () => ({ onShow: vi.fn() }))
+vi.mock('@dcloudio/uni-app', () => ({ onShow: vi.fn(), onHide: vi.fn(), onUnload: vi.fn() }))
 vi.mock('@/services/runtime', () => ({ getRuntimeServices: () => ({}) }))
 vi.mock('@/services/startup', () => ({ ensureSession: async () => false }))
 beforeEach(() => setActivePinia(createPinia()))

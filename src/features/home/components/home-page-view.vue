@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
-import { computed, ref, watch } from 'vue'
+import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import NetworkReconnectDialog from '@/components/network-reconnect-dialog/network-reconnect-dialog.vue'
 import HomeDashboard from '@/features/home/components/home-dashboard.vue'
@@ -18,7 +18,8 @@ const props = withDefaults(
   { mode: 'normal', networkError: false }
 )
 
-const { canStartTask, home, load, openSceneCount, retry, startTask, taskScene } = useHomePage()
+const { cancel, canStartTask, home, load, openSceneCount, retry, startTask, taskScene } =
+  useHomePage()
 const forcedNetworkError = ref(props.networkError)
 const isFirstVisit = computed(
   () =>
@@ -60,6 +61,9 @@ const openReview = async () => {
 
 watch(() => props.networkError, handleNetworkErrorChange)
 onShow(handleShow)
+onHide(cancel)
+onUnload(cancel)
+onBeforeUnmount(cancel)
 </script>
 
 <template>

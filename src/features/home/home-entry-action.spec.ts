@@ -8,12 +8,15 @@ import { useLearningStore } from '@/stores/learning'
 import HomeEntryPage from './components/home-entry-page.vue'
 const task = vi.hoisted(() => ({ start: vi.fn(), open: vi.fn(), shows: [] as (() => void)[] }))
 vi.mock('@dcloudio/uni-app', () => ({
+  onHide: vi.fn(),
+  onUnload: vi.fn(),
   onShow: (callback: () => void) => task.shows.push(callback)
 }))
 vi.mock('@/features/home/use-home-page', async () => {
   const { ref } = await import('vue')
   return {
     useHomePage: () => ({
+      cancel: vi.fn(),
       canStartTask: ref(true),
       home: {
         error: false,

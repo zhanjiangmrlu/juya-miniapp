@@ -12,13 +12,17 @@ export const useLearningStore = defineStore('learning', () => {
   const catalog = ref<LearningCatalogResponse>(EMPTY_CATALOG)
   const error = ref(false)
   const loading = ref(false)
+  let generation = 0
+  let currentOwner: symbol | undefined
   const modules = ref<LearningModule[]>([])
   const sections = computed(() =>
     presentCatalog({ catalog: catalog.value, modules: modules.value })
   )
 
-  /** 并行读取模块与目录；任一失败都使用收紧权限的空目录状态。 */
-  async function load(service: CatalogService) {
+  /** 读取安全目录，service 为接口服务，owner 标识发起请求的页面 */
+  const load = async (service: CatalogService, owner?: symbol) => {
+    const request = ++generation
+    currentOwner = owner
     loading.value = true
     error.value = false
 
@@ -27,24 +31,36 @@ export const useLearningStore = defineStore('learning', () => {
         service.getModules(),
         service.getCatalog()
       ])
+      if (request !== generation) return
       modules.value = moduleResponse.items
       catalog.value = catalogResponse
     } catch {
+      if (request !== generation) return
       modules.value = []
       catalog.value = { authorization_pending: true, items: [] }
       error.value = true
     } finally {
-      loading.value = false
+      if (request === generation) loading.value = false
     }
   }
 
-  /** 清除目录页面缓存，后续显示时从服务端重新获取权限投影。 */
-  function clear() {
+  /** 取消指定页面的请求，owner 为离开的页面标识 */
+  const cancel = (owner: symbol) => {
+    if (owner !== currentOwner) return
+    generation++
+    currentOwner = undefined
+    loading.value = false
+  }
+
+  /** 清除目录缓存并使旧权限响应失效 */
+  const clear = () => {
+    generation++
+    currentOwner = undefined
     catalog.value = EMPTY_CATALOG
     modules.value = []
     error.value = false
     loading.value = false
   }
 
-  return { catalog, clear, error, load, loading, modules, sections }
+  return { cancel, catalog, clear, error, load, loading, modules, sections }
 })
