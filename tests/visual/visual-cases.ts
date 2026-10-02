@@ -40,7 +40,7 @@ export const VISUAL_CASES = [
   {
     design: 'M09U',
     nodeId: '2479:733',
-    path: '/pages/scene/dialogue?sceneId=scene-coffee-shop',
+    path: '/pages/scene/detail?sceneId=scene-coffee-shop',
     state: 'U'
   },
   {

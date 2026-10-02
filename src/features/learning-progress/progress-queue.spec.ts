@@ -25,9 +25,27 @@ function createStorage(): ProgressQueueStorage {
 const firstPosition: StablePosition = { entry_id: 'entry-1', offset: 0 }
 const latestPosition: StablePosition = { entry_id: 'entry-2', offset: 8 }
 
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
 
 describe('createProgressQueue', () => {
+  it('在微信缺少 Web Crypto 时生成稳定的可重试命令', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('crypto', undefined)
+    vi.stubGlobal('structuredClone', undefined)
+    const sender = vi.fn(async () => undefined).mockRejectedValueOnce(new Error('offline'))
+    const queue = createProgressQueue({ clear: vi.fn(), load: () => [], save: vi.fn() }, sender)
+    queue.enqueuePosition('scene-1', firstPosition)
+    queue.enqueueCompletion('scene-1')
+    await queue.flush()
+    await queue.flush()
+    expect(sender.mock.calls).toHaveLength(3)
+    expect(sender.mock.calls[0]).toEqual(sender.mock.calls[1])
+    expect(queue.snapshot).toEqual([])
+    queue.clear()
+  })
   it('800ms 内同场景位置只发送最新一条', async () => {
     vi.useFakeTimers()
     const sender = vi.fn(async (_command: ProgressCommand, _key: string) => undefined)

@@ -2,6 +2,9 @@ import type { HttpTransport, TransportRequest, TransportResponse } from '../http
 
 import { MOCK_FIXTURES } from './fixtures'
 import publishedScene from './published-scene.json'
+
+/** 复制 JSON 接口样本，兼容没有 structuredClone 的微信运行时 */
+const copyResponse = <T>(response: unknown): T => JSON.parse(JSON.stringify(response)) as T
 const MOCK_FEEDBACK = {
   category: 'CONTENT',
   created_at: '2026-09-28T08:30:00Z',
@@ -170,8 +173,7 @@ export class MockTransport implements HttpTransport {
       fixture = { created: !this.promptExposed }
       this.promptExposed = true
     }
-    if (fixture !== undefined)
-      return { data: structuredClone(fixture) as T, status: 200, headers: {} }
+    if (fixture !== undefined) return { data: copyResponse<T>(fixture), status: 200, headers: {} }
     const hasStaticFixture = Object.prototype.hasOwnProperty.call(ROUTES, routeKey)
     const staticFixture = hasStaticFixture ? ROUTES[routeKey] : undefined
     const configuredFixture =
@@ -316,6 +318,6 @@ export class MockTransport implements HttpTransport {
         status: 404
       }
     }
-    return { data: structuredClone(responseFixture) as T, headers: {}, status: 200 }
+    return { data: copyResponse<T>(responseFixture), headers: {}, status: 200 }
   }
 }

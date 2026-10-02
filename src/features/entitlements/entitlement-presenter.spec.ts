@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createServerClock } from '@/shared/utils/server-clock'
 
@@ -30,6 +30,14 @@ function response(limitedItems: LimitedEntitlement[]): EntitlementsResponse {
 }
 
 describe('presentEntitlements', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-28T08:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
   it('待开始状态不在客户端生成激活和到期时间', () => {
     const result = presentEntitlements(response([limited()]), clock)
     expect(result.limited[0]).toMatchObject({

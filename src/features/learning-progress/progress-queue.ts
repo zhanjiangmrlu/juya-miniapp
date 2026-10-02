@@ -1,3 +1,5 @@
+import { createRequestId } from '@/services/http/request-id'
+
 import type { StablePosition } from '@/shared/contracts/common'
 
 export type ProgressCommand =
@@ -42,7 +44,7 @@ export function createProgressQueue(
   options: ProgressQueueOptions = {}
 ): ProgressQueue {
   const delay = options.delay ?? 800
-  const idFactory = options.idFactory ?? (() => crypto.randomUUID())
+  const idFactory = options.idFactory ?? createRequestId
   let commands = storage.load()
   let flushing = false
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -115,7 +117,11 @@ export function createProgressQueue(
     },
     flush,
     get snapshot() {
-      return structuredClone(commands)
+      return commands.map((command) =>
+        command.kind === 'POSITION'
+          ? { ...command, position: { ...command.position } }
+          : { ...command }
+      )
     }
   }
 }

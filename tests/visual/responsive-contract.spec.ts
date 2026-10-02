@@ -11,6 +11,7 @@ describe('visual regression contract', () => {
     expect(new Set(VISUAL_CASES.map((item) => item.nodeId)).size).toBe(69)
     expect(VISUAL_CASES.find((item) => item.design === 'M06')?.path).toContain('/learning/explore')
     expect(VISUAL_CASES.find((item) => item.design === 'M25')?.path).toContain('/favorites/history')
+    expect(VISUAL_CASES.find((item) => item.design === 'M09U')?.path).toContain('/scene/detail')
   })
   it('keeps the three required screenshot viewports', () => {
     expect(VISUAL_VIEWPORTS.map((item) => `${item.width}x${item.height}`)).toEqual([

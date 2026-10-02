@@ -325,7 +325,10 @@ onUnload(cleanup)
 
 .dialogue-scroll {
   flex: none;
-  height: min(325px, calc(100vh - 519px));
+  height: min(
+    325px,
+    calc(100vh - 519px - var(--navigation-offset, 0px) - var(--safe-bottom-extra, 0px))
+  );
 }
 
 .scene-actions {
