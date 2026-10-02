@@ -45,4 +45,4 @@ H5 开发时，浏览器通过 Vite 的同源 `/api/v1` 代理访问 `VITE_API_B
 
 微信开发者工具导入 `dist/build/mp-weixin` 后可做真机预览。需要 CLI 自动化时，请先在开发者工具的“设置 → 安全设置”中手动开启服务端口。
 
-如果 build 目录更新后仍请求旧地址或显示空白，在开发者工具中选择“清缓存 → 清除编译缓存”，然后重新编译。不要清除账号登录数据。微信 AppID 由 `src/manifest.json` 的 `mp-weixin.appid` 写入构建包；不要只修改生成的 `project.config.json`，否则下一次构建会覆盖它。
+更新 build 包前先关闭该项目窗口，构建完成后再打开，避免热重载在旧产物删除期间读取到缺失的 `app.json`。如果仍请求旧地址或显示空白，在开发者工具中选择“清缓存 → 清除编译缓存”，然后重新编译。不要清除账号登录数据。微信 AppID 由 `src/manifest.json` 的 `mp-weixin.appid` 写入构建包；不要只修改生成的 `project.config.json`，否则下一次构建会覆盖它。

@@ -18,6 +18,7 @@ withDefaults(
     :class="{ 'home-theme': appearance === 'home' }"
     :padded="appearance !== 'home'"
     :tier="tier"
+    :appearance="appearance"
   >
     <view class="tab-content" :class="{ 'home-content': appearance === 'home' }"><slot /></view>
     <AppTabBar :active="active" :appearance="appearance" />

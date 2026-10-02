@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import AppButton from '@/components/app-button/app-button.vue'
-import SurfaceCard from '@/components/surface-card/surface-card.vue'
-
 import type { TodayTaskViewModel } from '@/features/home/home-presenter'
 import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
 
@@ -15,14 +12,14 @@ const imageUrl = computed(() => {
   return props.scene?.title === 'At the Coffee Shop' ? '/static/home/coffee-home.png' : undefined
 })
 
-/** 将任务启动操作交给页面统一执行导航。 */
-function handleStart() {
+/** 将任务启动操作交给页面统一执行导航 */
+const handleStart = () => {
   emit('start')
 }
 </script>
 
 <template>
-  <SurfaceCard class="task-card" tone="white">
+  <view class="task-card">
     <template v-if="task">
       <view v-if="scene" class="task-scene">
         <image
@@ -58,14 +55,14 @@ function handleStart() {
       >
         <view class="progress-fill" :style="{ width: `${scene.progress}%` }" />
       </view>
-      <AppButton class="task-button" :label="`${task.buttonLabel}   ›`" @press="handleStart" />
+      <button class="task-button" @click="handleStart">{{ task.buttonLabel }} ›</button>
     </template>
     <view v-else class="task-fallback">
       <text class="series-tag">今日安排</text>
       <text class="scene-title">连接后获取今日任务</text>
       <text class="task-description">学习记录只会在身份建立成功后生成。</text>
     </view>
-  </SurfaceCard>
+  </view>
 </template>
 
 <style scoped lang="scss">
@@ -172,13 +169,21 @@ function handleStart() {
   }
 
   .task-button {
+    display: flex;
+    width: 100%;
     min-height: 53px;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0;
+    margin-left: 0;
     margin-top: 19px;
     padding: 0 12px;
     border: 1px solid tokens.$home-border;
     border-radius: 12px;
     background: tokens.$home-primary;
+    color: tokens.$color-white;
     font-size: 15px;
+    font-weight: 700;
     line-height: 28px;
 
     &::after {
