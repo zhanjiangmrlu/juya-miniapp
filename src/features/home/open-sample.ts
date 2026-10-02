@@ -1,11 +1,11 @@
-import type { SceneOpenResponse } from '@/shared/contracts/learning'
-/** 提取开放场景的试学句，response 为服务端授权响应 */
-export const resolveOpenSample = (response: SceneOpenResponse): string | null => {
-  if (
-    response.authorization_pending ||
-    response.access !== 'OPEN' ||
-    response.scene?.access !== 'OPEN'
-  )
-    return null
-  return response.scene.entries.find((entry) => entry.entry_type === 'DIALOGUE')?.text ?? null
+import type { LearningCatalogResponse } from '@/shared/contracts/learning'
+
+/** 提取只读开放试学摘要，catalog 为服务端当前账号的目录投影 */
+export const resolveOpenSample = (
+  catalog: LearningCatalogResponse
+): { text: string; sceneTitle: string } | null => {
+  if (catalog.authorization_pending) return null
+  const scene = catalog.items.find((item) => item.access === 'OPEN' && item.trial_sentence?.trim())
+  const text = scene?.trial_sentence?.trim()
+  return scene && text ? { text, sceneTitle: scene.chinese_title } : null
 }

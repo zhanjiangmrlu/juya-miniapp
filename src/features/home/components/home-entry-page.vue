@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
-import { computed, onMounted, ref } from 'vue'
+import { computed } from 'vue'
 
 import NetworkReconnectDialog from '@/components/network-reconnect-dialog/network-reconnect-dialog.vue'
 import { resolveOpenSample } from '@/features/home/open-sample'
@@ -9,29 +9,26 @@ import EntryPageShell from '@/features/learning/components/entry-page-shell.vue'
 import EntrySummary from '@/features/learning/components/entry-summary.vue'
 import LearningPageHeading from '@/features/learning/components/learning-page-heading.vue'
 import SceneListSection from '@/features/learning/components/scene-list-section.vue'
-import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 import { useLearningStore } from '@/stores/learning'
-const props = withDefaults(defineProps<{ mode: 'first' | 'today'; refreshOnMount?: boolean }>(), {
-  refreshOnMount: false
+const props = withDefaults(defineProps<{ mode: 'first' | 'today'; embedded?: boolean }>(), {
+  embedded: false
 })
 const { home, load, openScene, startTask, taskScene } = useHomePage()
-const sample = ref<string | null>(null)
-const sampleScene = ref<string | null>(null)
-const runtime = getRuntimeServices()
+const sample = computed(() => (home.error ? null : resolveOpenSample(learning.catalog)))
 const openScenes = computed(() => learning.catalog.items.filter((scene) => scene.access === 'OPEN'))
 const learning = useLearningStore()
 const summaryValue = computed(() =>
   props.mode === 'first'
-    ? (sample.value ?? '从真实场景开始练习')
+    ? (sample.value?.text ?? '从真实场景开始练习')
     : taskScene.value
       ? `${taskScene.value.progress}%`
       : (home.view.todayTask?.title ?? '今日任务暂不可用')
 )
 const summaryDescription = computed(() =>
   props.mode === 'first'
-    ? sampleScene.value
-      ? `从「${sampleScene.value}」开始，让英语用在生活里。`
+    ? sample.value
+      ? `从「${sample.value.sceneTitle}」开始，让英语用在生活里。`
       : '选择一个开放场景，开始生活英语练习。'
     : taskScene.value
       ? taskScene.value.progress >= 50
@@ -39,19 +36,9 @@ const summaryDescription = computed(() =>
         : '接着上次的位置继续学习'
       : (home.view.todayTask?.description ?? '重新连接后获取当前任务')
 )
-/** 刷新授权试学句，forceWechat 表示用户主动重新连接 */
+/** 刷新只读目录试学摘要，forceWechat 表示用户主动重新连接 */
 const refresh = async (forceWechat = false) => {
   await load(forceWechat)
-  sample.value = null
-  sampleScene.value = null
-  const featured = openScenes.value[0]
-  if (props.mode !== 'first' || !featured || home.error) return
-  try {
-    sample.value = resolveOpenSample(await runtime.scene.open(featured.scene_id))
-    if (sample.value) sampleScene.value = featured.chinese_title
-  } catch {
-    /* 试学正文不可用时保留无正文的品牌介绍 */
-  }
 }
 /** 显示页面时刷新实际任务及安全目录 */
 const handleShow = () => {
@@ -77,10 +64,8 @@ const openStep = async (kind: 'dialogue' | 'shadowing' | 'favorites') => {
     url: `/pages/scene/shadowing?sceneId=${encodeURIComponent(taskScene.value.sceneId)}`
   })
 }
-onShow(handleShow)
-onMounted(() => {
-  if (props.refreshOnMount) void refresh()
-})
+// 动态首页子组件共享父页刷新，不向页面根注册卸载后残留的生命周期
+if (!props.embedded) onShow(handleShow)
 </script>
 <template>
   <EntryPageShell active="home">

@@ -63,11 +63,7 @@ onShow(handleShow)
 </script>
 
 <template>
-  <HomeEntryPage
-    v-if="isFirstVisit && !home.error && !forcedNetworkError"
-    mode="first"
-    refresh-on-mount
-  />
+  <HomeEntryPage v-if="isFirstVisit && !home.error && !forcedNetworkError" mode="first" embedded />
   <HomeEntryPage v-else-if="mode === 'today'" mode="today" />
   <TabPageLayout v-else class="home-page-view" active="home" appearance="home">
     <HomeNavigation
