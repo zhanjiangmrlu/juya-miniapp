@@ -15,6 +15,145 @@ const createPort = (permission = true): RecordingPort => {
 }
 
 describe('RecordingController', () => {
+  it('再次录音等待设备启动时不会并发回听旧录音', async () => {
+    const port = createPort()
+    const controller = new RecordingController(port)
+    await controller.selectSentence('sentence-1')
+    await controller.start()
+    await controller.stop()
+    let resolve!: () => void
+    port.start = vi.fn(
+      () =>
+        new Promise<void>((done) => {
+          resolve = done
+        })
+    )
+    const starting = controller.start()
+    await vi.waitFor(() => expect(resolve).toBeTypeOf('function'))
+    await controller.playback()
+    resolve()
+    await starting
+    expect(port.playback).not.toHaveBeenCalled()
+    expect(controller.snapshot.status).toBe('RECORDING')
+  })
+  it('重复停止同一次录音仍会保留文件并进入可回听状态', async () => {
+    const port = createPort()
+    let finish!: (path: string) => void
+    port.stop = () =>
+      new Promise((resolve) => {
+        finish = resolve
+      })
+    const controller = new RecordingController(port)
+    await controller.selectSentence('sentence-1')
+    await controller.start()
+    const first = controller.stop()
+    const second = controller.stop()
+    finish('saved.aac')
+    await Promise.all([first, second])
+    expect(controller.snapshot).toMatchObject({ status: 'RECORDED', hasRecording: true })
+    await controller.playback()
+    expect(port.playback).toHaveBeenCalledWith('saved.aac')
+  })
+  it('等待麦克风授权时停止会取消录音意图', async () => {
+    const port = createPort()
+    let allow!: (allowed: boolean) => void
+    port.requestPermission = () =>
+      new Promise((resolve) => {
+        allow = resolve
+      })
+    const controller = new RecordingController(port)
+    await controller.selectSentence('sentence-1')
+    const starting = controller.start()
+    await Promise.resolve()
+    await controller.stop()
+    allow(true)
+    await starting
+    expect(port.start).not.toHaveBeenCalled()
+    expect(controller.snapshot.status).toBe('IDLE')
+  })
+
+  it('设备启动等待期间重复点击不会并发启动录音', async () => {
+    const port = createPort()
+    const starts: (() => void)[] = []
+    port.start = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          starts.push(resolve)
+        })
+    )
+    const controller = new RecordingController(port)
+    await controller.selectSentence('sentence-1')
+    const first = controller.start()
+    await vi.waitFor(() => expect(port.start).toHaveBeenCalledOnce())
+    const second = controller.start()
+    await Promise.resolve()
+    await Promise.resolve()
+    starts.forEach((resolve) => resolve())
+    await Promise.all([first, second])
+    expect(port.start).toHaveBeenCalledOnce()
+    expect(controller.snapshot.status).toBe('RECORDING')
+  })
+
+  it('退出会等待迟到的设备启动停止并删除文件后销毁端口', async () => {
+    const port = createPort()
+    let started!: () => void
+    port.start = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          started = resolve
+        })
+    )
+    port.destroy = vi.fn()
+    const controller = new RecordingController(port)
+    await controller.selectSentence('sentence-1')
+    const starting = controller.start()
+    await vi.waitFor(() => expect(port.start).toHaveBeenCalledOnce())
+    const disposing = controller.dispose()
+    for (let turn = 0; turn < 5; turn++) await Promise.resolve()
+    expect(port.destroy).not.toHaveBeenCalled()
+    started()
+    await Promise.all([starting, disposing])
+    expect(port.stop).toHaveBeenCalledOnce()
+    expect(port.deleteFile).toHaveBeenCalledWith('recording.aac')
+    expect(port.destroy).toHaveBeenCalledOnce()
+    expect(controller.snapshot.status).toBe('IDLE')
+  })
+
+  it('重录等待删除旧文件期间切句不会替新句启动录音', async () => {
+    const port = createPort()
+    const controller = new RecordingController(port)
+    await controller.selectSentence('sentence-1')
+    await controller.start()
+    await controller.stop()
+    let deleted!: () => void
+    port.deleteFile = () =>
+      new Promise<void>((resolve) => {
+        deleted = resolve
+      })
+    const rerecording = controller.rerecord()
+    await vi.waitFor(() => expect(deleted).toBeTypeOf('function'))
+    await controller.selectSentence('sentence-2')
+    deleted()
+    await rerecording
+    expect(port.start).toHaveBeenCalledOnce()
+    expect(controller.snapshot).toMatchObject({ selectedSentenceId: 'sentence-2', status: 'IDLE' })
+  })
+
+  it('旧句停止失败不会把新句标成失败', async () => {
+    const port = createPort()
+    let reject!: (error: Error) => void
+    port.stop = () =>
+      new Promise((_resolve, fail) => {
+        reject = fail
+      })
+    const controller = new RecordingController(port)
+    await controller.selectSentence('sentence-1')
+    await controller.start()
+    const selecting = controller.selectSentence('sentence-2')
+    reject(new Error('旧设备停止失败'))
+    await selecting
+    expect(controller.snapshot).toMatchObject({ selectedSentenceId: 'sentence-2', status: 'IDLE' })
+  })
   it('录音权限未返回时重复点击只请求一次麦克风', async () => {
     const port = createPort()
     let resolve!: (allowed: boolean) => void

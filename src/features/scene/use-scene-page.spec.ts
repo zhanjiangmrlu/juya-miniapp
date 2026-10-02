@@ -44,6 +44,88 @@ const full = {
 }
 
 describe('场景授权资源与词卡', () => {
+  it('连续点词逆序返回时只保存最后点击的句子位置', async () => {
+    const page = useScenePage()
+    await page.initialize('coffee')
+    let resolve!: (value: unknown) => void
+    runtime.scene.getEntry.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done
+        })
+    )
+    const span = {
+      entry_id: 'latte',
+      source_locator: word.source_locator,
+      entry_version: 2
+    } as never
+    const first = page.inspectSentence({ source_locator: 's1' } as never, span)
+    await page.inspectSentence({ source_locator: 's2' } as never, span)
+    resolve({ english: 'latte' })
+    await first
+    const positions = vi
+      .mocked(uni.setStorageSync)
+      .mock.calls.filter(([key]) => key === 'juya.scene-position.coffee')
+      .map(([, position]) => position.entry_id)
+    expect(positions).toEqual(['s2'])
+  })
+  it('旧页面收藏请求迟到拒绝不会清空新页面的场景', async () => {
+    const page = useScenePage()
+    await page.initialize('coffee')
+    let reject!: (error: unknown) => void
+    runtime.client.post.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, fail) => {
+          reject = fail
+        })
+    )
+    const saving = page.favorite(word as never)
+    await page.initialize('coffee')
+    reject({ status: 403 })
+    await saving
+    expect(page.fullModel.value?.sceneId).toBe('coffee')
+  })
+
+  it('页面隐藏后完成响应不会授权跳转到成果页', async () => {
+    const page = useScenePage()
+    await page.initialize('coffee')
+    let resolve!: () => void
+    runtime.scene.complete.mockImplementationOnce(
+      () =>
+        new Promise<void>((done) => {
+          resolve = done
+        })
+    )
+    const completing = page.complete()
+    await vi.waitFor(() => expect(resolve).toBeTypeOf('function'))
+    page.disposeAudio()
+    resolve()
+    expect(await completing).toBe(false)
+  })
+
+  it('页面隐藏后迟到的点词响应不会写入阅读进度', async () => {
+    const page = useScenePage()
+    await page.initialize('coffee')
+    let resolve!: (value: unknown) => void
+    runtime.scene.getEntry.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done
+        })
+    )
+    const inspecting = page.inspectSentence(
+      { source_locator: 's1' } as never,
+      {
+        entry_id: 'latte',
+        source_locator: word.source_locator,
+        entry_version: 2
+      } as never
+    )
+    page.disposeAudio()
+    resolve({ english: 'latte' })
+    await inspecting
+    expect(uni.setStorageSync).not.toHaveBeenCalled()
+  })
   it('返回页面时重新核验自己的场景，避免显示其他页写入的正文', async () => {
     const page = useScenePage()
     await page.initialize('coffee')

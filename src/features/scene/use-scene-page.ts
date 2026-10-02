@@ -164,11 +164,17 @@ export const useScenePage = (options: { resume?: boolean } = {}) => {
   /** 打开被点击片段对应词条，entry 为句子，span 为服务端确认的字符片段 */
   const inspectSentence = async (entry: SceneEntry, span?: ClickableSpan) => {
     if (!span) return
+    const request = generation
+    const model = fullModel.value
     const matched = fullModel.value?.entries.find(
       (candidate) => candidate.entry_id === span.entry_id && candidate.entry_type !== 'DIALOGUE'
     )
-    if (matched) await inspectEntry(matched, span)
-    savePosition({ entry_id: entry.source_locator, offset: scrollTop.value })
+    if (!matched) return
+    const inspecting = inspectEntry(matched, span)
+    const sheetGeneration = sheetRequest
+    await inspecting
+    if (request === generation && sheetGeneration === sheetRequest && fullModel.value === model)
+      savePosition({ entry_id: entry.source_locator, offset: scrollTop.value })
   }
 
   /** 关闭弹层但保持当前滚动像素，不触发来源跳转 */
@@ -180,28 +186,31 @@ export const useScenePage = (options: { resume?: boolean } = {}) => {
 
   /** 收藏权威词卡，entry 为固定发布版本的词条快照 */
   const favorite = async (entry: SceneEntry) => {
-    if (entry.favorited || !fullModel.value?.revision_id) return
+    const model = fullModel.value
+    const request = generation
+    if (entry.favorited || !model?.revision_id || suspended) return
     try {
       await runtime.client.post('/api/v1/favorites', {
         entry_stable_id: entry.entry_id,
         entry_type: entry.entry_type,
-        scene_id: sceneId.value,
-        revision_id: entry.revision_id ?? fullModel.value.revision_id,
+        scene_id: model.sceneId,
+        revision_id: entry.revision_id ?? model.revision_id,
         entry_version: entry.entry_version ?? 1,
         sentence_snapshot: entry.sentence_snapshot ?? entry.text,
         source_locator: entry.source_locator,
         text: entry.text
       })
+      if (request !== generation || fullModel.value !== model) return
       entry.favorited = true
       uni.showToast({ icon: 'success', title: '已收藏' })
     } catch (error) {
-      handleFailure(error)
+      if (request === generation && fullModel.value === model) handleFailure(error)
     }
   }
 
   /** 保存稳定阅读位置，position 为最后可见句子及相对偏移 */
   const savePosition = (position: StablePosition) => {
-    if (sceneId.value) {
+    if (sceneId.value && !suspended && fullModel.value) {
       uni.setStorageSync(`juya.scene-position.${sceneId.value}`, position)
       progressQueue.enqueuePosition(sceneId.value, position)
     }
@@ -227,14 +236,17 @@ export const useScenePage = (options: { resume?: boolean } = {}) => {
 
   /** 完成学习，成功才返回完成标识，防止重复点击 */
   const complete = async (): Promise<boolean> => {
-    if (completing || !fullModel.value) return false
+    const model = fullModel.value
+    const request = generation
+    if (completing || !model || suspended) return false
     completing = true
     try {
       await progressQueue.flush()
-      await runtime.scene.complete(sceneId.value)
-      return true
+      if (request !== generation || fullModel.value !== model) return false
+      await runtime.scene.complete(model.sceneId)
+      return request === generation && fullModel.value === model
     } catch (error) {
-      handleFailure(error)
+      if (request === generation && fullModel.value === model) handleFailure(error)
       return false
     } finally {
       completing = false

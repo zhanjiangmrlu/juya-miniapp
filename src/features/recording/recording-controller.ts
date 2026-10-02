@@ -22,6 +22,7 @@ export class RecordingController {
   private state = createRecordingSnapshot()
   private generation = 0
   private pendingStop?: Promise<void>
+  private pendingStart?: Promise<void>
   private unsubscribe?: () => void
   private unsubscribeRecording?: () => void
   private playbackRequested = false
@@ -78,11 +79,13 @@ export class RecordingController {
       !sentenceId ||
       this.state.recordingDisabled ||
       this.disposed ||
+      this.pendingStart ||
       this.state.status === 'RECORDING'
     )
       return
     const generation = ++this.generation
     await this.pendingStop
+    if (generation !== this.generation || this.disposed) return
     if (this.permission === undefined) {
       this.permissionRequest ??= this.port.requestPermission().catch(() => false)
       this.permission = await this.permissionRequest
@@ -93,6 +96,14 @@ export class RecordingController {
       return
     }
     this.stopPlayback()
+    this.pendingStart = this.startDevice(sentenceId, generation).finally(() => {
+      this.pendingStart = undefined
+    })
+    await this.pendingStart
+  }
+
+  /** 启动当前句设备，sentenceId 为录音归属句，generation 为取消后的清理校验代次 */
+  private startDevice = async (sentenceId: string, generation: number): Promise<void> => {
     try {
       await this.port.start(sentenceId)
       if (generation !== this.generation || this.disposed) {
@@ -102,27 +113,39 @@ export class RecordingController {
       }
       this.update({ ...this.state, status: 'RECORDING' })
     } catch {
-      if (!this.disposed) this.update({ ...this.state, status: 'FAILED' })
+      if (generation === this.generation && !this.disposed)
+        this.update({ ...this.state, status: 'FAILED' })
     }
   }
 
   /** 停止录音并保留文件在开始录制的句子下 */
   stop = (): Promise<void> => {
+    // 即使设备尚未启动，也取消等待授权或启动回调中的录音意图
+    this.generation++
+    if (this.pendingStart) return this.pendingStart
     if (this.pendingStop) return this.pendingStop
     const sentenceId = this.state.selectedSentenceId
     if (!sentenceId || this.state.status !== 'RECORDING') return Promise.resolve()
-    const generation = this.generation
     this.pendingStop = this.port
       .stop()
       .then(async (path) => {
         const previous = this.recordings.get(sentenceId)
         if (previous && previous !== path) await this.port.deleteFile(previous)
         this.recordings.set(sentenceId, path)
-        if (generation === this.generation && !this.disposed)
+        if (
+          this.state.selectedSentenceId === sentenceId &&
+          this.state.status === 'RECORDING' &&
+          !this.disposed
+        )
           this.update({ ...this.state, hasRecording: true, status: 'RECORDED' })
       })
       .catch(() => {
-        if (!this.disposed) this.update({ ...this.state, status: 'FAILED' })
+        if (
+          this.state.selectedSentenceId === sentenceId &&
+          this.state.status === 'RECORDING' &&
+          !this.disposed
+        )
+          this.update({ ...this.state, status: 'FAILED' })
       })
       .finally(() => {
         this.pendingStop = undefined
@@ -132,6 +155,7 @@ export class RecordingController {
 
   /** 回听当前句最近录音，设备事件决定实际播放状态 */
   playback = async (): Promise<void> => {
+    if (this.pendingStart) return
     if (this.state.status === 'PLAYBACK') {
       this.port.pausePlayback?.()
       return
@@ -164,12 +188,16 @@ export class RecordingController {
     const sentenceId = this.state.selectedSentenceId
     if (!sentenceId || this.disposed) return
     this.stopPlayback()
-    await this.stop()
+    const stopping = this.stop()
+    const generation = this.generation
+    await stopping
+    if (generation !== this.generation || this.disposed) return
     const path = this.recordings.get(sentenceId)
     if (path) {
       await this.port.deleteFile(path)
       this.recordings.delete(sentenceId)
     }
+    if (generation !== this.generation || this.disposed) return
     this.update({ ...this.state, hasRecording: false, status: 'IDLE' })
     await this.start()
   }

@@ -20,8 +20,13 @@ const { audio, complete, disposeAudio, fullModel, initialize, play, scene, scene
   { resume: false }
 )
 const recording = ref(createRecordingSnapshot())
+const completingLearning = ref(false)
 let controller: RecordingController | undefined
 let loaded = false
+let active = true
+let lifecycle = 0
+let interaction = 0
+let releasing: Promise<void> | undefined
 const currentSentence = computed(() =>
   scene.dialogueEntries.find((entry) => entry.entry_id === recording.value.selectedSentenceId)
 )
@@ -46,30 +51,43 @@ const prepareRecording = () => {
 }
 /** 加载全部句子，query 为场景路由参数 */
 const handleLoad = async (query?: Record<string, string>) => {
+  const request = lifecycle
   await initialize(query?.sceneId)
-  if (fullModel.value) prepareRecording()
+  if (active && request === lifecycle && fullModel.value) prepareRecording()
   loaded = true
 }
 /** 返回页面时重新创建已释放的本次临时录音端口 */
 const handleShow = async () => {
-  if (!loaded || controller) return
+  active = true
+  if ((!loaded && lifecycle === 0) || controller) return
+  const request = ++lifecycle
+  await releasing
+  if (!active || request !== lifecycle) return
   await initialize(sceneId.value)
-  if (fullModel.value) prepareRecording()
+  if (active && request === lifecycle && fullModel.value) prepareRecording()
 }
 /** 选中任意句，entry 为发布的稳定句子 */
 const selectSentence = async (entry: SceneEntry) => {
+  if (!active || completingLearning.value) return
+  interaction++
   if (entry.entry_id === recording.value.selectedSentenceId) return
   audio.stop()
   await controller?.selectSentence(entry.entry_id)
 }
 /** 播放句子原音，target 为同一整段音频的句子区间 */
 const playSentence = async (target: AudioTarget) => {
+  const currentController = controller
+  if (!active || !currentController || completingLearning.value) return
   const entry = scene.dialogueEntries.find(
     (candidate) => candidate.audio?.sentence_id === target.sentence_id
   )
-  if (entry) await selectSentence(entry)
-  controller?.stopPlayback()
-  await controller?.stop()
+  const selecting = entry ? selectSentence(entry) : Promise.resolve()
+  const request = ++interaction
+  await selecting
+  if (!active || request !== interaction || controller !== currentController) return
+  currentController.stopPlayback()
+  await currentController.stop()
+  if (!active || request !== interaction || controller !== currentController) return
   await play(target)
 }
 /** 播放当前句原音，先停止回听及录音 */
@@ -78,39 +96,62 @@ const playOriginal = async () => {
 }
 /** 开始当前句录音，先停止原音播放器 */
 const startRecording = async () => {
+  if (!active || completingLearning.value) return
+  interaction++
   audio.stop()
   await controller?.start()
 }
 /** 回听当前句录音，停止原音保证互斥 */
 const playback = async () => {
+  if (!active || completingLearning.value) return
+  interaction++
   audio.stop()
   await controller?.playback()
 }
 /** 重录当前句，停止原音并删除旧临时文件 */
 const rerecord = async () => {
+  if (!active || completingLearning.value) return
+  interaction++
   audio.stop()
   await controller?.rerecord()
 }
 /** 完成学习，服务端成功后清理本次录音并进入成果页 */
 const completeLearning = async () => {
-  if (!(await complete())) return
-  await controller?.dispose()
+  if (completingLearning.value) return
+  completingLearning.value = true
+  const request = ++interaction
+  try {
+    if (!(await complete())) return
+    if (!active || request !== interaction) return
+    releaseRecording()
+    await releasing
+    if (!active || request !== interaction) return
+    await navigate({
+      type: 'redirectTo',
+      url: `/pages/scene/completed?sceneId=${encodeURIComponent(sceneId.value)}`
+    })
+  } finally {
+    completingLearning.value = false
+  }
+}
+/** 释放当前设备，并保留清理任务供返回页面时等待 */
+const releaseRecording = () => {
+  if (!controller) return
+  releasing = controller.dispose()
   controller = undefined
-  await navigate({
-    type: 'redirectTo',
-    url: `/pages/scene/completed?sceneId=${encodeURIComponent(sceneId.value)}`
-  })
 }
 /** 页面退出或进入后台时立即取消原音并释放临时录音 */
 const cleanup = () => {
+  active = false
+  lifecycle++
+  interaction++
   disposeAudio()
-  void controller?.dispose()
-  controller = undefined
+  releaseRecording()
 }
 watch(fullModel, (model) => {
   if (!model && controller) {
-    void controller.dispose()
-    controller = undefined
+    interaction++
+    releaseRecording()
   }
 })
 onLoad(handleLoad)
@@ -156,7 +197,11 @@ onUnload(cleanup)
         @stop="controller?.stop()"
       />
       <view class="scene-actions"
-        ><button class="scene-action secondary" @click="completeLearning">
+        ><button
+          class="scene-action secondary"
+          :disabled="completingLearning"
+          @click="completeLearning"
+        >
           完成本次学习 ›
         </button></view
       >
