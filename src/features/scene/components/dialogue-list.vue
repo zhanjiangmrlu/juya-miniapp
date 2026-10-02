@@ -2,31 +2,27 @@
 import DialogueSentence from '@/features/scene/components/dialogue-sentence.vue'
 
 import type { AudioStatus } from '@/features/audio/audio-machine'
-import type { AudioTarget, SceneEntry } from '@/shared/contracts/learning'
+import type { AudioTarget, ClickableSpan, SceneEntry } from '@/shared/contracts/learning'
 
-defineProps<{
-  chineseVisible: boolean
-  currentAudioKey?: string | null
-  entries: SceneEntry[]
-  status: AudioStatus
-}>()
-
+withDefaults(
+  defineProps<{
+    chineseVisible: boolean
+    currentAudioKey?: string | null
+    entries: SceneEntry[]
+    status: AudioStatus
+    catalog?: SceneEntry[]
+    highlightedId?: string
+    hideAudio?: boolean
+  }>(),
+  { currentAudioKey: null, catalog: () => [], highlightedId: '', hideAudio: false }
+)
 const emit = defineEmits<{
-  inspect: [entry: SceneEntry]
+  inspect: [entry: SceneEntry, span: ClickableSpan]
   play: [target: AudioTarget]
 }>()
-
-/** 透传句子音频播放意图。 */
-function handlePlay(target: AudioTarget) {
-  emit('play', target)
-}
-
-/** 透传句子查看词汇意图。 */
-function handleInspect(entry: SceneEntry) {
-  emit('inspect', entry)
-}
+/** 转发真实片段点击，entry 为句子，span 为词条固定定位 */
+const inspect = (entry: SceneEntry, span: ClickableSpan) => emit('inspect', entry, span)
 </script>
-
 <template>
   <view class="dialogue-list">
     <DialogueSentence
@@ -36,19 +32,17 @@ function handleInspect(entry: SceneEntry) {
       :current-audio-key="currentAudioKey"
       :entry="entry"
       :status="status"
-      @inspect="handleInspect"
-      @play="handlePlay"
+      :catalog="catalog"
+      :highlighted="highlightedId === entry.entry_id"
+      :hide-audio="hideAudio"
+      @inspect="inspect"
+      @play="emit('play', $event)"
     />
   </view>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
-
 .dialogue-list {
-  padding: 0 28rpx;
-  border: 2rpx solid rgb(201 222 209 / 70%);
-  border-radius: tokens.$radius-large;
-  background: rgb(255 255 255 / 80%);
+  display: grid;
+  gap: 5px;
 }
 </style>

@@ -8,12 +8,20 @@ const first: AudioTarget = { target_id: 'one', target_type: 'sentence', version_
 const second: AudioTarget = { target_id: 'two', target_type: 'sentence', version_id: 'v1' }
 
 /** 创建可观测的音频引擎替身，用于验证资源切换和释放。 */
-function createEngine(): AudioEngine {
+const createEngine = (): AudioEngine => {
+  let listener: Parameters<AudioEngine['subscribe']>[0] | undefined
   return {
     destroy: vi.fn(),
-    pause: vi.fn(),
-    play: vi.fn(),
-    setSource: vi.fn(),
+    pause: vi.fn(() => listener?.({ type: 'pause' })),
+    play: vi.fn(() => listener?.({ type: 'play' })),
+    seek: vi.fn(),
+    setSource: vi.fn(() => listener?.({ type: 'canplay' })),
+    subscribe: (next) => {
+      listener = next
+      return () => {
+        listener = undefined
+      }
+    },
     stop: vi.fn()
   }
 }

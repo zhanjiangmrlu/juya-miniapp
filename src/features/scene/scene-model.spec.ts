@@ -31,6 +31,22 @@ const base: SceneOpenResponse = {
 }
 
 describe('createSceneModel', () => {
+  it('完整模型保留修订、音频和原图字段，预览不泄露资源', () => {
+    const scene = {
+      ...base.scene!,
+      revision_id: 'revision',
+      content_version: 3,
+      original_image_asset_id: 'original',
+      audio: { target_id: 'audio', target_type: 'SCENE', version_id: 'v1' }
+    }
+    expect(createSceneModel({ ...base, scene })).toMatchObject({
+      revision_id: 'revision',
+      content_version: 3,
+      original_image_asset_id: 'original',
+      audio: scene.audio
+    })
+    expect(createSceneModel({ ...base, access: 'PREVIEW', scene })).not.toHaveProperty('audio')
+  })
   it('完整、预览和拒绝响应产生互斥模型', () => {
     const full = createSceneModel(base)
     const preview = createSceneModel({

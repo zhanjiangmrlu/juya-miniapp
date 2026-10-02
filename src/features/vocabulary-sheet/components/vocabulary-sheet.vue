@@ -4,179 +4,230 @@ import AudioButton from '@/features/audio/components/audio-button.vue'
 import type { AudioStatus } from '@/features/audio/audio-machine'
 import type { AudioTarget, SceneEntry } from '@/shared/contracts/learning'
 
-defineProps<{
-  currentAudioKey?: string | null
-  entry: SceneEntry
-  status: AudioStatus
-}>()
-
+withDefaults(
+  defineProps<{
+    currentAudioKey?: string | null
+    entry: SceneEntry
+    status: AudioStatus
+    sceneTitle?: string
+    sourceChinese?: string
+  }>(),
+  { currentAudioKey: null, sceneTitle: '', sourceChinese: '' }
+)
 const emit = defineEmits<{
   close: []
   favorite: [entry: SceneEntry]
   play: [target: AudioTarget]
 }>()
-
-/** 关闭弹层并由页面恢复稳定阅读位置。 */
-function handleClose() {
-  emit('close')
-}
-
-/** 收藏当前词汇或语块，成功后保持弹层打开。 */
-function handleFavorite(entry: SceneEntry) {
-  emit('favorite', entry)
-}
-
-/** 播放当前词汇或语块音频。 */
-function handlePlay(target: AudioTarget) {
-  emit('play', target)
-}
 </script>
-
 <template>
-  <view class="vocabulary-sheet" role="dialog" aria-modal="true" aria-label="词汇详情">
-    <view class="vocabulary-sheet__panel">
-      <view class="vocabulary-sheet__handle" />
-      <view class="vocabulary-sheet__topline">
-        <text class="vocabulary-sheet__badge">
-          {{ entry.entry_type === 'PHRASE' ? 'Useful Chunk' : '重点词汇' }}
-        </text>
-        <button class="vocabulary-sheet__close" aria-label="关闭" @click="handleClose">×</button>
-      </view>
-      <view class="vocabulary-sheet__word-row">
-        <text class="vocabulary-sheet__word">{{ entry.text }}</text>
-        <AudioButton
+  <view
+    class="vocabulary-sheet"
+    role="dialog"
+    aria-modal="true"
+    aria-label="词汇详情"
+    @click.self="emit('close')"
+    @touchmove.stop.prevent
+  >
+    <view class="sheet-panel">
+      <view class="sheet-handle" />
+      <button class="sheet-close" aria-label="关闭词卡" @click="emit('close')">×</button>
+      <view class="sheet-word-row"
+        ><text class="sheet-word" :class="{ phrase: entry.entry_type === 'PHRASE' }">{{
+          entry.text
+        }}</text
+        ><AudioButton
           v-if="entry.audio"
+          variant="compact"
           :current-key="currentAudioKey"
           :status="status"
           :target="entry.audio"
-          @play="handlePlay"
-        />
-      </view>
-      <text v-if="entry.phonetic" class="vocabulary-sheet__phonetic">{{ entry.phonetic }}</text>
-      <text v-if="entry.chinese" class="vocabulary-sheet__chinese">{{ entry.chinese }}</text>
-      <text v-if="entry.explanation" class="vocabulary-sheet__explanation">
-        {{ entry.explanation }}
-      </text>
-      <view class="vocabulary-sheet__actions">
-        <button class="vocabulary-sheet__favorite" @click="handleFavorite(entry)">收藏</button>
-        <button class="vocabulary-sheet__return" @click="handleClose">返回原文</button>
-      </view>
+          @play="emit('play', $event)"
+      /></view>
+      <text class="sheet-phonetic">{{
+        entry.entry_type === 'PHRASE' ? 'Useful Chunk' : entry.phonetic
+      }}</text>
+      <text v-if="entry.chinese" class="sheet-meaning">{{ entry.chinese }}</text>
+      <text class="sheet-explanation">{{ entry.explanation }}</text>
+      <view class="sheet-source"
+        ><text class="source-label">来源句 · {{ sceneTitle }}</text
+        ><text class="source-english">{{ entry.sentence_snapshot }}</text
+        ><text v-if="sourceChinese" class="source-chinese">{{ sourceChinese }}</text></view
+      >
+      <button class="sheet-favorite" :disabled="entry.favorited" @click="emit('favorite', entry)">
+        {{
+          entry.favorited
+            ? '♡  已收藏'
+            : entry.entry_type === 'PHRASE'
+              ? '♡  收藏语块'
+              : '♡  收藏词汇'
+        }}
+      </button>
+      <view class="sheet-safe-indicator" aria-hidden="true" />
     </view>
   </view>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
-
 .vocabulary-sheet {
   position: fixed;
-  z-index: 65;
+  z-index: 70;
   display: flex;
   align-items: flex-end;
-  background: rgb(34 55 46 / 46%);
+  background: rgb(26 42 33 / 50%);
   inset: 0;
 
-  &__panel {
+  .sheet-panel {
+    position: relative;
     width: 100%;
-    padding: 16rpx 40rpx calc(40rpx + env(safe-area-inset-bottom));
-    border-radius: 48rpx 48rpx 0 0;
-    background: #fff8e9;
+    max-height: calc(100vh - 80px);
+    min-height: 471px;
+    overflow-y: auto;
+    padding: 36px 30px max(95px, env(safe-area-inset-bottom));
+    border-radius: 24px 24px 0 0;
+    background: #fffdf7;
   }
 
-  &__handle {
-    width: 80rpx;
-    height: 8rpx;
-    margin: 0 auto 30rpx;
-    border-radius: tokens.$radius-pill;
-    background: #d8d4c8;
+  .sheet-handle {
+    position: absolute;
+    top: 9px;
+    left: calc(50% - 25px);
+    width: 50px;
+    height: 4px;
+    border-radius: 2px;
+    background: #cbd8c4;
   }
 
-  &__topline,
-  &__word-row,
-  &__actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  &__badge {
-    padding: 8rpx 16rpx;
-    border-radius: tokens.$radius-pill;
-    background: #dff1e7;
-    color: tokens.$color-primary-strong;
-    font-size: 21rpx;
-  }
-
-  &__close {
-    width: 64rpx;
-    height: 64rpx;
+  .sheet-close {
+    position: absolute;
+    top: 19px;
+    right: 18px;
+    width: 30px;
+    height: 30px;
     margin: 0;
     padding: 0;
     border: 0;
-    border-radius: 50%;
-    background: rgb(255 255 255 / 76%);
-    color: tokens.$color-text;
-    font-size: 40rpx;
+    background: transparent;
+    color: #708471;
+    font-size: 24px;
+    line-height: 30px;
+    font-weight: 300;
+
+    &::after {
+      border: 0;
+    }
   }
 
-  &__word-row {
-    justify-content: flex-start;
-    margin-top: 12rpx;
-    gap: 24rpx;
+  .sheet-word-row {
+    display: flex;
+    align-items: center;
+    padding-right: 20px;
+    gap: 12px;
   }
 
-  &__word {
-    font-family: Georgia, serif;
-    font-size: 52rpx;
+  .sheet-word {
+    color: #254733;
+    font-size: 30px;
     font-weight: 700;
+    line-height: 43px;
+    overflow-wrap: anywhere;
+
+    &.phrase {
+      font-size: 23px;
+    }
   }
 
-  &__phonetic,
-  &__chinese,
-  &__explanation {
+  .sheet-phonetic {
     display: block;
-    margin-top: 18rpx;
+    min-height: 27px;
+    margin-top: 4px;
+    color: #5c715e;
+    font-size: 16px;
+    line-height: 27px;
   }
 
-  &__phonetic {
-    color: tokens.$color-text-muted;
-    font-size: 26rpx;
-  }
-
-  &__chinese {
-    font-size: 32rpx;
+  .sheet-meaning {
+    display: inline-block;
+    margin-top: 9px;
+    padding: 4px 20px;
+    border-radius: 16px;
+    background: #e2eed9;
+    color: #254733;
+    font-size: 13px;
     font-weight: 700;
+    line-height: 23px;
   }
 
-  &__explanation {
-    font-size: 27rpx;
-    line-height: 1.65;
+  .sheet-explanation {
+    display: block;
+    min-height: 47px;
+    margin-top: 11px;
+    color: #5d6f5e;
+    font-size: 13px;
+    line-height: 23px;
   }
 
-  &__actions {
-    margin-top: 32rpx;
-    gap: 16rpx;
+  .sheet-source {
+    min-height: 91px;
+    margin-top: 10px;
+    padding: 9px 13px;
+    border: 1px solid #e1dccf;
+    border-radius: 12px;
+    background: #f7f1e3;
+
+    text {
+      display: block;
+    }
   }
 
-  &__favorite,
-  &__return {
-    width: 50%;
-    min-height: 88rpx;
-    margin: 0;
-    border-radius: tokens.$radius-medium;
-    font-size: 28rpx;
-    font-weight: 700;
+  .source-label,
+  .source-chinese {
+    color: #6f7d70;
+    font-size: 11px;
+    line-height: 20px;
   }
 
-  &__favorite {
-    border: 2rpx solid tokens.$color-border;
-    background: tokens.$color-white;
-    color: tokens.$color-primary-strong;
+  .source-english {
+    margin-top: 2px;
+    color: #254733;
+    font-size: 14px;
+    line-height: 25px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 
-  &__return {
-    background: tokens.$color-primary;
-    color: tokens.$color-white;
+  .source-chinese {
+    margin-top: 2px;
+  }
+
+  .sheet-favorite {
+    width: 100%;
+    min-height: 49px;
+    margin: 18px 0 0;
+    padding: 12px;
+    border: 0;
+    border-radius: 12px;
+    background: #4e7f3b;
+    color: #fff;
+    font-size: 15px;
+    line-height: 25px;
+  }
+
+  .sheet-safe-indicator {
+    position: absolute;
+    bottom: 5px;
+    left: calc(50% - 56px);
+    width: 112px;
+    height: 4px;
+    border-radius: 2px;
+    background: #254733;
+  }
+}
+
+@media (width >= 700px) {
+  .vocabulary-sheet .sheet-panel {
+    max-width: 640px;
+    margin: 0 auto;
+    border-radius: 24px 24px 0 0;
   }
 }
 </style>

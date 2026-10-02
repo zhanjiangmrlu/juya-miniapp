@@ -1,59 +1,99 @@
 <script setup lang="ts">
-defineProps<{
-  chineseTitle: string
-  imageUrl?: string
-  series: string
-  title: string
-}>()
-</script>
+import SceneHeading from '@/features/scene/components/scene-heading.vue'
 
+withDefaults(
+  defineProps<{
+    chineseTitle: string
+    imageUrl?: string
+    series: string
+    title: string
+    description?: string
+  }>(),
+  { imageUrl: '', description: '' }
+)
+const emit = defineEmits<{ viewImage: []; imageError: [] }>()
+</script>
 <template>
   <view class="scene-hero">
-    <text class="scene-hero__series">{{ series }}</text>
-    <text class="scene-hero__title">{{ title }}</text>
-    <text class="scene-hero__chinese">{{ chineseTitle }}</text>
-    <image v-if="imageUrl" class="scene-hero__image" :src="imageUrl" mode="aspectFill" />
+    <button
+      class="hero-image-button"
+      aria-label="查看完整学习原图"
+      :disabled="!imageUrl"
+      @click="emit('viewImage')"
+    >
+      <image
+        v-if="imageUrl"
+        class="hero-image"
+        :src="imageUrl"
+        mode="aspectFill"
+        @error="emit('imageError')"
+      /><text v-else class="image-placeholder">学习原图加载中</text>
+    </button>
+    <SceneHeading :chinese-title="chineseTitle" :title="title" :series="series" spacious />
+    <text class="hero-description">{{ description }}</text>
+    <button class="hero-hint" @click="emit('viewImage')">轻点上方图片查看完整学习原图</button>
   </view>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
-
 .scene-hero {
-  overflow: hidden;
-  border-radius: tokens.$radius-large;
-  background: rgb(255 255 255 / 76%);
-  text-align: center;
-
-  &__series,
-  &__title,
-  &__chinese {
-    display: block;
-  }
-
-  &__series {
-    padding-top: 18rpx;
-    color: tokens.$color-primary-strong;
-    font-size: 22rpx;
-    font-weight: 650;
-  }
-
-  &__title {
-    margin-top: 8rpx;
-    font-family: Georgia, 'Noto Serif SC', serif;
-    font-size: 42rpx;
-    font-weight: 700;
-  }
-
-  &__chinese {
-    margin: 8rpx 0 18rpx;
-    font-size: 26rpx;
-  }
-
-  &__image {
+  .hero-image-button {
     display: block;
     width: 100%;
-    height: 260rpx;
+    height: 250px;
+    margin: 9px 0 15px;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: #e2eed9;
+  }
+
+  .hero-image {
+    display: block;
+    width: 100%;
+    height: 250px;
+    border-radius: 12px;
+  }
+
+  .image-placeholder {
+    color: #748271;
+    font-size: 13px;
+  }
+
+  .hero-description {
+    display: block;
+    margin-top: 8px;
+    color: #748271;
+    font-size: 13px;
+    line-height: 26px;
+  }
+
+  .hero-hint {
+    margin: 7px 0 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #7d8979;
+    font-size: 11px;
+    line-height: 21px;
+    text-align: left;
+
+    &::after {
+      border: 0;
+    }
+  }
+}
+
+@media (width >= 700px) {
+  .scene-hero .hero-image-button,
+  .scene-hero .hero-image {
+    height: 360px;
+  }
+}
+
+@media (height <= 820px) and (width < 700px) {
+  .scene-hero .hero-image-button,
+  .scene-hero .hero-image {
+    height: 225px;
   }
 }
 </style>

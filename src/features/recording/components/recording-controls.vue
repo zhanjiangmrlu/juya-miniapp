@@ -1,144 +1,146 @@
 <script setup lang="ts">
+import AudioButton from '@/features/audio/components/audio-button.vue'
+
+import type { AudioStatus } from '@/features/audio/audio-machine'
 import type { RecordingSnapshot } from '@/features/recording/recording-machine'
 import type { SceneEntry } from '@/shared/contracts/learning'
 
-defineProps<{
-  sentence?: SceneEntry
-  snapshot: RecordingSnapshot
-}>()
-
-const emit = defineEmits<{
-  playback: []
-  playOriginal: []
-  rerecord: []
-  start: []
-  stop: []
-}>()
-
-/** 播放当前句原音。 */
-function handleOriginal() {
-  emit('playOriginal')
-}
-
-/** 开始当前句跟读录音。 */
-function handleStart() {
-  emit('start')
-}
-
-/** 停止当前录音。 */
-function handleStop() {
-  emit('stop')
-}
-
-/** 回听当前句录音。 */
-function handlePlayback() {
-  emit('playback')
-}
-
-/** 删除旧文件并重录当前句。 */
-function handleRerecord() {
-  emit('rerecord')
-}
+withDefaults(
+  defineProps<{
+    sentence?: SceneEntry
+    snapshot: RecordingSnapshot
+    index?: number
+    total?: number
+    currentAudioKey?: string | null
+    audioStatus?: AudioStatus
+  }>(),
+  { sentence: undefined, currentAudioKey: null, index: 1, total: 0, audioStatus: 'IDLE' }
+)
+const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: []; stop: [] }>()
 </script>
-
 <template>
-  <view class="recording-controls">
-    <template v-if="sentence">
-      <text class="recording-controls__position">当前句</text>
-      <text class="recording-controls__sentence">
-        <text v-if="sentence.speaker" class="recording-controls__speaker">
-          {{ sentence.speaker }}:
-        </text>
-        {{ sentence.text }}
-      </text>
-      <view class="recording-controls__actions">
-        <button class="recording-controls__secondary" @click="handleOriginal">播放原音</button>
-        <button
-          v-if="snapshot.status !== 'RECORDING'"
-          class="recording-controls__primary"
-          :disabled="snapshot.recordingDisabled"
-          @click="handleStart"
-        >
-          {{ snapshot.recordingDisabled ? '录音权限未开启' : '开始跟读' }}
-        </button>
-        <button v-else class="recording-controls__primary" @click="handleStop">停止录音</button>
-      </view>
-      <view
-        v-if="snapshot.status === 'RECORDED' || snapshot.status === 'PLAYBACK'"
-        class="recording-controls__actions"
+  <view v-if="sentence" class="recording-controls">
+    <view class="recording-top"
+      ><text>当前句 {{ index }} / {{ total }}</text
+      ><AudioButton
+        v-if="sentence.audio"
+        variant="inline"
+        :current-key="currentAudioKey"
+        :status="audioStatus"
+        :target="sentence.audio"
+        @play="emit('playOriginal')"
+    /></view>
+    <text class="recording-sentence">{{ sentence.text }}</text
+    ><text class="recording-hint">{{
+      snapshot.recordingDisabled
+        ? '录音权限未开启，仍可播放原音'
+        : snapshot.status === 'FAILED'
+          ? '录音暂不可用，请重试'
+          : '录音仅保留本次回听，不评分'
+    }}</text>
+    <view class="recording-grid">
+      <button
+        class="recording-action primary"
+        :disabled="snapshot.recordingDisabled || snapshot.status === 'RECORDING'"
+        @click="emit('start')"
       >
-        <button class="recording-controls__secondary" @click="handlePlayback">回听录音</button>
-        <button class="recording-controls__secondary" @click="handleRerecord">重新录制</button>
-      </view>
-      <text class="recording-controls__hint">录音仅保留本次回听，离开场景后自动清除。</text>
-    </template>
+        ● 开始录音
+      </button>
+      <button
+        class="recording-action"
+        :class="{ primary: snapshot.status === 'RECORDING' }"
+        :disabled="snapshot.status !== 'RECORDING'"
+        @click="emit('stop')"
+      >
+        ■ 停止
+      </button>
+      <button
+        class="recording-action"
+        :class="{ primary: snapshot.hasRecording }"
+        :disabled="!snapshot.hasRecording || snapshot.status === 'RECORDING'"
+        @click="emit('playback')"
+      >
+        {{ snapshot.status === 'PLAYBACK' ? 'Ⅱ 暂停回听' : '▶ 当次回听' }}
+      </button>
+      <button
+        class="recording-action"
+        :disabled="
+          !snapshot.hasRecording || snapshot.status === 'RECORDING' || snapshot.recordingDisabled
+        "
+        @click="emit('rerecord')"
+      >
+        ↻ 重录
+      </button>
+    </view>
   </view>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
-
 .recording-controls {
-  margin-top: 24rpx;
-  padding: 28rpx;
-  border-radius: tokens.$radius-large;
-  background: rgb(255 255 255 / 78%);
+  margin-top: 15px;
+  padding: 9px 13px 12px;
+  border: 1px solid #d6dfc9;
+  border-radius: 14px;
+  background: #fffdf7;
+  color: #254733;
 
-  &__position,
-  &__sentence,
-  &__hint {
-    display: block;
-  }
-
-  &__position {
-    color: tokens.$color-primary;
-    font-size: 22rpx;
-    font-weight: 700;
-  }
-
-  &__sentence {
-    margin-top: 18rpx;
-    font-family: Georgia, serif;
-    font-size: 29rpx;
-    line-height: 1.5;
-  }
-
-  &__speaker {
-    color: tokens.$color-primary-strong;
-    font-weight: 700;
-  }
-
-  &__actions {
+  .recording-top {
     display: flex;
-    margin-top: 24rpx;
-    gap: 16rpx;
-  }
-
-  &__primary,
-  &__secondary {
-    width: 50%;
-    min-height: 82rpx;
-    margin: 0;
-    border-radius: tokens.$radius-medium;
-    font-size: 26rpx;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 14px;
     font-weight: 700;
+    line-height: 25px;
   }
 
-  &__primary {
-    background: tokens.$color-primary;
-    color: tokens.$color-white;
+  .recording-sentence {
+    display: block;
+    margin-top: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 24px;
+    text-align: center;
+    overflow-wrap: anywhere;
   }
 
-  &__secondary {
-    border: 2rpx solid tokens.$color-border;
-    background: tokens.$color-white;
-    color: tokens.$color-primary-strong;
+  .recording-hint {
+    display: block;
+    margin-top: 3px;
+    color: #748271;
+    font-size: 11px;
+    line-height: 20px;
   }
 
-  &__hint {
-    margin-top: 14rpx;
-    color: tokens.$color-text-muted;
-    font-size: 20rpx;
+  .recording-grid {
+    display: grid;
+    margin-top: 8px;
+    gap: 8px 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .recording-action {
+    width: 100%;
+    min-height: 40px;
+    margin: 0;
+    padding: 8px 4px;
+    border: 1px solid #d6dfc9;
+    border-radius: 10px;
+    background: #eff3e9;
+    color: #4e7f3b;
+    font-size: 13px;
+    line-height: 22px;
+
+    &.primary {
+      border-color: #4e7f3b;
+      background: #4e7f3b;
+      color: #fff;
+    }
+
+    &[disabled] {
+      border-color: #d6dfc9;
+      background: #f3f4ed;
+      color: #879584;
+    }
   }
 }
 </style>

@@ -1,4 +1,4 @@
-import type { SceneEntry, SceneOpenResponse } from '@/shared/contracts/learning'
+import type { AudioTarget, SceneEntry, SceneOpenResponse } from '@/shared/contracts/learning'
 
 interface SceneSummaryModel {
   chineseTitle: string
@@ -9,6 +9,12 @@ interface SceneSummaryModel {
 }
 
 export interface FullSceneModel extends SceneSummaryModel {
+  audio?: AudioTarget
+  revision_id?: string
+  content_version?: number
+  original_image_asset_id?: string | null
+  cover_asset_id?: string | null
+  description: string
   entries: SceneEntry[]
   kind: 'FULL'
 }
@@ -29,8 +35,8 @@ export interface SceneViewState {
   chineseVisible: boolean
 }
 
-/** 提取完整与预览模型共同使用的安全摘要字段。 */
-function summarize(response: SceneOpenResponse): SceneSummaryModel | null {
+/** 提取安全摘要字段，response 为已授权场景打开响应 */
+const summarize = (response: SceneOpenResponse): SceneSummaryModel | null => {
   if (!response.scene) return null
   return {
     chineseTitle: response.scene.chinese_title,
@@ -42,9 +48,9 @@ function summarize(response: SceneOpenResponse): SceneSummaryModel | null {
 }
 
 /**
- * 将打开响应转换为互斥模型，预览模型从类型层面禁止携带正文 entries。
+ * 转换互斥模型，response 为场景打开响应，预览模型不携带正文
  */
-export function createSceneModel(response: SceneOpenResponse): SceneModel {
+export const createSceneModel = (response: SceneOpenResponse): SceneModel => {
   const summary = summarize(response)
   if (!summary || !response.access || response.access === 'HIDDEN') {
     return { authorizationPending: response.authorization_pending, kind: 'DENIED' }
@@ -58,10 +64,20 @@ export function createSceneModel(response: SceneOpenResponse): SceneModel {
     }
   }
 
-  return { ...summary, entries: response.scene?.entries ?? [], kind: 'FULL' }
+  return {
+    ...summary,
+    entries: response.scene?.entries ?? [],
+    kind: 'FULL',
+    audio: response.scene?.audio,
+    revision_id: response.scene?.revision_id,
+    content_version: response.scene?.content_version,
+    original_image_asset_id: response.scene?.original_image_asset_id,
+    cover_asset_id: response.scene?.cover_asset_id,
+    description: response.scene?.description ?? ''
+  }
 }
 
-/** 创建场景页面瞬时状态；每次进入都强制恢复默认隐藏中文。 */
-export function createSceneViewState(_previous?: Partial<SceneViewState>): SceneViewState {
+/** 创建页面瞬时状态，_previous 为旧状态，重新进入时仍默认隐藏中文 */
+export const createSceneViewState = (_previous?: Partial<SceneViewState>): SceneViewState => {
   return { chineseVisible: false }
 }

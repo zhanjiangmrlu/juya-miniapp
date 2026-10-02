@@ -1,0 +1,116 @@
+@use '@/styles/tokens.scss' as tokens;
+
+@mixin page {
+  .scene-title {
+    display: block;
+    margin: 0;
+    color: tokens.$color-text;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 36px;
+    overflow-wrap: anywhere;
+  }
+
+  .scene-subtitle {
+    display: block;
+    min-height: 38px;
+    margin-top: 4px;
+    color: #6e806d;
+    font-size: 12px;
+    line-height: 22px;
+  }
+
+  .scene-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 10px 0 7px;
+    gap: 12px;
+    color: tokens.$color-text;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 27px;
+
+    .section-meta {
+      color: #718272;
+      font-size: 11px;
+      font-weight: 400;
+    }
+  }
+
+  .scene-highlight {
+    min-height: 118px;
+    padding: 12px 16px;
+    border-radius: 15px;
+    background: #e5efdc;
+
+    .highlight-label {
+      display: block;
+      color: tokens.$color-primary;
+      font-size: 12px;
+      line-height: 23px;
+    }
+
+    .highlight-value {
+      display: block;
+      margin-top: 1px;
+      font-size: 30px;
+      font-weight: 700;
+      line-height: 45px;
+      overflow-wrap: anywhere;
+    }
+
+    .highlight-hint {
+      display: block;
+      margin-top: 1px;
+      color: #657965;
+      font-size: 11px;
+      line-height: 22px;
+    }
+  }
+
+  .scene-action {
+    width: 100%;
+    min-height: 46px;
+    margin: 0;
+    padding: 10px 14px;
+    border: 1px solid tokens.$color-primary;
+    border-radius: 12px;
+    background: tokens.$color-primary;
+    color: #fff;
+    font-size: 14px;
+    line-height: 24px;
+    text-align: center;
+
+    &.secondary {
+      background: tokens.$color-card;
+      color: tokens.$color-primary;
+      border-color: #7eaa6d;
+    }
+
+    &[disabled] {
+      opacity: 0.5;
+    }
+  }
+
+  .scene-actions {
+    display: grid;
+    margin-top: auto;
+    padding-top: 14px;
+    gap: 13px;
+  }
+
+  .scene-loading {
+    padding: 24px 0;
+    color: tokens.$color-text-muted;
+    font-size: 13px;
+  }
+
+  @media (height <= 820px) and (width < 700px) {
+    .scene-highlight {
+      min-height: 106px;
+      padding-top: 6px;
+      padding-bottom: 6px;
+    }
+  }
+}

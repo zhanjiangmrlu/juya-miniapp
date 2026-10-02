@@ -1,3 +1,4 @@
+import { createBrowserRecordingPort } from './browser-recording-port'
 import { createRecordingSnapshot, type RecordingSnapshot } from './recording-machine'
 
 export interface RecordingPort {
@@ -7,117 +8,260 @@ export interface RecordingPort {
   start(sentenceId: string): Promise<void>
   stop(): Promise<string>
   stopPlayback(): void
+  pausePlayback?(): void
+  subscribePlayback?(listener: (type: 'play' | 'pause' | 'ended' | 'error') => void): () => void
+  subscribeRecording?(listener: (path?: string) => void): () => void
+  destroy?(): void
 }
 
-/** 管理逐句录音权限、临时文件与回听生命周期。 */
+/** 管理逐句录音权限、临时文件与回听生命周期 */
 export class RecordingController {
   private permission: boolean | undefined
+  private permissionRequest?: Promise<boolean>
   private recordings = new Map<string, string>()
   private state = createRecordingSnapshot()
+  private generation = 0
+  private pendingStop?: Promise<void>
+  private unsubscribe?: () => void
+  private unsubscribeRecording?: () => void
+  private playbackRequested = false
+  private disposed = false
 
+  /** port 为本地录音设备端口，onChange 为页面快照回调 */
   constructor(
     private readonly port: RecordingPort,
     private readonly onChange?: (snapshot: RecordingSnapshot) => void
-  ) {}
+  ) {
+    this.unsubscribe = port.subscribePlayback?.((type) => {
+      if (this.disposed || !this.playbackRequested) return
+      if (type === 'play') this.update({ ...this.state, status: 'PLAYBACK' })
+      else if (type === 'pause') this.update({ ...this.state, status: 'PAUSED' })
+      else if (type === 'ended') this.update({ ...this.state, status: 'RECORDED' })
+      else this.update({ ...this.state, status: 'FAILED' })
+    })
+    this.unsubscribeRecording = port.subscribeRecording?.((path) => {
+      const id = this.state.selectedSentenceId
+      if (this.disposed || !id || this.state.status !== 'RECORDING') return
+      if (!path) {
+        this.update({ ...this.state, status: 'FAILED' })
+        return
+      }
+      const previous = this.recordings.get(id)
+      if (previous && previous !== path) void port.deleteFile(previous)
+      this.recordings.set(id, path)
+      this.update({ ...this.state, hasRecording: true, status: 'RECORDED' })
+    })
+  }
 
   get snapshot(): RecordingSnapshot {
     return this.state
   }
 
-  /** 选择任意句子，并停止上一句的回听或正在进行的录音。 */
-  selectSentence(id: string): void {
-    if (this.state.status === 'PLAYBACK') this.port.stopPlayback()
-    if (this.state.status === 'RECORDING') void this.stop()
-    this.update({ ...this.state, selectedSentenceId: id, status: 'IDLE' })
+  /** 选择句子，id 为稳定句子标识，旧录音停止后仍归属于旧句 */
+  selectSentence = async (id: string): Promise<void> => {
+    this.stopPlayback()
+    const stopping = this.stop()
+    this.generation++
+    this.update({
+      ...this.state,
+      selectedSentenceId: id,
+      hasRecording: this.recordings.has(id),
+      status: 'IDLE'
+    })
+    await stopping
   }
 
-  /** 首次开始录音时请求权限，拒绝后只禁用录音能力。 */
-  async start(): Promise<void> {
+  /** 首次开始录音时请求权限，拒绝后只禁用录音能力 */
+  start = async (): Promise<void> => {
     const sentenceId = this.state.selectedSentenceId
-    if (!sentenceId || this.state.recordingDisabled) return
-
-    if (this.permission === undefined) this.permission = await this.port.requestPermission()
+    if (
+      !sentenceId ||
+      this.state.recordingDisabled ||
+      this.disposed ||
+      this.state.status === 'RECORDING'
+    )
+      return
+    const generation = ++this.generation
+    await this.pendingStop
+    if (this.permission === undefined) {
+      this.permissionRequest ??= this.port.requestPermission().catch(() => false)
+      this.permission = await this.permissionRequest
+    }
+    if (generation !== this.generation || this.disposed) return
     if (!this.permission) {
       this.update({ ...this.state, recordingDisabled: true, status: 'DENIED' })
       return
     }
-
-    this.port.stopPlayback()
-    await this.port.start(sentenceId)
-    this.update({ ...this.state, status: 'RECORDING' })
+    this.stopPlayback()
+    try {
+      await this.port.start(sentenceId)
+      if (generation !== this.generation || this.disposed) {
+        const path = await this.port.stop()
+        await this.port.deleteFile(path)
+        return
+      }
+      this.update({ ...this.state, status: 'RECORDING' })
+    } catch {
+      if (!this.disposed) this.update({ ...this.state, status: 'FAILED' })
+    }
   }
 
-  /** 停止录音并保存当前句子的临时文件引用。 */
-  async stop(): Promise<void> {
+  /** 停止录音并保留文件在开始录制的句子下 */
+  stop = (): Promise<void> => {
+    if (this.pendingStop) return this.pendingStop
     const sentenceId = this.state.selectedSentenceId
-    if (!sentenceId || this.state.status !== 'RECORDING') return
-    const path = await this.port.stop()
-    this.recordings.set(sentenceId, path)
-    this.update({ ...this.state, status: 'RECORDED' })
+    if (!sentenceId || this.state.status !== 'RECORDING') return Promise.resolve()
+    const generation = this.generation
+    this.pendingStop = this.port
+      .stop()
+      .then(async (path) => {
+        const previous = this.recordings.get(sentenceId)
+        if (previous && previous !== path) await this.port.deleteFile(previous)
+        this.recordings.set(sentenceId, path)
+        if (generation === this.generation && !this.disposed)
+          this.update({ ...this.state, hasRecording: true, status: 'RECORDED' })
+      })
+      .catch(() => {
+        if (!this.disposed) this.update({ ...this.state, status: 'FAILED' })
+      })
+      .finally(() => {
+        this.pendingStop = undefined
+      })
+    return this.pendingStop
   }
 
-  /** 回听当前句最近一次录音。 */
-  async playback(): Promise<void> {
+  /** 回听当前句最近录音，设备事件决定实际播放状态 */
+  playback = async (): Promise<void> => {
+    if (this.state.status === 'PLAYBACK') {
+      this.port.pausePlayback?.()
+      return
+    }
     const sentenceId = this.state.selectedSentenceId
     const path = sentenceId ? this.recordings.get(sentenceId) : undefined
-    if (!path) return
-    await this.port.playback(path)
-    this.update({ ...this.state, status: 'PLAYBACK' })
+    if (!path || this.disposed || this.state.status === 'RECORDING') return
+    const generation = this.generation
+    this.playbackRequested = true
+    try {
+      await this.port.playback(path)
+      if (generation !== this.generation || this.disposed) return
+      if (!this.port.subscribePlayback) this.update({ ...this.state, status: 'PLAYBACK' })
+    } catch {
+      if (generation === this.generation && !this.disposed)
+        this.update({ ...this.state, status: 'FAILED' })
+    }
   }
 
-  /** 删除当前句旧文件后立即开始重录。 */
-  async rerecord(): Promise<void> {
+  /** 停止本地回听，供切句和原音互斥使用 */
+  stopPlayback = (): void => {
+    this.playbackRequested = false
+    this.port.stopPlayback()
+    if (this.state.status === 'PLAYBACK' || this.state.status === 'PAUSED')
+      this.update({ ...this.state, status: 'RECORDED' })
+  }
+
+  /** 删除当前句旧文件后立即开始重录 */
+  rerecord = async (): Promise<void> => {
     const sentenceId = this.state.selectedSentenceId
-    if (!sentenceId) return
+    if (!sentenceId || this.disposed) return
+    this.stopPlayback()
+    await this.stop()
     const path = this.recordings.get(sentenceId)
     if (path) {
       await this.port.deleteFile(path)
       this.recordings.delete(sentenceId)
     }
-    this.update({ ...this.state, status: 'IDLE' })
+    this.update({ ...this.state, hasRecording: false, status: 'IDLE' })
     await this.start()
   }
 
-  /** 停止设备资源并清理所有本地临时录音。 */
-  async dispose(): Promise<void> {
+  /** 停止设备并清理所有本地文件 */
+  dispose = async (): Promise<void> => {
+    if (this.disposed) return
+    this.disposed = true
+    this.playbackRequested = false
+    this.generation++
     this.port.stopPlayback()
+    await this.stop()
     const paths = [...new Set(this.recordings.values())]
-    await Promise.all(paths.map(async (path) => this.port.deleteFile(path)))
+    await Promise.all(paths.map((path) => this.port.deleteFile(path)))
     this.recordings.clear()
+    this.unsubscribe?.()
+    this.unsubscribeRecording?.()
+    this.port.destroy?.()
     this.update(createRecordingSnapshot())
   }
 
-  /** 更新录音快照并同步页面 Store。 */
-  private update(snapshot: RecordingSnapshot) {
+  /** 更新录音快照，snapshot 为当前句与本地设备状态 */
+  private update = (snapshot: RecordingSnapshot) => {
     this.state = snapshot
     this.onChange?.(snapshot)
   }
 }
 
-/** 将微信录音管理器和回听播放器适配为可测试端口。 */
-export function createUniRecordingPort(): RecordingPort {
+/** 将微信录音管理器和回听播放器适配为可测试端口 */
+export const createUniRecordingPort = (): RecordingPort => {
+  // #ifdef H5
+  return createBrowserRecordingPort()
+  // #endif
+  // #ifndef H5
   const recorder = uni.getRecorderManager()
   const playback = uni.createInnerAudioContext()
   let stopResolver: ((path: string) => void) | undefined
-
+  let stopReject: ((error: unknown) => void) | undefined
+  let startResolver: (() => void) | undefined
+  let startReject: ((error: unknown) => void) | undefined
+  let playbackListener: ((type: 'play' | 'pause' | 'ended' | 'error') => void) | undefined
+  let recordingListener: ((path?: string) => void) | undefined
+  recorder.onStart(() => {
+    startResolver?.()
+    startResolver = undefined
+    startReject = undefined
+  })
   recorder.onStop((result) => {
-    stopResolver?.(result.tempFilePath)
+    if (stopResolver) stopResolver(result.tempFilePath)
+    else recordingListener?.(result.tempFilePath)
+    stopResolver = undefined
+    stopReject = undefined
+  })
+  recorder.onError((error) => {
+    startReject?.(error)
+    stopReject?.(error)
+    if (!startReject && !stopReject) recordingListener?.()
+    startResolver = undefined
     stopResolver = undefined
   })
-
+  playback.onPlay(() => playbackListener?.('play'))
+  playback.onPause(() => playbackListener?.('pause'))
+  playback.onEnded(() => playbackListener?.('ended'))
+  playback.onError(() => playbackListener?.('error'))
   return {
     deleteFile: (path) =>
       new Promise((resolve) => {
-        uni.getFileSystemManager().unlink({
-          fail: () => resolve(),
-          filePath: path,
-          success: () => resolve()
-        })
+        try {
+          uni
+            .getFileSystemManager()
+            .unlink({ fail: () => resolve(), filePath: path, success: () => resolve() })
+        } catch {
+          resolve()
+        }
       }),
     playback: (path) => {
-      playback.src = path
+      if (playback.src !== path) playback.src = path
       playback.play()
       return Promise.resolve()
+    },
+    pausePlayback: () => playback.pause(),
+    subscribePlayback: (listener) => {
+      playbackListener = listener
+      return () => {
+        playbackListener = undefined
+      }
+    },
+    subscribeRecording: (listener) => {
+      recordingListener = listener
+      return () => {
+        recordingListener = undefined
+      }
     },
     requestPermission: () =>
       new Promise((resolve) => {
@@ -127,15 +271,24 @@ export function createUniRecordingPort(): RecordingPort {
           success: () => resolve(true)
         })
       }),
-    start: () => {
-      recorder.start({ duration: 60_000, format: 'aac' })
-      return Promise.resolve()
-    },
+    start: () =>
+      new Promise((resolve, reject) => {
+        startResolver = resolve
+        startReject = reject
+        recorder.start({ duration: 60_000, format: 'aac' })
+      }),
     stop: () =>
-      new Promise((resolve) => {
+      new Promise((resolve, reject) => {
         stopResolver = resolve
+        stopReject = reject
         recorder.stop()
       }),
-    stopPlayback: () => playback.stop()
+    stopPlayback: () => playback.stop(),
+    destroy: () => {
+      recordingListener = undefined
+      playbackListener = undefined
+      playback.destroy()
+    }
   }
+  // #endif
 }

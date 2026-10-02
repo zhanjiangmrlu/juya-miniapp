@@ -1,84 +1,164 @@
 <script setup lang="ts">
-import { onHide, onLoad } from '@dcloudio/uni-app'
+import { onHide, onLoad, onUnload } from '@dcloudio/uni-app'
 
-import AppButton from '@/components/app-button/app-button.vue'
-import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
-import PageHeader from '@/components/page-header/page-header.vue'
-import AudioButton from '@/features/audio/components/audio-button.vue'
-import DialogueList from '@/features/scene/components/dialogue-list.vue'
+import OriginalImageViewer from '@/features/scene/components/original-image-viewer.vue'
 import SceneHero from '@/features/scene/components/scene-hero.vue'
+import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
 import { navigate } from '@/shared/navigation/navigate'
 
-const { audio, disposeAudio, fullModel, initialize, play, sceneId } = useScenePage()
+const {
+  disposeAudio,
+  fullModel,
+  handleImageError,
+  imageOpen,
+  initialize,
+  openImage,
+  originalImageUrl,
+  scene,
+  sceneId
+} = useScenePage()
+const steps = [
+  { number: '01', title: '对话', hint: '从真实对话开始', page: 'dialogue' },
+  { number: '02', title: '重点词汇', hint: '记住实用表达', page: 'vocabulary' },
+  { number: '03', title: 'Useful Chunks', hint: '掌握常用语块', page: 'chunks' }
+]
 
-/** 根据路由场景标识加载详情，打开动作由服务端最终判定权限。 */
-function handleLoad(query?: Record<string, string>) {
+/** 读取路由标识，query 为当前场景参数 */
+const handleLoad = (query?: Record<string, string>) => {
   void initialize(query?.sceneId)
 }
-
-/** 进入完整对话页并保留当前稳定场景标识。 */
-async function openDialogue() {
+/** 打开学习步骤，page 为对应学习页路由片段 */
+const openStep = async (page: string) => {
   await navigate({
     type: 'navigateTo',
-    url: `/pages/scene/dialogue?sceneId=${encodeURIComponent(sceneId.value)}`
+    url: `/pages/scene/${page}?sceneId=${encodeURIComponent(sceneId.value)}`
   })
 }
 
 onLoad(handleLoad)
 onHide(disposeAudio)
+onUnload(disposeAudio)
 </script>
-
 <template>
-  <AppPage>
-    <PageHeader :title="fullModel?.series ?? '场景详情'" />
+  <ScenePageLayout :title="fullModel?.chineseTitle.replace(/^在/, '') ?? '场景详情'">
     <template v-if="fullModel">
       <SceneHero
         :chinese-title="fullModel.chineseTitle"
-        :image-url="fullModel.imageUrl"
+        :image-url="originalImageUrl"
+        :description="fullModel.description"
         :series="fullModel.series"
         :title="fullModel.title"
+        @view-image="openImage"
+        @image-error="handleImageError"
       />
-      <view class="scene-detail__audio-row">
-        <AudioButton
-          v-if="fullModel.entries[0]?.audio"
-          :current-key="audio.currentKey"
-          label="播放场景"
-          :status="audio.snapshot.status"
-          :target="fullModel.entries[0].audio"
-          @play="play"
-        />
-      </view>
-      <DialogueList
-        :chinese-visible="false"
-        :current-audio-key="audio.currentKey"
-        :entries="fullModel.entries.filter((entry) => entry.entry_type === 'DIALOGUE').slice(0, 2)"
-        :status="audio.snapshot.status"
-        @play="play"
-      />
-      <view class="scene-detail__action"
-        ><AppButton label="进入完整对话" @press="openDialogue"
-      /></view>
+      <view class="detail-steps"
+        ><button
+          v-for="step in steps"
+          :key="step.page"
+          :class="{ selected: step.number === '01', chunks: step.page === 'chunks' }"
+          @click="openStep(step.page)"
+        >
+          <text class="step-number">{{ step.number }}</text
+          ><text class="step-title">{{ step.title }}</text
+          ><text class="step-hint">{{ step.hint }}</text>
+        </button></view
+      >
+      <view v-if="scene.dialogueEntries[0]" class="detail-preview"
+        ><text>{{ scene.dialogueEntries[0].text }}</text
+        ><text class="preview-chinese">{{ scene.dialogueEntries[0].chinese }}</text></view
+      >
     </template>
+    <text v-else-if="scene.loading" class="scene-loading">正在加载场景…</text>
     <AppState
       v-else
-      description="正在确认内容权限，请稍后重试或返回学习页。"
+      description="请返回学习页重新确认访问权限。"
       icon-label="场景不可用"
       title="暂时无法打开场景"
     />
-  </AppPage>
+    <OriginalImageViewer
+      v-if="imageOpen && fullModel && originalImageUrl"
+      :chinese-title="fullModel.chineseTitle"
+      :title="fullModel.title"
+      :image-url="originalImageUrl"
+      @close="imageOpen = false"
+      @error="handleImageError"
+    />
+  </ScenePageLayout>
 </template>
-
 <style scoped lang="scss">
-.scene-detail {
-  &__audio-row {
-    display: flex;
-    margin: 28rpx 0 20rpx;
+@use '@/features/scene/scene-page.scss' as scene;
+@include scene.page;
+
+.detail-steps {
+  display: grid;
+  margin-top: 17px;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+
+  button {
+    width: 100%;
+    min-height: 119px;
+    margin: 0;
+    padding: 11px 5px;
+    border: 1px solid #d6dfc9;
+    border-radius: 16px;
+    background: #fffdf7;
+    color: #254733;
+    text-align: center;
+
+    &.selected {
+      background: #e2eed9;
+    }
   }
 
-  &__action {
-    margin-top: 28rpx;
+  text {
+    display: block;
+  }
+
+  .step-number {
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 28px;
+  }
+
+  .step-title {
+    margin-top: 7px;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 23px;
+  }
+
+  .chunks .step-title {
+    font-size: 12px;
+  }
+
+  .step-hint {
+    margin-top: 8px;
+    color: #748271;
+    font-size: 10px;
+    line-height: 20px;
+  }
+}
+
+.detail-preview {
+  margin-top: 20px;
+  padding: 5px 14px;
+  border: 1px solid #d6dfc9;
+  border-radius: 16px;
+  background: #fffdf7;
+  font-size: 13px;
+  line-height: 22px;
+
+  text {
+    display: block;
+  }
+
+  .preview-chinese {
+    color: #748271;
+    font-size: 11px;
+    line-height: 20px;
   }
 }
 </style>

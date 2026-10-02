@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { AudioController, type AudioEngine } from '@/features/audio/audio-controller'
+import { AudioController } from '@/features/audio/audio-controller'
 import { type AudioSnapshot, getAudioTargetKey } from '@/features/audio/audio-machine'
+import { createUniAudioEngine } from '@/features/audio/uni-audio-engine'
+import { useSceneStore } from '@/stores/scene'
 
 import type { SceneService } from '@/features/scene/scene-service'
 import type { AudioTarget } from '@/shared/contracts/learning'
@@ -15,30 +17,11 @@ export const useAudioStore = defineStore('audio', () => {
     snapshot.value.target ? getAudioTargetKey(snapshot.value.target) : null
   )
 
-  /** 创建 uni-app 音频引擎适配器，并将底层错误交回统一控制器。 */
-  function createEngine(): AudioEngine {
-    const context = uni.createInnerAudioContext()
-
-    context.onError((error) => {
-      const status = error.errMsg.includes('403') ? 403 : error.errCode
-      void controller?.handleError(status)
-    })
-
-    return {
-      destroy: () => context.destroy(),
-      pause: () => context.pause(),
-      play: () => context.play(),
-      setSource: (url) => {
-        context.src = url
-      },
-      stop: () => context.stop()
-    }
-  }
-
-  /** 按需初始化控制器，整个应用生命周期只维护一个播放器实例。 */
-  function ensureController(service: SceneService): AudioController {
+  /** 按需创建唯一播放器，service 为当前场景授权签名服务 */
+  const ensureController = (service: SceneService): AudioController => {
     controller ??= new AudioController({
-      engine: createEngine(),
+      engine: createUniAudioEngine(),
+      onAccessDenied: () => useSceneStore().clear(),
       onChange: (next) => {
         snapshot.value = next
       },
@@ -47,17 +30,20 @@ export const useAudioStore = defineStore('audio', () => {
     return controller
   }
 
-  /** 播放或切换指定音频目标。 */
-  async function play(target: AudioTarget, service: SceneService) {
+  /** 播放目标，target 为资源区间，service 为签名服务 */
+  const play = async (target: AudioTarget, service: SceneService) => {
     await ensureController(service).play(target)
   }
 
-  /** 页面隐藏时销毁播放器，下一次播放重新创建。 */
-  function dispose() {
+  /** 页面隐藏时销毁播放器，下一次播放重新创建 */
+  const dispose = () => {
     controller?.dispose()
     controller = undefined
     snapshot.value = { status: 'IDLE', target: null }
   }
 
-  return { currentKey, dispose, play, snapshot }
+  /** 停止原音以便开始录音或本地回听 */
+  const stop = () => controller?.stop()
+
+  return { currentKey, dispose, play, snapshot, stop }
 })

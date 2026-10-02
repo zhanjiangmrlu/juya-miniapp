@@ -1,187 +1,210 @@
 <script setup lang="ts">
-import { onHide, onLoad, onUnload } from '@dcloudio/uni-app'
-import { computed, ref } from 'vue'
+import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
+import { computed, ref, watch } from 'vue'
 
-import AppButton from '@/components/app-button/app-button.vue'
-import AppPage from '@/components/app-page/app-page.vue'
-import PageHeader from '@/components/page-header/page-header.vue'
+import AppState from '@/components/app-state/app-state.vue'
 import RecordingControls from '@/features/recording/components/recording-controls.vue'
 import {
   createUniRecordingPort,
   RecordingController
 } from '@/features/recording/recording-controller'
 import { createRecordingSnapshot } from '@/features/recording/recording-machine'
+import DialogueSentence from '@/features/scene/components/dialogue-sentence.vue'
+import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
-import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 
-const { disposeAudio, initialize, play, scene, sceneId } = useScenePage()
+import type { AudioTarget, SceneEntry } from '@/shared/contracts/learning'
+
+const { audio, complete, disposeAudio, fullModel, initialize, play, scene, sceneId } = useScenePage(
+  { resume: false }
+)
 const recording = ref(createRecordingSnapshot())
-const controller = new RecordingController(createUniRecordingPort(), (snapshot) => {
-  recording.value = snapshot
-})
+let controller: RecordingController | undefined
+let loaded = false
 const currentSentence = computed(() =>
   scene.dialogueEntries.find((entry) => entry.entry_id === recording.value.selectedSentenceId)
 )
+const sentenceIndex = computed(() =>
+  Math.max(
+    1,
+    scene.dialogueEntries.findIndex(
+      (entry) => entry.entry_id === recording.value.selectedSentenceId
+    ) + 1
+  )
+)
 
-/** 加载场景全部句子，并默认选中第一句但不自动请求录音权限。 */
-async function handleLoad(query?: Record<string, string>) {
-  await initialize(query?.sceneId)
+/** 创建本次录音控制器，仅在完整授权场景创建且不提前请求麦克风 */
+const prepareRecording = () => {
+  const port = createUniRecordingPort()
+  const nextController = new RecordingController(port, (snapshot) => {
+    if (controller === nextController) recording.value = snapshot
+  })
+  controller = nextController
   const first = scene.dialogueEntries[0]
-  if (first) controller.selectSentence(first.entry_id)
+  if (first) void controller.selectSentence(first.entry_id)
 }
-
-/** 切换到任意句，停止上一句录音或回听。 */
-function selectSentence(id: string) {
-  controller.selectSentence(id)
+/** 加载全部句子，query 为场景路由参数 */
+const handleLoad = async (query?: Record<string, string>) => {
+  await initialize(query?.sceneId)
+  if (fullModel.value) prepareRecording()
+  loaded = true
 }
-
-/** 播放当前句原音，不受录音权限状态影响。 */
-async function playOriginal() {
-  if (currentSentence.value?.audio) await play(currentSentence.value.audio)
+/** 返回页面时重新创建已释放的本次临时录音端口 */
+const handleShow = async () => {
+  if (!loaded || controller) return
+  await initialize(sceneId.value)
+  if (fullModel.value) prepareRecording()
 }
-
-/** 完成本次学习，清理录音文件后进入成果页。 */
-async function completeLearning() {
-  await getRuntimeServices().scene.complete(sceneId.value)
-  await controller.dispose()
+/** 选中任意句，entry 为发布的稳定句子 */
+const selectSentence = async (entry: SceneEntry) => {
+  if (entry.entry_id === recording.value.selectedSentenceId) return
+  audio.stop()
+  await controller?.selectSentence(entry.entry_id)
+}
+/** 播放句子原音，target 为同一整段音频的句子区间 */
+const playSentence = async (target: AudioTarget) => {
+  const entry = scene.dialogueEntries.find(
+    (candidate) => candidate.audio?.sentence_id === target.sentence_id
+  )
+  if (entry) await selectSentence(entry)
+  controller?.stopPlayback()
+  await controller?.stop()
+  await play(target)
+}
+/** 播放当前句原音，先停止回听及录音 */
+const playOriginal = async () => {
+  if (currentSentence.value?.audio) await playSentence(currentSentence.value.audio)
+}
+/** 开始当前句录音，先停止原音播放器 */
+const startRecording = async () => {
+  audio.stop()
+  await controller?.start()
+}
+/** 回听当前句录音，停止原音保证互斥 */
+const playback = async () => {
+  audio.stop()
+  await controller?.playback()
+}
+/** 重录当前句，停止原音并删除旧临时文件 */
+const rerecord = async () => {
+  audio.stop()
+  await controller?.rerecord()
+}
+/** 完成学习，服务端成功后清理本次录音并进入成果页 */
+const completeLearning = async () => {
+  if (!(await complete())) return
+  await controller?.dispose()
+  controller = undefined
   await navigate({
     type: 'redirectTo',
     url: `/pages/scene/completed?sceneId=${encodeURIComponent(sceneId.value)}`
   })
 }
-
-/** 页面进入后台时停止音频并清理本次临时录音。 */
-function handleHide() {
+/** 页面退出或进入后台时立即取消原音并释放临时录音 */
+const cleanup = () => {
   disposeAudio()
-  void controller.dispose()
+  void controller?.dispose()
+  controller = undefined
 }
-
-/** 页面卸载时再次执行幂等清理，覆盖退出和异常关闭。 */
-function handleUnload() {
-  void controller.dispose()
-}
-
+watch(fullModel, (model) => {
+  if (!model && controller) {
+    void controller.dispose()
+    controller = undefined
+  }
+})
 onLoad(handleLoad)
-onHide(handleHide)
-onUnload(handleUnload)
+onShow(handleShow)
+onHide(cleanup)
+onUnload(cleanup)
 </script>
-
 <template>
-  <AppPage>
-    <PageHeader eyebrow="不评分" title="逐句跟读" />
-    <view class="shadowing-page__summary">
-      <text>场景对话</text>
-      <text>{{ scene.dialogueEntries.length }} 句 · 可从任一句开始</text>
-    </view>
-    <view class="shadowing-page__sentences">
-      <button
-        v-for="(entry, index) in scene.dialogueEntries"
-        :key="entry.entry_id"
-        class="shadowing-page__sentence"
-        :class="{
-          'shadowing-page__sentence--active': entry.entry_id === recording.selectedSentenceId
-        }"
-        @click="selectSentence(entry.entry_id)"
+  <ScenePageLayout title="逐句跟读" centered>
+    <template v-if="fullModel">
+      <view class="shadowing-title"
+        ><text class="scene-title">逐句跟读</text
+        ><text class="shadowing-counter"
+          >{{ sentenceIndex }} / {{ scene.dialogueEntries.length }}</text
+        ></view
       >
-        <text class="shadowing-page__number">{{ index + 1 }}</text>
-        <view>
-          <text class="shadowing-page__speaker">{{ entry.speaker }}</text>
-          <text class="shadowing-page__copy">{{ entry.text }}</text>
-          <text v-if="entry.chinese" class="shadowing-page__chinese">{{ entry.chinese }}</text>
-        </view>
-        <text class="shadowing-page__select">选择</text>
-      </button>
-    </view>
-    <RecordingControls
-      :sentence="currentSentence"
-      :snapshot="recording"
-      @play-original="playOriginal"
-      @playback="controller.playback"
-      @rerecord="controller.rerecord"
-      @start="controller.start"
-      @stop="controller.stop"
+      <text class="scene-subtitle">{{ fullModel.chineseTitle }} · 可从任一句开始</text>
+      <view class="shadowing-sentences"
+        ><DialogueSentence
+          v-for="(entry, index) in scene.dialogueEntries"
+          :key="entry.entry_id"
+          :number="index + 1"
+          :entry="entry"
+          :chinese-visible="false"
+          :inspect-enabled="false"
+          :status="audio.snapshot.status"
+          :current-audio-key="audio.currentKey"
+          :selected="entry.entry_id === recording.selectedSentenceId"
+          @select="selectSentence"
+          @play="playSentence"
+      /></view>
+      <RecordingControls
+        :sentence="currentSentence"
+        :snapshot="recording"
+        :index="sentenceIndex"
+        :total="scene.dialogueEntries.length"
+        :current-audio-key="audio.currentKey"
+        :audio-status="audio.snapshot.status"
+        @play-original="playOriginal"
+        @playback="playback"
+        @rerecord="rerecord"
+        @start="startRecording"
+        @stop="controller?.stop()"
+      />
+      <view class="scene-actions"
+        ><button class="scene-action secondary" @click="completeLearning">
+          完成本次学习 ›
+        </button></view
+      >
+    </template>
+    <text v-else-if="scene.loading" class="scene-loading">正在加载场景…</text>
+    <AppState
+      v-else
+      description="请返回学习页重新确认访问权限。"
+      icon-label="场景不可用"
+      title="暂时无法打开场景"
     />
-    <view class="shadowing-page__complete">
-      <AppButton label="完成本次学习" @press="completeLearning" />
-    </view>
-  </AppPage>
+  </ScenePageLayout>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
+@use '@/features/scene/scene-page.scss' as scene;
+@include scene.page;
 
-.shadowing-page {
-  &__summary {
-    display: flex;
-    justify-content: space-between;
-    margin: 16rpx 4rpx;
-    color: tokens.$color-primary-strong;
-    font-size: 23rpx;
-  }
+.shadowing-title {
+  position: relative;
+  text-align: center;
 
-  &__sentences {
-    display: grid;
-    gap: 14rpx;
-  }
-
-  &__sentence {
-    display: grid;
-    width: 100%;
-    align-items: center;
-    margin: 0;
-    padding: 22rpx;
-    border: 2rpx solid tokens.$color-border;
-    border-radius: tokens.$radius-medium;
-    background: rgb(255 255 255 / 68%);
-    color: tokens.$color-text;
-    gap: 18rpx;
-    grid-template-columns: 52rpx minmax(0, 1fr) auto;
-    text-align: left;
-
-    &--active {
-      border-color: tokens.$color-primary;
-      background: tokens.$color-module;
-    }
-  }
-
-  &__number {
-    display: grid;
-    width: 48rpx;
-    height: 48rpx;
-    place-items: center;
-    border-radius: 50%;
-    background: #edf5ef;
-    color: tokens.$color-primary;
-    font-size: 22rpx;
+  .shadowing-counter {
+    position: absolute;
+    top: 7px;
+    right: 0;
+    color: #4e7f3b;
+    font-size: 14px;
     font-weight: 700;
+    line-height: 28px;
   }
+}
 
-  &__speaker,
-  &__copy,
-  &__chinese {
-    display: block;
-  }
+.scene-subtitle {
+  min-height: 35px;
+  margin-top: 2px;
+}
 
-  &__speaker {
-    color: tokens.$color-primary;
-    font-size: 21rpx;
-    font-weight: 700;
-  }
+.shadowing-sentences {
+  display: grid;
+  gap: 6px;
+}
 
-  &__copy {
-    font-family: Georgia, serif;
-    font-size: 24rpx;
-  }
+.scene-actions {
+  padding-top: 11px;
 
-  &__chinese,
-  &__select {
-    color: tokens.$color-text-muted;
-    font-size: 19rpx;
-  }
-
-  &__complete {
-    margin-top: 24rpx;
+  .scene-action {
+    min-height: 42px;
+    padding: 8px 14px;
   }
 }
 </style>

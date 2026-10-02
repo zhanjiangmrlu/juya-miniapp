@@ -1,95 +1,97 @@
 <script setup lang="ts">
-import AudioButton from '@/features/audio/components/audio-button.vue'
-
 import type { AudioStatus } from '@/features/audio/audio-machine'
 import type { AudioTarget, SceneEntry } from '@/shared/contracts/learning'
 
-defineProps<{
-  currentAudioKey?: string | null
-  entries: SceneEntry[]
-  status: AudioStatus
-}>()
-
-const emit = defineEmits<{
-  inspect: [entry: SceneEntry]
-  play: [target: AudioTarget]
-}>()
-
-/** 打开当前词汇或语块的统一详情弹层。 */
-function handleInspect(entry: SceneEntry) {
-  emit('inspect', entry)
-}
-
-/** 播放条目音频。 */
-function handlePlay(target: AudioTarget) {
-  emit('play', target)
+withDefaults(
+  defineProps<{
+    currentAudioKey?: string | null
+    entries: SceneEntry[]
+    status: AudioStatus
+    sentences?: SceneEntry[]
+  }>(),
+  { currentAudioKey: null, sentences: () => [] }
+)
+const emit = defineEmits<{ inspect: [entry: SceneEntry]; play: [target: AudioTarget] }>()
+/** 转换来源句编号，entry 为当前词条，sentences 为发布句子顺序 */
+const sourceNumber = (entry: SceneEntry, sentences: SceneEntry[]) => {
+  const indexes = sentences
+    .map((sentence, index) =>
+      entry.source_sentence_ids?.includes(sentence.entry_id) ? index + 1 : 0
+    )
+    .filter(Boolean)
+  return indexes.length ? ` · 来源：第 ${indexes.join('、')} 句` : ''
 }
 </script>
-
 <template>
   <view class="entry-list">
-    <view v-for="entry in entries" :key="entry.entry_id" class="entry-list__item">
-      <button class="entry-list__copy" @click="handleInspect(entry)">
-        <text class="entry-list__text">{{ entry.text }}</text>
-        <text v-if="entry.phonetic" class="entry-list__phonetic">{{ entry.phonetic }}</text>
-        <text v-if="entry.chinese" class="entry-list__chinese">{{ entry.chinese }}</text>
-      </button>
-      <AudioButton
-        v-if="entry.audio"
-        :current-key="currentAudioKey"
-        :status="status"
-        :target="entry.audio"
-        @play="handlePlay"
-      />
-    </view>
+    <button
+      v-for="entry in entries"
+      :key="entry.entry_id"
+      class="entry-card"
+      @click="emit('inspect', entry)"
+    >
+      <view class="entry-top"
+        ><text class="entry-text"
+          >{{ entry.text
+          }}<text v-if="entry.phonetic && entry.entry_type === 'VOCABULARY'" class="entry-phonetic">
+            {{ entry.phonetic }}</text
+          ></text
+        ><text class="entry-type">{{
+          entry.entry_type === 'PHRASE' ? '可点语块' : '可点词'
+        }}</text></view
+      ><text class="entry-meaning"
+        >{{ entry.chinese
+        }}{{ entry.entry_type === 'VOCABULARY' ? sourceNumber(entry, sentences) : '' }}</text
+      >
+    </button>
   </view>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
-
 .entry-list {
   display: grid;
-  margin-top: 28rpx;
-  gap: 20rpx;
+  gap: 10px;
 
-  &__item {
-    display: grid;
-    align-items: center;
-    padding: 28rpx;
-    border: 2rpx solid tokens.$color-border;
-    border-radius: tokens.$radius-medium;
-    background: rgb(255 255 255 / 78%);
-    gap: 20rpx;
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  &__copy {
+  .entry-card {
+    width: 100%;
+    min-height: 91px;
     margin: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: tokens.$color-text;
+    padding: 9px 13px;
+    border: 1px solid #d6dfc9;
+    border-radius: 12px;
+    background: #fffdf7;
+    color: #254733;
     text-align: left;
   }
 
-  &__text,
-  &__phonetic,
-  &__chinese {
-    display: block;
-  }
-
-  &__text {
-    font-family: Georgia, serif;
-    font-size: 34rpx;
+  .entry-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: 14px;
     font-weight: 700;
+    line-height: 24px;
+    gap: 10px;
+
+    .entry-text {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .entry-type {
+      flex: none;
+      color: #4e7f3b;
+      font-size: 10px;
+      font-weight: 500;
+      line-height: 23px;
+    }
   }
 
-  &__phonetic,
-  &__chinese {
-    margin-top: 8rpx;
-    color: tokens.$color-text-muted;
-    font-size: 23rpx;
+  .entry-meaning {
+    display: block;
+    margin-top: 4px;
+    color: #6b7d6a;
+    font-size: 11px;
+    line-height: 22px;
   }
 }
 </style>
