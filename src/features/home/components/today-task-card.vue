@@ -4,7 +4,14 @@ import { computed } from 'vue'
 import type { TodayTaskViewModel } from '@/features/home/home-presenter'
 import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
 
-const props = defineProps<{ scene?: SceneCardViewModel; task: TodayTaskViewModel | null }>()
+const props = withDefaults(
+  defineProps<{
+    canStart?: boolean
+    scene?: SceneCardViewModel
+    task: TodayTaskViewModel | null
+  }>(),
+  { canStart: true, scene: undefined }
+)
 
 const emit = defineEmits<{ start: [] }>()
 const imageUrl = computed(() => props.scene?.imageUrl)
@@ -56,7 +63,7 @@ const handleStart = () => {
       >
         <view class="progress-fill" :style="{ width: `${scene.progress}%` }" />
       </view>
-      <button class="task-button" @click="handleStart">
+      <button class="task-button" :disabled="!canStart" @click="handleStart">
         <text class="button-copy">{{ task.buttonLabel }}</text>
         <text class="button-arrow" aria-hidden="true">›</text>
       </button>

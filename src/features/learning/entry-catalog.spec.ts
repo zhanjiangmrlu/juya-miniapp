@@ -14,6 +14,37 @@ const scene = (access: SceneSummary['access'], scene_id: string, progress = 0): 
   tags: []
 })
 describe('入口目录权限与继续学习', () => {
+  it('已完成非开放内容到期后，缺少百分比仍保留权益用户布局', () => {
+    const result = presentCatalog({
+      modules: [],
+      catalog: {
+        authorization_pending: false,
+        items: [
+          scene('OPEN', 'open'),
+          { ...scene('PREVIEW', 'expired'), progress: undefined, status: 'COMPLETED' }
+        ]
+      }
+    })
+    expect(result.stage).toBe('ENTITLED')
+    expect(result.openScenes).toEqual([])
+    expect(result.openReview).toEqual({ completedCount: 0, totalCount: 1 })
+    expect(result.previewScenes[0]?.entryUrl).toBeNull()
+  })
+  it('完成状态缺少百分比时仍展示已完成进度，并计入开放复习摘要', () => {
+    const result = presentCatalog({
+      modules: [],
+      catalog: {
+        authorization_pending: false,
+        items: [
+          { ...scene('FORMAL', 'done'), progress: undefined, status: 'COMPLETED' },
+          { ...scene('OPEN', 'open-done'), progress: undefined, status: 'COMPLETED' }
+        ]
+      }
+    })
+    expect(result.entitledScenes[0]?.progress).toBe(100)
+    expect(result.currentLearning).toEqual([])
+    expect(result.openReview).toEqual({ completedCount: 1, totalCount: 1 })
+  })
   it('已完成内容不作为继续学习任务', () => {
     const result = presentCatalog({
       modules: [],

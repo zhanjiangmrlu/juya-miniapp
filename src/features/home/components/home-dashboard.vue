@@ -7,11 +7,15 @@ import TodayTaskCard from '@/features/home/components/today-task-card.vue'
 import type { HomeViewModel } from '@/features/home/home-presenter'
 import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
 
-defineProps<{
-  openSceneCount: number | null
-  taskScene?: SceneCardViewModel
-  view: HomeViewModel
-}>()
+withDefaults(
+  defineProps<{
+    canStartTask?: boolean
+    openSceneCount: number | null
+    taskScene?: SceneCardViewModel
+    view: HomeViewModel
+  }>(),
+  { canStartTask: true, taskScene: undefined }
+)
 
 const emit = defineEmits<{ startTask: []; openReview: [] }>()
 
@@ -50,7 +54,12 @@ function handleReview() {
     <text class="subtitle">每天一点，让英语自然融入生活。</text>
     <StreakCard :checkins="view.checkins" />
     <text class="task-heading">今日学习任务</text>
-    <TodayTaskCard :scene="taskScene" :task="view.todayTask" @start="handleStartTask" />
+    <TodayTaskCard
+      :can-start="canStartTask"
+      :scene="taskScene"
+      :task="view.todayTask"
+      @start="handleStartTask"
+    />
     <HomeReviewCard @review="handleReview" />
     <OpenSceneSummary :count="openSceneCount" />
   </view>

@@ -36,11 +36,13 @@ export interface CatalogPresentationInput {
   modules: LearningModule[]
 }
 
+/** 判断完成记录，scene 为后台场景摘要，完成状态不依赖可选百分比 */
+const hasCompleted = (scene: SceneSummary): boolean =>
+  scene.status === 'COMPLETED' || (scene.progress ?? 0) >= 100
+
 /** 判断未完成的学习进度，scene 为后台场景摘要 */
 const hasStarted = (scene: SceneSummary): boolean =>
-  ((scene.progress ?? 0) > 0 || scene.status === 'IN_PROGRESS') &&
-  (scene.progress ?? 0) < 100 &&
-  scene.status !== 'COMPLETED'
+  ((scene.progress ?? 0) > 0 || scene.status === 'IN_PROGRESS') && !hasCompleted(scene)
 
 /** 将摘要映射为卡片，scene 为后台提供的安全展示信息 */
 const presentScene = (scene: SceneSummary): SceneCardViewModel => {
@@ -63,7 +65,7 @@ const presentScene = (scene: SceneSummary): SceneCardViewModel => {
     description: scene.description ?? '可查看主题、难度与简介',
     entryUrl: canOpen ? `/pages/scene/detail?sceneId=${encodeURIComponent(scene.scene_id)}` : null,
     imageUrl: scene.image_url,
-    progress: Math.max(0, Math.min(100, scene.progress ?? 0)),
+    progress: hasCompleted(scene) ? 100 : Math.max(0, Math.min(100, scene.progress ?? 0)),
     sceneId: scene.scene_id,
     series: scene.series,
     title: scene.title
@@ -84,7 +86,8 @@ export const presentCatalog = (input: CatalogPresentationInput): CatalogSections
     entitled.length > 0 ||
     visible.some(
       (scene) =>
-        scene.access !== 'OPEN' && ((scene.progress ?? 0) > 0 || scene.status === 'IN_PROGRESS')
+        scene.access !== 'OPEN' &&
+        ((scene.progress ?? 0) > 0 || scene.status === 'IN_PROGRESS' || hasCompleted(scene))
     )
   const accessibleIds = new Set([...open, ...entitled].map((scene) => scene.scene_id))
   const preview = visible.filter(
@@ -102,7 +105,7 @@ export const presentCatalog = (input: CatalogPresentationInput): CatalogSections
     modules,
     openReview: hasEntitlement
       ? {
-          completedCount: open.filter((scene) => (scene.progress ?? 0) >= 100).length,
+          completedCount: open.filter(hasCompleted).length,
           totalCount: open.length
         }
       : null,

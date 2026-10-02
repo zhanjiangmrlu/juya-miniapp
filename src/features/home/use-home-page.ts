@@ -19,18 +19,25 @@ export const useHomePage = () => {
     () => learning.sections.openScenes[0] ?? learning.sections.currentLearning[0]
   )
   const taskScene = computed(() =>
-    resolveTaskScene(home.data?.today_task ?? null, [
-      ...learning.sections.currentLearning,
-      ...learning.sections.openScenes,
-      ...learning.sections.entitledScenes,
-      ...presentCatalog({
-        catalog: {
-          ...learning.catalog,
-          items: learning.catalog.items.filter((scene) => scene.access === 'OPEN')
-        },
-        modules: learning.modules
-      }).openScenes
-    ])
+    learning.catalog.authorization_pending
+      ? undefined
+      : resolveTaskScene(home.data?.today_task ?? null, [
+          ...learning.sections.currentLearning,
+          ...learning.sections.openScenes,
+          ...learning.sections.entitledScenes,
+          ...presentCatalog({
+            catalog: {
+              ...learning.catalog,
+              items: learning.catalog.items.filter((scene) => scene.access === 'OPEN')
+            },
+            modules: learning.modules
+          }).openScenes
+        ])
+  )
+  const canStartTask = computed(() =>
+    Boolean(
+      home.view.todayTask && (home.data?.today_task?.kind === 'FAVORITE_REVIEW' || taskScene.value)
+    )
   )
   const openSceneCount = computed(() =>
     learning.error || !home.data
@@ -49,9 +56,9 @@ export const useHomePage = () => {
     await Promise.all([home.load(runtime.home), learning.load(runtime.catalog)])
   }
 
-  /** 打开真实今日任务，无有效任务时保持当前页面 */
+  /** 打开真实今日任务，场景权限待确认或已失效时保持当前页面 */
   const startTask = async () => {
-    if (!home.view.todayTask) return
+    if (!canStartTask.value || !home.view.todayTask) return
     await navigate({ type: 'navigateTo', url: home.view.todayTask.url })
   }
 
@@ -66,5 +73,15 @@ export const useHomePage = () => {
     await load(true)
   }
 
-  return { featuredScene, home, load, openScene, openSceneCount, retry, startTask, taskScene }
+  return {
+    canStartTask,
+    featuredScene,
+    home,
+    load,
+    openScene,
+    openSceneCount,
+    retry,
+    startTask,
+    taskScene
+  }
 }

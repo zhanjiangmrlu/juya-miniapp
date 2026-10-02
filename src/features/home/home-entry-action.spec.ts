@@ -14,6 +14,7 @@ vi.mock('@/features/home/use-home-page', async () => {
   const { ref } = await import('vue')
   return {
     useHomePage: () => ({
+      canStartTask: ref(true),
       home: {
         error: false,
         view: {

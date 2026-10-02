@@ -10,7 +10,7 @@ const handleProfile = () => emit('profile')
   <view class="access-notice" role="dialog" aria-modal="true" aria-label="内容访问提示">
     <view class="notice-panel">
       <text class="notice-title">当前账号暂未开通此内容</text>
-      <text class="notice-copy">你可以先查看部分内容，完整学习功能暂未开放。</text>
+      <text class="notice-copy">你仍可以继续学习已开放的场景。</text>
       <button class="notice-primary" @click="handleClose">知道了</button>
       <button v-if="showProfileAction" class="notice-secondary" @click="handleProfile">
         前往我的，完善账号资料

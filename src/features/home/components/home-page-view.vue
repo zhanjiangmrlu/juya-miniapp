@@ -18,7 +18,7 @@ const props = withDefaults(
   { mode: 'normal', networkError: false }
 )
 
-const { home, load, openSceneCount, retry, startTask, taskScene } = useHomePage()
+const { canStartTask, home, load, openSceneCount, retry, startTask, taskScene } = useHomePage()
 const forcedNetworkError = ref(props.networkError)
 const isFirstVisit = computed(
   () =>
@@ -71,6 +71,7 @@ onShow(handleShow)
       @open-messages="openMessages"
     />
     <HomeDashboard
+      :can-start-task="canStartTask"
       :open-scene-count="openSceneCount"
       :task-scene="taskScene"
       :view="home.view"

@@ -14,7 +14,7 @@ import { useLearningStore } from '@/stores/learning'
 const props = withDefaults(defineProps<{ mode: 'first' | 'today'; embedded?: boolean }>(), {
   embedded: false
 })
-const { home, load, openScene, startTask, taskScene } = useHomePage()
+const { canStartTask, home, load, openScene, startTask, taskScene } = useHomePage()
 const sample = computed(() => (home.error ? null : resolveOpenSample(learning.catalog)))
 const openScenes = computed(() => learning.catalog.items.filter((scene) => scene.access === 'OPEN'))
 const learning = useLearningStore()
@@ -94,7 +94,7 @@ if (!props.embedded) onShow(handleShow)
     />
     <view v-else class="next-steps">
       <text class="steps-heading">下一步</text>
-      <button class="step-card" :disabled="!home.view.todayTask" @click="openStep('dialogue')">
+      <button class="step-card" :disabled="!canStartTask" @click="openStep('dialogue')">
         <view class="step-heading"
           ><text>{{
             home.view.todayTask?.buttonLabel === '开始翻卡' ? '收藏翻卡复习' : '继续场景对话'
@@ -116,7 +116,7 @@ if (!props.embedded) onShow(handleShow)
         ><text class="step-copy">词汇与语块都可以翻卡，不限张数</text>
       </button>
     </view>
-    <button class="home-primary" :disabled="!home.view.todayTask" @click="startTask">
+    <button class="home-primary" :disabled="!canStartTask" @click="startTask">
       {{ mode === 'first' ? '开始学习' : (home.view.todayTask?.buttonLabel ?? '继续学习') }}
     </button>
     <NetworkReconnectDialog v-if="home.error" @close="home.dismissError" @retry="handleRetry" />
