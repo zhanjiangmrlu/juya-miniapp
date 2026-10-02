@@ -9,6 +9,7 @@ import { createResultService } from '@/features/learning-result/result-service'
 import { createMessageService } from '@/features/messages/message-service'
 import { createProfileService } from '@/features/profile/profile-service'
 import { createSceneService } from '@/features/scene/scene-service'
+import { resolveApiBaseUrl } from '@/services/api-config'
 import { createHttpClient, type HttpClient } from '@/services/http/client'
 import { UniTransport } from '@/services/http/uni-transport'
 import { MockTransport } from '@/services/mock/mock-transport'
@@ -36,8 +37,15 @@ let services: RuntimeServices | undefined
 /** 创建带会话刷新能力的客户端，开发环境可显式切换到本地契约 mock。 */
 function createRuntimeClient(): HttpClient {
   const session = useSessionStore()
+  let developmentOrigin: string | undefined
+  // #ifdef H5
+  if (import.meta.env.DEV) developmentOrigin = window.location.origin
+  // #endif
   const client = createHttpClient({
-    baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000',
+    baseUrl: resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL, {
+      developmentOrigin,
+      mock: import.meta.env.VITE_USE_MOCK_API === 'true'
+    }),
     clientVersion: import.meta.env.VITE_CLIENT_VERSION || '1.3.0',
     session: {
       clear: session.clear,

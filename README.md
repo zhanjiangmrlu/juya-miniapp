@@ -27,7 +27,11 @@ pnpm build:mp-weixin
 - `VITE_CLIENT_VERSION`：请求头中的客户端版本，默认 `1.3.0`。
 - `VITE_USE_MOCK_API=true`：仅在本地开发或视觉验收时显式启用契约 mock；生产构建不要开启。
 
-本地微信开发者工具调试默认读取 `.env.development`，连接 `http://127.0.0.1:8000`。先在 `juya-miniapp-api` 执行 `./scripts/start-local.ps1`，并在微信开发者工具中开启“不校验合法域名”。真机调试需把地址改为电脑局域网地址，例如 `http://192.168.33.5:8000`。
+本地微信开发者工具调试默认读取 `.env.development`，连接小程序 API `http://127.0.0.1:8001`。管理后台 API 使用 `8000`，不包含 `/api/v1/home`。在微信开发者工具中开启“不校验合法域名”；真机调试需把地址改为电脑局域网地址并保留小程序 API 端口。
+
+H5 开发时，浏览器通过 Vite 的同源 `/api/v1` 代理访问 `VITE_API_BASE_URL`，避免直接跨域请求。修改 `.env.development` 后需重启开发服务。生产构建和微信小程序直接使用配置的 API 地址。未登录直接访问真实首页接口返回 `401 ACCESS_TOKEN_REQUIRED`，这是认证要求。
+
+需要独立的本地契约样例服务时，可在 `juya-miniapp-api` 中设置 `$env:PORT = '8002'` 后执行 `./scripts/start-local.ps1`，同时把本工程 `VITE_API_BASE_URL` 改为 `http://127.0.0.1:8002`。这样可与管理后台和真实小程序 API 同时运行。该样例模式不读取真实业务数据。
 
 所有 API 调用通过 `src/services/runtime.ts` 创建的共享服务进入统一请求层。页面不直接维护授权、权益、反馈或注销等服务端事实。
 
