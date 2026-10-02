@@ -1,16 +1,16 @@
 {
   "date": "2026-10-02",
-  "sourceCommit": "cbe1008",
+  "sourceCommit": "6048bf5",
   "formalPages": 43,
   "compatibilityRoutes": 1,
   "figmaStates": 69,
   "frontend": {
     "check": "passed",
-    "testFiles": 58,
-    "testsPassed": 175,
+    "testFiles": 65,
+    "testsPassed": 224,
     "h5Build": "passed",
     "weixinBuild": "passed",
-    "weixinBytes": 470282,
+    "weixinBytes": 459616,
     "nativeWxssFilesPassed": 71
   },
   "http": {
@@ -33,6 +33,7 @@
     "extraAudioStatesUseBaseResponsiveEvidence": true
   },
   "wechatTool": {
+    "interactionSourceCommit": "cbe1008",
     "version": "2.02.2608040",
     "sdk": "3.17.2",
     "viewport": [390, 844],
@@ -41,7 +42,21 @@
     "wordSheet": "passed",
     "shadowingNavigation": "passed",
     "mainPageNavigation": "passed",
-    "media": "local silent sample"
+    "media": "local silent sample",
+    "nonzeroTimingRetestedOnWechat": false
+  },
+  "parallelFollowup": {
+    "allThreeChatsCompleted": true,
+    "entryCommit": "5c133b6",
+    "sceneCommit": "7a9fe4e",
+    "personalCommits": ["63e3b50", "0ba5821"],
+    "lateResponsesFixedCommit": "6048bf5",
+    "localAudioRangeApiCommit": "876c75c",
+    "apiUnitTestsPassed": 101,
+    "actualHttpRangeStatus": 206,
+    "browserNonzeroIntervalStartPauseResumeEnd": "passed",
+    "browserHiddenHomeLateResponse": "passed",
+    "report": "figma-followup-integration.md"
   },
   "manualPending": [
     "iPhone and Android recording permission, background, playback and cleanup",

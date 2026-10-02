@@ -78,3 +78,5 @@ pnpm build:mp-weixin
 提交使用 `Local\JuyaV13ParallelGitCommit` 互斥锁，仅暂存上述 7 个自有文件，提交说明为 `fix(场景): 修复录音与学习操作的生命周期竞态`。未推送或部署；提交 SHA 可由 `git log -1 -- docs/figma-scene-followup.md` 查询。
 
 代码与浏览器状态复核已完成；开发音频 Range、正式发布修订与真实 OSS、微信开发者工具及真机麦克风/听感、安全区、生产验收仍由统筹组织。总台账由统筹按本文证据更新。
+
+后续统筹更新：开发音频 Range 已由小程序 API 876c75c 关闭，实际 HTTP 206 及 Chrome 第五句 20–25 秒定位、暂停继续和区间结束通过，详见 [复查集成](figma-followup-integration.md)。静音样本不计为正式试听或真机定位验收。
