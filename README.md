@@ -19,6 +19,7 @@ pnpm check
 pnpm test
 pnpm build:h5
 pnpm build:mp-weixin
+pnpm build:mp-weixin:local
 ```
 
 ## 运行配置
@@ -27,7 +28,7 @@ pnpm build:mp-weixin
 - `VITE_CLIENT_VERSION`：请求头中的客户端版本，默认 `1.3.0`。
 - `VITE_USE_MOCK_API=true`：仅在本地开发或视觉验收时显式启用契约 mock；生产构建不要开启。
 
-本地微信开发者工具调试默认读取 `.env.development`，连接小程序 API `http://127.0.0.1:8001`。管理后台 API 使用 `8000`，不包含 `/api/v1/home`。在微信开发者工具中开启“不校验合法域名”；真机调试需把地址改为电脑局域网地址并保留小程序 API 端口。
+本地微信开发者工具调试使用 `pnpm dev:mp-weixin`，或执行 `pnpm build:mp-weixin:local` 后导入 `dist/build/mp-weixin`。这两个命令都读取 `.env.development`，连接小程序 API `http://127.0.0.1:8001`。普通 `pnpm build:mp-weixin` 使用生产配置，不读取 `.env.development`。管理后台 API 使用 `8000`，不包含 `/api/v1/home`。在微信开发者工具中开启“不校验合法域名”；真机调试需把地址改为电脑局域网地址并保留小程序 API 端口。
 
 H5 开发时，浏览器通过 Vite 的同源 `/api/v1` 代理访问 `VITE_API_BASE_URL`，避免直接跨域请求。修改 `.env.development` 后需重启开发服务。生产构建和微信小程序直接使用配置的 API 地址。未登录直接访问真实首页接口返回 `401 ACCESS_TOKEN_REQUIRED`，这是认证要求。
 
@@ -43,3 +44,5 @@ H5 开发时，浏览器通过 Vite 的同源 `/api/v1` 代理访问 `VITE_API_B
 - `pnpm build:h5`：生成本地视觉验收产物；`tests/visual/visual-cases.ts` 固定 375×812、390×844、768×1024 三组视口和关键页面清单。
 
 微信开发者工具导入 `dist/build/mp-weixin` 后可做真机预览。需要 CLI 自动化时，请先在开发者工具的“设置 → 安全设置”中手动开启服务端口。
+
+如果 build 目录更新后仍请求旧地址或显示空白，在开发者工具中选择“清缓存 → 清除编译缓存”，然后重新编译。不要清除账号登录数据。微信 AppID 由 `src/manifest.json` 的 `mp-weixin.appid` 写入构建包；不要只修改生成的 `project.config.json`，否则下一次构建会覆盖它。
