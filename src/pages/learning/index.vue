@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
+import { computed } from 'vue'
 
 import AppState from '@/components/app-state/app-state.vue'
-import SurfaceCard from '@/components/surface-card/surface-card.vue'
 import AccessNotice from '@/features/learning/components/access-notice.vue'
+import EntryPageShell from '@/features/learning/components/entry-page-shell.vue'
+import EntrySummary from '@/features/learning/components/entry-summary.vue'
 import LearningPageHeading from '@/features/learning/components/learning-page-heading.vue'
 import SceneListSection from '@/features/learning/components/scene-list-section.vue'
 import { useLearningPage } from '@/features/learning/use-learning-page'
-import TabPageLayout from '@/layouts/tab-page-layout.vue'
-
 const {
   closeNotice,
   learning,
@@ -19,161 +19,165 @@ const {
   openReview,
   selectScene
 } = useLearningPage()
-
-/** 每次回到学习页时刷新目录，以服务端最新权益状态为准。 */
-function handleShow() {
+const isNew = computed(() => learning.sections.stage === 'NEW')
+const openTitles = computed(() =>
+  learning.catalog.items
+    .filter((scene) => scene.access === 'OPEN')
+    .map((scene) => scene.chinese_title)
+    .join(' · ')
+)
+/** 进入列表时读取最新的目录权限 */
+const handleShow = () => {
   void load()
 }
-
 onShow(handleShow)
 </script>
-
 <template>
-  <TabPageLayout active="learning">
-    <LearningPageHeading eyebrow="真实场景 · 自然表达" title="开始学习" />
-
-    <SurfaceCard
-      v-for="module in learning.sections.modules"
-      :key="module.public_id"
-      class="learning-page__module"
-      tone="module"
-    >
-      <view>
-        <text class="learning-page__module-label">学习模块</text>
-        <text class="learning-page__module-title">{{ module.title }}</text>
-      </view>
-      <text class="learning-page__module-key">{{ module.key }}</text>
-    </SurfaceCard>
-
+  <EntryPageShell active="learning">
+    <LearningPageHeading
+      eyebrow="从真实生活场景出发，轻松开口说英语。"
+      title="场景学习"
+      :large="!isNew"
+    />
     <AppState
       v-if="learning.sections.authorizationPending"
-      description="正在重新确认你的内容权限，请稍后重试。"
-      icon-label="权限确认中"
       title="学习内容暂不可用"
+      icon-label="权限确认中"
+      description="正在重新确认你的内容权限，请稍后重试。"
     />
-
-    <SceneListSection
-      title="当前学习"
-      action-label="继续上次进度"
-      :scenes="learning.sections.currentLearning"
-      @select="selectScene"
-    />
-    <SceneListSection
-      title="开放学习场景"
-      :action-label="`${learning.sections.openScenes.length}/3`"
-      :scenes="learning.sections.openScenes"
-      @select="selectScene"
-    />
-    <SceneListSection
-      title="已有权益内容"
-      action-label="查看权益"
-      :scenes="learning.sections.entitledScenes"
-      @select="selectScene"
-    />
-
-    <button v-if="learning.sections.openReview" class="learning-page__review" @click="openReview">
-      <view>
-        <text class="learning-page__review-title">开放场景复习</text>
-        <text class="learning-page__review-description">
-          {{ learning.sections.openReview.completedCount }} 个场景可随时复习
-        </text>
-      </view>
-      <text class="learning-page__review-action">进入</text>
-    </button>
-
-    <button
-      v-if="learning.sections.previewScenes.length > 0"
-      class="learning-page__explore"
-      @click="openExplore"
-    >
-      <text class="learning-page__explore-title">探索更多内容</text>
-      <text class="learning-page__explore-action">只读预览</text>
-    </button>
-
+    <template v-else-if="isNew">
+      <EntrySummary
+        class="open-summary"
+        label="开放学习"
+        :value="`${learning.sections.openScenes.length} 个场景`"
+        description="所有开放场景都可自由选择"
+      />
+      <SceneListSection
+        title="开放场景"
+        compact
+        :scenes="learning.sections.openScenes"
+        @select="selectScene"
+      />
+      <button class="primary-action" @click="openExplore">探索更多内容</button>
+    </template>
+    <template v-else>
+      <SceneListSection
+        title="继续学习"
+        :scenes="learning.sections.currentLearning"
+        @select="selectScene"
+      />
+      <SceneListSection
+        class="entitled-section"
+        title="已有学习权益"
+        :scenes="learning.sections.entitledScenes"
+        @select="selectScene"
+      />
+      <button
+        v-if="learning.sections.openReview"
+        class="entry-link review-link"
+        @click="openReview"
+      >
+        <view
+          ><text class="link-title">开放场景复习</text
+          ><text class="link-copy">{{ openTitles || '查看已学习的开放场景' }}</text></view
+        ><text class="link-arrow">›</text>
+      </button>
+      <button class="entry-link explore-link" @click="openExplore">
+        <view
+          ><text class="link-title">探索更多内容</text
+          ><text class="link-copy">查看其他系列简介</text></view
+        ><text class="link-arrow">›</text>
+      </button>
+    </template>
     <AccessNotice
       v-if="noticeVisible"
       :show-profile-action="learning.sections.showProfileAction"
       @close="closeNotice"
       @profile="openProfile"
     />
-  </TabPageLayout>
+  </EntryPageShell>
 </template>
-
 <style scoped lang="scss">
 @use '@/styles/tokens.scss' as tokens;
 
-.learning-page {
-  &__module {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 28rpx;
-    padding: 24rpx;
-  }
+.open-summary {
+  margin-top: 23px;
+}
 
-  &__module-label,
-  &__module-title {
+.entitled-section {
+  margin-top: 19px;
+}
+
+.primary-action {
+  width: 100%;
+  min-height: 46px;
+  margin: auto 0 0;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: tokens.$color-primary;
+  color: tokens.$color-white;
+  font-size: 14px;
+  line-height: 46px;
+}
+
+:deep(.scene-section.compact) {
+  margin-bottom: 30px;
+}
+
+.entry-link {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 17px 0 0;
+  padding: 11px 15px;
+  border: 1px solid tokens.$color-border;
+  border-radius: 16px;
+  background: tokens.$color-card;
+  color: tokens.$color-text;
+  text-align: left;
+  line-height: normal;
+
+  .link-title,
+  .link-copy {
     display: block;
+    overflow-wrap: anywhere;
   }
 
-  &__module-label {
+  .link-title {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 25px;
+  }
+
+  .link-copy {
+    margin-top: 1px;
     color: tokens.$color-text-muted;
-    font-size: 21rpx;
+    font-size: 12px;
+    line-height: 23px;
   }
 
-  &__module-title {
-    margin-top: 8rpx;
-    font-size: 30rpx;
-    font-weight: 700;
+  .link-arrow {
+    flex-shrink: 0;
+    font-size: 24px;
+    line-height: 30px;
   }
 
-  &__module-key {
-    padding: 10rpx 16rpx;
-    border-radius: tokens.$radius-pill;
-    background: rgb(255 255 255 / 45%);
-    color: tokens.$color-primary-strong;
-    font-size: 20rpx;
-    font-weight: 700;
+  &.review-link {
+    min-height: 83px;
+    margin-top: 22px;
+    padding: 13px 16px;
+    border: 0;
+    background: tokens.$color-module;
+
+    .link-copy {
+      margin-top: 4px;
+    }
   }
 
-  &__review,
-  &__explore {
-    display: flex;
-    width: 100%;
-    min-height: 108rpx;
-    align-items: center;
-    justify-content: space-between;
-    margin: 24rpx 0 0;
-    padding: 24rpx 28rpx;
-    border: 2rpx solid tokens.$color-border;
-    border-radius: tokens.$radius-medium;
-    background: rgb(255 255 255 / 66%);
-    color: tokens.$color-text;
-    text-align: left;
-  }
-
-  &__review-title,
-  &__review-description {
-    display: block;
-  }
-
-  &__review-title,
-  &__explore-title {
-    font-size: 30rpx;
-    font-weight: 700;
-  }
-
-  &__review-description {
-    margin-top: 6rpx;
-    color: tokens.$color-text-muted;
-    font-size: 21rpx;
-  }
-
-  &__review-action,
-  &__explore-action {
-    color: tokens.$color-primary;
-    font-size: 24rpx;
-    font-weight: 650;
+  &.explore-link {
+    min-height: 70px;
   }
 }
 </style>

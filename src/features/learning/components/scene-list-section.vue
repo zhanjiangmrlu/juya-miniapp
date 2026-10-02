@@ -2,84 +2,88 @@
 import SceneCard from '@/features/learning/components/scene-card.vue'
 
 import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
-
-defineProps<{
-  actionLabel?: string
-  scenes: SceneCardViewModel[]
-  title: string
-}>()
-
-const emit = defineEmits<{
-  action: []
-  select: [scene: SceneCardViewModel]
-}>()
-
-/** 将标题栏操作交给页面处理，组件不绑定具体业务路由。 */
-function handleAction() {
-  emit('action')
-}
-
-/** 将场景选择继续向页面透传。 */
-function handleSelect(scene: SceneCardViewModel) {
-  emit('select', scene)
-}
+withDefaults(
+  defineProps<{
+    actionLabel?: string
+    scenes: SceneCardViewModel[]
+    title: string
+    compact?: boolean
+    cardAction?: string
+  }>(),
+  { compact: false, actionLabel: undefined, cardAction: undefined }
+)
+const emit = defineEmits<{ action: []; select: [scene: SceneCardViewModel] }>()
+/** 转发标题操作，实际行为由页面提供 */
+const handleAction = () => emit('action')
+/** 转发选择，scene 为被点击的安全场景摘要 */
+const handleSelect = (scene: SceneCardViewModel) => emit('select', scene)
 </script>
-
 <template>
-  <view v-if="scenes.length > 0" class="scene-list-section">
-    <view class="scene-list-section__header">
-      <text class="scene-list-section__title">{{ title }}</text>
-      <button v-if="actionLabel" class="scene-list-section__action" @click="handleAction">
+  <view v-if="scenes.length" class="scene-section" :class="{ compact, untitled: !title }">
+    <view v-if="title" class="section-header"
+      ><text class="section-title">{{ title }}</text
+      ><button v-if="actionLabel" class="section-action" @click="handleAction">
         {{ actionLabel }}
-      </button>
-    </view>
-    <view class="scene-list-section__list">
-      <SceneCard
+      </button></view
+    >
+    <view class="scene-list"
+      ><SceneCard
         v-for="scene in scenes"
         :key="scene.sceneId"
         :scene="scene"
+        :compact="compact"
+        :action-label="cardAction"
         @select="handleSelect"
-      />
-    </view>
+    /></view>
   </view>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/mixins.scss' as mixins;
 @use '@/styles/tokens.scss' as tokens;
 
-.scene-list-section {
-  margin-top: tokens.$space-5;
+.scene-section {
+  margin-top: 16px;
 
-  &__header {
+  .section-header {
     display: flex;
-    min-height: 56rpx;
     align-items: center;
     justify-content: space-between;
-    gap: tokens.$space-3;
-    margin-bottom: tokens.$space-2;
+    margin-bottom: 4px;
+    gap: 8px;
   }
 
-  &__title {
-    font-size: 34rpx;
+  .section-title {
+    font-size: 18px;
     font-weight: 700;
+    line-height: 29px;
   }
 
-  &__action {
+  .section-action {
     margin: 0;
-    padding: 8rpx 0;
-    border: 0;
+    padding: 0;
+    color: tokens.$color-primary;
     background: transparent;
-    color: tokens.$color-primary-strong;
-    font-size: 25rpx;
+    font-size: 11px;
   }
 
-  &__list {
+  .scene-list {
     display: grid;
-    gap: tokens.$space-3;
+    gap: 10px;
+  }
 
-    @include mixins.tablet {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+  &.compact {
+    margin-top: 7px;
+
+    .section-title {
+      font-size: 17px;
+      line-height: 31px;
+    }
+  }
+
+  &.untitled {
+    margin-top: 0;
+
+    .scene-list {
+      gap: 19px;
     }
   }
 }

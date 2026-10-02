@@ -1,59 +1,44 @@
 <script setup lang="ts">
-defineProps<{
-  eyebrow: string
-  title: string
-}>()
+withDefaults(defineProps<{ eyebrow: string; title: string; large?: boolean }>(), { large: false })
 </script>
-
 <template>
-  <view class="learning-heading">
-    <view>
-      <text class="learning-heading__eyebrow">{{ eyebrow }}</text>
-      <text class="learning-heading__title">{{ title }}</text>
-    </view>
-    <view class="learning-heading__mark" aria-hidden="true"><view /></view>
+  <view class="learning-heading" :class="{ large }">
+    <text class="heading-title">{{ title }}</text>
+    <text class="heading-copy">{{ eyebrow }}</text>
   </view>
 </template>
-
 <style scoped lang="scss">
 @use '@/styles/tokens.scss' as tokens;
 
 .learning-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  &__eyebrow,
-  &__title {
+  .heading-title,
+  .heading-copy {
     display: block;
+    overflow-wrap: anywhere;
   }
 
-  &__eyebrow {
-    color: tokens.$color-primary-strong;
-    font-size: 23rpx;
-    font-weight: 650;
-  }
-
-  &__title {
-    margin-top: 6rpx;
-    font-family: Georgia, 'Noto Serif SC', serif;
-    font-size: 48rpx;
+  .heading-title {
+    font-size: 24px;
     font-weight: 700;
+    line-height: 36px;
   }
 
-  &__mark {
-    display: grid;
-    width: 76rpx;
-    height: 76rpx;
-    place-items: center;
-    border-radius: 50%;
-    background: rgb(255 255 255 / 78%);
+  .heading-copy {
+    margin-top: 4px;
+    color: tokens.$color-text-muted;
+    font-size: 12px;
+    line-height: 20px;
+  }
 
-    view {
-      width: 20rpx;
-      height: 20rpx;
-      border: 4rpx solid tokens.$color-primary;
-      transform: rotate(45deg);
+  &.large {
+    .heading-title {
+      font-size: 27px;
+      line-height: 42px;
+    }
+
+    .heading-copy {
+      font-size: 13px;
+      margin-top: 1px;
     }
   }
 }

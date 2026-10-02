@@ -1,115 +1,85 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ showProfileAction?: boolean }>(), {
-  showProfileAction: false
-})
-
-const emit = defineEmits<{
-  close: []
-  profile: []
-}>()
-
-/** 关闭提示并停留在当前学习页面。 */
-function handleClose() {
-  emit('close')
-}
-
-/** 请求前往资料页，是否展示该入口由服务端开关映射后的属性控制。 */
-function handleProfile() {
-  emit('profile')
-}
+withDefaults(defineProps<{ showProfileAction?: boolean }>(), { showProfileAction: false })
+const emit = defineEmits<{ close: []; profile: [] }>()
+/** 关闭提示，原页面和滚动位置保持不变 */
+const handleClose = () => emit('close')
+/** 进入服务端开关允许的联系资料流程 */
+const handleProfile = () => emit('profile')
 </script>
-
 <template>
   <view class="access-notice" role="dialog" aria-modal="true" aria-label="内容访问提示">
-    <view class="access-notice__panel">
-      <view class="access-notice__handle" aria-hidden="true" />
-      <text class="access-notice__badge">只读预览</text>
-      <text class="access-notice__title">当前账号暂未开通此内容</text>
-      <text class="access-notice__description">你仍可以继续学习已经开放的场景。</text>
-      <button class="access-notice__primary" @click="handleClose">知道了</button>
-      <button v-if="showProfileAction" class="access-notice__secondary" @click="handleProfile">
-        完善账号资料
+    <view class="notice-panel">
+      <text class="notice-title">当前账号暂未开通此内容</text>
+      <text class="notice-copy">你可以先查看部分内容，完整学习功能暂未开放。</text>
+      <button class="notice-primary" @click="handleClose">知道了</button>
+      <button v-if="showProfileAction" class="notice-secondary" @click="handleProfile">
+        前往我的，完善账号资料
       </button>
     </view>
   </view>
 </template>
-
 <style scoped lang="scss">
 @use '@/styles/tokens.scss' as tokens;
 
 .access-notice {
   position: fixed;
   z-index: 60;
+  inset: var(--entry-header-reserve, 78px) 0
+    calc(var(--entry-tab-reserve, 76px) + env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(34 55 46 / 48%);
-  inset: 0;
-  padding: tokens.$space-5;
+  padding: 20px 30px;
+  background: rgb(20 37 27 / 43%);
 
-  &__panel {
+  .notice-panel {
     width: 100%;
-    max-width: 600rpx;
-    padding: 16rpx 40rpx 40rpx;
-    border-radius: 48rpx;
-    background: #fff8e9;
+    max-width: 330px;
+    padding: 23px 22px 18px;
+    border-radius: 18px;
+    background: tokens.$color-card;
+    transform: translateY(-6px);
   }
 
-  &__handle {
-    width: 80rpx;
-    height: 8rpx;
-    margin: 0 auto 30rpx;
-    border-radius: tokens.$radius-pill;
-    background: #d8d4c8;
-  }
-
-  &__badge {
-    display: inline-block;
-    padding: 9rpx 16rpx;
-    border-radius: tokens.$radius-pill;
-    background: #e3effb;
-    color: #376d9b;
-    font-size: 22rpx;
-  }
-
-  &__title,
-  &__description {
+  .notice-title,
+  .notice-copy {
     display: block;
+    overflow-wrap: anywhere;
   }
 
-  &__title {
-    margin-top: 26rpx;
-    font-family: Georgia, 'Noto Serif SC', serif;
-    font-size: 38rpx;
+  .notice-title {
+    font-size: 19px;
     font-weight: 700;
+    line-height: 31px;
   }
 
-  &__description {
-    margin-top: 24rpx;
-    font-size: 28rpx;
-    line-height: 1.6;
+  .notice-copy {
+    min-height: 67px;
+    margin-top: 13px;
+    color: #617360;
+    font-size: 13px;
+    line-height: 20px;
   }
 
-  &__primary,
-  &__secondary {
+  .notice-primary {
     width: 100%;
-    min-height: 88rpx;
-    margin: 28rpx 0 0;
-    border-radius: tokens.$radius-medium;
-    font-size: 30rpx;
-    font-weight: 700;
-  }
-
-  &__primary {
+    min-height: 46px;
+    margin: 15px 0 0;
+    padding: 0 8px;
+    border-radius: 11px;
     background: tokens.$color-primary;
     color: tokens.$color-white;
+    font-size: 14px;
+    line-height: 46px;
   }
 
-  &__secondary {
-    margin-top: tokens.$space-2;
-    border: 2rpx solid tokens.$color-border;
-    background: tokens.$color-white;
-    color: tokens.$color-primary-strong;
+  .notice-secondary {
+    margin: 10px 0 0;
+    padding: 6px 0;
+    background: transparent;
+    color: tokens.$color-primary;
+    font-size: 12px;
+    line-height: 20px;
   }
 }
 </style>

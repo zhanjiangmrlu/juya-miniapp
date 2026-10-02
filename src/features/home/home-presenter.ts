@@ -31,7 +31,7 @@ const TASK_COPY: Record<TodayTask['kind'], Omit<TodayTaskViewModel, 'url'>> = {
   FAVORITE_REVIEW: {
     buttonLabel: '开始翻卡',
     description: '用一次轻量复习巩固收藏内容。',
-    eyebrow: '最多 10 张',
+    eyebrow: '不限张数',
     title: '收藏翻卡复习'
   },
   HISTORY_SCENE: {

@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import HomePageView from '@/features/home/components/home-page-view.vue'
+import HomeEntryPage from '@/features/home/components/home-entry-page.vue'
 </script>
-
-<template>
-  <HomePageView mode="first" />
-</template>
+<template><HomeEntryPage mode="first" /></template>

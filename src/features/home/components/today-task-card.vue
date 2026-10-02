@@ -7,10 +7,7 @@ import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
 const props = defineProps<{ scene?: SceneCardViewModel; task: TodayTaskViewModel | null }>()
 
 const emit = defineEmits<{ start: [] }>()
-const imageUrl = computed(() => {
-  if (props.scene?.imageUrl) return props.scene.imageUrl
-  return props.scene?.title === 'At the Coffee Shop' ? '/static/home/coffee-home.png' : undefined
-})
+const imageUrl = computed(() => props.scene?.imageUrl)
 
 /** 将任务启动操作交给页面统一执行导航 */
 const handleStart = () => {

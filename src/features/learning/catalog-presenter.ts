@@ -7,6 +7,8 @@ import type {
 export interface SceneCardViewModel {
   accessLabel: string
   canOpen: boolean
+  category?: string
+  tags?: string[]
   chineseTitle: string
   description: string
   entryUrl: string | null
@@ -34,13 +36,14 @@ export interface CatalogPresentationInput {
   modules: LearningModule[]
 }
 
-/** 判断场景是否已开始学习，进度与服务端状态任一成立即可。 */
-function hasStarted(scene: SceneSummary): boolean {
-  return (scene.progress ?? 0) > 0 || scene.status === 'IN_PROGRESS'
-}
+/** 判断未完成的学习进度，scene 为后台场景摘要 */
+const hasStarted = (scene: SceneSummary): boolean =>
+  ((scene.progress ?? 0) > 0 || scene.status === 'IN_PROGRESS') &&
+  (scene.progress ?? 0) < 100 &&
+  scene.status !== 'COMPLETED'
 
-/** 将服务端摘要收敛为场景卡模型，并对预览内容移除正文入口。 */
-function presentScene(scene: SceneSummary): SceneCardViewModel {
+/** 将摘要映射为卡片，scene 为后台提供的安全展示信息 */
+const presentScene = (scene: SceneSummary): SceneCardViewModel => {
   const canOpen = scene.access === 'OPEN' || scene.access === 'FORMAL' || scene.access === 'LIMITED'
   const accessLabel =
     scene.access === 'OPEN'
@@ -54,6 +57,8 @@ function presentScene(scene: SceneSummary): SceneCardViewModel {
   return {
     accessLabel,
     canOpen,
+    category: scene.category,
+    tags: scene.tags,
     chineseTitle: scene.chinese_title,
     description: scene.description ?? '可查看主题、难度与简介',
     entryUrl: canOpen ? `/pages/scene/detail?sceneId=${encodeURIComponent(scene.scene_id)}` : null,
@@ -65,10 +70,8 @@ function presentScene(scene: SceneSummary): SceneCardViewModel {
   }
 }
 
-/**
- * 按服务端顺序生成目录分区，仅做访问级别映射和去重，不在客户端扩大任何权益。
- */
-export function presentCatalog(input: CatalogPresentationInput): CatalogSections {
+/** 按后台顺序生成分区，input 包含启用模块及当前账号目录 */
+export const presentCatalog = (input: CatalogPresentationInput): CatalogSections => {
   const modules = input.modules.filter(
     (module) => module.enabled && module.key === 'scene_learning'
   )
@@ -77,10 +80,15 @@ export function presentCatalog(input: CatalogPresentationInput): CatalogSections
   const entitled = visible.filter(
     (scene) => scene.access === 'FORMAL' || scene.access === 'LIMITED'
   )
-  const hasEntitlement = entitled.length > 0
-  const openSceneIds = new Set(open.map((scene) => scene.scene_id))
+  const hasEntitlement =
+    entitled.length > 0 ||
+    visible.some(
+      (scene) =>
+        scene.access !== 'OPEN' && ((scene.progress ?? 0) > 0 || scene.status === 'IN_PROGRESS')
+    )
+  const accessibleIds = new Set([...open, ...entitled].map((scene) => scene.scene_id))
   const preview = visible.filter(
-    (scene) => scene.access === 'PREVIEW' && !openSceneIds.has(scene.scene_id)
+    (scene) => scene.access === 'PREVIEW' && !accessibleIds.has(scene.scene_id)
   )
 
   return {
