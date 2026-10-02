@@ -33,14 +33,18 @@ const handleStart = () => {
           <text>{{ scene.series }}</text>
         </view>
         <view class="scene-copy">
-          <text class="series-tag">{{ scene.series }}</text>
+          <view class="series-tag"
+            ><text class="series-label">{{ scene.series }}</text></view
+          >
           <text class="scene-title">{{ scene.chineseTitle }}</text>
           <text class="english-title">{{ scene.title }}</text>
           <text class="progress-copy">{{ task.eyebrow }} · {{ scene.progress }}%</text>
         </view>
       </view>
       <view v-else class="task-fallback">
-        <text class="series-tag">{{ task.eyebrow }}</text>
+        <view class="series-tag"
+          ><text class="series-label">{{ task.eyebrow }}</text></view
+        >
         <text class="scene-title">{{ task.title }}</text>
         <text class="task-description">{{ task.description }}</text>
       </view>
@@ -55,10 +59,13 @@ const handleStart = () => {
       >
         <view class="progress-fill" :style="{ width: `${scene.progress}%` }" />
       </view>
-      <button class="task-button" @click="handleStart">{{ task.buttonLabel }} ›</button>
+      <button class="task-button" @click="handleStart">
+        <text class="button-copy">{{ task.buttonLabel }}</text>
+        <text class="button-arrow" aria-hidden="true">›</text>
+      </button>
     </template>
     <view v-else class="task-fallback">
-      <text class="series-tag">今日安排</text>
+      <view class="series-tag"><text class="series-label">今日安排</text></view>
       <text class="scene-title">连接后获取今日任务</text>
       <text class="task-description">学习记录只会在身份建立成功后生成。</text>
     </view>
@@ -69,24 +76,25 @@ const handleStart = () => {
 @use '@/styles/tokens.scss' as tokens;
 
 .task-card {
-  min-height: 251px;
-  padding: 13px 13px 27px;
-  border: 1px solid tokens.$home-card-border;
-  border-radius: 16px;
+  color: tokens.$home-ink;
+  min-height: tokens.home-size(251);
+  padding: tokens.home-size(13) tokens.home-size(13) tokens.home-size(27);
+  border: tokens.home-size(1) solid tokens.$home-card-border;
+  border-radius: tokens.home-size(16);
   background: tokens.$home-card;
 
   .task-scene {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: tokens.home-size(12);
   }
 
   .scene-image {
-    width: 110px;
-    height: 117px;
+    width: tokens.home-size(110);
+    height: tokens.home-size(117);
     flex-shrink: 0;
     overflow: hidden;
-    border-radius: 12px;
+    border-radius: tokens.home-size(12);
   }
 
   .image-placeholder {
@@ -95,7 +103,7 @@ const handleStart = () => {
     justify-content: center;
     background: tokens.$home-module;
     color: tokens.$home-muted;
-    font-size: 13px;
+    font-size: tokens.home-size(13);
   }
 
   .scene-copy {
@@ -107,15 +115,15 @@ const handleStart = () => {
 
   .series-tag {
     display: inline-flex;
-    min-height: 24px;
+    min-height: tokens.home-size(24);
     align-items: center;
     justify-content: center;
-    padding: 0 14px;
-    border-radius: 12px;
+    padding: 0 tokens.home-size(14);
+    border-radius: tokens.home-size(12);
     background: tokens.$home-module;
-    font-size: 11px;
+    font-size: tokens.home-size(11);
     font-weight: 500;
-    line-height: 20px;
+    line-height: tokens.home-size(20);
     align-self: flex-start;
   }
 
@@ -128,63 +136,65 @@ const handleStart = () => {
   }
 
   .scene-title {
-    margin-top: 8px;
-    font-size: 20px;
+    @include tokens.home-glyph;
+
+    margin-top: tokens.home-size(8);
+    font-size: tokens.home-size(20);
     font-weight: 700;
-    line-height: 32px;
+    line-height: tokens.home-size(32);
   }
 
   .english-title {
-    margin-top: 1px;
+    @include tokens.home-glyph(5);
+
+    margin-top: tokens.home-size(1);
     color: tokens.$home-muted;
-    font-size: 13px;
+    font-size: tokens.home-size(13);
     font-weight: 500;
-    line-height: 25px;
+    line-height: tokens.home-size(25);
   }
 
   .progress-copy {
-    margin-top: 5px;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 22px;
-  }
+    @include tokens.home-glyph(5);
 
-  @media (width <= 375px) {
-    min-height: 247px;
-    padding-bottom: 23px;
+    margin-top: tokens.home-size(5);
+    font-size: tokens.home-size(12);
+    font-weight: 500;
+    line-height: tokens.home-size(22);
   }
 
   .progress-track {
-    height: 6px;
+    height: tokens.home-size(6);
     overflow: hidden;
-    margin-top: 14px;
-    border-radius: 3px;
+    margin-top: tokens.home-size(14);
+    border-radius: tokens.home-size(3);
     background: tokens.$home-track;
   }
 
   .progress-fill {
-    height: 6px;
-    border-radius: 3px;
+    height: tokens.home-size(6);
+    border-radius: tokens.home-size(3);
     background: tokens.$home-progress;
   }
 
   .task-button {
+    gap: tokens.home-size(10);
     display: flex;
     width: 100%;
-    min-height: 53px;
+    min-height: tokens.home-size(53);
     align-items: center;
     justify-content: center;
     margin-right: 0;
     margin-left: 0;
-    margin-top: 19px;
-    padding: 0 12px;
-    border: 1px solid tokens.$home-border;
-    border-radius: 12px;
+    margin-top: tokens.home-size(19);
+    padding: 0 tokens.home-size(12);
+    border: tokens.home-size(1) solid tokens.$home-border;
+    border-radius: tokens.home-size(12);
     background: tokens.$home-primary;
     color: tokens.$color-white;
-    font-size: 15px;
+    font-size: tokens.home-size(15);
     font-weight: 700;
-    line-height: 28px;
+    line-height: tokens.home-size(28);
 
     &::after {
       border: 0;
@@ -192,14 +202,22 @@ const handleStart = () => {
   }
 
   .task-fallback {
-    min-height: 136px;
+    min-height: tokens.home-size(136);
   }
 
   .task-description {
-    margin-top: 12px;
+    @include tokens.home-glyph(5);
+
+    margin-top: tokens.home-size(12);
     color: tokens.$home-muted;
-    font-size: 13px;
-    line-height: 22px;
+    font-size: tokens.home-size(13);
+    line-height: tokens.home-size(22);
+  }
+
+  .series-label,
+  .button-copy,
+  .button-arrow {
+    @include tokens.home-glyph(3);
   }
 }
 </style>

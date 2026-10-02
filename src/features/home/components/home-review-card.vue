@@ -11,7 +11,7 @@ function handleReview() {
   <button class="review-card" @click="handleReview">
     <view class="review-copy">
       <text class="review-title">开始复习</text>
-      <text class="review-description">词汇银行与语块银行 · 收藏持续保留</text>
+      <text class="review-description">{{ '词汇银行与语块银行  ·  收藏持续保留' }}</text>
     </view>
     <text class="review-arrow" aria-hidden="true">›</text>
   </button>
@@ -23,13 +23,13 @@ function handleReview() {
 .review-card {
   display: flex;
   width: 100%;
-  min-height: 83px;
-  align-items: center;
+  min-height: tokens.home-size(83);
+  align-items: flex-start;
   justify-content: space-between;
-  margin: 16px 0 0;
-  padding: 13px 15px 17px;
-  border: 1px solid tokens.$home-card-border;
-  border-radius: 16px;
+  margin: tokens.home-size(16) 0 0;
+  padding: tokens.home-size(13) tokens.home-size(11) tokens.home-size(17) tokens.home-size(15);
+  border: tokens.home-size(1) solid tokens.$home-card-border;
+  border-radius: tokens.home-size(16);
   background: tokens.$home-card;
   color: tokens.$home-ink;
   line-height: normal;
@@ -49,27 +49,30 @@ function handleReview() {
   }
 
   .review-title {
-    font-size: 16px;
+    @include tokens.home-glyph;
+
+    font-size: tokens.home-size(16);
     font-weight: 700;
-    line-height: 26px;
+    line-height: tokens.home-size(26);
   }
 
   .review-description {
-    margin-top: 3px;
+    @include tokens.home-glyph;
+
+    margin-top: tokens.home-size(3);
     color: tokens.$home-muted;
-    font-size: 12px;
-    line-height: 20px;
+    font-size: tokens.home-size(12);
+    line-height: tokens.home-size(20);
+    white-space: pre-wrap;
   }
 
   .review-arrow {
-    margin-left: 8px;
-    font-size: 24px;
-    line-height: 28px;
-  }
-
-  @media (width <= 375px) {
-    min-height: 79px;
-    padding-bottom: 13px;
+    width: tokens.home-size(22);
+    flex-shrink: 0;
+    margin-top: tokens.home-size(11);
+    margin-left: tokens.home-size(8);
+    font-size: tokens.home-size(24);
+    line-height: tokens.home-size(28);
   }
 }
 </style>

@@ -33,13 +33,13 @@ withDefaults(
     background: tokens.$home-page;
     color: tokens.$home-ink;
   }
+}
 
-  .tab-content {
-    padding-bottom: calc(132rpx + env(safe-area-inset-bottom));
+.tab-content {
+  padding-bottom: calc(132rpx + env(safe-area-inset-bottom));
 
-    &.home-content {
-      padding-bottom: calc(103px + env(safe-area-inset-bottom));
-    }
+  &.home-content {
+    padding-bottom: calc(tokens.home-size(103) + env(safe-area-inset-bottom));
   }
 }
 </style>

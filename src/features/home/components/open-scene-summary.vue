@@ -15,10 +15,11 @@ defineProps<{ count: number | null }>()
 @use '@/styles/tokens.scss' as tokens;
 
 .open-scene-summary {
-  min-height: 64px;
-  margin-top: 15px;
-  padding: 10px 16px 8px;
-  border-radius: 16px;
+  color: tokens.$home-ink;
+  min-height: tokens.home-size(64);
+  margin-top: tokens.home-size(15);
+  padding: tokens.home-size(10) tokens.home-size(16) tokens.home-size(8);
+  border-radius: tokens.home-size(16);
   background: tokens.$home-module;
 
   .summary-label,
@@ -27,20 +28,20 @@ defineProps<{ count: number | null }>()
   }
 
   .summary-label {
-    font-size: 12px;
+    @include tokens.home-glyph;
+
+    font-size: tokens.home-size(12);
     font-weight: 500;
-    line-height: 20px;
+    line-height: tokens.home-size(20);
   }
 
   .scene-count {
-    margin-top: 1px;
-    font-size: 15px;
-    font-weight: 700;
-    line-height: 25px;
-  }
+    @include tokens.home-glyph;
 
-  @media (width <= 375px) {
-    margin-top: 12px;
+    margin-top: tokens.home-size(1);
+    font-size: tokens.home-size(15);
+    font-weight: 700;
+    line-height: tokens.home-size(25);
   }
 }
 </style>

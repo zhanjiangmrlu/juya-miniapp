@@ -72,16 +72,17 @@ function selectTab(route: string) {
   grid-template-columns: repeat(4, 1fr);
 
   &.home-theme {
-    min-height: 76px;
-    padding: 6px 18px max(19px, env(safe-area-inset-bottom));
-    border-top: 1px solid tokens.$home-border;
+    min-height: tokens.home-size(76);
+    padding: tokens.home-size(6) tokens.home-size(18)
+      max(tokens.home-size(19), env(safe-area-inset-bottom));
+    border-top: tokens.home-size(1) solid tokens.$home-border;
     background: #fffcf5;
-    gap: 9px;
+    gap: tokens.home-size(9);
   }
 
   .design-icon {
-    width: 20px;
-    height: 20px;
+    width: tokens.home-size(20);
+    height: tokens.home-size(20);
     flex-shrink: 0;
   }
 
@@ -104,10 +105,10 @@ function selectTab(route: string) {
     }
 
     &.home-item {
-      min-height: 50px;
+      min-height: tokens.home-size(50);
       justify-content: flex-start;
-      padding: 6px 0 0;
-      border-radius: 12px;
+      padding: tokens.home-size(6) 0 0;
+      border-radius: tokens.home-size(12);
       color: tokens.$home-muted;
       font-weight: 500;
     }
@@ -142,9 +143,11 @@ function selectTab(route: string) {
     font-size: 22rpx;
 
     &.home-label {
-      margin-top: 4px;
-      font-size: 11px;
-      line-height: 20px;
+      @include tokens.home-glyph;
+
+      margin-top: tokens.home-size(4);
+      font-size: tokens.home-size(11);
+      line-height: tokens.home-size(20);
     }
   }
 }

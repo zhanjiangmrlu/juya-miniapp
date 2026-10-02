@@ -15,6 +15,21 @@ defineProps<{
 
 const emit = defineEmits<{ startTask: []; openReview: [] }>()
 
+let contentTopInset: number | undefined
+// #ifdef MP-WEIXIN
+// 为真实系统状态栏和底部安全区预留空间，避免最后一张卡片被导航遮住
+const windowInfo = uni.getWindowInfo()
+const designScale = windowInfo.windowWidth / 390
+const safeBottom =
+  windowInfo.screenHeight - (windowInfo.safeArea?.bottom ?? windowInfo.screenHeight)
+const footerHeight = 57 * designScale + Math.max(19 * designScale, safeBottom)
+const contentOverflow = Math.max(
+  0,
+  (windowInfo.statusBarHeight ?? 20) + 719 * designScale + footerHeight - windowInfo.windowHeight
+)
+contentTopInset = Math.max(8 * designScale, 20 * designScale - contentOverflow)
+// #endif
+
 /** 启动首页今日任务。 */
 function handleStartTask() {
   emit('startTask')
@@ -27,7 +42,10 @@ function handleReview() {
 </script>
 
 <template>
-  <view class="home-dashboard">
+  <view
+    class="home-dashboard"
+    :style="contentTopInset === undefined ? undefined : { paddingTop: `${contentTopInset}px` }"
+  >
     <text class="greeting">{{ view.salutation }}</text>
     <text class="subtitle">每天一点，让英语自然融入生活。</text>
     <StreakCard :checkins="view.checkins" />
@@ -42,10 +60,11 @@ function handleReview() {
 @use '@/styles/tokens.scss' as tokens;
 
 .home-dashboard {
+  color: tokens.$home-ink;
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
-  padding: 20px 20px 0;
+  padding: tokens.home-size(20) tokens.home-size(20) 0;
 
   .greeting,
   .subtitle,
@@ -54,31 +73,29 @@ function handleReview() {
   }
 
   .greeting {
-    font-size: 28px;
+    @include tokens.home-glyph(5);
+
+    font-size: tokens.home-size(28);
     font-weight: 700;
-    line-height: 42px;
+    line-height: tokens.home-size(42);
     overflow-wrap: anywhere;
   }
 
   .subtitle {
+    @include tokens.home-glyph(5);
+
     color: tokens.$home-muted;
-    font-size: 13px;
-    line-height: 25px;
+    font-size: tokens.home-size(13);
+    line-height: tokens.home-size(25);
   }
 
   .task-heading {
-    margin: 16px 0 7px;
-    font-size: 20px;
+    @include tokens.home-glyph;
+
+    margin: tokens.home-size(16) 0 tokens.home-size(7);
+    font-size: tokens.home-size(20);
     font-weight: 700;
-    line-height: 30px;
-  }
-
-  @media (width <= 375px) {
-    padding-top: 16px;
-
-    .task-heading {
-      margin-top: 12px;
-    }
+    line-height: tokens.home-size(30);
   }
 }
 </style>

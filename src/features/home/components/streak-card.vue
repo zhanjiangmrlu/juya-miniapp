@@ -18,17 +18,18 @@ defineProps<{ checkins: CheckinSummary | null }>()
 @use '@/styles/tokens.scss' as tokens;
 
 .streak-card {
+  color: tokens.$home-ink;
   display: flex;
-  min-height: 82px;
+  min-height: tokens.home-size(82);
   align-items: flex-end;
-  margin-top: 12px;
-  padding: 14px 18px 10px;
-  border-radius: 16px;
+  margin-top: tokens.home-size(12);
+  padding: tokens.home-size(14) tokens.home-size(18) tokens.home-size(10);
+  border-radius: tokens.home-size(16);
   background: tokens.$home-streak;
-  gap: 12px;
+  gap: tokens.home-size(12);
 
   .streak-summary {
-    min-width: 113px;
+    min-width: tokens.home-size(113);
     flex-shrink: 0;
   }
 
@@ -38,22 +39,28 @@ defineProps<{ checkins: CheckinSummary | null }>()
   }
 
   .streak-label {
-    font-size: 13px;
+    @include tokens.home-glyph;
+
+    font-size: tokens.home-size(13);
     font-weight: 500;
-    line-height: 22px;
+    line-height: tokens.home-size(22);
   }
 
   .streak-days {
-    font-size: 26px;
+    @include tokens.home-glyph(3);
+
+    font-size: tokens.home-size(26);
     font-weight: 700;
-    line-height: 36px;
+    line-height: tokens.home-size(36);
   }
 
   .encouragement {
-    padding-bottom: 3px;
+    @include tokens.home-glyph;
+
+    padding-bottom: tokens.home-size(3);
     color: tokens.$home-muted;
-    font-size: 11px;
-    line-height: 22px;
+    font-size: tokens.home-size(11);
+    line-height: tokens.home-size(22);
   }
 }
 </style>
