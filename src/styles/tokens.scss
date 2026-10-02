@@ -24,6 +24,19 @@ $radius-pill: 999rpx;
 $shadow-card: 0 12rpx 36rpx rgb(23 63 51 / 8%);
 $safe-area-bottom: env(safe-area-inset-bottom);
 
+// 首页设计稿 M01 的独立色板，其他页面继续使用原有主题。
+$home-page: #f7f1e3;
+$home-ink: #254733;
+$home-muted: #748271;
+$home-border: #dce8d5;
+$home-card-border: #d6dfc9;
+$home-card: #fffdf7;
+$home-streak: #eaf1e2;
+$home-module: #e2eed9;
+$home-primary: #4e7f3b;
+$home-progress: #70a75d;
+$home-track: #dde9d5;
+
 @mixin css-variables {
   --color-page-primary: #{$color-page-primary};
   --color-page-primary-glow: #{$color-page-primary-glow};

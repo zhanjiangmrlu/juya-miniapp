@@ -1,5 +1,6 @@
 import { formatBeijingDate, getBeijingGreeting } from '@/shared/utils/beijing-time'
 
+import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
 import type { HomeResponse, TodayTask } from '@/shared/contracts/home'
 import type { UserProfile } from '@/shared/contracts/profile'
 
@@ -50,6 +51,15 @@ const TASK_COPY: Record<TodayTask['kind'], Omit<TodayTaskViewModel, 'url'>> = {
 /** 对查询参数进行编码，确保任务标识可以安全进入小程序路由。 */
 function queryValue(value: string): string {
   return encodeURIComponent(value)
+}
+
+/** 为任务卡匹配真实目标，防止推荐场景与点击后打开的任务不一致。 */
+export function resolveTaskScene(
+  task: TodayTask | null,
+  scenes: SceneCardViewModel[]
+): SceneCardViewModel | undefined {
+  if (!task?.target_id || task.kind === 'FAVORITE_REVIEW') return undefined
+  return scenes.find((scene) => scene.sceneId === task.target_id && scene.canOpen)
 }
 
 /** 将服务端今日任务转换为唯一且可直接执行的页面入口。 */

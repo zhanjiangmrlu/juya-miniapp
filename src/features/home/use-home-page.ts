@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 
+import { resolveTaskScene } from '@/features/home/home-presenter'
 import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 import { useHomeStore } from '@/stores/home'
@@ -14,6 +15,18 @@ export function useHomePage() {
   const runtime = getRuntimeServices()
   const featuredScene = computed(
     () => learning.sections.openScenes[0] ?? learning.sections.currentLearning[0]
+  )
+  const taskScene = computed(() =>
+    resolveTaskScene(home.data?.today_task ?? null, [
+      ...learning.sections.currentLearning,
+      ...learning.sections.openScenes,
+      ...learning.sections.entitledScenes
+    ])
+  )
+  const openSceneCount = computed(() =>
+    learning.error || !home.data
+      ? null
+      : learning.catalog.items.filter((scene) => scene.access === 'OPEN').length
   )
 
   /** 并行刷新首页和目录摘要，二者失败状态各自收敛。 */
@@ -38,5 +51,5 @@ export function useHomePage() {
     await load()
   }
 
-  return { featuredScene, home, load, openScene, retry, startTask }
+  return { featuredScene, home, load, openScene, openSceneCount, retry, startTask, taskScene }
 }

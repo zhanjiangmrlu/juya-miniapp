@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
+import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
 import type { HomeResponse, TodayTask } from '@/shared/contracts/home'
 import type { UserProfile } from '@/shared/contracts/profile'
 
-import { presentHome, resolveTodayTask } from './home-presenter'
+import { presentHome, resolveTaskScene, resolveTodayTask } from './home-presenter'
 
 const profile: UserProfile = {
   avatar_url: null,
@@ -60,5 +61,41 @@ describe('resolveTodayTask', () => {
     ]
   ])('为 $kind 生成稳定目标路由', (task, url) => {
     expect(resolveTodayTask(task)?.url).toBe(url)
+  })
+})
+
+describe('首页任务场景展示', () => {
+  const coffee: SceneCardViewModel = {
+    accessLabel: '开放学习场景',
+    canOpen: true,
+    chineseTitle: '在咖啡店',
+    description: '',
+    entryUrl: '/pages/scene/detail?sceneId=coffee',
+    progress: 68,
+    sceneId: 'coffee',
+    series: '日常英语',
+    title: 'At the Coffee Shop'
+  }
+
+  it('任务卡展示任务实际目标的标题与进度，不使用目录第一项', () => {
+    const scenes = [{ ...coffee, sceneId: 'another', progress: 0 }, coffee]
+    expect(
+      resolveTaskScene({ card_ids: [], kind: 'CONTINUE_SCENE', target_id: 'coffee' }, scenes)
+    ).toEqual(coffee)
+  })
+
+  it('目标不存在、无权限或收藏任务时不展示无关场景', () => {
+    expect(
+      resolveTaskScene({ card_ids: [], kind: 'NEW_SCENE', target_id: 'missing' }, [coffee])
+    ).toBeUndefined()
+    expect(
+      resolveTaskScene({ card_ids: [], kind: 'CONTINUE_SCENE', target_id: 'coffee' }, [
+        { ...coffee, canOpen: false }
+      ])
+    ).toBeUndefined()
+    expect(
+      resolveTaskScene({ card_ids: ['card'], kind: 'FAVORITE_REVIEW', target_id: null }, [coffee])
+    ).toBeUndefined()
+    expect(resolveTaskScene(null, [coffee])).toBeUndefined()
   })
 })
