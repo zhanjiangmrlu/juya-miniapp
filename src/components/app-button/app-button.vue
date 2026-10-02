@@ -19,8 +19,8 @@ const emit = defineEmits<{
   press: []
 }>()
 
-/** 在禁用或处理中阻止重复操作，其余点击统一转换为 press 事件。 */
-function handlePress() {
+/** 在禁用或处理中阻止重复操作，其余点击统一转换为 press 事件 */
+const handlePress = () => {
   if (props.disabled || props.loading) {
     return
   }
@@ -48,13 +48,13 @@ function handlePress() {
 
 .app-button {
   display: inline-flex;
-  min-height: 88rpx;
+  min-height: 46px;
   align-items: center;
   justify-content: center;
   margin: 0;
-  padding: 20rpx 32rpx;
-  border-radius: tokens.$radius-medium;
-  font-size: 30rpx;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 15px;
   font-weight: 700;
   line-height: 1.2;
 

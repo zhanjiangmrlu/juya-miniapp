@@ -22,6 +22,28 @@ function createTransport(
 }
 
 describe('HTTP client', () => {
+  it('身份建立完成后读取令牌，再发送受保护请求', async () => {
+    let token: string | undefined
+    const transport = createTransport(async (request) => ({
+      data: request.headers.Authorization,
+      headers: {},
+      status: 200
+    }))
+    const client = createHttpClient({
+      baseUrl: 'https://api.example.test',
+      clientVersion: '1.3',
+      session: {
+        clear: vi.fn(),
+        getAccessToken: () => token,
+        refresh: vi.fn(),
+        ensureAuthenticated: async () => {
+          token = 'new-token'
+        }
+      },
+      transport
+    })
+    expect(await client.get('/api/v1/me')).toBe('Bearer new-token')
+  })
   it('附加认证、请求标识、客户端版本和默认超时', async () => {
     const transport = createTransport(async (request) => ({
       data: request,

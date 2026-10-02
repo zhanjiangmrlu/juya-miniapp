@@ -21,37 +21,26 @@ function selectTab(route: string) {
 </script>
 
 <template>
-  <view
-    class="tab-bar"
-    :class="{ 'home-theme': appearance === 'home' }"
-    role="navigation"
-    aria-label="主导航"
-  >
+  <view class="tab-bar" :class="{ 'home-theme': true }" role="navigation" aria-label="主导航">
     <button
       v-for="tab in tabs"
       :key="tab.key"
       class="tab-item"
       :class="{
         active: active === tab.key,
-        'home-item': appearance === 'home',
-        'active-home': appearance === 'home' && active === tab.key
+        'home-item': true,
+        'active-home': active === tab.key
       }"
       :aria-current="active === tab.key ? 'page' : undefined"
       @click="selectTab(tab.route)"
     >
       <image
-        v-if="appearance === 'home'"
         class="design-icon"
         :src="`/static/home/tab-${tab.key}.svg`"
         mode="aspectFit"
         aria-hidden="true"
       />
-      <view v-else class="tab-icon" aria-hidden="true">
-        <view class="icon-core" />
-      </view>
-      <text class="tab-label" :class="{ 'home-label': appearance === 'home' }">{{
-        tab.label
-      }}</text>
+      <text class="tab-label" :class="{ 'home-label': true }">{{ tab.label }}</text>
     </button>
   </view>
 </template>

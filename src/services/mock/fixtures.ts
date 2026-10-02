@@ -18,7 +18,8 @@ export const MOCK_FIXTURES = {
         scene_id: 'scene-castle',
         series: '日常英语',
         tags: ['开放学习场景'],
-        title: 'Discussing the Castle Exhibit'
+        title: 'Discussing the Castle Exhibit',
+        trial_sentence: 'What do you think of the castle exhibit?'
       },
       {
         access: 'OPEN',
@@ -28,7 +29,8 @@ export const MOCK_FIXTURES = {
         scene_id: 'scene-breakfast',
         series: '日常英语',
         tags: ['开放学习场景'],
-        title: 'Ordering Breakfast'
+        title: 'Ordering Breakfast',
+        trial_sentence: "I'd like some breakfast, please."
       },
       {
         access: 'OPEN',
@@ -38,7 +40,8 @@ export const MOCK_FIXTURES = {
         scene_id: 'scene-coffee-shop',
         series: '日常英语',
         tags: ['开放学习场景'],
-        title: 'At the Coffee Shop'
+        title: 'At the Coffee Shop',
+        trial_sentence: 'Could I get a latte, please?'
       },
       {
         access: 'PREVIEW',

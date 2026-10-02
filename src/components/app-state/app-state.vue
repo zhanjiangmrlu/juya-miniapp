@@ -1,14 +1,14 @@
 <script setup lang="ts">
 defineProps<{
   description: string
-  iconLabel: string
+  iconLabel?: string
   title: string
 }>()
 </script>
 
 <template>
   <view class="app-state" role="status">
-    <view class="app-state__icon" role="img" :aria-label="iconLabel">
+    <view class="app-state__icon" role="img" :aria-label="iconLabel || title">
       <slot name="icon">
         <view class="app-state__icon-mark" />
       </slot>

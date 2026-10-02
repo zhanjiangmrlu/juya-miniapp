@@ -10,23 +10,23 @@
   transform: translateY(home-size(-$offset));
 }
 
-$color-page-primary: #f7f1e4;
+$color-page-primary: #f7f1e3;
 $color-page-primary-glow: #e4f0df;
-$color-page-secondary: #f8f1e2;
-$color-module: #e3efe6;
-$color-card: #f8faf5;
-$color-border: #c9ded1;
-$color-primary: #2f7d61;
-$color-primary-strong: #1d6049;
-$color-text: #173f33;
-$color-text-muted: #64796f;
+$color-page-secondary: #f7f1e3;
+$color-module: #e2eed9;
+$color-card: #fffdf7;
+$color-border: #d6dfc9;
+$color-primary: #4e7f3b;
+$color-primary-strong: #4e7f3b;
+$color-text: #254733;
+$color-text-muted: #748271;
 $color-danger: #bd5f59;
 $color-warning: #c78138;
 $color-white: #fff;
 $space-1: 8rpx;
 $space-2: 16rpx;
 $space-3: 24rpx;
-$space-4: 32rpx;
+$space-4: home-size(20);
 $space-5: 40rpx;
 $space-6: 48rpx;
 $radius-small: 12rpx;

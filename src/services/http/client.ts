@@ -8,6 +8,7 @@ import {
   type TransportRequest
 } from './types'
 export interface SessionAdapter {
+  ensureAuthenticated?(): Promise<void>
   clear(): void
   getAccessToken(): string | undefined
   refresh(): Promise<string | undefined>
@@ -32,35 +33,36 @@ export interface HttpClientOptions {
 }
 
 /**
- * 创建统一 HTTP 客户端，负责认证头、幂等键、请求追踪、GET 重试和单飞刷新。
+ * 创建统一 HTTP 客户端，options 提供传输端口、会话状态与请求标识策略
  */
-export function createHttpClient(options: HttpClientOptions): HttpClient {
+export const createHttpClient = (options: HttpClientOptions): HttpClient => {
   const idFactory = options.idFactory ?? createRequestId
   let refreshPromise: Promise<string | undefined> | undefined
 
-  /** 复用进行中的刷新请求，避免多个 401 同时触发令牌刷新风暴。 */
-  async function refreshOnce() {
+  /** 复用进行中的刷新请求，避免多个 401 同时触发令牌刷新风暴 */
+  const refreshOnce = async () => {
     refreshPromise ??= options.session.refresh().finally(() => {
       refreshPromise = undefined
     })
     return refreshPromise
   }
 
-  /** 组装并发送单次业务请求，只对幂等 GET 的瞬时网络失败重试一次。 */
-  async function send<T>(
+  /** 发送请求，method为动作，path为接口路径，body为业务内容，requestOptions为身份与幂等设置 */
+  const send = async <T>(
     method: HttpMethod,
     path: string,
     body: unknown,
     requestOptions: RequestOptions = {}
-  ): Promise<T> {
+  ): Promise<T> => {
     const requiresAuth = requestOptions.auth !== false
+    if (requiresAuth) await options.session.ensureAuthenticated?.()
     const requestId = idFactory()
     const idempotencyKey =
       method === 'GET' || requestOptions.idempotencyKey === false
         ? undefined
         : (requestOptions.idempotencyKey ?? idFactory())
 
-    /** 执行请求并保留网络重试次数及令牌刷新资格，防止无界递归。 */
+    /** 执行请求，networkAttempt为网络重试次数，canRefresh控制本次请求能否刷新令牌 */
     const execute = async (networkAttempt: number, canRefresh: boolean): Promise<T> => {
       const tokenUsed = requiresAuth ? options.session.getAccessToken() : undefined
       const headers: Record<string, string> = {
@@ -68,7 +70,10 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
         'X-Request-ID': requestId
       }
       if (tokenUsed) headers.Authorization = `Bearer ${tokenUsed}`
-      if (idempotencyKey) headers['X-Idempotency-Key'] = idempotencyKey
+      if (idempotencyKey) {
+        headers['Idempotency-Key'] = idempotencyKey
+        headers['X-Idempotency-Key'] = idempotencyKey
+      }
       const request: TransportRequest = {
         body,
         headers,

@@ -11,8 +11,10 @@ import { createProfileService } from '@/features/profile/profile-service'
 import { createSceneService } from '@/features/scene/scene-service'
 import { resolveApiBaseUrl } from '@/services/api-config'
 import { createHttpClient, type HttpClient } from '@/services/http/client'
+import { ApiError } from '@/services/http/types'
 import { UniTransport } from '@/services/http/uni-transport'
 import { MockTransport } from '@/services/mock/mock-transport'
+import { configureSessionBootstrap, ensureSession } from '@/services/startup'
 import { useSessionStore } from '@/stores/session'
 
 import type { SessionResponse } from '@/shared/contracts/session'
@@ -34,8 +36,8 @@ export interface RuntimeServices {
 
 let services: RuntimeServices | undefined
 
-/** 创建带会话刷新能力的客户端，开发环境可显式切换到本地契约 mock。 */
-function createRuntimeClient(): HttpClient {
+/** 创建带会话刷新能力的客户端，开发环境可显式切换到本地契约 mock */
+const createRuntimeClient = (): HttpClient => {
   const session = useSessionStore()
   let developmentOrigin: string | undefined
   // #ifdef H5
@@ -48,6 +50,10 @@ function createRuntimeClient(): HttpClient {
     }),
     clientVersion: import.meta.env.VITE_CLIENT_VERSION || '1.3.0',
     session: {
+      ensureAuthenticated: async () => {
+        if (!(await ensureSession()))
+          throw new ApiError('SESSION_UNAVAILABLE', '暂时无法连接，请重新连接', 503)
+      },
       clear: session.clear,
       getAccessToken: () => session.accessToken,
       refresh: async () => {
@@ -70,11 +76,12 @@ function createRuntimeClient(): HttpClient {
       import.meta.env.VITE_USE_MOCK_API === 'true' ? new MockTransport() : new UniTransport()
   })
 
+  configureSessionBootstrap(client)
   return client
 }
 
-/** 延迟创建并复用运行时服务，保证所有页面共享请求刷新单飞状态。 */
-export function getRuntimeServices(): RuntimeServices {
+/** 延迟创建并复用运行时服务，保证所有页面共享请求刷新单飞状态 */
+export const getRuntimeServices = (): RuntimeServices => {
   if (services) return services
 
   const client = createRuntimeClient()

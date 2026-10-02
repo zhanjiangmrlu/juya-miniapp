@@ -1,0 +1,198 @@
+{
+  "access": "OPEN",
+  "activated_at": null,
+  "authorization_pending": false,
+  "earliest_expires_at": null,
+  "sources": ["OPEN"],
+  "scene": {
+    "scene_id": "scene-coffee-shop",
+    "revision_id": "01JLOCAL000000000000000001",
+    "content_version": 1,
+    "content": {
+      "title_en": "At the Coffee Shop",
+      "title_zh": "在咖啡店",
+      "summary": "点一杯喜欢的咖啡，享受美好的时光。",
+      "tags": ["日常英语"],
+      "original_image_asset_id": "coffee-original",
+      "cover_asset_id": "coffee-cover",
+      "copyright": "Figma 本地演示素材",
+      "source": "Figma 2479:419",
+      "audio": {
+        "target_id": "coffee-audio",
+        "version_id": "audio-v1",
+        "asset_id": "coffee-audio",
+        "duration_ms": 138000
+      },
+      "dialogue": [
+        {
+          "id": "sentence-1",
+          "speaker": "Ivy",
+          "english": "Could I get a latte, please?",
+          "chinese": "我可以要一杯拿铁咖啡吗？",
+          "start_ms": 0,
+          "end_ms": 5000,
+          "audio_version_id": "audio-v1",
+          "timing_confirmed": true,
+          "clickable_spans": [
+            {
+              "start": 14,
+              "end": 19,
+              "entry_id": "word-latte",
+              "entry_version": 1,
+              "source_locator": "sentence:sentence-1:entry:word-latte"
+            },
+            {
+              "start": 0,
+              "end": 11,
+              "entry_id": "phrase-could-i-get",
+              "entry_version": 1,
+              "source_locator": "sentence:sentence-1:entry:phrase-could-i-get"
+            }
+          ]
+        },
+        {
+          "id": "sentence-2",
+          "speaker": "Barista",
+          "english": "Sure. What size would you like?",
+          "chinese": "当然，你想要什么杯型？",
+          "start_ms": 5000,
+          "end_ms": 10000,
+          "audio_version_id": "audio-v1",
+          "timing_confirmed": true,
+          "clickable_spans": []
+        },
+        {
+          "id": "sentence-3",
+          "speaker": "Ivy",
+          "english": "A medium, please.",
+          "chinese": "请来一杯中杯。",
+          "start_ms": 10000,
+          "end_ms": 15000,
+          "audio_version_id": "audio-v1",
+          "timing_confirmed": true,
+          "clickable_spans": [
+            {
+              "start": 2,
+              "end": 8,
+              "entry_id": "word-medium",
+              "entry_version": 1,
+              "source_locator": "sentence:sentence-3:entry:word-medium"
+            }
+          ]
+        },
+        {
+          "id": "sentence-4",
+          "speaker": "Barista",
+          "english": "For here or to go?",
+          "chinese": "在这里喝还是带走？",
+          "start_ms": 15000,
+          "end_ms": 20000,
+          "audio_version_id": "audio-v1",
+          "timing_confirmed": true,
+          "clickable_spans": [
+            {
+              "start": 0,
+              "end": 18,
+              "entry_id": "phrase-for-here",
+              "entry_version": 1,
+              "source_locator": "sentence:sentence-4:entry:phrase-for-here"
+            }
+          ]
+        },
+        {
+          "id": "sentence-5",
+          "speaker": "Ivy",
+          "english": "To go, please.",
+          "chinese": "请打包带走。",
+          "start_ms": 20000,
+          "end_ms": 25000,
+          "audio_version_id": "audio-v1",
+          "timing_confirmed": true,
+          "clickable_spans": [
+            {
+              "start": 0,
+              "end": 5,
+              "entry_id": "word-to-go",
+              "entry_version": 1,
+              "source_locator": "sentence:sentence-5:entry:word-to-go"
+            },
+            {
+              "start": 0,
+              "end": 14,
+              "entry_id": "phrase-to-go",
+              "entry_version": 1,
+              "source_locator": "sentence:sentence-5:entry:phrase-to-go"
+            }
+          ]
+        }
+      ],
+      "vocabulary": [
+        {
+          "entry_id": "word-latte",
+          "entry_version": 1,
+          "english": "latte",
+          "phonetic": "/ˈlɑː.teɪ/",
+          "chinese": "拿铁咖啡",
+          "explanation": "espresso 加蒸奶制成的咖啡",
+          "source_sentence_ids": ["sentence-1"],
+          "audio_target_id": "latte-audio",
+          "audio_version_id": "word-v1"
+        },
+        {
+          "entry_id": "word-medium",
+          "entry_version": 1,
+          "english": "medium",
+          "phonetic": "/ˈmiː.di.əm/",
+          "chinese": "中杯；中等的",
+          "explanation": "咖啡杯型中的中杯",
+          "source_sentence_ids": ["sentence-3"],
+          "audio_target_id": "medium-audio",
+          "audio_version_id": "word-v1"
+        },
+        {
+          "entry_id": "word-to-go",
+          "entry_version": 1,
+          "english": "to go",
+          "phonetic": "",
+          "chinese": "打包带走",
+          "explanation": "点餐时说明打包带走",
+          "source_sentence_ids": ["sentence-5"],
+          "audio_target_id": null,
+          "audio_version_id": null
+        }
+      ],
+      "chunks": [
+        {
+          "entry_id": "phrase-could-i-get",
+          "entry_version": 1,
+          "english": "Could I get a latte, please?",
+          "chinese": "我可以要……吗？",
+          "explanation": "礼貌地点餐或提出请求",
+          "source_sentence_ids": ["sentence-1"],
+          "audio_target_id": null,
+          "audio_version_id": null
+        },
+        {
+          "entry_id": "phrase-for-here",
+          "entry_version": 1,
+          "english": "For here or to go?",
+          "chinese": "在这里喝还是打包带走？",
+          "explanation": "询问堂食或打包",
+          "source_sentence_ids": ["sentence-4"],
+          "audio_target_id": null,
+          "audio_version_id": null
+        },
+        {
+          "entry_id": "phrase-to-go",
+          "entry_version": 1,
+          "english": "To go, please.",
+          "chinese": "打包带走，谢谢。",
+          "explanation": "礼貌地说明打包",
+          "source_sentence_ids": ["sentence-5"],
+          "audio_target_id": null,
+          "audio_version_id": null
+        }
+      ]
+    }
+  }
+}

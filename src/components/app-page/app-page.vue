@@ -40,9 +40,7 @@ withDefaults(
   }
 
   &--primary {
-    background:
-      radial-gradient(circle at 92% 3%, rgb(220 238 214 / 88%) 0, transparent 34%),
-      tokens.$color-page-primary;
+    background: tokens.$color-page-primary;
   }
 
   &--secondary {
@@ -53,8 +51,10 @@ withDefaults(
     @include mixins.page-padding;
 
     @include mixins.tablet {
-      padding-right: 48rpx;
-      padding-left: 48rpx;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding-right: 40px;
+      padding-left: 40px;
     }
   }
 }

@@ -4,16 +4,17 @@ import { defineComponent } from 'vue'
 
 import { shouldGateStartupForDeletion } from '@/features/account/deletion-presenter'
 import { getRuntimeServices } from '@/services/runtime'
+import { ensureSession } from '@/services/startup'
 import { useSessionStore } from '@/stores/session'
 
 export default defineComponent({
   name: 'App',
-  /** 注册应用级生命周期，在冷启动时恢复本地登录态。 */
+  /** 注册应用级生命周期，在冷启动时恢复本地登录态 */
   setup() {
     onLaunch(async () => {
+      getRuntimeServices()
       const session = useSessionStore()
-      session.restore()
-      if (!session.isAuthenticated) return
+      if (!(await ensureSession())) return
 
       try {
         const profile = await getRuntimeServices().profile.get()

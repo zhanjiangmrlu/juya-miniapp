@@ -1,6 +1,7 @@
 import type { HttpTransport, TransportRequest, TransportResponse } from '../http/types'
 
 import { MOCK_FIXTURES } from './fixtures'
+import publishedScene from './published-scene.json'
 const MOCK_FEEDBACK = {
   category: 'CONTENT',
   created_at: '2026-09-28T08:30:00Z',
@@ -108,10 +109,69 @@ const ROUTES: Record<string, unknown> = {
   }
 }
 export class MockTransport implements HttpTransport {
+  private promptExposed = false
   /** 按请求方法与路径返回隔离副本，未配置接口明确返回标准 404 错误。 */
   async request<T>(request: TransportRequest): Promise<TransportResponse<T>> {
     const url = new URL(request.url)
     const routeKey = `${request.method} ${url.pathname}`
+    const scene = publishedScene.scene
+    let fixture: unknown
+    if (routeKey === 'POST /api/v1/scenes/scene-coffee-shop/open') fixture = publishedScene
+    if (routeKey === 'POST /api/v1/scenes/scene-weekend-trip/open')
+      fixture = {
+        ...publishedScene,
+        access: 'PREVIEW',
+        sources: [],
+        scene: {
+          public_id: 'scene-weekend-trip',
+          title: '周末公路旅行',
+          title_en: 'A Weekend Road Trip',
+          title_zh: '周末公路旅行',
+          cover_url: '/static/home/coffee-home.png',
+          introduction: '可查看主题、难度与简介',
+          preview_status: 'PREVIEW'
+        }
+      }
+    if (
+      request.method === 'GET' &&
+      /\/scenes\/scene-coffee-shop\/resources\/[^/]+\/signed-url$/.test(url.pathname)
+    ) {
+      const resourceId = decodeURIComponent(url.pathname.split('/')[6] ?? '')
+      fixture = {
+        resource_id: resourceId,
+        expires_at: '2099-01-01T00:00:00Z',
+        url:
+          resourceId.includes('original') || resourceId.includes('cover')
+            ? '/static/fixtures/coffee-original.png'
+            : '/static/fixtures/silence.wav'
+      }
+    }
+    if (
+      request.method === 'GET' &&
+      /\/scenes\/scene-coffee-shop\/entries\/[^/]+$/.test(url.pathname)
+    ) {
+      const entryId = decodeURIComponent(url.pathname.split('/')[6] ?? '')
+      const entry = [...scene.content.vocabulary, ...scene.content.chunks].find(
+        (item) => item.entry_id === entryId
+      )
+      if (entry)
+        fixture = {
+          ...entry,
+          scene_id: scene.scene_id,
+          revision_id: scene.revision_id,
+          source_locator: url.searchParams.get('source_locator'),
+          sentence_snapshot: scene.content.dialogue
+            .filter((sentence) => entry.source_sentence_ids.includes(sentence.id))
+            .map((sentence) => sentence.english)
+            .join('\n')
+        }
+    }
+    if (routeKey === 'POST /api/v1/me/contact/prompt-exposures') {
+      fixture = { created: !this.promptExposed }
+      this.promptExposed = true
+    }
+    if (fixture !== undefined)
+      return { data: structuredClone(fixture) as T, status: 200, headers: {} }
     const hasStaticFixture = Object.prototype.hasOwnProperty.call(ROUTES, routeKey)
     const staticFixture = hasStaticFixture ? ROUTES[routeKey] : undefined
     const configuredFixture =
@@ -209,7 +269,7 @@ export class MockTransport implements HttpTransport {
                                           )
                                         ? {
                                             ...MOCK_FEEDBACK,
-                                            status: 'SUPPLEMENTED',
+                                            status: 'USER_SUPPLIED',
                                             supplements: [
                                               {
                                                 created_at: '2026-09-28T11:00:00Z',
@@ -245,17 +305,17 @@ export class MockTransport implements HttpTransport {
                                                 read_at: '2026-09-28T11:00:00Z'
                                               }
                                             : undefined
-    const fixture =
+    const responseFixture =
       routeKey === 'POST /api/v1/feedback'
         ? { ...(configuredFixture as object), ...(request.body as object) }
         : configuredFixture
-    if (fixture === undefined) {
+    if (responseFixture === undefined) {
       return {
         data: { code: 'MOCK_ROUTE_NOT_FOUND', message: `未配置 ${url.pathname}` } as T,
         headers: {},
         status: 404
       }
     }
-    return { data: structuredClone(fixture) as T, headers: {}, status: 200 }
+    return { data: structuredClone(responseFixture) as T, headers: {}, status: 200 }
   }
 }
