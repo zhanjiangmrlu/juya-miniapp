@@ -4,27 +4,29 @@ const emit = defineEmits<{
   retry: []
 }>()
 
-/** 关闭网络提示并保留首页品牌兜底。 */
-function handleClose() {
-  emit('close')
-}
+let statusBarHeight = 30
+// #ifdef MP-WEIXIN
+statusBarHeight = uni.getWindowInfo().statusBarHeight ?? 20
+// #endif
 
-/** 触发页面重新执行身份与首页数据加载。 */
-function handleRetry() {
+/** 触发页面重新执行身份与首页数据加载 */
+const handleRetry = () => {
   emit('retry')
 }
 </script>
 
 <template>
-  <view class="network-dialog" role="dialog" aria-modal="true" aria-label="网络连接异常">
-    <view class="network-dialog__panel">
-      <button class="network-dialog__close" aria-label="关闭" @click="handleClose">×</button>
-      <view class="network-dialog__icon" aria-hidden="true">!</view>
-      <text class="network-dialog__title">网络连接异常</text>
-      <text class="network-dialog__description"
-        >请检查网络后重新连接，学习数据不会在离线时伪造。</text
-      >
-      <button class="network-dialog__retry" @click="handleRetry">重新连接</button>
+  <view
+    class="network-dialog"
+    :style="{ top: `${statusBarHeight + 48}px` }"
+    role="dialog"
+    aria-modal="true"
+    aria-label="网络异常"
+  >
+    <view class="dialog-panel">
+      <text class="dialog-title">网络异常</text>
+      <text class="dialog-description">首页内容仍可阅读。重新连接后再同步你的学习进度。</text>
+      <button class="dialog-retry" @click="handleRetry">重新连接</button>
     </view>
   </view>
 </template>
@@ -35,76 +37,63 @@ function handleRetry() {
 .network-dialog {
   position: fixed;
   z-index: 70;
+  right: 0;
+  bottom: calc(57px + max(19px, env(safe-area-inset-bottom)));
+  left: 0;
   display: grid;
-  background: rgb(34 55 46 / 48%);
-  inset: 0;
-  padding: 40rpx;
+  padding: 0 30px 11px;
+  background: rgb(20 37 27 / 43%);
   place-items: center;
 
-  &__panel {
-    position: relative;
+  .dialog-panel {
     width: 100%;
-    max-width: 600rpx;
-    padding: 48rpx 40rpx 40rpx;
-    border-radius: tokens.$radius-large;
-    background: #fffaf0;
-    text-align: center;
+    max-width: 330px;
+    padding: 23px 22px 18px;
+    border-radius: 18px;
+    background: tokens.$home-card;
+    text-align: left;
   }
 
-  &__close {
-    position: absolute;
-    top: 16rpx;
-    right: 16rpx;
-    width: 64rpx;
-    height: 64rpx;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: tokens.$color-text-muted;
-    font-size: 44rpx;
-  }
-
-  &__icon {
-    display: grid;
-    width: 88rpx;
-    height: 88rpx;
-    place-items: center;
-    margin: 0 auto;
-    border-radius: 50%;
-    background: #fff0d9;
-    color: tokens.$color-warning;
-    font-size: 48rpx;
-    font-weight: 800;
-  }
-
-  &__title,
-  &__description {
+  .dialog-title,
+  .dialog-description {
     display: block;
   }
 
-  &__title {
-    margin-top: 28rpx;
-    font-size: 36rpx;
+  .dialog-title {
+    height: 31px;
+    color: tokens.$home-ink;
+    font-size: 19px;
     font-weight: 700;
+    line-height: normal;
   }
 
-  &__description {
-    margin-top: 16rpx;
-    color: tokens.$color-text-muted;
-    font-size: 26rpx;
-    line-height: 1.6;
+  .dialog-description {
+    min-height: 67px;
+    margin-top: 13px;
+    color: #617360;
+    font-size: 13px;
+    line-height: normal;
   }
 
-  &__retry {
+  .dialog-retry {
+    display: flex;
     width: 100%;
-    min-height: 88rpx;
-    margin-top: 32rpx;
-    border-radius: tokens.$radius-medium;
-    background: tokens.$color-primary;
+    height: 46px;
+    align-items: center;
+    justify-content: center;
+    margin: 15px 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: 11px;
+    background: tokens.$home-primary;
     color: tokens.$color-white;
-    font-size: 30rpx;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: normal;
+
+    &::after {
+      border: 0;
+    }
   }
 }
 </style>
