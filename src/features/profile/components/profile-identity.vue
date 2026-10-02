@@ -1,71 +1,84 @@
 <script setup lang="ts">
-defineProps<{
-  juyaId: string
-  wechatLabel: string
-}>()
-
-const emit = defineEmits<{
-  contact: []
-}>()
-
-/** 打开统一联系资料管理流程。 */
-function handleContact() {
-  emit('contact')
-}
+withDefaults(
+  defineProps<{ juyaId: string; wechatLabel: string; nickname?: string; avatar?: string | null }>(),
+  { nickname: '学习者', avatar: null }
+)
+const emit = defineEmits<{ contact: [] }>()
+/** 复制本人句芽编号，value 为本人服务端编号 */
+const copy = (value: string) => uni.setClipboardData({ data: value })
 </script>
-
 <template>
   <view class="profile-identity">
-    <view class="profile-identity__row">
-      <text class="profile-identity__label">句芽号</text>
-      <text class="profile-identity__value">{{ juyaId }}</text>
-    </view>
-    <button class="profile-identity__row profile-identity__row--button" @click="handleContact">
-      <text class="profile-identity__label">微信号</text>
-      <text class="profile-identity__value">{{ wechatLabel }}</text>
+    <text class="identity-name">{{ nickname }}</text>
+    <button class="identity-id" aria-label="复制句芽号" @click="copy(juyaId)">
+      句芽号：{{ juyaId }}
     </button>
+    <button class="identity-contact" aria-label="管理联系资料" @click="emit('contact')">
+      {{ wechatLabel }}
+    </button>
+    <image v-if="avatar" class="identity-avatar" :src="avatar" mode="aspectFill" />
+    <view v-else class="identity-avatar">芽</view>
   </view>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
-
 .profile-identity {
-  overflow: hidden;
-  margin-top: 28rpx;
-  border: 2rpx solid tokens.$color-border;
-  border-radius: tokens.$radius-large;
-  background: rgb(255 255 255 / 76%);
+  position: relative;
+  min-height: 118px;
+  padding: 12px 16px 10px;
+  border-radius: 15px;
+  background: #e5efdc;
 
-  &__row {
-    display: flex;
-    min-height: 104rpx;
-    align-items: center;
-    justify-content: space-between;
-    padding: 24rpx 28rpx;
-    border-bottom: 2rpx solid rgb(201 222 209 / 60%);
+  .identity-name {
+    display: block;
+    min-height: 23px;
+    color: #4e7f3b;
+    font-size: 12px;
+    line-height: 20px;
+  }
 
-    &:last-child {
-      border-bottom: 0;
-    }
+  .identity-id,
+  .identity-contact {
+    width: calc(100% - 55px);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #254733;
+    text-align: left;
+    overflow-wrap: anywhere;
 
-    &--button {
-      width: 100%;
-      margin: 0;
+    &::after {
       border: 0;
-      border-radius: 0;
-      background: transparent;
-      color: tokens.$color-text;
     }
   }
 
-  &__label {
-    color: tokens.$color-text-muted;
-    font-size: 24rpx;
+  .identity-id {
+    min-height: 45px;
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 32px;
   }
 
-  &__value {
-    font-size: 26rpx;
+  .identity-contact {
+    width: 100%;
+    margin-top: 2px;
+    color: #657965;
+    font-size: 11px;
+    line-height: 20px;
+  }
+
+  .identity-avatar {
+    position: absolute;
+    top: 19px;
+    right: 15px;
+    display: grid;
+    width: 51px;
+    height: 51px;
+    place-items: center;
+    border: 1px solid #b4cfab;
+    border-radius: 26px;
+    background: #cfe4c4;
+    font-size: 22px;
     font-weight: 700;
   }
 }

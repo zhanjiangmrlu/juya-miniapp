@@ -1,0 +1,60 @@
+.section-title {
+  display: block;
+  margin: 11px 0 4px;
+  color: #254733;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 27px;
+}
+
+.row-list {
+  display: grid;
+  gap: 10px;
+}
+
+.form-label {
+  display: block;
+  margin: 14px 0 3px;
+  color: #254733;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.form-field {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 13px;
+  border: 1px solid #d6dfc9;
+  border-radius: 11px;
+  background: #fffdf7;
+  color: #254733;
+  font-size: 12px;
+  line-height: 24px;
+}
+
+.form-error {
+  display: block;
+  margin: 8px 0;
+  color: #b4462d;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.notice-card {
+  padding: 10px 13px;
+  border: 1px solid #edc6b8;
+  border-radius: 12px;
+  background: #fcede6;
+  color: #765d54;
+  font-size: 11px;
+  line-height: 20px;
+
+  .notice-title {
+    display: block;
+    color: #b4462d;
+    font-size: 13px;
+    font-weight: 700;
+  }
+}

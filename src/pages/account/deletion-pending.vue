@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
+import { onHide, onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
-import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
-import AppTabBar from '@/components/app-tab-bar/app-tab-bar.vue'
-import PageHeader from '@/components/page-header/page-header.vue'
 import { reloadAfterDeletionRevoke } from '@/features/account/account-recovery'
 import { presentDeletionState } from '@/features/account/deletion-presenter'
+import PersonalPage from '@/features/profile/components/personal-page.vue'
+import PersonalRow from '@/features/profile/components/personal-row.vue'
+import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 import { createServerClock } from '@/shared/utils/server-clock'
@@ -19,37 +19,66 @@ import { useLearningStore } from '@/stores/learning'
 import { useSessionStore } from '@/stores/session'
 
 import type { DeletionRequest } from '@/shared/contracts/account'
+import type { ServerClock } from '@/shared/utils/server-clock'
 
 const deletion = useAccountDeletionStore()
 const error = ref('')
 const loading = ref(false)
-const view = computed(() =>
-  deletion.request ? presentDeletionState(deletion.request, createServerClock()) : undefined
-)
+const revoked = ref(false)
+const tick = ref(0)
+const clock = ref<ServerClock>()
+let timer: ReturnType<typeof globalThis.setInterval> | undefined
+const view = computed(() => {
+  void tick.value
+  return deletion.request
+    ? presentDeletionState(deletion.request, clock.value || createServerClock())
+    : undefined
+})
 
-/** 恢复最近注销响应；缺失时从本人档案补足当前服务端状态。 */
-async function loadDeletion() {
+/** 恢复最近注销响应；缺失时从本人档案补足当前服务端状态 */
+const loadDeletion = async () => {
   deletion.restore()
-  if (deletion.request) return
-  const profile = await getRuntimeServices().profile.get()
-  if (!profile.deletion) return
-  deletion.save({
-    completed_at: null,
-    effective_at: profile.deletion.effective_at,
-    id: '',
-    requested_at: '',
-    revoked_at: null,
-    status: profile.deletion.status as DeletionRequest['status']
-  })
+  try {
+    const runtime = getRuntimeServices()
+    const [profile, entitlements] = await Promise.all([
+      runtime.profile.get(),
+      runtime.entitlements.get().catch(() => undefined)
+    ])
+    clock.value = entitlements?.server_now
+      ? createServerClock(new Date(entitlements.server_now))
+      : undefined
+    if (!profile.deletion) {
+      deletion.clear()
+      await navigate({ type: 'reLaunch', url: '/pages/profile/index' })
+      return
+    }
+    deletion.save({
+      completed_at: null,
+      effective_at: profile.deletion.effective_at,
+      id: '',
+      requested_at: '',
+      revoked_at: null,
+      status: profile.deletion.status as DeletionRequest['status']
+    })
+    error.value = ''
+  } catch {
+    error.value = '账号状态刷新失败，请重试'
+  }
+  if (timer) globalThis.clearInterval(timer)
+  timer = globalThis.setInterval(() => {
+    tick.value += 1
+  }, 1000)
 }
 
-/** 撤回注销后重新加载首页、目录、收藏、权益和本人状态。 */
-async function revokeDeletion() {
+/** 撤回注销后重新加载首页、目录、收藏、权益和本人状态 */
+const revokeDeletion = async () => {
+  if (loading.value || !view.value?.canRevoke) return
   loading.value = true
   error.value = ''
   try {
     await getRuntimeServices().account.revokeDeletion()
     deletion.clear()
+    revoked.value = true
     const runtime = getRuntimeServices()
     const session = useSessionStore()
     const favorites = useFavoriteStore()
@@ -66,78 +95,57 @@ async function revokeDeletion() {
     ])
     await navigate({ type: 'reLaunch', url: '/pages/profile/index' })
   } catch {
-    error.value = '撤回失败，账号仍处于待注销状态，请稍后重试'
+    error.value = revoked.value
+      ? '注销已撤回，资料刷新失败，请重新加载'
+      : '撤回失败，请重新加载确认服务端状态'
   } finally {
     loading.value = false
   }
 }
 
 onShow(loadDeletion)
+onHide(() => {
+  if (timer) globalThis.clearInterval(timer)
+  timer = undefined
+})
 </script>
-
 <template>
-  <AppPage>
-    <PageHeader
-      :centered="false"
-      eyebrow="将在七天后生效"
-      :show-back="false"
-      title="账号处于注销期"
-    />
-    <view v-if="view" class="deletion-pending">
-      <text class="deletion-pending__title">预计生效：{{ view.effectiveLabel }}</text>
-      <text class="deletion-pending__description">
-        限时学习倒计时不会因注销暂停或重置。撤回后将恢复原学习进度、收藏和有效权益。
-      </text>
-      <text v-if="error" class="deletion-pending__error">{{ error }}</text>
-      <AppButton
-        v-if="view.canRevoke"
-        :loading="loading"
-        label="撤回注销"
-        @press="revokeDeletion"
-      />
-      <AppState
-        v-else
-        description="注销正在生效，当前阶段无法撤回。"
-        icon-label="账号处理中"
+  <PersonalPage navigation="账号状态" title="账号注销期" subtitle="7 天内可以撤回注销"
+    ><template v-if="view"
+      ><PersonalSummary
+        label="注销期还剩"
+        :value="clock ? `${Math.ceil(view.remainingMs / 86400000)} 天` : '以服务端时间为准'"
+        :note="`预计于 ${view.effectiveLabel} 结束`" /><text class="section-title"
+        >当前可用操作</text
+      ><view class="row-list"
+        ><PersonalRow
+          title="撤回注销"
+          detail="撤回后恢复正常账号状态，限时学习倒计时不重置"
+          :badge="view.canRevoke ? '可操作' : '已届满'"
+          :actionable="view.canRevoke"
+          @press="revokeDeletion" /><PersonalRow
+          title="数据处理"
+          detail="期满后无法恢复旧权益和记录"
+          badge="说明" /><PersonalRow
+          title="再次使用"
+          detail="同一微信再次进入将按新用户处理"
+          badge="说明" /></view
+      ><text v-if="error" class="form-error">{{ error }}</text
+      ><AppState
+        v-if="!view.canRevoke"
         title="账号状态处理中"
-      />
-    </view>
-    <AppTabBar active="profile" />
-  </AppPage>
+        description="注销正在生效，当前阶段无法撤回"
+        icon-label="处理中" /></template
+    ><text v-if="error && !view" class="form-error">{{ error }}</text
+    ><AppButton v-if="error" label="重新加载" variant="secondary" @press="loadDeletion" /><template
+      #actions
+      ><AppButton
+        v-if="view?.canRevoke"
+        label="撤回注销"
+        :loading="loading"
+        @press="revokeDeletion" /></template
+  ></PersonalPage>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
-
-.deletion-pending {
-  margin-bottom: calc(132rpx + env(safe-area-inset-bottom));
-  padding: 32rpx;
-  border: 2rpx solid #ead4ad;
-  border-radius: tokens.$radius-large;
-  background: #fff5df;
-
-  &__title,
-  &__description,
-  &__error {
-    display: block;
-  }
-
-  &__title {
-    color: tokens.$color-warning;
-    font-size: 30rpx;
-    font-weight: 700;
-  }
-
-  &__description {
-    margin: 16rpx 0 28rpx;
-    font-size: 24rpx;
-    line-height: 1.7;
-  }
-
-  &__error {
-    margin-bottom: 18rpx;
-    color: tokens.$color-danger;
-    font-size: 23rpx;
-  }
-}
+@use '../../features/profile/personal';
 </style>

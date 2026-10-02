@@ -1,12 +1,26 @@
 <script setup lang="ts">
-import AppPage from '@/components/app-page/app-page.vue'
-import PageHeader from '@/components/page-header/page-header.vue'
-import FeedbackForm from '@/features/feedback/components/feedback-form.vue'
-</script>
+import { onLoad } from '@dcloudio/uni-app'
 
+import FeedbackForm from '@/features/feedback/components/feedback-form.vue'
+import PersonalPage from '@/features/profile/components/personal-page.vue'
+import { useFeedbackDraftStore } from '@/stores/feedback-draft'
+const draft = useFeedbackDraftStore()
+/** 保存入口自动带入的来源，query 为当前场景及页面定位 */
+const capture = (query?: Record<string, string>) => {
+  if (query?.sceneId || query?.pageLabel)
+    draft.update({
+      source: {
+        scene_id: query.sceneId || '',
+        scene_title: query.sceneTitle || '',
+        page_label: query.pageLabel || '',
+        source_locator: query.sourceLocator || ''
+      }
+    })
+}
+onLoad(capture)
+</script>
 <template>
-  <AppPage>
-    <PageHeader eyebrow="请修改后再次提交" title="提交问题反馈" />
-    <FeedbackForm blocked />
-  </AppPage>
+  <PersonalPage navigation="问题反馈" title="修改反馈内容" subtitle="请修改后再提交"
+    ><FeedbackForm blocked
+  /></PersonalPage>
 </template>

@@ -29,8 +29,8 @@ export interface FeedbackDraftValidation {
   valid: boolean
 }
 
-/** 校验反馈分类、去空白后的正文及单张图片限制，并返回可直接提交的标准值。 */
-export function validateFeedbackDraft(draft: FeedbackDraft): FeedbackDraftValidation {
+/** 校验反馈分类、去空白后的正文及单张图片限制，并返回可直接提交的标准值 */
+export const validateFeedbackDraft = (draft: FeedbackDraft): FeedbackDraftValidation => {
   const description = draft.description.trim()
   const errors: FeedbackDraftValidation['errors'] = {}
   const categoryAllowed = FEEDBACK_CATEGORIES.some((item) => item.value === draft.category)
@@ -60,35 +60,36 @@ export function validateFeedbackDraft(draft: FeedbackDraft): FeedbackDraftValida
   }
 }
 
-/** 截图上传失败时仅移除失败附件，完整保留用户已经输入的文字与来源。 */
-export function preserveDraftAfterUploadFailure(draft: FeedbackDraft): FeedbackDraft {
-  return { ...draft, screenshots: [] }
+/** 截图上传失败时保留本地附件用于重试，draft 为用户已填写的文字、来源及单张截图 */
+export const preserveDraftAfterUploadFailure = (draft: FeedbackDraft): FeedbackDraft => {
+  return { ...draft, screenshots: [...draft.screenshots] }
 }
 
-/** 校验补充说明并返回去除首尾空白后的提交值。 */
-export function validateSupplement(text: string): { normalized?: string; valid: boolean } {
+/** 校验补充说明并返回去除首尾空白后的提交值 */
+export const validateSupplement = (text: string): { normalized?: string; valid: boolean } => {
   const normalized = text.trim()
   return normalized.length >= 1 && normalized.length <= 300
     ? { normalized, valid: true }
     : { valid: false }
 }
 
-/** 仅在服务端明确要求补充且已有管理员回复时开放补充入口。 */
-export function canSupplementFeedback(feedback: FeedbackItem): boolean {
+/** 仅在服务端明确要求补充且已有管理员回复时开放补充入口 */
+export const canSupplementFeedback = (feedback: FeedbackItem): boolean => {
   return feedback.status === 'NEEDS_SUPPLEMENT' && Boolean(feedback.reply?.trim())
 }
 
-/** 依据处理时间与已重开次数生成结果页操作，不在客户端改变服务端反馈状态。 */
-export function getResolutionActions(feedback: FeedbackItem, now = new Date()) {
+/** 依据处理时间与已重开次数生成结果页操作，不在客户端改变服务端反馈状态 */
+export const getResolutionActions = (feedback: FeedbackItem, now = new Date()) => {
   const resolvedAt = feedback.resolved_at ? new Date(feedback.resolved_at) : undefined
   const withinSevenDays = resolvedAt
-    ? now.getTime() - resolvedAt.getTime() <= 7 * 24 * 60 * 60 * 1000
+    ? now.getTime() >= resolvedAt.getTime() &&
+      now.getTime() - resolvedAt.getTime() <= 7 * 24 * 60 * 60 * 1000
     : false
   return {
     canReopen:
       feedback.status === 'RESOLVED' && withinSevenDays && (feedback.reopen_count ?? 0) < 1,
     reopenPrimaryLabel: '仍有问题',
     reopenSecondaryLabel: '（可重开一次）',
-    showResolvedAction: feedback.status === 'RESOLVED'
+    showResolvedAction: feedback.status === 'RESOLVED' && withinSevenDays
   }
 }

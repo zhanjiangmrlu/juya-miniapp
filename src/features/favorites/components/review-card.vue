@@ -1,103 +1,150 @@
 <script setup lang="ts">
-defineProps<{
-  face: 'BACK' | 'FRONT'
-  label: string
-  position: string
-}>()
+import AudioButton from '@/features/audio/components/audio-button.vue'
+import { getRuntimeServices } from '@/services/runtime'
+import { useAudioStore } from '@/stores/audio'
 
-const emit = defineEmits<{
-  flip: []
-  play: []
-}>()
-
-/** 用户点击卡面时翻面。 */
-function handleFlip() {
-  emit('flip')
-}
-
-/** 播放操作独立上抛，避免冒泡触发翻面。 */
-function handlePlay() {
-  emit('play')
-}
+import type { FavoriteItem } from '@/shared/contracts/favorites'
+import type { AudioTarget } from '@/shared/contracts/learning'
+defineProps<{ face: 'BACK' | 'FRONT'; item: FavoriteItem }>()
+const emit = defineEmits<{ flip: [] }>()
+const audio = useAudioStore()
+/** 播放独立发音，target 为该收藏版本的音频目标 */
+const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().scene)
 </script>
-
 <template>
-  <view class="review-card">
-    <text class="review-card__position">{{ position }}</text>
-    <button class="review-card__surface" @click="handleFlip">
-      <text class="review-card__face">{{ face === 'FRONT' ? '正面' : '背面' }}</text>
-      <text class="review-card__word">{{ label }}</text>
-      <text class="review-card__hint">
-        {{ face === 'FRONT' ? '先回忆含义，再点击查看' : '结合来源句巩固记忆' }}
-      </text>
+  <view class="review-card" :class="{ back: face === 'BACK' }">
+    <button class="card-surface" @click="emit('flip')">
+      <text class="card-face"
+        >{{ face === 'FRONT' ? '正面' : '背面' }} ·
+        {{ item.sources[0]?.scene_title || '来源场景' }}</text
+      >
+      <text class="card-word">{{ item.english || item.normalized_key }}</text>
+      <template v-if="face === 'BACK'">
+        <text v-if="item.phonetic" class="card-phonetic">{{ item.phonetic }}</text>
+        <text class="card-translation">{{ item.chinese || '' }}</text>
+        <view class="card-explanation"
+          ><text class="card-label">简明解释</text
+          ><text class="card-text">{{ item.explanation || item.chinese || '' }}</text
+          ><text class="card-label source-label">来源句</text
+          ><text class="card-text">{{
+            item.sources.map((source) => source.sentence_snapshot).join('\n')
+          }}</text></view
+        >
+      </template>
+      <text v-else class="card-hint">点击卡片翻面查看意思</text>
     </button>
-    <button class="review-card__audio" @click.stop="handlePlay">播放音频</button>
+    <AudioButton
+      v-if="item.audio"
+      class="card-audio"
+      :target="item.audio"
+      :current-key="audio.currentKey"
+      :status="audio.snapshot.status"
+      @play="play"
+    />
   </view>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
-
 .review-card {
-  margin-top: 28rpx;
+  position: relative;
+  margin-top: 19px;
 
-  &__position {
-    display: block;
-    color: tokens.$color-text-muted;
-    font-size: 22rpx;
+  .card-surface {
+    display: flex;
+    width: 100%;
+    min-height: 418px;
+    flex-direction: column;
+    margin: 0;
+    padding: 21px 23px;
+    border: 1px solid #d6dfc9;
+    border-radius: 18px;
+    background: #fffdf7;
+    color: #254733;
     text-align: center;
   }
 
-  &__surface {
-    display: flex;
-    width: 100%;
-    min-height: 520rpx;
-    align-items: center;
-    justify-content: center;
-    margin: 18rpx 0 0;
-    padding: 48rpx;
-    border: 2rpx solid tokens.$color-border;
-    border-radius: 48rpx;
-    background: rgb(255 255 255 / 82%);
-    color: tokens.$color-text;
-    flex-direction: column;
+  .card-face {
+    color: #6f806e;
+    font-size: 12px;
+    line-height: 24px;
   }
 
-  &__face,
-  &__word,
-  &__hint {
+  .card-word {
     display: block;
-  }
-
-  &__face {
-    color: tokens.$color-primary;
-    font-size: 22rpx;
+    margin-top: 111px;
+    font-size: 46px;
     font-weight: 700;
+    line-height: 76px;
+    overflow-wrap: anywhere;
   }
 
-  &__word {
-    margin-top: 48rpx;
-    font-family: Georgia, serif;
-    font-size: 56rpx;
-    font-weight: 700;
+  .card-hint {
+    display: block;
+    margin-top: 95px;
+    color: #758874;
+    font-size: 12px;
+    line-height: 30px;
   }
 
-  &__hint {
-    margin-top: 32rpx;
-    color: tokens.$color-text-muted;
-    font-size: 24rpx;
+  .card-audio {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
   }
 
-  &__audio {
-    width: 100%;
-    min-height: 84rpx;
-    margin-top: 20rpx;
-    border: 2rpx solid tokens.$color-border;
-    border-radius: tokens.$radius-medium;
-    background: tokens.$color-white;
-    color: tokens.$color-primary-strong;
-    font-size: 27rpx;
-    font-weight: 700;
+  &.back {
+    margin-top: 11px;
+
+    .card-surface {
+      min-height: 427px;
+      padding-top: 17px;
+    }
+
+    .card-word {
+      margin-top: 19px;
+      font-size: 36px;
+      line-height: 54px;
+    }
+
+    .card-phonetic {
+      margin-top: 11px;
+      color: #6f806e;
+      font-size: 16px;
+      line-height: 28px;
+    }
+
+    .card-translation {
+      margin-top: 17px;
+      color: #4e7f3b;
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 37px;
+    }
+
+    .card-explanation {
+      margin-top: 26px;
+      text-align: left;
+    }
+
+    .card-label {
+      display: block;
+      color: #718371;
+      font-size: 11px;
+      line-height: 21px;
+    }
+
+    .card-text {
+      display: block;
+      min-height: 46px;
+      margin-top: 2px;
+      font-size: 12px;
+      line-height: 20px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .source-label {
+      margin-top: 10px;
+    }
   }
 }
 </style>

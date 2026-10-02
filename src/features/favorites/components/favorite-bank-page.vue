@@ -1,47 +1,43 @@
 <script setup lang="ts">
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onLoad, onPageScroll, onShow } from '@dcloudio/uni-app'
+import { computed, ref } from 'vue'
 
+import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import FavoriteList from '@/features/favorites/components/favorite-list.vue'
-import TabPageLayout from '@/layouts/tab-page-layout.vue'
+import PersonalPage from '@/features/profile/components/personal-page.vue'
 import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 import { useFavoriteStore } from '@/stores/favorites'
 
 import type { FavoriteGroup } from '@/features/favorites/favorite-presenter'
 import type { FavoriteType } from '@/shared/contracts/favorites'
-
 const props = withDefaults(defineProps<{ initialTab?: FavoriteType }>(), {
   initialTab: 'VOCABULARY'
 })
 const favorites = useFavoriteStore()
-const runtime = getRuntimeServices()
-
-/** 接收成果页标签参数，并覆盖页面默认银行。 */
-function handleLoad(query?: Record<string, string>) {
-  const type = query?.tab === 'phrases' ? 'PHRASE' : props.initialTab
+const error = ref('')
+const title = computed(() => (favorites.activeTab === 'PHRASE' ? '语块银行' : '词汇银行'))
+/** 恢复路由选择的银行，query 为入口携带的标签参数 */
+const handleLoad = (query?: Record<string, string>) =>
+  favorites.selectTab(query?.tab === 'phrases' ? 'PHRASE' : props.initialTab)
+/** 刷新完整收藏并恢复当前银行滚动位置 */
+const handleShow = async () => {
+  try {
+    await favorites.load(getRuntimeServices().favorites, true)
+    error.value = ''
+    uni.pageScrollTo({ scrollTop: favorites.tabState[favorites.activeTab].scrollTop, duration: 0 })
+  } catch {
+    error.value = '收藏加载失败，请重试'
+  }
+}
+/** 切换银行并恢复独立滚动位置，type 为目标收藏类型 */
+const selectTab = (type: FavoriteType) => {
   favorites.selectTab(type)
+  uni.pageScrollTo({ scrollTop: favorites.tabState[type].scrollTop, duration: 0 })
 }
-
-/** 页面显示时刷新当前银行第一页。 */
-function handleShow() {
-  void favorites.load(runtime.favorites, true)
-}
-
-/** 切换银行后读取该标签自己的游标与筛选状态。 */
-function selectTab(type: FavoriteType) {
-  favorites.selectTab(type)
-  void favorites.load(runtime.favorites, true)
-}
-
-/** 保存当前标签筛选条件。 */
-function handleFilter(event: unknown) {
-  const inputEvent = event as unknown as { detail: { value: string } }
-  favorites.updateTabState(favorites.activeTab, { filter: inputEvent.detail.value })
-}
-
-/** 打开聚合组第一条收藏详情。 */
-async function openGroup(group: FavoriteGroup) {
+/** 打开收藏详情，group 为包含所有来源的展示组 */
+const openGroup = async (group: FavoriteGroup) => {
   const id = group.items[0]?.id
   if (id)
     await navigate({
@@ -49,138 +45,138 @@ async function openGroup(group: FavoriteGroup) {
       url: `/pages/favorites/detail?id=${encodeURIComponent(id)}`
     })
 }
-
-/** 使用当前可见收藏创建翻卡入口。 */
-async function startReview() {
-  const ids = favorites.visibleGroups
-    .flatMap((group) => group.items.map((item) => item.id))
-    .slice(0, 10)
-  if (ids.length === 0) return
-  await navigate({
-    type: 'navigateTo',
-    url: `/pages/favorites/review-front?cardIds=${encodeURIComponent(ids.join(','))}`
+/** 编辑当前银行筛选，确认后保留另一银行的筛选与滚动位置 */
+const editFilter = () => {
+  const type = favorites.activeTab
+  uni.showModal({
+    title: type === 'PHRASE' ? '筛选语块' : '筛选词汇',
+    editable: true,
+    placeholderText: '留空显示全部收藏',
+    content: favorites.tabState[type].filter,
+    success: (result) => {
+      if (result.confirm)
+        favorites.updateTabState(type, { filter: result.content?.trim() || '', scrollTop: 0 })
+    }
   })
 }
-
+/** 将全部可见收藏传入翻卡队列，不限制张数 */
+const startReview = async () => {
+  const ids = favorites.visibleGroups.flatMap((group) => group.items.map((item) => item.id))
+  if (!ids.length) return
+  const previous = favorites.tabState[favorites.activeTab].review
+  const review =
+    previous && previous.cardIds.join(',') === ids.join(',')
+      ? previous
+      : { cardIds: ids, index: 0, face: 'FRONT' as const }
+  favorites.updateTabState(favorites.activeTab, { review })
+  await navigate({
+    type: 'navigateTo',
+    url: `/pages/favorites/review-${review.face.toLocaleLowerCase()}?index=${review.index}&bank=${favorites.activeTab}`
+  })
+}
 onLoad(handleLoad)
 onShow(handleShow)
+onPageScroll((event) =>
+  favorites.updateTabState(favorites.activeTab, { scrollTop: event.scrollTop })
+)
 </script>
-
 <template>
-  <TabPageLayout active="favorites">
-    <view class="favorite-bank__heading">
-      <text class="favorite-bank__eyebrow">收藏复习</text>
-      <text class="favorite-bank__title">我的收藏</text>
-    </view>
-    <view class="favorite-bank__tabs">
+  <PersonalPage
+    active="favorites"
+    :title="title"
+    :subtitle="
+      favorites.activeTab === 'PHRASE'
+        ? '完整语块作为一条收藏保留'
+        : '收藏的词汇会保留来源与复习进度'
+    "
+  >
+    <view class="bank-tabs">
       <button
-        :class="{ 'favorite-bank__tab--active': favorites.activeTab === 'VOCABULARY' }"
-        class="favorite-bank__tab"
+        :class="{ selected: favorites.activeTab === 'VOCABULARY' }"
         @click="selectTab('VOCABULARY')"
       >
         词汇银行
       </button>
-      <button
-        :class="{ 'favorite-bank__tab--active': favorites.activeTab === 'PHRASE' }"
-        class="favorite-bank__tab"
-        @click="selectTab('PHRASE')"
-      >
+      <button :class="{ selected: favorites.activeTab === 'PHRASE' }" @click="selectTab('PHRASE')">
         语块银行
       </button>
     </view>
-    <input
-      class="favorite-bank__filter"
-      :value="favorites.tabState[favorites.activeTab].filter"
-      placeholder="筛选收藏"
-      @input="handleFilter"
-    />
-    <FavoriteList
-      v-if="favorites.visibleGroups.length > 0"
-      :groups="favorites.visibleGroups"
-      @select="openGroup"
-    />
-    <AppState
-      v-else
-      description="在场景词汇或语块弹层中点击收藏后，会出现在这里。"
-      icon-label="收藏为空"
-      title="还没有收藏内容"
-    />
-    <button
-      v-if="favorites.visibleGroups.length > 0"
-      class="favorite-bank__review"
-      @click="startReview"
+    <view class="bank-heading"
+      ><text class="section-title"
+        >我的{{ favorites.activeTab === 'PHRASE' ? '语块' : '词汇' }}</text
+      ><button class="filter-action" @click="editFilter">
+        筛选{{ favorites.tabState[favorites.activeTab].filter ? '中' : '' }}
+      </button></view
     >
-      开始翻卡复习
-    </button>
-  </TabPageLayout>
+    <FavoriteList :groups="favorites.visibleGroups" @select="openGroup" />
+    <AppState
+      v-if="!favorites.loading && !favorites.visibleGroups.length && !error"
+      icon-label="状态"
+      title="还没有收藏内容"
+      description="在场景中收藏的词汇和语块会保存在这里"
+    />
+    <text v-if="error" class="form-error">{{ error }}</text>
+    <AppButton v-if="error" label="重新加载" variant="secondary" @press="handleShow" />
+    <template #actions
+      ><AppButton v-if="favorites.visibleGroups.length" label="开始翻卡复习" @press="startReview"
+    /></template>
+  </PersonalPage>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
+@use '../../profile/personal';
 
-.favorite-bank {
-  &__eyebrow,
-  &__title {
-    display: block;
+.bank-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .section-title {
+    flex: 1;
+    margin-top: 10px;
   }
 
-  &__eyebrow {
-    color: tokens.$color-primary;
-    font-size: 23rpx;
-    font-weight: 700;
-  }
-
-  &__title {
-    margin-top: 6rpx;
-    font-family: Georgia, 'Noto Serif SC', serif;
-    font-size: 48rpx;
-    font-weight: 700;
-  }
-
-  &__tabs {
-    display: grid;
-    margin-top: 28rpx;
-    padding: 8rpx;
-    border-radius: tokens.$radius-medium;
-    background: tokens.$color-module;
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  &__tab {
+  .filter-action {
     margin: 0;
+    padding: 0;
     border: 0;
-    border-radius: 18rpx;
     background: transparent;
-    color: tokens.$color-text-muted;
-    font-size: 26rpx;
+    color: #6b7d6a;
+    font-size: 11px;
+    line-height: 27px;
 
-    &--active {
-      background: tokens.$color-white;
-      color: tokens.$color-primary-strong;
-      font-weight: 700;
-      box-shadow: tokens.$shadow-card;
+    &::after {
+      border: 0;
     }
   }
+}
 
-  &__filter {
-    height: 80rpx;
-    margin-top: 20rpx;
-    padding: 0 24rpx;
-    border: 2rpx solid tokens.$color-border;
-    border-radius: tokens.$radius-medium;
-    background: rgb(255 255 255 / 72%);
-    font-size: 25rpx;
-  }
+.bank-tabs + .section-title {
+  margin-top: 10px;
+}
 
-  &__review {
-    width: 100%;
-    min-height: 88rpx;
-    margin-top: 28rpx;
-    border-radius: tokens.$radius-medium;
-    background: tokens.$color-primary;
-    color: tokens.$color-white;
-    font-size: 29rpx;
-    font-weight: 700;
+.bank-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 3px;
+  margin-bottom: 15px;
+
+  button {
+    height: 40px;
+    margin: 0;
+    padding: 0 8px;
+    border: 1px solid #d6dfc9;
+    border-radius: 11px;
+    background: #fffdf7;
+    color: #4e7f3b;
+    font-size: 13px;
+    line-height: 38px;
+
+    &.selected {
+      border-color: #4e7f3b;
+      background: #4e7f3b;
+      color: #fff;
+    }
   }
 }
 </style>

@@ -3,25 +3,32 @@ import { onShow } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
-import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
-import PageHeader from '@/components/page-header/page-header.vue'
 import MessageCard from '@/features/messages/components/message-card.vue'
+import { loadAllMessages } from '@/features/messages/load-messages'
 import { openMessage } from '@/features/messages/message-router'
+import PersonalPage from '@/features/profile/components/personal-page.vue'
+import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 
 import type { MessageItem } from '@/shared/contracts/messages'
 
+const error = ref('')
 const items = ref<MessageItem[]>([])
 
-/** 读取站内消息服务端列表，已读消息仍保留。 */
-async function loadMessages() {
-  items.value = (await getRuntimeServices().messages.list()).items
+/** 读取站内消息服务端列表，已读消息仍保留 */
+const loadMessages = async () => {
+  try {
+    items.value = await loadAllMessages(getRuntimeServices().messages)
+    error.value = ''
+  } catch {
+    error.value = '消息加载失败，请重试'
+  }
 }
 
-/** 先标记消息已读，再打开它关联的业务页面。 */
-async function handleOpen(item: MessageItem) {
+/** 先标记消息已读，再打开它关联的业务页面 */
+const handleOpen = async (item: MessageItem) => {
   await openMessage(
     item,
     (id) => getRuntimeServices().messages.markRead(id),
@@ -29,40 +36,29 @@ async function handleOpen(item: MessageItem) {
   )
 }
 
-/** 打开新反馈表单。 */
-async function createFeedback() {
-  await navigate({ type: 'navigateTo', url: '/pages/feedback/create' })
-}
-
 onShow(loadMessages)
 </script>
-
 <template>
-  <AppPage>
-    <PageHeader eyebrow="处理进展会保留在这里" title="站内消息" />
-    <view class="message-list">
-      <MessageCard v-for="item in items" :key="item.id" :item="item" @open="handleOpen" />
-      <AppState
-        v-if="items.length === 0"
-        description="反馈回复和系统状态消息会显示在这里。"
-        icon-label="消息"
-        title="暂时没有消息"
-      />
-    </view>
-    <AppButton label="提交新反馈" @press="createFeedback" />
-  </AppPage>
+  <PersonalPage title="站内消息" subtitle="反馈回复与学习状态通知">
+    <PersonalSummary
+      label="未读消息"
+      :value="`${items.filter((item) => !item.read_at).length} 条`"
+      note="打开相应结果后会清除未读状态"
+    />
+    <text class="section-title">最近消息</text
+    ><view class="row-list"
+      ><MessageCard v-for="item in items" :key="item.id" :item="item" @open="handleOpen"
+    /></view>
+    <AppState
+      v-if="!items.length && !error"
+      title="暂时没有消息"
+      icon-label="消息"
+      description="反馈回复和系统状态消息会显示在这里"
+    />
+    <text v-if="error" class="form-error">{{ error }}</text
+    ><AppButton v-if="error" label="重新加载" variant="secondary" @press="loadMessages" />
+  </PersonalPage>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/mixins.scss' as mixins;
-
-.message-list {
-  display: grid;
-  margin-bottom: 24rpx;
-  gap: 18rpx;
-
-  @include mixins.tablet {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+@use '../../features/profile/personal';
 </style>

@@ -1,20 +1,43 @@
 <script setup lang="ts">
-import AppPage from '@/components/app-page/app-page.vue'
-import PageHeader from '@/components/page-header/page-header.vue'
+import { ref } from 'vue'
+
+import AppButton from '@/components/app-button/app-button.vue'
 import ContactForm from '@/features/contact-profile/components/contact-form.vue'
+import PersonalPage from '@/features/profile/components/personal-page.vue'
 import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
-
-/** 保存服务端规范化后的联系资料，并进入统一管理页。 */
-async function save(wechatId: string) {
-  await getRuntimeServices().contact.save(wechatId)
-  await navigate({ type: 'redirectTo', url: '/pages/profile/contact-manage' })
+const form = ref<InstanceType<typeof ContactForm>>()
+const loading = ref(false)
+const error = ref('')
+/** 保存经用户同意的微信号，wechatId 为表单规范化后的本人微信号 */
+const save = async (wechatId: string) => {
+  if (loading.value) return
+  loading.value = true
+  try {
+    await getRuntimeServices().contact.save(wechatId)
+    await navigate({ type: 'redirectTo', url: '/pages/profile/contact-manage' })
+  } catch {
+    error.value = '保存失败，请重试'
+  } finally {
+    loading.value = false
+  }
 }
+/** 暂不填写并返回档案 */
+const skip = () => navigate({ type: 'reLaunch', url: '/pages/profile/index' })
 </script>
-
 <template>
-  <AppPage>
-    <PageHeader eyebrow="联系资料" title="填写微信号" />
-    <ContactForm @submit="save" />
-  </AppPage>
+  <PersonalPage navigation="联系资料" title="完善联系资料" subtitle="填写与否不影响开放学习场景"
+    ><ContactForm ref="form" :disabled="loading" @submit="save" /><text
+      v-if="error"
+      class="form-error"
+      >{{ error }}</text
+    ><template #actions
+      ><AppButton label="暂不填写" variant="secondary" @press="skip" /><AppButton
+        label="保存联系资料"
+        :loading="loading"
+        @press="form?.submit()" /></template
+  ></PersonalPage>
 </template>
+<style scoped lang="scss">
+@use '../../features/profile/personal';
+</style>

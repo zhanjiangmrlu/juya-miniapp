@@ -9,9 +9,13 @@ export interface DeletionViewModel {
   status: DeletionRequest['status']
 }
 
-/** 将服务端注销绝对时间转换为北京时间文案，不在客户端重新计算七天期限。 */
-export function presentDeletionState(dto: DeletionRequest, clock: ServerClock): DeletionViewModel {
+/** 展示注销状态，dto 为服务端注销记录，clock 为剩余时间展示用采样时钟 */
+export const presentDeletionState = (
+  dto: DeletionRequest,
+  clock: ServerClock
+): DeletionViewModel => {
   return {
+    // 未提供可靠服务端采样时不能用设备时间隐藏撤回，真实期限由撤回接口判定
     canRevoke: dto.status === 'PENDING',
     effectiveAt: dto.effective_at,
     effectiveLabel: new Intl.DateTimeFormat('zh-CN', {
@@ -28,9 +32,9 @@ export function presentDeletionState(dto: DeletionRequest, clock: ServerClock): 
   }
 }
 
-/** 判断冷启动是否应优先进入注销状态页，阻止继续普通学习流程。 */
-export function shouldGateStartupForDeletion(
+/** 判断冷启动注销门禁，deletion 为本人资料提供的最新注销状态摘要 */
+export const shouldGateStartupForDeletion = (
   deletion?: { effective_at: string; status: string } | null
-): boolean {
+): boolean => {
   return deletion?.status === 'PENDING' || deletion?.status === 'PROCESSING'
 }

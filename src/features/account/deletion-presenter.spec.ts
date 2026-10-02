@@ -14,6 +14,10 @@ const pending = {
 }
 
 describe('deletion presenter', () => {
+  it('设备时间超前仍允许待注销请求撤回，由服务端判定真实期限', () => {
+    const clock = { now: () => new Date('2026-10-06T00:00:00Z'), remainingUntil: () => 0 }
+    expect(presentDeletionState(pending, clock).canRevoke).toBe(true)
+  })
   it('shows the exact absolute effective time supplied by the server', () => {
     const clock = createServerClock(
       new Date('2026-09-28T08:30:00Z'),

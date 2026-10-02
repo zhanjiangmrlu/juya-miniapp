@@ -8,8 +8,10 @@ import type { FavoriteItem } from '@/shared/contracts/favorites'
 import { presentFavorites } from './favorite-presenter'
 import { createReviewSession } from './review-session'
 
-/** 创建收藏条目测试数据，保留业务相关字段而省略无关差异。 */
-function favorite(overrides: Partial<FavoriteItem> & Pick<FavoriteItem, 'id' | 'normalized_key'>) {
+/** 创建收藏条目测试数据，保留业务相关字段而省略无关差异 */
+const favorite = (
+  overrides: Partial<FavoriteItem> & Pick<FavoriteItem, 'id' | 'normalized_key'>
+) => {
   return {
     entry_stable_id: overrides.id,
     entry_type: 'VOCABULARY',
@@ -23,6 +25,24 @@ function favorite(overrides: Partial<FavoriteItem> & Pick<FavoriteItem, 'id' | '
 beforeEach(() => setActivePinia(createPinia()))
 
 describe('favorite store', () => {
+  it('翻卡数据遍历全部游标页，超过十张不截断并按标识去重', async () => {
+    const store = useFavoriteStore()
+    const page = Array.from({ length: 24 }, (_, index) =>
+      favorite({ id: `card-${index}`, normalized_key: `word-${index}` })
+    )
+    await store.load(
+      {
+        list: async (cursor?: string) => ({
+          items: cursor ? page.slice(11) : page.slice(0, 12),
+          next_cursor: cursor ? null : 'second',
+          has_more: !cursor
+        })
+      } as Parameters<typeof store.load>[0],
+      true
+    )
+    expect(store.visibleGroups).toHaveLength(24)
+    expect(new Set(store.items.map((item) => item.id)).size).toBe(24)
+  })
   it('词汇与语块分别保留筛选、滚动位置和游标', () => {
     const store = useFavoriteStore()
     store.updateTabState('VOCABULARY', { cursor: 'word-next', filter: 'food', scrollTop: 120 })
@@ -42,6 +62,27 @@ describe('favorite store', () => {
 })
 
 describe('presentFavorites', () => {
+  it('返回原文保留收藏的修订号与条目版本，避免跳到新版错误位置', () => {
+    const [group] = presentFavorites([
+      favorite({
+        id: 'fixed',
+        normalized_key: 'coffee',
+        sources: [
+          {
+            scene_id: 'cafe',
+            source_locator: 'sentence-2',
+            original_link: '/original',
+            sentence_snapshot: 'coffee',
+            revision_id: 'r-8',
+            entry_version: 3
+          }
+        ]
+      })
+    ])
+    expect(group.sources[0]?.returnUrl).toBe(
+      '/pages/scene/return-source?sceneId=cafe&sourceLocator=sentence-2&revisionId=r-8&entryVersion=3&entryId=fixed'
+    )
+  })
   it('大小写与多余空格仅用于展示合并，不合并不同词形', () => {
     const groups = presentFavorites([
       favorite({ id: '1', normalized_key: ' Put   Together ' }),

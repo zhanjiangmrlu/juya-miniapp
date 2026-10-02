@@ -16,8 +16,8 @@ const baseDraft = {
   screenshots: []
 }
 
-/** 构造反馈详情，便于验证状态相关的补充与重开约束。 */
-function createFeedback(overrides: Partial<FeedbackItem> = {}): FeedbackItem {
+/** 构造反馈详情，便于验证状态相关的补充与重开约束 */
+const createFeedback = (overrides: Partial<FeedbackItem> = {}): FeedbackItem => {
   return {
     category: 'CONTENT',
     created_at: '2026-09-28T08:30:00Z',
@@ -31,6 +31,27 @@ function createFeedback(overrides: Partial<FeedbackItem> = {}): FeedbackItem {
 }
 
 describe('feedback form', () => {
+  it('未来处理时间不开放重开且七天后不开放重开', () => {
+    const now = new Date('2026-10-02T08:00:00Z')
+    expect(
+      getResolutionActions(
+        createFeedback({ status: 'RESOLVED', resolved_at: '2026-10-03T08:00:00Z' }),
+        now
+      ).canReopen
+    ).toBe(false)
+    expect(
+      getResolutionActions(
+        createFeedback({ status: 'RESOLVED', resolved_at: '2026-09-24T08:00:00Z' }),
+        now
+      ).canReopen
+    ).toBe(false)
+    expect(
+      getResolutionActions(
+        createFeedback({ status: 'RESOLVED', resolved_at: '2026-09-24T08:00:00Z' }),
+        now
+      ).showResolvedAction
+    ).toBe(false)
+  })
   it('validates trimmed 1-300 character descriptions and required categories', () => {
     expect(validateFeedbackDraft(baseDraft)).toMatchObject({
       normalized: { category: 'CONTENT', description: '第二句的中文释义似乎不准确。' },
@@ -66,12 +87,12 @@ describe('feedback form', () => {
     ).toBeTruthy()
   })
 
-  it('drops the failed upload reference while retaining the text draft', () => {
+  it('上传失败保留截图与文字草稿以支持直接重试', () => {
     const draft = {
       ...baseDraft,
       screenshots: [{ mimeType: 'image/jpeg', path: '/tmp/failed.jpg', size: 1024 }]
     }
-    expect(preserveDraftAfterUploadFailure(draft)).toEqual({ ...baseDraft, screenshots: [] })
+    expect(preserveDraftAfterUploadFailure(draft)).toEqual(draft)
   })
 
   it('only accepts 1-300 character supplements after an admin reply', () => {

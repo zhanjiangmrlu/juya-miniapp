@@ -3,176 +3,214 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
-import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
-import PageHeader from '@/components/page-header/page-header.vue'
+import FeedbackImagePicker from '@/features/feedback/components/feedback-image-picker.vue'
 import FeedbackResolutionActions from '@/features/feedback/components/feedback-resolution-actions.vue'
-import FeedbackStatus from '@/features/feedback/components/feedback-status.vue'
 import FeedbackTimeline from '@/features/feedback/components/feedback-timeline.vue'
-import { canSupplementFeedback, validateSupplement } from '@/features/feedback/feedback-form'
+import {
+  canSupplementFeedback,
+  FEEDBACK_CATEGORIES,
+  validateSupplement
+} from '@/features/feedback/feedback-form'
+import { getFeedbackStatusLabel } from '@/features/feedback/feedback-presenter'
+import { submitSupplement } from '@/features/feedback/supplement-submit'
+import { loadAllMessages } from '@/features/messages/load-messages'
+import PersonalPage from '@/features/profile/components/personal-page.vue'
+import PersonalRow from '@/features/profile/components/personal-row.vue'
+import PersonalSummary from '@/features/profile/components/personal-summary.vue'
+import { ApiError } from '@/services/http/types'
 import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 
+import type { FeedbackScreenshotDraft } from '@/features/feedback/feedback-form'
 import type { FeedbackItem, FeedbackResolutionRequest } from '@/shared/contracts/feedback'
-
 withDefaults(defineProps<{ resultMode?: boolean }>(), { resultMode: false })
 const feedbackId = ref('')
 const item = ref<FeedbackItem>()
 const supplement = ref('')
+const editing = ref(false)
+const screenshot = ref<FeedbackScreenshotDraft>()
+const busy = ref(false)
 const error = ref('')
 const canSupplement = computed(() => (item.value ? canSupplementFeedback(item.value) : false))
-
-/** 保存路由中的反馈标识，页面显示时再读取最新服务端投影。 */
-function captureRoute(query?: Record<string, string | undefined>) {
-  feedbackId.value = query?.id ?? ''
+/** 记录路由反馈标识，query 为有效反馈详情参数 */
+const capture = (query?: Record<string, string | undefined>) => {
+  feedbackId.value = query?.id || ''
 }
-
-/** 读取反馈详情；无标识时保持明确空状态。 */
-async function load() {
+/** 加载最新时间线并在本人打开记录后清除关联未读消息 */
+const load = async () => {
   if (!feedbackId.value) return
-  item.value = await getRuntimeServices().feedback.get(feedbackId.value)
+  try {
+    const runtime = getRuntimeServices()
+    item.value = await runtime.feedback.get(feedbackId.value)
+    const messages = await loadAllMessages(runtime.messages)
+    await Promise.all(
+      messages
+        .filter(
+          (message) =>
+            !message.read_at &&
+            message.related_type === 'FEEDBACK' &&
+            message.related_id === feedbackId.value
+        )
+        .map((message) => runtime.messages.markRead(message.id))
+    )
+    error.value = ''
+  } catch {
+    error.value = '反馈读取失败，请重试'
+  }
 }
-
-/** 同步补充说明输入。 */
-function handleSupplementInput(event: unknown) {
+/** 同步本机补充草稿，event 为输入事件 */
+const input = (event: unknown) => {
   supplement.value = (event as { detail: { value: string } }).detail.value
 }
-
-/** 校验并提交补充内容，成功后重新读取完整时间线。 */
-async function submitSupplement() {
-  const result = validateSupplement(supplement.value)
-  if (!result.valid || !result.normalized) {
+/** 提交补充说明，失败保留草稿供修改或重试 */
+const submit = async () => {
+  if (busy.value || !canSupplement.value) return
+  const validation = validateSupplement(supplement.value)
+  if (!validation.valid || !validation.normalized) {
+    editing.value = true
     error.value = '补充说明需为 1 至 300 字'
     return
   }
-  item.value = await getRuntimeServices().feedback.supplement(feedbackId.value, result.normalized)
-  supplement.value = ''
-  error.value = ''
+  busy.value = true
+  try {
+    item.value = await submitSupplement(
+      getRuntimeServices().feedback,
+      item.value!,
+      validation.normalized,
+      screenshot.value
+    )
+    supplement.value = ''
+    screenshot.value = undefined
+    editing.value = false
+    error.value = ''
+  } catch (caught) {
+    error.value =
+      caught instanceof ApiError && caught.code === 'FEEDBACK_CONTENT_BLOCKED'
+        ? '内容未通过检查，请修改后重新提交'
+        : caught instanceof Error &&
+            (caught.message.includes('截图') || caught.message.includes('图片'))
+          ? caught.message
+          : '补充提交失败，草稿已保留，请重试'
+  } finally {
+    busy.value = false
+  }
 }
-
-/** 进入独立结果页，保持详情页专注于补充时间线。 */
-async function openResolution() {
-  await navigate({
+/** 在详情和结果页面间跳转，result 为是否打开结果页面 */
+const open = (result: boolean) =>
+  navigate({
     type: 'navigateTo',
-    url: `/pages/feedback/resolution?id=${encodeURIComponent(feedbackId.value)}`
+    url: `/pages/feedback/${result ? 'resolution' : 'detail'}?id=${encodeURIComponent(feedbackId.value)}`
   })
+/** 发送用户解决状态，payload 为已解决或含原因的重开命令 */
+const resolve = async (payload: FeedbackResolutionRequest) => {
+  if (busy.value) return
+  busy.value = true
+  try {
+    item.value = await getRuntimeServices().feedback.resolve(feedbackId.value, payload)
+    error.value = ''
+    if (payload.action === 'REOPEN')
+      await navigate({
+        type: 'redirectTo',
+        url: `/pages/feedback/detail?id=${encodeURIComponent(feedbackId.value)}`
+      })
+  } catch {
+    error.value = '结果提交失败，请重试'
+  } finally {
+    busy.value = false
+  }
 }
-
-/** 将已解决或一次重开动作提交服务端，并以响应状态刷新页面。 */
-async function resolveFeedback(payload: FeedbackResolutionRequest) {
-  item.value = await getRuntimeServices().feedback.resolve(feedbackId.value, payload)
-  if (payload.action === 'REOPEN')
-    await navigate({ type: 'redirectTo', url: `/pages/feedback/detail?id=${feedbackId.value}` })
-}
-
-onLoad(captureRoute)
+onLoad(capture)
 onShow(load)
 </script>
-
 <template>
-  <AppPage>
-    <PageHeader
-      eyebrow="处理进展会保留在这里"
-      :title="resultMode ? '反馈处理结果' : '反馈详情与补充'"
-    />
-    <view v-if="item" class="feedback-detail">
-      <view class="feedback-detail__summary">
-        <view class="feedback-detail__summary-top">
-          <text class="feedback-detail__title">{{ item.title || '问题反馈' }}</text>
-          <FeedbackStatus :status="item.status" />
-        </view>
-        <text class="feedback-detail__number">反馈编号 {{ item.id }}</text>
-      </view>
-
-      <FeedbackTimeline :item="item" />
-
-      <view v-if="canSupplement && !resultMode" class="feedback-detail__supplement">
-        <text class="feedback-detail__section-title">补充信息</text>
-        <textarea
-          class="feedback-detail__textarea"
-          maxlength="300"
-          placeholder="请根据回复补充定位信息"
-          :value="supplement"
-          @input="handleSupplementInput"
-        />
-        <text v-if="error" class="feedback-detail__error">{{ error }}</text>
-        <AppButton label="提交补充" @press="submitSupplement" />
-      </view>
-
-      <AppButton
-        v-if="item.status === 'RESOLVED' && !resultMode"
-        label="查看处理结果"
-        variant="secondary"
-        @press="openResolution"
+  <PersonalPage
+    :navigation="resultMode ? '反馈结果' : '反馈详情'"
+    :title="resultMode ? '反馈处理结果' : '反馈详情'"
+    :subtitle="
+      resultMode
+        ? `${item?.title || '问题反馈'} · ${getFeedbackStatusLabel(item?.status || '')}`
+        : `${FEEDBACK_CATEGORIES.find((category) => category.value === item?.category)?.label || '问题反馈'} · ${feedbackId}`
+    "
+  >
+    <template v-if="item">
+      <PersonalSummary
+        :label="resultMode ? '处理结果' : '当前状态'"
+        :value="getFeedbackStatusLabel(item.status)"
+        :note="
+          resultMode
+            ? '谢谢你的反馈，本次结果已记录。'
+            : canSupplement
+              ? '等待你补充期间不计入处理时限'
+              : '所有回复与补充保留在同一条记录中'
+        "
       />
-      <FeedbackResolutionActions v-if="resultMode" :item="item" @resolve="resolveFeedback" />
-    </view>
+      <text class="section-title">{{ resultMode ? '后续操作' : '处理时间线' }}</text>
+      <view v-if="resultMode" class="row-list"
+        ><PersonalRow
+          title="查看完整时间线"
+          detail="原说明、补充和回复都在同一条记录中"
+          badge="查看"
+          size="tall"
+          actionable
+          @press="open(false)" /><PersonalRow
+          title="确认是否解决"
+          detail="已处理后 7 天内可以反馈结果"
+          badge="操作"
+          size="tall"
+      /></view>
+      <template v-else
+        ><FeedbackTimeline :item="item" /><view v-if="canSupplement" class="supplement-card"
+          ><PersonalRow
+            title="补充说明"
+            detail="最多 300 字，可添加 1 张截图"
+            badge="待填写"
+            actionable
+            @press="editing = true" />
+          <textarea
+            v-if="editing"
+            class="form-field supplement-input"
+            maxlength="300"
+            :value="supplement"
+            placeholder="请根据管理员回复补充说明"
+            @input="input" /><FeedbackImagePicker
+            v-if="editing && !item.screenshots.length"
+            :image="screenshot"
+            @select="screenshot = $event" /></view
+      ></template>
+      <text v-if="error" class="form-error">{{ error }}</text>
+    </template>
     <AppState
       v-else
-      description="请从我的反馈或站内消息进入有效记录。"
-      icon-label="反馈记录"
+      icon-label="反馈"
       title="暂未找到反馈详情"
+      :description="error || '请从我的反馈或站内消息进入有效记录'"
     />
-  </AppPage>
+    <template #actions
+      ><FeedbackResolutionActions
+        v-if="item && resultMode"
+        :item="item"
+        :loading="busy"
+        @resolve="resolve" /><AppButton
+        v-else-if="canSupplement"
+        label="提交补充"
+        :loading="busy"
+        @press="submit" /><AppButton
+        v-else-if="item?.status === 'RESOLVED'"
+        label="查看处理结果"
+        @press="open(true)"
+    /></template>
+  </PersonalPage>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
+@use '../../profile/personal';
 
-.feedback-detail {
-  display: grid;
-  gap: 22rpx;
+.supplement-card {
+  margin-top: 10px;
 
-  &__summary,
-  &__supplement {
-    padding: 28rpx;
-    border: 2rpx solid tokens.$color-border;
-    border-radius: tokens.$radius-large;
-    background: rgb(255 255 255 / 78%);
-  }
-
-  &__summary-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18rpx;
-  }
-
-  &__title,
-  &__section-title {
-    font-size: 28rpx;
-    font-weight: 700;
-  }
-
-  &__number {
-    display: block;
-    margin-top: 14rpx;
-    color: tokens.$color-text-muted;
-    font-size: 21rpx;
-  }
-
-  &__section-title {
-    display: block;
-    margin-bottom: 16rpx;
-  }
-
-  &__textarea {
-    box-sizing: border-box;
-    width: 100%;
-    height: 190rpx;
-    margin-bottom: 18rpx;
-    padding: 22rpx;
-    border: 2rpx solid tokens.$color-border;
-    border-radius: tokens.$radius-medium;
-    background: tokens.$color-white;
-    font-size: 24rpx;
-  }
-
-  &__error {
-    display: block;
-    margin: -4rpx 0 14rpx;
-    color: tokens.$color-danger;
-    font-size: 22rpx;
+  .supplement-input {
+    height: 80px;
+    margin-top: 8px;
   }
 }
 </style>

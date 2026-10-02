@@ -1,37 +1,25 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-import AppButton from '@/components/app-button/app-button.vue'
 import { validateContactForm } from '@/features/contact-profile/contact-form'
-
-const props = withDefaults(
-  defineProps<{
-    initialValue?: string
-    submitLabel?: string
-  }>(),
-  { initialValue: '', submitLabel: '保存联系资料' }
-)
-
-const emit = defineEmits<{
-  submit: [wechatId: string]
-}>()
-
+withDefaults(defineProps<{ management?: boolean; disabled?: boolean }>(), {
+  management: false,
+  disabled: false
+})
+const emit = defineEmits<{ submit: [wechatId: string] }>()
 const consentConfirmed = ref(false)
 const error = ref('')
-const wechatId = ref(props.initialValue)
-
-/** 从 uni-app 输入事件同步微信号草稿。 */
-function handleInput(event: unknown) {
+const wechatId = ref('')
+/** 同步微信号输入，event 为原生表单输入事件 */
+const input = (event: unknown) => {
   wechatId.value = (event as { detail: { value: string } }).detail.value
 }
-
-/** 同步协议确认状态。 */
-function handleConsent(event: unknown) {
+/** 同步用途同意，event 为复选框选择事件 */
+const consent = (event: unknown) => {
   consentConfirmed.value = (event as { detail: { value: string[] } }).detail.value.length > 0
 }
-
-/** 校验后提交规范化微信号，不记录或打印原值。 */
-function handleSubmit() {
+/** 校验并提交本人联系资料 */
+const submit = () => {
   const result = validateContactForm({
     consentConfirmed: consentConfirmed.value,
     wechatId: wechatId.value
@@ -43,66 +31,99 @@ function handleSubmit() {
   error.value = ''
   emit('submit', result.normalizedWechatId)
 }
+defineExpose({ submit })
 </script>
-
 <template>
   <view class="contact-form">
-    <text class="contact-form__label">微信号</text>
+    <text class="form-label">{{ management ? '新的微信号' : '微信号' }}</text>
     <input
-      class="contact-form__input"
+      class="form-field"
       :value="wechatId"
       maxlength="20"
-      placeholder="请输入 6 至 20 位微信号"
-      @input="handleInput"
+      :placeholder="management ? '请输入修改后的微信号' : '请输入你的微信号'"
+      :disabled="disabled"
+      @input="input"
     />
-    <checkbox-group class="contact-form__consent" @change="handleConsent">
-      <label>
-        <checkbox value="confirmed" color="#2f7d61" />
-        <text>我已阅读并同意联系资料使用说明</text>
-      </label>
-    </checkbox-group>
-    <text v-if="error" class="contact-form__error">{{ error }}</text>
-    <AppButton :label="submitLabel" @press="handleSubmit" />
+    <text class="form-label purpose-label">{{ management ? '用途确认' : '用途说明' }}</text>
+    <view class="form-field purpose-copy">{{
+      management ? '修改时需再次确认联系用途。' : '用于必要的服务联系、内容体验回访和问题跟进。'
+    }}</view>
+    <checkbox-group class="consent" @change="consent"
+      ><label
+        ><checkbox
+          class="consent-checkbox"
+          value="confirmed"
+          color="#4e7f3b"
+          :disabled="disabled"
+        /><text>{{
+          management ? '我同意按说明使用本次提交的微信号' : '我已阅读并同意上述用途说明'
+        }}</text></label
+      ></checkbox-group
+    >
+    <view v-if="!management" class="voluntary"
+      ><text class="voluntary-title">填写联系资料是自愿的</text
+      ><text>填写不会自动获得新的学习权限，也不影响已开放的学习内容。</text></view
+    >
+    <text v-if="error" class="form-error" role="alert">{{ error }}</text>
   </view>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
+@use '../../profile/personal';
 
 .contact-form {
-  padding: 32rpx;
-  border: 2rpx solid tokens.$color-border;
-  border-radius: tokens.$radius-large;
-  background: rgb(255 255 255 / 78%);
+  padding-top: 3px;
 
-  &__label {
+  .form-label {
+    margin-top: 0;
+  }
+
+  .purpose-label {
+    margin-top: 18px;
+  }
+
+  .purpose-copy {
+    display: flex;
+    align-items: center;
+    color: #7a8978;
+    line-height: 18px;
+  }
+
+  .consent {
     display: block;
-    font-size: 27rpx;
-    font-weight: 700;
+    margin-top: 27px;
+    color: #5c715e;
+    font-size: 12px;
+    line-height: 20px;
+
+    label {
+      display: flex;
+      align-items: center;
+    }
+
+    .consent-checkbox {
+      transform: scale(0.55);
+      transform-origin: left center;
+      width: 15px;
+    }
   }
 
-  &__input {
-    height: 88rpx;
-    margin: 16rpx 0 24rpx;
-    padding: 0 24rpx;
-    border: 2rpx solid tokens.$color-border;
-    border-radius: tokens.$radius-medium;
-    background: tokens.$color-white;
-    font-size: 27rpx;
-  }
+  .voluntary {
+    min-height: 87px;
+    margin-top: 40px;
+    padding: 11px 15px;
+    border-radius: 12px;
+    background: #e5efdc;
+    color: #667967;
+    font-size: 11px;
+    line-height: 20px;
 
-  &__consent {
-    margin-bottom: 24rpx;
-    color: tokens.$color-text-muted;
-    font-size: 23rpx;
-    line-height: 1.5;
-  }
-
-  &__error {
-    display: block;
-    margin-bottom: 18rpx;
-    color: tokens.$color-danger;
-    font-size: 23rpx;
+    .voluntary-title {
+      display: block;
+      min-height: 27px;
+      color: #254733;
+      font-size: 13px;
+      font-weight: 700;
+    }
   }
 }
 </style>

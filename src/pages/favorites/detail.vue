@@ -1,102 +1,121 @@
 <script setup lang="ts">
 import { onLoad } from '@dcloudio/uni-app'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
-import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
-import PageHeader from '@/components/page-header/page-header.vue'
-import SourceList from '@/features/favorites/components/source-list.vue'
-import { presentFavorites } from '@/features/favorites/favorite-presenter'
+import AudioButton from '@/features/audio/components/audio-button.vue'
+import { loadFavoriteGroup } from '@/features/favorites/load-favorite-group'
+import PersonalPage from '@/features/profile/components/personal-page.vue'
+import PersonalRow from '@/features/profile/components/personal-row.vue'
+import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
+import { useAudioStore } from '@/stores/audio'
 
+import type { FavoriteGroup } from '@/features/favorites/favorite-presenter'
 import type { FavoriteItem } from '@/shared/contracts/favorites'
-
+import type { AudioTarget } from '@/shared/contracts/learning'
 const item = ref<FavoriteItem>()
-const group = computed(() => (item.value ? presentFavorites([item.value])[0] : undefined))
-
-/** 按收藏标识读取服务端详情与全部来源。 */
-async function handleLoad(query?: Record<string, string>) {
-  if (query?.id) item.value = await getRuntimeServices().favorites.get(query.id)
+const error = ref('')
+const removing = ref(false)
+const audio = useAudioStore()
+const group = ref<FavoriteGroup>()
+/** 加载收藏完整快照，query 为收藏标识 */
+const load = async (query?: Record<string, string>) => {
+  try {
+    if (query?.id) {
+      const loaded = await loadFavoriteGroup(getRuntimeServices().favorites, query.id)
+      item.value = loaded.item
+      group.value = loaded.group
+    }
+  } catch {
+    error.value = '收藏加载失败'
+  }
 }
-
-/** 打开完整来源选择页。 */
-async function openSources() {
-  if (!item.value) return
-  await navigate({
-    type: 'navigateTo',
-    url: `/pages/favorites/sources?id=${encodeURIComponent(item.value.id)}`
-  })
+/** 多来源时进入来源选择，单来源时进入稳定原文位置 */
+const returnSource = async () => {
+  if (!item.value || !group.value) return
+  const url =
+    group.value.sources.length === 1 && group.value.sources[0]?.returnUrl
+      ? group.value.sources[0].returnUrl
+      : `/pages/favorites/sources?id=${encodeURIComponent(item.value.id)}`
+  await navigate({ type: 'navigateTo', url })
 }
-
-/** 删除收藏后返回对应银行。 */
-async function removeFavorite() {
-  if (!item.value) return
-  await getRuntimeServices().favorites.remove(item.value.id)
-  uni.navigateBack()
+/** 删除当前收藏并返回银行 */
+const remove = async () => {
+  if (!item.value || removing.value) return
+  removing.value = true
+  try {
+    await Promise.all(
+      (group.value?.items || [item.value]).map((favorite) =>
+        getRuntimeServices().favorites.remove(favorite.id)
+      )
+    )
+    uni.navigateBack()
+  } catch {
+    error.value = '取消收藏失败，请重试'
+  } finally {
+    removing.value = false
+  }
 }
-
-onLoad(handleLoad)
+/** 独立播放发音，target 为当前收藏的音频引用 */
+const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().scene)
+onLoad(load)
 </script>
-
 <template>
-  <AppPage>
-    <PageHeader eyebrow="收藏详情" :title="group?.displayKey ?? '收藏条目'" />
-    <view v-if="group" class="favorite-detail__card">
-      <text class="favorite-detail__word">{{ group.displayKey }}</text>
-      <text class="favorite-detail__type">
-        {{ group.items[0]?.entry_type === 'PHRASE' ? '语块银行' : '词汇银行' }}
-      </text>
-    </view>
-    <SourceList v-if="group" :sources="group.sources.slice(0, 1)" />
+  <PersonalPage
+    active="favorites"
+    navigation="收藏详情"
+    title="收藏条目详情"
+    :subtitle="`${item?.entry_type === 'PHRASE' ? '语块银行' : '词汇银行'} · 来自「${group?.sources[0]?.scene_title || '来源场景'}」`"
+  >
+    <template v-if="item">
+      <PersonalSummary
+        :label="item.english || item.normalized_key"
+        :value="item.phonetic || item.english || item.normalized_key"
+        :note="item.chinese || ''"
+      />
+      <text class="section-title">词汇与来源</text>
+      <view class="row-list">
+        <PersonalRow
+          title="简明解释"
+          :detail="item.explanation || item.chinese || '暂无解释'"
+          badge="解释"
+        />
+        <PersonalRow
+          title="来源句"
+          :detail="group?.sources.map((source) => source.sentence_snapshot).join('\n') || ''"
+          badge="可查看"
+          actionable
+          @press="returnSource"
+        />
+        <PersonalRow
+          title="收藏状态"
+          :detail="`已加入${item.entry_type === 'PHRASE' ? '语块银行' : '词汇银行'}`"
+          :badge="removing ? '处理中' : '取消收藏'"
+          actionable
+          @press="remove"
+        />
+      </view>
+      <text v-if="error" class="form-error">{{ error }}</text>
+      <AudioButton
+        v-if="item.audio"
+        :target="item.audio"
+        :status="audio.snapshot.status"
+        :current-key="audio.currentKey"
+        @play="play"
+      />
+    </template>
     <AppState
       v-else
-      description="该收藏可能已被删除，请返回列表刷新。"
-      icon-label="收藏不存在"
+      icon-label="状态"
       title="未找到收藏"
+      :description="error || '请从收藏银行进入有效记录'"
     />
-    <view v-if="group" class="favorite-detail__actions">
-      <AppButton label="查看全部来源" @press="openSources" />
-      <AppButton label="取消收藏" variant="quiet" @press="removeFavorite" />
-    </view>
-  </AppPage>
+    <template #actions><AppButton v-if="item" label="返回原文" @press="returnSource" /></template>
+  </PersonalPage>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
-
-.favorite-detail {
-  &__card {
-    margin-bottom: 24rpx;
-    padding: 48rpx;
-    border: 2rpx solid tokens.$color-border;
-    border-radius: tokens.$radius-large;
-    background: tokens.$color-module;
-    text-align: center;
-  }
-
-  &__word,
-  &__type {
-    display: block;
-  }
-
-  &__word {
-    font-family: Georgia, serif;
-    font-size: 54rpx;
-    font-weight: 700;
-  }
-
-  &__type {
-    margin-top: 18rpx;
-    color: tokens.$color-text-muted;
-    font-size: 24rpx;
-  }
-
-  &__actions {
-    display: grid;
-    margin-top: 28rpx;
-    gap: 8rpx;
-  }
-}
+@use '../../features/profile/personal';
 </style>

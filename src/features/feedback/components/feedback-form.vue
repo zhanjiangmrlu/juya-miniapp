@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import {
@@ -7,6 +7,7 @@ import {
   preserveDraftAfterUploadFailure,
   validateFeedbackDraft
 } from '@/features/feedback/feedback-form'
+import { chooseFeedbackScreenshot } from '@/features/feedback/screenshot-picker'
 import { uploadFeedbackImage } from '@/features/feedback/upload-service'
 import { ApiError } from '@/services/http/types'
 import { getRuntimeServices } from '@/services/runtime'
@@ -18,65 +19,78 @@ withDefaults(defineProps<{ blocked?: boolean }>(), { blocked: false })
 const store = useFeedbackDraftStore()
 const error = ref('')
 const loading = ref(false)
-const categoryIndex = computed(() =>
-  Math.max(
-    0,
-    FEEDBACK_CATEGORIES.findIndex((item) => item.value === store.draft.category)
-  )
-)
-const categoryLabel = computed(
-  () => FEEDBACK_CATEGORIES.find((item) => item.value === store.draft.category)?.label
-)
+const sourceScenes = ref<
+  Array<{ scene_id: string; title: string; chinese_title: string; series: string }>
+>([])
+const sourceOptions = computed(() => [
+  { label: '首页', source: { page_label: '首页', page_path: '/pages/home/index' } },
+  { label: '场景学习', source: { page_label: '场景学习', page_path: '/pages/learning/index' } },
+  { label: '收藏银行', source: { page_label: '收藏银行', page_path: '/pages/favorites/index' } },
+  {
+    label: '我的学习档案',
+    source: { page_label: '我的学习档案', page_path: '/pages/profile/index' }
+  },
+  ...sourceScenes.value.map((scene) => ({
+    label: scene.chinese_title || scene.title,
+    source: {
+      scene_id: scene.scene_id,
+      scene_title: scene.chinese_title || scene.title,
+      series: scene.series,
+      page_path: '/pages/scene/detail'
+    }
+  }))
+])
+/** 读取可选来源摘要，页面选择仍可在目录请求失败时使用 */
+const loadSources = async () => {
+  try {
+    sourceScenes.value = (await getRuntimeServices().catalog.getCatalog()).items
+  } catch {
+    /* 自动携带来源及页面选择仍然可用 */
+  }
+}
+/** 保存用户选择的相关页面或内容，event 为来源选择器事件 */
+const selectSource = (event: unknown) => {
+  const option = sourceOptions.value[Number((event as { detail: { value: string } }).detail.value)]
+  if (option) {
+    store.update({ source: option.source })
+    error.value = ''
+  }
+}
+onMounted(loadSources)
+if (!store.draft.category) store.update({ category: 'CONTENT' })
 
-/** 从输入事件同步反馈正文，不把敏感原文写入日志。 */
-function handleDescriptionInput(event: unknown) {
+/** 从输入事件同步反馈正文，不把敏感原文写入日志 */
+const handleDescriptionInput = (event: unknown) => {
   store.update({ description: (event as { detail: { value: string } }).detail.value })
 }
 
-/** 按选择器索引保存允许的反馈分类。 */
-function handleCategoryChange(event: unknown) {
-  const index = Number((event as { detail: { value: string } }).detail.value)
-  store.update({ category: FEEDBACK_CATEGORIES[index]?.value ?? '' })
-}
+/** 切换反馈类别，value 为四种允许的问题类别 */
+const selectCategory = (value: string) => store.update({ category: value })
 
-/** 从图片扩展名推断接口允许的 MIME 类型。 */
-function inferMimeType(path: string): string {
-  const extension = path.split('.').pop()?.toLocaleLowerCase()
-  if (extension === 'png') return 'image/png'
-  if (extension === 'webp') return 'image/webp'
-  return 'image/jpeg'
-}
-
-/** 选择并保存单张本地截图引用，提交成功前不持久化图片内容。 */
-function chooseScreenshot() {
-  uni.chooseMedia({
-    count: 1,
-    mediaType: ['image'],
-    sizeType: ['compressed'],
-    success: (result) => {
-      const selected = result.tempFiles[0]
-      if (!selected) return
-      store.update({
-        screenshots: [
-          {
-            mimeType: inferMimeType(selected.tempFilePath),
-            path: selected.tempFilePath,
-            size: selected.size
-          }
-        ]
-      })
+/** 选择单张压缩图片，提交成功前保留本机引用 */
+const chooseScreenshot = () =>
+  chooseFeedbackScreenshot(
+    (file) => {
+      store.update({ screenshots: [file] })
       error.value = ''
+    },
+    (message) => {
+      error.value = message
     }
-  })
-}
+  )
 
-/** 删除草稿中的本地截图引用并保留其他表单字段。 */
-function removeScreenshot() {
+/** 删除草稿中的本地截图引用并保留其他表单字段 */
+const removeScreenshot = () => {
   store.update({ screenshots: [] })
 }
 
-/** 校验、上传可选截图并提交反馈；安全拦截仅保留本地草稿供用户编辑。 */
-async function submit() {
+/** 校验、上传可选截图并提交反馈；安全拦截仅保留本地草稿供用户编辑 */
+const submit = async () => {
+  if (loading.value) return
+  if (!store.draft.source?.scene_id && !store.draft.source?.page_label) {
+    error.value = '请选择相关页面或内容'
+    return
+  }
   const validation = validateFeedbackDraft(store.draft)
   if (!validation.valid || !validation.normalized) {
     error.value = Object.values(validation.errors)[0] ?? '请检查反馈内容'
@@ -92,7 +106,7 @@ async function submit() {
         screenshotKey = await uploadFeedbackImage(getRuntimeServices().feedback, screenshot)
       } catch {
         store.update(preserveDraftAfterUploadFailure(store.draft))
-        error.value = '截图上传失败，文字草稿已保留，可删除截图后重试'
+        error.value = '截图上传失败，草稿已保留，可重试或删除截图后提交'
         return
       }
     }
@@ -115,190 +129,151 @@ async function submit() {
   }
 }
 </script>
-
 <template>
   <view class="feedback-form">
-    <view v-if="blocked" class="feedback-form__blocked" role="alert">
-      <text class="feedback-form__blocked-title">内容暂时无法提交</text>
-      <text>请删除联系方式、网址或交易信息后重试。被拦截内容不会保存到反馈记录。</text>
-    </view>
-
-    <text class="feedback-form__label">问题分类</text>
-    <picker
-      :range="FEEDBACK_CATEGORIES"
-      range-key="label"
-      :value="categoryIndex"
-      @change="handleCategoryChange"
+    <view v-if="blocked" class="notice-card"
+      ><text class="notice-title">内容未通过检查</text
+      ><text>请修改问题说明，未提交的原文不会保存。</text></view
     >
-      <view class="feedback-form__picker">
-        {{ categoryLabel || '请选择内容、发音、显示或功能问题' }}
-      </view>
-    </picker>
-
-    <view class="feedback-form__label-row">
-      <text class="feedback-form__label">补充说明</text>
-      <text class="feedback-form__count">{{ store.draft.description.length }}/300</text>
-    </view>
-    <textarea
-      class="feedback-form__textarea"
+    <view class="category-tabs"
+      ><button
+        v-for="category in FEEDBACK_CATEGORIES"
+        :key="category.value"
+        :class="{ selected: store.draft.category === category.value }"
+        @click="selectCategory(category.value)"
+      >
+        {{ category.label }}
+      </button></view
+    >
+    <text class="form-label">相关页面</text
+    ><picker :range="sourceOptions" range-key="label" @change="selectSource"
+      ><view class="form-field source-field">{{
+        store.draft.source?.scene_title ||
+        store.draft.source?.page_label ||
+        store.draft.source?.scene_id ||
+        '请选择相关页面或内容'
+      }}</view></picker
+    >
+    <text class="form-label">问题说明</text
+    ><textarea
+      class="form-field description-field"
       maxlength="300"
-      placeholder="请说明遇到的问题和出现位置"
+      :placeholder="blocked ? '请重新填写清晰的描述，最多 300 字' : '请描述遇到的问题，最多 300 字'"
       :value="store.draft.description"
       @input="handleDescriptionInput"
     />
-
-    <view v-if="store.draft.screenshots[0]" class="feedback-form__screenshot">
-      <image
-        class="feedback-form__preview"
-        mode="aspectFill"
-        :src="store.draft.screenshots[0].path"
-      />
-      <view>
-        <text class="feedback-form__screenshot-title">已附加 1 张截图</text>
-        <text class="feedback-form__hint">提交时会进行内容安全检查</text>
-        <button class="feedback-form__remove" @click="removeScreenshot">删除截图</button>
-      </view>
-    </view>
-    <button v-else class="feedback-form__upload" @click="chooseScreenshot">
-      ＋ 添加截图（选填，最多 1 张）
+    <text class="form-label">截图</text>
+    <view v-if="store.draft.screenshots[0]" class="screenshot"
+      ><image mode="aspectFit" :src="store.draft.screenshots[0].path" /><view
+        ><text>已附加 1 张截图</text><button @click="removeScreenshot">删除截图</button></view
+      ></view
+    >
+    <button v-else class="form-field screenshot-add" @click="chooseScreenshot">
+      可添加 1 张截图
     </button>
-
-    <text v-if="error" class="feedback-form__error" role="alert">{{ error }}</text>
-    <AppButton :loading="loading" label="提交反馈" @press="submit" />
-    <text class="feedback-form__privacy">问题反馈不是即时聊天，请勿填写联系方式或交易信息。</text>
+    <text v-if="error" class="form-error" role="alert">{{ error }}</text>
+    <view class="submit-action"
+      ><AppButton :loading="loading" :label="blocked ? '重新提交' : '提交反馈'" @press="submit"
+    /></view>
   </view>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
+@use '../../profile/personal';
 
 .feedback-form {
-  padding: 30rpx;
-  border: 2rpx solid tokens.$color-border;
-  border-radius: tokens.$radius-large;
-  background: rgb(255 255 255 / 80%);
+  display: flex;
+  min-height: calc(100vh - 195px - 19.487vw - env(safe-area-inset-bottom));
+  flex-direction: column;
+  padding-top: 3px;
 
-  &__blocked {
-    margin-bottom: 28rpx;
-    padding: 22rpx;
-    border-radius: tokens.$radius-medium;
-    background: #fbe8e5;
-    color: tokens.$color-danger;
-    font-size: 23rpx;
-    line-height: 1.55;
-  }
-
-  &__blocked-title {
-    display: block;
-    margin-bottom: 6rpx;
-    font-size: 27rpx;
-    font-weight: 700;
-  }
-
-  &__label-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 28rpx;
-  }
-
-  &__label {
-    display: block;
-    font-size: 25rpx;
-    font-weight: 700;
-  }
-
-  &__count,
-  &__hint,
-  &__privacy {
-    color: tokens.$color-text-muted;
-    font-size: 21rpx;
-  }
-
-  &__picker,
-  &__textarea,
-  &__upload {
-    width: 100%;
-    border: 2rpx solid tokens.$color-border;
-    border-radius: tokens.$radius-medium;
-    background: tokens.$color-white;
-    color: tokens.$color-text;
-    font-size: 25rpx;
-  }
-
-  &__picker {
-    min-height: 84rpx;
-    margin-top: 14rpx;
-    padding: 24rpx;
-  }
-
-  &__textarea {
-    box-sizing: border-box;
-    height: 260rpx;
-    margin-top: 14rpx;
-    padding: 24rpx;
-    line-height: 1.6;
-  }
-
-  &__upload {
-    min-height: 92rpx;
-    margin: 24rpx 0;
-    padding: 20rpx;
-    color: tokens.$color-primary;
-    text-align: center;
-  }
-
-  &__screenshot {
+  .category-tabs {
     display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 0;
+
+    :where(button) {
+      height: 40px;
+      margin: 0;
+      padding: 0 4px;
+      border: 1px solid #d6dfc9;
+      border-radius: 11px;
+      background: #fffdf7;
+      color: #4e7f3b;
+      font-size: 11px;
+      line-height: 38px;
+
+      &.selected {
+        border-color: #4e7f3b;
+        background: #4e7f3b;
+        color: #fff;
+      }
+    }
+  }
+
+  .category-tabs + .form-label {
+    margin-top: 14px;
+  }
+
+  .form-label {
+    margin-top: 9px;
+  }
+
+  .source-field {
+    color: #7a8978;
+  }
+
+  .description-field {
+    height: 56px;
+    min-height: 56px;
+  }
+
+  .screenshot-add {
+    margin: 0;
+    color: #7a8978;
+    text-align: left;
+  }
+
+  .screenshot {
+    display: flex;
+    min-height: 56px;
     align-items: center;
-    margin: 24rpx 0;
-    padding: 18rpx;
-    border-radius: tokens.$radius-medium;
-    background: tokens.$color-module;
-    gap: 20rpx;
-    grid-template-columns: 120rpx 1fr;
+    padding: 8px 13px;
+    border: 1px solid #d6dfc9;
+    border-radius: 11px;
+    background: #fffdf7;
+    color: #6b7d6a;
+    gap: 12px;
+    font-size: 11px;
+
+    image {
+      width: 60px;
+      height: 60px;
+    }
+
+    button {
+      margin: 4px 0 0;
+      padding: 0;
+      background: transparent;
+      color: #b4462d;
+      font-size: 11px;
+      line-height: 20px;
+      text-align: left;
+    }
   }
 
-  &__preview {
-    width: 120rpx;
-    height: 120rpx;
-    border-radius: tokens.$radius-small;
+  .submit-action {
+    margin-top: auto;
+    padding-top: 16px;
   }
 
-  &__screenshot-title,
-  &__hint {
-    display: block;
-  }
+  .notice-card {
+    min-height: 72px;
+    margin-bottom: 11px;
 
-  &__screenshot-title {
-    font-size: 24rpx;
-    font-weight: 700;
-  }
-
-  &__hint {
-    margin-top: 6rpx;
-  }
-
-  &__remove {
-    display: inline-flex;
-    margin: 10rpx 0 0;
-    padding: 0;
-    background: transparent;
-    color: tokens.$color-danger;
-    font-size: 22rpx;
-  }
-
-  &__error {
-    display: block;
-    margin: 0 0 18rpx;
-    color: tokens.$color-danger;
-    font-size: 23rpx;
-  }
-
-  &__privacy {
-    display: block;
-    margin-top: 18rpx;
-    text-align: center;
+    .notice-title {
+      font-size: 15px;
+    }
   }
 }
 </style>

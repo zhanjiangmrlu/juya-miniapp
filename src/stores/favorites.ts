@@ -4,19 +4,22 @@ import { computed, reactive, ref } from 'vue'
 import { presentFavorites } from '@/features/favorites/favorite-presenter'
 
 import type { FavoriteService } from '@/features/favorites/favorite-service'
-import type { FavoriteItem, FavoriteType } from '@/shared/contracts/favorites'
-
+import type { FavoriteItem, FavoriteType, ReviewSession } from '@/shared/contracts/favorites'
 export interface FavoriteTabState {
   cursor: string | null
   filter: string
   scrollTop: number
+  review?: {
+    cardIds: string[]
+    index: number
+    face: 'BACK' | 'FRONT'
+    session?: ReviewSession
+    createKey?: string
+    completionKey?: string
+  } | null
 }
-
-/** 创建标签独立状态，防止对象引用在两个银行之间共享。 */
-function createTabState(): FavoriteTabState {
-  return { cursor: null, filter: '', scrollTop: 0 }
-}
-
+/** 创建互相独立的银行筛选与阅读位置 */
+const createTabState = (): FavoriteTabState => ({ cursor: null, filter: '', scrollTop: 0 })
 export const useFavoriteStore = defineStore('favorites', () => {
   const activeTab = ref<FavoriteType>('VOCABULARY')
   const items = ref<FavoriteItem[]>([])
@@ -36,45 +39,53 @@ export const useFavoriteStore = defineStore('favorites', () => {
       )
     )
   )
-
-  /** 局部更新指定银行状态，不触碰另一标签的筛选、位置或游标。 */
-  function updateTabState(type: FavoriteType, next: Partial<FavoriteTabState>) {
+  /** 更新银行状态，type 为收藏类型，next 为需要保存的筛选或阅读位置 */
+  const updateTabState = (type: FavoriteType, next: Partial<FavoriteTabState>) => {
     Object.assign(tabState[type], next)
   }
-
-  /** 切换银行并保留双方独立状态。 */
-  function selectTab(type: FavoriteType) {
+  /** 切换银行，type 为目标收藏类型 */
+  const selectTab = (type: FavoriteType) => {
     activeTab.value = type
   }
-
-  /** 从当前标签游标读取下一页并按标识去重追加。 */
-  async function load(service: FavoriteService, reset = false) {
+  /** 加载全部游标页供不限量复习，service 为收藏接口，reset 为是否刷新完整列表 */
+  const load = async (service: FavoriteService, reset = false) => {
+    if (loading.value) return
     loading.value = true
-    const state = tabState[activeTab.value]
-    if (reset) {
-      state.cursor = null
-      items.value = items.value.filter((item) => item.entry_type !== activeTab.value)
-    }
-
+    const type = activeTab.value
+    const state = tabState[type]
+    let cursor = reset ? null : state.cursor
+    const collected = reset ? [] : [...items.value]
+    const known = new Set(collected.map((item) => item.id))
+    const visited = new Set<string>()
     try {
-      const page = await service.list(state.cursor ?? undefined)
-      const known = new Set(items.value.map((item) => item.id))
-      items.value.push(...page.items.filter((item) => !known.has(item.id)))
-      state.cursor = page.next_cursor
+      do {
+        if (cursor && visited.has(cursor)) throw new Error('收藏分页游标重复，请重试')
+        if (cursor) visited.add(cursor)
+        const page = await service.list(cursor ?? undefined)
+        for (const item of page.items) {
+          if (!known.has(item.id)) {
+            collected.push(item)
+            known.add(item.id)
+          }
+        }
+        cursor = page.next_cursor
+      } while (cursor)
+      items.value = collected
+      state.cursor = cursor
     } finally {
       loading.value = false
     }
   }
-
-  /** 清空收藏与复习页面缓存，等待服务端重新读取空数据。 */
-  function clear() {
+  /** 清空学习缓存时移除收藏与银行状态 */
+  const clear = () => {
     activeTab.value = 'VOCABULARY'
     items.value = []
     loading.value = false
+    delete tabState.PHRASE.review
+    delete tabState.VOCABULARY.review
     Object.assign(tabState.PHRASE, createTabState())
     Object.assign(tabState.VOCABULARY, createTabState())
   }
-
   return {
     activeTab,
     clear,
