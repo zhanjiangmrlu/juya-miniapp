@@ -3,6 +3,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import HomePageView from '@/features/home/components/home-page-view.vue'
+import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 
 const networkError = ref(false)
 
@@ -12,8 +13,12 @@ function handleLoad(query?: Record<string, string>) {
 }
 
 onLoad(handleLoad)
+const { pageStyle, ownsScrollLock } = usePageScrollLock()
 </script>
 
 <template>
+  <!-- #ifdef MP-WEIXIN -->
+  <page-meta v-if="ownsScrollLock" :page-style="pageStyle" />
+  <!-- #endif -->
   <HomePageView :network-error="networkError" />
 </template>

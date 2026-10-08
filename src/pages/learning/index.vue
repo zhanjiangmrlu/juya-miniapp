@@ -9,6 +9,7 @@ import EntrySummary from '@/features/learning/components/entry-summary.vue'
 import LearningPageHeading from '@/features/learning/components/learning-page-heading.vue'
 import SceneListSection from '@/features/learning/components/scene-list-section.vue'
 import { useLearningPage } from '@/features/learning/use-learning-page'
+import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 const {
   cancel,
   closeNotice,
@@ -34,8 +35,12 @@ const handleShow = () => {
 onShow(handleShow)
 onHide(cancel)
 onUnload(cancel)
+const { pageStyle, ownsScrollLock } = usePageScrollLock()
 </script>
 <template>
+  <!-- #ifdef MP-WEIXIN -->
+  <page-meta v-if="ownsScrollLock" :page-style="pageStyle" />
+  <!-- #endif -->
   <EntryPageShell active="learning">
     <LearningPageHeading
       eyebrow="从真实生活场景出发，轻松开口说英语。"

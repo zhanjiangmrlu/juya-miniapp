@@ -1,6 +1,10 @@
 <script setup lang="ts">
+import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
+
 defineProps<{ chineseTitle: string; title: string; imageUrl: string }>()
 const emit = defineEmits<{ close: []; error: [] }>()
+
+useModalScrollLock()
 </script>
 <template>
   <view

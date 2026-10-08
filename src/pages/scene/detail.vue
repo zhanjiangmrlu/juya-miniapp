@@ -7,6 +7,7 @@ import SceneHero from '@/features/scene/components/scene-hero.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
 import { navigate } from '@/shared/navigation/navigate'
+import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 
 const {
   disposeAudio,
@@ -40,8 +41,12 @@ const openStep = async (page: string) => {
 onLoad(handleLoad)
 onHide(disposeAudio)
 onUnload(disposeAudio)
+const { pageStyle, ownsScrollLock } = usePageScrollLock()
 </script>
 <template>
+  <!-- #ifdef MP-WEIXIN -->
+  <page-meta v-if="ownsScrollLock" :page-style="pageStyle" />
+  <!-- #endif -->
   <ScenePageLayout :title="fullModel?.chineseTitle.replace(/^在/, '') ?? '场景详情'">
     <template v-if="fullModel">
       <SceneHero

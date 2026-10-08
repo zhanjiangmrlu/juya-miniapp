@@ -107,7 +107,8 @@ const openPage = async (confirmed = true) => {
     global: {
       stubs: {
         ScenePageLayout: { template: '<div><slot /></div>' },
-        'scroll-view': { template: '<div><slot /></div>' }
+        'scroll-view': { template: '<div><slot /></div>' },
+        'page-meta': true
       }
     }
   })

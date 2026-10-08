@@ -1,14 +1,11 @@
 <script setup lang="ts">
+import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
+
+useModalScrollLock()
 const emit = defineEmits<{
   close: []
   retry: []
 }>()
-
-let navigationTop: string | undefined
-// #ifdef MP-WEIXIN
-const windowInfo = uni.getWindowInfo()
-navigationTop = `${(windowInfo.statusBarHeight ?? 20) + (48 * windowInfo.windowWidth) / 390}px`
-// #endif
 
 /** 触发页面重新执行身份与首页数据加载 */
 const handleRetry = () => {
@@ -21,10 +18,11 @@ const handleClose = () => emit('close')
 <template>
   <view
     class="network-dialog"
-    :style="navigationTop ? { top: navigationTop } : undefined"
     role="dialog"
     aria-modal="true"
     aria-label="网络异常"
+    @touchmove.stop.prevent
+    @wheel.stop.prevent
   >
     <view class="dialog-panel">
       <button class="dialog-close" aria-label="关闭网络提示" @click="handleClose">×</button>
@@ -41,8 +39,7 @@ const handleClose = () => emit('close')
 .network-dialog {
   position: fixed;
   z-index: 70;
-  inset: tokens.home-size(78) 0
-    calc(#{tokens.home-size(57)} + max(#{tokens.home-size(19)}, env(safe-area-inset-bottom))) 0;
+  inset: 0;
   display: grid;
   padding: 0 30px 11px;
   background: rgb(20 37 27 / 43%);

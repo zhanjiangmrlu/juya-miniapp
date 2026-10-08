@@ -7,6 +7,7 @@ import EntryPageShell from '@/features/learning/components/entry-page-shell.vue'
 import LearningPageHeading from '@/features/learning/components/learning-page-heading.vue'
 import SceneListSection from '@/features/learning/components/scene-list-section.vue'
 import { useLearningPage } from '@/features/learning/use-learning-page'
+import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 const props = withDefaults(defineProps<{ initialNotice?: boolean }>(), { initialNotice: false })
 const { cancel, closeNotice, learning, load, noticeVisible, openProfile, selectScene } =
   useLearningPage()
@@ -18,8 +19,12 @@ const handleShow = () => {
 onShow(handleShow)
 onHide(cancel)
 onUnload(cancel)
+const { pageStyle, ownsScrollLock } = usePageScrollLock()
 </script>
 <template>
+  <!-- #ifdef MP-WEIXIN -->
+  <page-meta v-if="ownsScrollLock" :page-style="pageStyle" />
+  <!-- #endif -->
   <EntryPageShell active="learning">
     <LearningPageHeading large eyebrow="了解不同系列，看看更多真实场景。" title="探索更多内容" />
     <view class="preview-list"

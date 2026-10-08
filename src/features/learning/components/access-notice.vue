@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
+
+useModalScrollLock()
 withDefaults(defineProps<{ showProfileAction?: boolean }>(), { showProfileAction: false })
 const emit = defineEmits<{ close: []; profile: [] }>()
 /** 关闭提示，原页面和滚动位置保持不变 */
@@ -7,7 +10,14 @@ const handleClose = () => emit('close')
 const handleProfile = () => emit('profile')
 </script>
 <template>
-  <view class="access-notice" role="dialog" aria-modal="true" aria-label="内容访问提示">
+  <view
+    class="access-notice"
+    role="dialog"
+    aria-modal="true"
+    aria-label="内容访问提示"
+    @touchmove.stop.prevent
+    @wheel.stop.prevent
+  >
     <view class="notice-panel">
       <text class="notice-title">当前账号暂未开通此内容</text>
       <text class="notice-copy">你仍可以继续学习已开放的场景。</text>
@@ -24,8 +34,7 @@ const handleProfile = () => emit('profile')
 .access-notice {
   position: fixed;
   z-index: 60;
-  inset: var(--entry-header-reserve, 78px) 0
-    calc(var(--entry-tab-reserve, 76px) + env(safe-area-inset-bottom));
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;

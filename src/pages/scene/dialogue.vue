@@ -11,6 +11,7 @@ import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
 import VocabularySheet from '@/features/vocabulary-sheet/components/vocabulary-sheet.vue'
 import { navigate } from '@/shared/navigation/navigate'
+import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 
 const {
   audio,
@@ -160,8 +161,12 @@ onShow(() => {
 onPageScroll(handleScroll)
 onHide(cleanup)
 onUnload(cleanup)
+const { pageStyle, ownsScrollLock, scrollLocked } = usePageScrollLock()
 </script>
 <template>
+  <!-- #ifdef MP-WEIXIN -->
+  <page-meta v-if="ownsScrollLock" :page-style="pageStyle" />
+  <!-- #endif -->
   <ScenePageLayout :title="fullModel?.chineseTitle.replace(/^在/, '') ?? '场景对话'">
     <template v-if="fullModel">
       <SceneHeading
@@ -200,7 +205,7 @@ onUnload(cleanup)
       >
       <scroll-view
         class="dialogue-scroll"
-        scroll-y
+        :scroll-y="!scrollLocked"
         :scroll-into-view="scrollTarget"
         :scroll-top="listScrollTop"
         @scroll="handleListScroll"

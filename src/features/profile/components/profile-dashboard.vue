@@ -12,6 +12,7 @@ import ProfileIdentity from '@/features/profile/components/profile-identity.vue'
 import { createRequestId } from '@/services/http/request-id'
 import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
+import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
 
 import type { UserProfile } from '@/shared/contracts/profile'
 const profile = ref<UserProfile>()
@@ -19,6 +20,7 @@ const contact = ref(presentContact(null))
 const unread = ref(0)
 const feedbackUnread = ref(0)
 const promptVisible = ref(false)
+useModalScrollLock(promptVisible)
 const error = ref('')
 let visible = false
 let generation = 0
@@ -123,8 +125,8 @@ onUnload(hide)
     <text v-if="error" class="form-error">{{ error }}</text
     ><AppButton v-if="error" label="重新加载" variant="secondary" @press="load" />
     <template #overlay
-      ><view v-if="promptVisible" class="prompt-overlay"
-        ><view class="prompt-dialog" role="dialog" aria-label="完善联系资料"
+      ><view v-if="promptVisible" class="prompt-overlay" @touchmove.stop.prevent @wheel.stop.prevent
+        ><view class="prompt-dialog" role="dialog" aria-modal="true" aria-label="完善联系资料"
           ><text class="prompt-title">完善联系资料</text
           ><text class="prompt-copy"
             >微信号用于账号服务、学习协助和重要信息通知。填写不会自动获得新的学习权限，也不影响已开放的内容。</text
@@ -141,7 +143,7 @@ onUnload(hide)
 .prompt-overlay {
   position: fixed;
   z-index: 40;
-  inset: 78px 0 max(19.487vw, env(safe-area-inset-bottom));
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;

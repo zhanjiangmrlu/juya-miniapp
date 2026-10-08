@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AudioButton from '@/features/audio/components/audio-button.vue'
+import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
 
 import type { AudioStatus } from '@/features/audio/audio-machine'
 import type { AudioTarget, SceneEntry } from '@/shared/contracts/learning'
@@ -19,6 +20,8 @@ const emit = defineEmits<{
   favorite: [entry: SceneEntry]
   play: [target: AudioTarget]
 }>()
+
+useModalScrollLock()
 </script>
 <template>
   <view
