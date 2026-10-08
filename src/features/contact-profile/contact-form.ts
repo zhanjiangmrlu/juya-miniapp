@@ -13,6 +13,14 @@ export interface ContactViewModel {
   wechatId: string | null
 }
 
+const contactStatusLabels: Record<string, string> = {
+  NOT_PROVIDED: '未填写',
+  PENDING: '待联系',
+  CONTACTED: '已联系',
+  UNREACHABLE: '暂无法联系',
+  DO_NOT_CONTACT: '不希望联系'
+}
+
 /** 校验微信号与协议确认；相同值和修改次数不在客户端推导。 */
 export function validateContactForm(input: {
   consentConfirmed: boolean
@@ -39,8 +47,8 @@ export function validateCorrectionReason(reason: string): CorrectionValidationRe
   return { normalizedReason, valid: true }
 }
 
-/** 使用服务端联系方式事实生成页面模型，未填写时提供统一完善入口。 */
-export function presentContact(contact: ContactProfile | null): ContactViewModel {
+/** 从服务端联系资料生成中文状态，contact 为空时提供完善入口，修改能力仍沿用服务端结果 */
+export const presentContact = (contact: ContactProfile | null): ContactViewModel => {
   if (!contact) {
     return {
       canSelfEdit: true,
@@ -53,7 +61,9 @@ export function presentContact(contact: ContactProfile | null): ContactViewModel
   return {
     canSelfEdit: contact.can_self_edit,
     selfEditCount: contact.self_edit_count,
-    statusLabel: contact.change_pending ? '变更审核中' : contact.contact_status,
+    statusLabel: contact.change_pending
+      ? '变更审核中'
+      : contactStatusLabels[contact.contact_status] || '状态待确认',
     wechatId: contact.wechat_id
   }
 }

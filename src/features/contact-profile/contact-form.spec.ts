@@ -3,6 +3,39 @@ import { describe, expect, it } from 'vitest'
 import { presentContact, validateContactForm, validateCorrectionReason } from './contact-form'
 
 describe('contact form', () => {
+  it.each([
+    ['NOT_PROVIDED', '未填写'],
+    ['PENDING', '待联系'],
+    ['CONTACTED', '已联系'],
+    ['UNREACHABLE', '暂无法联系'],
+    ['DO_NOT_CONTACT', '不希望联系'],
+    ['FUTURE_STATUS', '状态待确认']
+  ])('联系状态 %s 显示中文，保留服务端修改能力', (status, label) => {
+    expect(
+      presentContact({
+        can_self_edit: false,
+        change_pending: false,
+        consent_version: 'v1',
+        contact_status: status,
+        self_edit_count: 1,
+        wechat_id: 'wechat_123'
+      })
+    ).toMatchObject({ statusLabel: label, canSelfEdit: false, selfEditCount: 1 })
+  })
+
+  it('变更待处理文案优先于联系业务状态', () => {
+    expect(
+      presentContact({
+        can_self_edit: false,
+        change_pending: true,
+        consent_version: 'v1',
+        contact_status: 'CONTACTED',
+        self_edit_count: 1,
+        wechat_id: 'wechat_123'
+      })
+    ).toMatchObject({ statusLabel: '变更审核中', canSelfEdit: false, selfEditCount: 1 })
+  })
+
   it('未填写时返回明确状态', () => {
     expect(presentContact(null)).toMatchObject({ statusLabel: '未填写，去完善', wechatId: null })
   })

@@ -60,7 +60,7 @@ onShow(load)
   <PersonalPage
     navigation="联系资料"
     title="联系资料管理"
-    :subtitle="contact.canSelfEdit ? '核对前还可自行修改 1 次' : '已核对的微信号需要提交更正申请'"
+    :subtitle="contact.canSelfEdit ? '核对前还可自行修改 1 次' : '当前联系资料暂不可自行修改'"
   >
     <PersonalSummary
       class="current-contact"
@@ -76,7 +76,7 @@ onShow(load)
       ><ContactForm ref="form" management :disabled="loading" @submit="save"
     /></view>
     <view v-else class="manage-form"
-      ><PersonalRow title="联系状态" :detail="contact.statusLabel" badge="已核对"
+      ><PersonalRow title="联系状态" :detail="contact.statusLabel" badge="仅查看"
     /></view>
     <text v-if="error" class="form-error">{{ error }}</text>
     <template #actions
