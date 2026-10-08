@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import pauseWhite from '@/features/audio/assets/pause-white.svg'
+import playGreen from '@/features/audio/assets/play-green.svg'
+import playWhite from '@/features/audio/assets/play-white.svg'
 import AudioButton from '@/features/audio/components/audio-button.vue'
 
 import type { AudioStatus } from '@/features/audio/audio-machine'
@@ -60,7 +63,19 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
         :disabled="!snapshot.hasRecording || snapshot.status === 'RECORDING'"
         @click="emit('playback')"
       >
-        {{ snapshot.status === 'PLAYBACK' ? 'Ⅱ 暂停回听' : '▶ 当次回听' }}
+        <view v-if="snapshot.status === 'PLAYBACK'" class="recording-pause" aria-hidden="true">
+          <image :src="pauseWhite" mode="aspectFit" />
+          <image :src="pauseWhite" mode="aspectFit" />
+        </view>
+        <image
+          v-else
+          class="recording-play"
+          :class="{ enabled: snapshot.hasRecording && snapshot.status !== 'RECORDING' }"
+          :src="snapshot.hasRecording && snapshot.status !== 'RECORDING' ? playWhite : playGreen"
+          mode="aspectFit"
+          aria-hidden="true"
+        />
+        <text>{{ snapshot.status === 'PLAYBACK' ? '暂停回听' : '当次回听' }}</text>
       </button>
       <button
         class="recording-action"
@@ -77,7 +92,7 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
 <style scoped lang="scss">
 .recording-controls {
   margin-top: 15px;
-  padding: 9px 13px 12px;
+  padding: 10px 13px 13px;
   border: 1px solid #d6dfc9;
   border-radius: 14px;
   background: #fffdf7;
@@ -90,12 +105,16 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
     gap: 10px;
     font-size: 14px;
     font-weight: 700;
-    line-height: 25px;
+    line-height: 24px;
+
+    :deep(.audio-button.inline) {
+      min-height: 24px;
+    }
   }
 
   .recording-sentence {
     display: block;
-    margin-top: 7px;
+    margin-top: 6px;
     font-size: 13px;
     font-weight: 500;
     line-height: 24px;
@@ -105,7 +124,7 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
 
   .recording-hint {
     display: block;
-    margin-top: 3px;
+    margin-top: 2px;
     color: #748271;
     font-size: 11px;
     line-height: 20px;
@@ -113,14 +132,17 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
 
   .recording-grid {
     display: grid;
-    margin-top: 8px;
+    margin-top: 6px;
     gap: 8px 14px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .recording-action {
+    display: flex;
     width: 100%;
     min-height: 40px;
+    align-items: center;
+    justify-content: center;
     margin: 0;
     padding: 8px 4px;
     border: 1px solid #d6dfc9;
@@ -129,6 +151,7 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
     color: #4e7f3b;
     font-size: 13px;
     line-height: 22px;
+    gap: 6px;
 
     &.primary {
       border-color: #4e7f3b;
@@ -140,6 +163,26 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
       border-color: #d6dfc9;
       background: #f3f4ed;
       color: #879584;
+    }
+  }
+
+  .recording-play {
+    width: 9px;
+    height: 11px;
+    opacity: 0.5;
+
+    &.enabled {
+      opacity: 1;
+    }
+  }
+
+  .recording-pause {
+    display: flex;
+    gap: 4px;
+
+    image {
+      width: 3px;
+      height: 11px;
     }
   }
 }

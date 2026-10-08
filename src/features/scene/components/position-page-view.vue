@@ -165,7 +165,9 @@ onUnload(disposeAudio)
 }
 
 .scene-highlight .source-value {
+  min-height: 45px;
   font-size: 17px;
+  line-height: 24px;
 }
 
 .scene-section {
