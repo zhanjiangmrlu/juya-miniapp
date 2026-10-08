@@ -18,6 +18,7 @@ const props = withDefaults(
     number?: number
     selected?: boolean
     hideAudio?: boolean
+    audioSelectionVisible?: boolean
     inspectEnabled?: boolean
   }>(),
   {
@@ -27,6 +28,7 @@ const props = withDefaults(
     highlighted: false,
     selected: false,
     hideAudio: false,
+    audioSelectionVisible: true,
     inspectEnabled: true
   }
 )
@@ -79,7 +81,7 @@ const inspect = (span?: ClickableSpan) => {
     <AudioButton
       v-if="entry.audio && !hideAudio"
       variant="compact"
-      :selected="highlighted || selected"
+      :selected="audioSelectionVisible && (highlighted || selected)"
       :current-key="currentAudioKey"
       :status="status"
       :target="entry.audio"

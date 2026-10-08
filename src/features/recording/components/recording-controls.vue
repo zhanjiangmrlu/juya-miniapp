@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import pauseWhite from '@/features/audio/assets/pause-white.svg'
+import pauseReplayWhite from '@/features/audio/assets/pause-replay-white.svg'
 import playGreen from '@/features/audio/assets/play-green.svg'
 import playWhite from '@/features/audio/assets/play-white.svg'
 import AudioButton from '@/features/audio/components/audio-button.vue'
@@ -64,8 +64,8 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
         @click="emit('playback')"
       >
         <view v-if="snapshot.status === 'PLAYBACK'" class="recording-pause" aria-hidden="true">
-          <image :src="pauseWhite" mode="aspectFit" />
-          <image :src="pauseWhite" mode="aspectFit" />
+          <image :src="pauseReplayWhite" mode="aspectFit" />
+          <image :src="pauseReplayWhite" mode="aspectFit" />
         </view>
         <image
           v-else
@@ -182,7 +182,7 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
 
     image {
       width: 3px;
-      height: 11px;
+      height: 12px;
     }
   }
 }

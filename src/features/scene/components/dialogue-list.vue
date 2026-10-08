@@ -13,8 +13,15 @@ withDefaults(
     catalog?: SceneEntry[]
     highlightedId?: string
     hideAudio?: boolean
+    audioSelectionVisible?: boolean
   }>(),
-  { currentAudioKey: null, catalog: () => [], highlightedId: '', hideAudio: false }
+  {
+    currentAudioKey: null,
+    catalog: () => [],
+    highlightedId: '',
+    hideAudio: false,
+    audioSelectionVisible: true
+  }
 )
 const emit = defineEmits<{
   inspect: [entry: SceneEntry, span: ClickableSpan]
@@ -35,6 +42,7 @@ const inspect = (entry: SceneEntry, span: ClickableSpan) => emit('inspect', entr
       :catalog="catalog"
       :highlighted="highlightedId === entry.entry_id"
       :hide-audio="hideAudio"
+      :audio-selection-visible="audioSelectionVisible"
       @inspect="inspect"
       @play="emit('play', $event)"
     />

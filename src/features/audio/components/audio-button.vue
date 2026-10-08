@@ -55,7 +55,7 @@ const handlePlay = () => emit('play', props.target)
 <template>
   <button
     class="audio-button"
-    :class="[variant, { active }]"
+    :class="[variant, { active, playing }]"
     :aria-label="stateLabel"
     :disabled="isCurrent && status === 'LOADING'"
     @click.stop="handlePlay"
@@ -65,9 +65,12 @@ const handlePlay = () => emit('play', props.target)
       <image class="pause-bar" :src="pauseAsset" mode="aspectFit" />
     </view>
     <image v-else class="play-icon" :src="playAsset" mode="aspectFit" aria-hidden="true" />
-    <text v-if="variant === 'pill' || variant === 'inline'" class="audio-label">{{
-      variant === 'inline' ? (playing ? '暂停原音' : '播放原音') : stateLabel
-    }}</text>
+    <text
+      v-if="variant === 'pill' || variant === 'inline'"
+      class="audio-label"
+      :class="{ wide: variant === 'inline' && playing }"
+      >{{ variant === 'inline' ? (playing ? '暂停原音' : '播放原音') : stateLabel }}</text
+    >
   </button>
 </template>
 
@@ -117,10 +120,24 @@ const handlePlay = () => emit('play', props.target)
   }
 
   &.inline {
+    width: 104px;
     min-height: 25px;
+    justify-content: flex-end;
+    margin-right: 2px;
     border: 0;
     border-radius: 0;
     background: transparent;
+    color: tokens.$color-primary;
+
+    .audio-label {
+      font-weight: 500;
+      line-height: 23px;
+      text-align: right;
+    }
+  }
+
+  &.inline.playing {
+    gap: 7px;
   }
 
   .play-icon {
@@ -162,6 +179,11 @@ const handlePlay = () => emit('play', props.target)
 
   .audio-label {
     font-size: 12px;
+
+    &.wide {
+      width: 80px;
+      flex: none;
+    }
   }
 }
 </style>

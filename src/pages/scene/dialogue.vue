@@ -195,6 +195,7 @@ onUnload(cleanup)
           :catalog="fullModel.entries"
           :status="audio.snapshot.status"
           :highlighted-id="currentSentence"
+          :audio-selection-visible="!wholePlaying"
           @inspect="inspectSentence"
           @play="play"
         />
