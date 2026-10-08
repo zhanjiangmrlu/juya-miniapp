@@ -2,6 +2,8 @@
 
 用户已批准三个新对话并行复查补修，当前对话统筹。设计基线为 [Figma 小程序页面](https://www.figma.com/design/evoGqXQ4pI3Q3cdLpc6NOc?node-id=2475-158)，执行范围和文件归属见 [并行计划](superpowers/plans/2026-10-08-figma-review.md)
 
+本文保留首轮复查的历史结果。用户随后要求继续开发，剩余场景设计 context/PNG 已补齐，最新补修、真实本地 HTTP 联调和门禁见 [续开发记录](figma-20261008-continuation.md)
+
 ## 起点与证据
 
 - main 起点：6ddc756；启动前工作区干净
