@@ -43,7 +43,9 @@ export const createUniAudioEngine = (): AudioEngine => {
       }
       device.onCanplay(() => emit({ type: 'canplay' }))
       device.onPlay(() => emit({ type: 'play' }))
-      device.onPause(() => emit({ type: 'pause' }))
+      device.onPause(() =>
+        emit({ type: 'pause', currentTimeMs: Math.round(device.currentTime * 1000) })
+      )
       device.onEnded(() => emit({ type: 'ended' }))
       device.onTimeUpdate(() =>
         emit({ type: 'timeupdate', currentTimeMs: Math.round(device.currentTime * 1000) })

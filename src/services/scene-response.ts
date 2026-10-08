@@ -90,34 +90,50 @@ export const adaptSceneResponse = (response: SceneOpenWireResponse): SceneOpenRe
         duration_ms: content.audio.duration_ms
       }
     : undefined
-  const entries: SceneEntry[] = content.dialogue.map((sentence) => ({
-    entry_id: sentence.id,
-    entry_type: 'DIALOGUE',
-    text: sentence.english,
-    chinese: sentence.chinese,
-    speaker: sentence.speaker,
-    source_locator: sentence.id,
-    scene_id: scene.scene_id,
-    revision_id: scene.revision_id,
-    clickable_spans: [...sentence.clickable_spans],
-    ...(audio &&
-    sentence.timing_confirmed &&
-    sentence.audio_version_id === audio.version_id &&
-    sentence.start_ms !== null &&
-    sentence.end_ms !== null &&
-    sentence.start_ms < sentence.end_ms &&
-    sentence.end_ms <= (audio.duration_ms ?? 0)
-      ? {
-          audio: {
-            ...audio,
-            target_type: 'sentence',
-            sentence_id: sentence.id,
+  const entries: SceneEntry[] = content.dialogue.map((sentence) => {
+    // 同版本有效时间用于阅读定位，逐句播放仍要求管理端确认
+    const timing =
+      audio &&
+      sentence.audio_version_id === audio.version_id &&
+      sentence.start_ms !== null &&
+      sentence.end_ms !== null &&
+      Number.isFinite(sentence.start_ms) &&
+      Number.isFinite(sentence.end_ms) &&
+      sentence.start_ms >= 0 &&
+      sentence.start_ms < sentence.end_ms &&
+      sentence.end_ms <= (audio.duration_ms ?? 0)
+        ? {
+            target_id: audio.target_id,
+            version_id: audio.version_id,
             start_ms: sentence.start_ms,
-            end_ms: sentence.end_ms
+            end_ms: sentence.end_ms,
+            timing_confirmed: sentence.timing_confirmed
           }
-        }
-      : {})
-  }))
+        : undefined
+    return {
+      entry_id: sentence.id,
+      entry_type: 'DIALOGUE',
+      text: sentence.english,
+      chinese: sentence.chinese,
+      speaker: sentence.speaker,
+      source_locator: sentence.id,
+      scene_id: scene.scene_id,
+      revision_id: scene.revision_id,
+      clickable_spans: [...sentence.clickable_spans],
+      ...(timing ? { audio_timing: timing } : {}),
+      ...(audio && timing?.timing_confirmed
+        ? {
+            audio: {
+              ...audio,
+              target_type: 'sentence',
+              sentence_id: sentence.id,
+              start_ms: timing.start_ms,
+              end_ms: timing.end_ms
+            }
+          }
+        : {})
+    }
+  })
   entries.push(
     ...content.vocabulary.map((entry) => adaptEntry(scene, entry, 'VOCABULARY')),
     ...content.chunks.map((entry) => adaptEntry(scene, entry, 'PHRASE'))

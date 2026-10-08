@@ -63,6 +63,48 @@ const published = {
 } as const
 
 describe('场景接口适配', () => {
+  it('保留同版本候选时间用于阅读定位，同时保持未确认句子不可单独播放', () => {
+    const response = {
+      ...published,
+      scene: {
+        ...published.scene,
+        content: {
+          ...published.scene.content,
+          dialogue: [{ ...published.scene.content.dialogue[0], timing_confirmed: false }]
+        }
+      }
+    }
+    const entry = adaptSceneResponse(response).scene?.entries[0]
+    expect(entry).toHaveProperty('audio_timing', {
+      target_id: 'dialogue-audio',
+      version_id: 'audio-2',
+      start_ms: 1000,
+      end_ms: 3000,
+      timing_confirmed: false
+    })
+    expect(entry?.audio).toBeUndefined()
+  })
+
+  it.each([
+    { audio_version_id: 'old-version' },
+    { start_ms: null },
+    { start_ms: -1 },
+    { start_ms: 3000, end_ms: 1000 },
+    { end_ms: 10001 }
+  ])('不使用错版或越界的候选时间 %j', (timing) => {
+    const response = {
+      ...published,
+      scene: {
+        ...published.scene,
+        content: {
+          ...published.scene.content,
+          dialogue: [{ ...published.scene.content.dialogue[0], ...timing }]
+        }
+      }
+    }
+    expect(adaptSceneResponse(response).scene?.entries[0]).not.toHaveProperty('audio_timing')
+  })
+
   it('保留发布修订、整段音频和句子区间，不创建独立句子音频', () => {
     const result = adaptSceneResponse(published)
     expect(result.scene).toMatchObject({

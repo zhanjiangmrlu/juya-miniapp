@@ -13,10 +13,13 @@ try {
     info.windowWidth
   )
   navigationOffset = Math.max(0, metrics.top + metrics.height - 78)
+  // H5 的底部安全区由 CSS env 处理，桌面屏幕与浏览器窗口的高度差不是安全区
+  // #ifndef H5
   safeBottomExtra = Math.max(
     0,
     info.screenHeight - (info.safeArea?.bottom ?? info.screenHeight) - (19 * info.windowWidth) / 390
   )
+  // #endif
 } catch {
   // 浏览器采用设计导航与底部安全区
 }

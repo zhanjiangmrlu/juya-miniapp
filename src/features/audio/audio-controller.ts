@@ -109,7 +109,12 @@ export class AudioController {
           this.options.engine.seek((this.state.currentTimeMs ?? target.start_ms ?? 0) / 1000)
           this.options.engine.play()
         } else if (event.type === 'play') this.update({ ...this.state, status: 'PLAYING' })
-        else if (event.type === 'pause') this.update({ ...this.state, status: 'PAUSED' })
+        else if (event.type === 'pause')
+          this.update({
+            ...this.state,
+            status: 'PAUSED',
+            currentTimeMs: event.currentTimeMs ?? this.state.currentTimeMs
+          })
         else if (event.type === 'ended') this.stop()
         else if (event.type === 'error') void this.handleError(event.status ?? 0)
         else if (event.type === 'timeupdate') {

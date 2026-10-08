@@ -50,6 +50,13 @@ export interface SceneEntry {
   clickable_spans?: ClickableSpan[]
   favorited?: boolean
   audio?: AudioTarget
+  audio_timing?: {
+    target_id: string
+    version_id: string
+    start_ms: number
+    end_ms: number
+    timing_confirmed: boolean
+  }
   chinese?: string
   entry_id: string
   entry_type: SceneEntryType

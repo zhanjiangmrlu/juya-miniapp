@@ -3,6 +3,7 @@ import { onHide, onLoad, onPageScroll, onShow, onUnload } from '@dcloudio/uni-ap
 import { computed, getCurrentInstance, ref, watch } from 'vue'
 
 import AppState from '@/components/app-state/app-state.vue'
+import { isSameAudioTarget } from '@/features/audio/audio-machine'
 import AudioButton from '@/features/audio/components/audio-button.vue'
 import DialogueList from '@/features/scene/components/dialogue-list.vue'
 import SceneHeading from '@/features/scene/components/scene-heading.vue'
@@ -32,18 +33,34 @@ const pageActive = ref(true)
 const pageInstance = getCurrentInstance()
 const listScrollTop = ref(0)
 let highlightTimer: ReturnType<typeof globalThis.setTimeout> | undefined
+/** 按设备位置定位当前句，暂停和句间停顿保留激活，下一句开始时切换 */
 const currentSentence = computed(() => {
   const snapshot = audio.snapshot
   if (snapshot.target?.sentence_id && ['PLAYING', 'PAUSED'].includes(snapshot.status))
     return snapshot.target.sentence_id
-  if (snapshot.target && snapshot.status === 'PLAYING')
-    return scene.dialogueEntries.find(
-      (entry) =>
-        entry.audio?.start_ms !== undefined &&
-        entry.audio?.end_ms !== undefined &&
-        (snapshot.currentTimeMs ?? 0) >= entry.audio.start_ms &&
-        (snapshot.currentTimeMs ?? 0) < entry.audio.end_ms
-    )?.entry_id
+  if (
+    snapshot.target &&
+    fullModel.value?.audio &&
+    isSameAudioTarget(snapshot.target, fullModel.value.audio) &&
+    ['PLAYING', 'PAUSED'].includes(snapshot.status)
+  ) {
+    let activeId = scene.dialogueEntries[0]?.entry_id
+    let activeStartMs = -1
+    for (const entry of scene.dialogueEntries) {
+      const timing = entry.audio_timing ?? entry.audio
+      if (
+        timing?.target_id === snapshot.target.target_id &&
+        timing.version_id === snapshot.target.version_id &&
+        timing.start_ms !== undefined &&
+        timing.start_ms <= (snapshot.currentTimeMs ?? 0) &&
+        timing.start_ms > activeStartMs
+      ) {
+        activeId = entry.entry_id
+        activeStartMs = timing.start_ms
+      }
+    }
+    return activeId
+  }
   return restoredId.value || scene.dialogueEntries[0]?.entry_id
 })
 const duration = computed(() => {
