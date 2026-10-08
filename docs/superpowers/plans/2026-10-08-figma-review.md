@@ -36,25 +36,33 @@
 | 入口 | M01/M01S/M02/M03/M05/M05S/M06/M07，8 状态                                                | src/pages/home、src/pages/learning、src/features/home、src/features/learning                                                                                                                                                                                                    | docs/figma-20261008-entry.md               | 5391；dist/dev/figma-20261008-entry-h5、dist/build/figma-20261008-entry-*             |
 | 场景 | M08/M09/M09S/M09T/M09U/M12–M18、M09P0–P5/M09I2–I5/M14P1–P5/M14I2–I5/M14PR/M14IR，33 状态 | src/pages/scene、src/features/scene、src/features/audio、src/features/recording、src/features/vocabulary-sheet、src/features/learning-progress、src/features/learning-result                                                                                                    | docs/figma-20261008-scene.md               | 5392；dist/dev/figma-20261008-scene-h5、dist/build/figma-20261008-scene-*             |
 | 个人 | M19–M25/M27–M47，28 状态                                                                 | src/pages/favorites、src/pages/profile、src/pages/entitlement、src/pages/feedback、src/pages/account、src/features/favorites、src/features/profile、src/features/contact-profile、src/features/entitlements、src/features/messages、src/features/feedback、src/features/account | docs/figma-20261008-personal.md            | 5393；dist/dev/figma-20261008-personal-h5、dist/build/figma-20261008-personal-*       |
-| 统筹 | 公共问题与最终验收                                                                       | src/components、src/layouts、src/styles、src/stores、src/services、src/shared、src/pages.json、src/pages/compat、配置、中央台账                                                                                                                                                 | 本计划、docs/figma-20261008-integration.md | 5390；dist/dev/figma-20261008-integration-h5、dist/build/figma-20261008-integration-* |
+| 统筹 | 公共问题与最终验收                                                                       | src/components、src/layouts、src/styles、src/stores、src/services、src/shared、src/static、src/pages.json、src/pages/compat、配置、中央台账                                                                                                                                     | 本计划、docs/figma-20261008-integration.md | 5390；dist/dev/figma-20261008-integration-h5、dist/build/figma-20261008-integration-* |
 
 ## Task 1–3: 所属页面复查与补修
 
-- [ ] 阅读 AGENTS.md、中央台账、2026-10-02 本组交付及最终集成记录，核对文件归属
-- [ ] 获取本组全部状态的当前 Figma 设计上下文与截图；根节点为 canvas 时逐个明确节点读取
-- [ ] 对当前实现获取 390×844 全状态截图，375×812 和 768×1024 验证基础页、弹层与长内容；记录每项实际覆盖，不冒称未截图状态
-- [ ] 将确认的视觉差异列为复现步骤、预期、实际、所属文件；动态文字差异单独说明
-- [ ] 修复所属差异并复核截图、素材加载和有效几何；功能缺陷先证明失败，再补修和验证
-- [ ] 运行本组格式、ESLint、Stylelint、目标测试；独立 H5 与微信构建；记录命令、退出码、截图和保留的验收边界
-- [ ] 写入本组交接文档，提交本组文件；没有代码缺口时明确报告复查结果，不为提交制造修改
+- [x] 阅读 AGENTS.md、中央台账、2026-10-02 本组交付及最终集成记录，核对文件归属
+- [ ] 当前 Figma 完整设计证据仍有缺口：入口 8/8、个人 28/28；场景 23/33 高保真 context、17/33 独立设计 PNG，额度恢复后补取其余。已取得全部 69 状态当前 metadata，不作为高保真替代
+- [x] 对当前实现获取 390×844 全状态截图，375×812 和 768×1024 验证基础页、弹层与长内容；记录每项实际覆盖，不冒称未截图状态
+- [x] 将确认的视觉差异列为复现步骤、预期、实际、所属文件；动态文字差异单独说明
+- [x] 修复所属差异并复核截图、素材加载和有效几何；功能缺陷先证明失败，再补修和验证
+- [x] 运行本组格式、ESLint、Stylelint、目标测试；独立 H5 与微信构建；记录命令、退出码、截图和保留的验收边界
+- [x] 写入本组交接文档，提交本组文件；没有代码缺口时明确报告复查结果，不为提交制造修改
 
 ## Task 4: 统筹集成
 
 - [x] 确认基线 main/6ddc756 工作区干净，43 个正式页面文件齐全
 - [x] 当前 Figma 69 状态逐节点对应既有台账，无缺失映射
 - [x] 启动前 pnpm check、65 文件/224 项测试、独立微信构建通过
-- [x] 启动三个对话，保存 threadId 和交接状态；等待交付与最终验收
-- [ ] 处理交接中的公共问题，确认三个范围没有越权修改
-- [ ] 复核公共布局、导航、素材、短屏与长内容的最终浏览器表现
-- [ ] 在所有修改落地后运行 pnpm check、pnpm test、独立 H5 与微信构建、git diff --check
-- [ ] 更新中央台账与最终集成记录，中文提交，逐组报告提交、测试、证据和未完成边界
+- [x] 启动并等待三个对话完成，保存 threadId 和交接状态；三个交付提交为 dfb0dd3、7c7f2d1、4753be4
+- [x] 处理交接中的公共问题，确认三个范围没有越权修改
+- [x] 复核公共布局、导航、素材、短屏与长内容的最终浏览器表现
+- [x] 在所有源码修改落地后运行 pnpm check、pnpm test、独立 H5 与微信构建、git diff --check；全部通过
+- [x] 更新中央台账与最终集成记录，中文提交，逐组报告提交、测试、证据和未完成边界；保留 Figma 额度造成的设计证据缺口
+
+## 2026-10-08 执行裁定与独立审查
+
+实际本轮业务修改保持纯样式及原始 SVG，未改动 API、事件、状态机、权限或提交规则。对卡片、录音区、来源句、翻卡和紧凑行用真实浏览器几何证明差异；公共长内容遮挡由统筹独立复现失败，再修复到 12 图/40 断言通过。没有增加镜像源码的样式字符串单元测试
+
+公共任务增加 src/static/home/capsule-close.svg 原始设计素材对齐，由统筹独占；原样复制后根 16×16，SHA256 与当前 Figma 原始文件相同。M06/M07 导航归属、M07 确认需求文案、M01S 必要关闭入口保留既有交互；设计同步差异记录在集成台账
+
+独立只读审查已完成，覆盖最终候选 12 个源码/资源文件，未发现本轮引入的 P0/P1/P2 问题；设计额度缺口和真实设备/外部环境仍不属于已通过验收。全仓 check、测试 65 文件/224 项、统一非 mock H5/微信构建和差异检查全部通过
