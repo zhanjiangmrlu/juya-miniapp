@@ -59,7 +59,8 @@ withDefaults(
 }
 
 .tab-content {
-  padding-bottom: calc(132rpx + env(safe-area-inset-bottom));
+  // 底部留白至少覆盖导航栏高度，避免平板长内容的操作按钮被遮挡
+  padding-bottom: calc(max(132rpx, tokens.home-size(76)) + env(safe-area-inset-bottom));
 
   &.home-content {
     padding-bottom: calc(tokens.home-size(103) + env(safe-area-inset-bottom));
