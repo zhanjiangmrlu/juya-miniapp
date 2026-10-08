@@ -84,7 +84,7 @@ const handleSelect = () => emit('select', props.scene)
   grid-template-columns: 108px minmax(0, 1fr);
   gap: 12px;
   margin: 0;
-  padding: 10px;
+  padding: 11px 19px 11px 11px;
   border: 1px solid tokens.$color-border;
   border-radius: 16px;
   background: tokens.$color-card;
@@ -171,7 +171,7 @@ const handleSelect = () => emit('select', props.scene)
 
   .progress {
     height: 6px;
-    margin-top: 4px;
+    margin-top: 2px;
     overflow: hidden;
     border-radius: 3px;
     background: tokens.$home-track;
@@ -232,6 +232,7 @@ const handleSelect = () => emit('select', props.scene)
 
   &.preview {
     min-height: 177px;
+    padding: 11px;
     grid-template-columns: 126px minmax(0, 1fr);
 
     .cover {

@@ -41,7 +41,7 @@ const handleSelect = (scene: SceneCardViewModel) => emit('select', scene)
 @use '@/styles/tokens.scss' as tokens;
 
 .scene-section {
-  margin-top: 16px;
+  margin-top: 18px;
 
   .section-header {
     display: flex;
