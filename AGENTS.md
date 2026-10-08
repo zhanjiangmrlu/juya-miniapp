@@ -28,3 +28,15 @@
    - **同一页面内重复出现的结构必须优先抽取为公共组件，避免复制粘贴重复代码。**
    - **组件拆分以实际复用性和可维护性为准，避免为了组件化而进行过度拆分。**
    - **组件职责保持单一，页面组件主要负责数据组织、状态管理和模块组合，具体展示逻辑尽量下沉到子组件。**
+7. **命名规范**
+   - **源码文件和文件夹统一使用 `kebab-case`（全小写，多词用短横线连接），例如 `app-button.vue`、`use-home-page.ts`、`learning-result`。**
+   - **保留框架和工具约定的名称，例如 `App.vue`、`env.d.ts`、`index.ts`、`pages.json`、`manifest.json`、`uni.scss`；图片资源允许沿用 `@3x` 后缀，例如 `coffee@3x.png`。**
+   - **组件导入变量、显式声明的组件名称和 Vue 模板中的组件标签统一使用 `PascalCase`，例如 `AppButton`、`HomePageView`；文件名仍使用 `kebab-case`。**
+   - **路由页面放在 `src/pages/<业务目录>/`，保留现有 `index.vue`、`detail.vue`、`contact-edit.vue` 等路径约定；新增页面在对应业务目录下使用清晰的用途名称，不强制添加 `-page` 后缀。**
+   - **跨业务复用的公共组件放在 `src/components/`，沿用“同名目录 + 同名文件”的结构，例如 `app-button/app-button.vue`；业务专用组件放在 `src/features/<业务目录>/components/`，可复用布局放在 `src/layouts/`。**
+   - **新增基础公共组件统一使用 `app-` 前缀，例如 `app-button.vue`；业务组件使用“业务名称 + 职责”命名，例如 `scene-card.vue`、`feedback-form.vue`，避免 `common.vue`、`item.vue` 等含义不明确的名称。**
+   - **新增完整页面内容组件使用 `*-page-view.vue`，页面布局容器使用 `*-page-layout.vue`，局部展示组件使用 `*-card.vue`、`*-list.vue`、`*-form.vue` 等符合实际职责的名称；已有名称保持兼容，不为统一后缀批量改名。**
+   - **Composable 文件使用 `use-xxx.ts`，导出的组合式函数使用 `useXxx`，例如 `use-home-page.ts` 对应 `useHomePage`；普通变量和函数使用 `camelCase`。业务文件沿用 `-service.ts`、`-presenter.ts`、`-controller.ts` 等职责后缀。**
+   - **测试文件与被测文件同名并使用 `.spec.ts`，例如 `use-home-page.spec.ts`；跨模块行为测试按被验证的业务行为命名，沿用 `.spec.ts` 后缀。**
+   - **同一业务统一英文用词，新增个人中心模块优先使用 `profile`，不再随意交替使用 `personal`；同一层级的单复数约定保持一致，已有 `pages/entitlement` 路径保持兼容。避免中文、拼音、空格和含义不明确的缩写。导入路径的大小写必须与实际文件一致。**
+   - **新增或修改代码遵守以上规范；已有文件不因命名规范而批量改名、迁移目录或调整路由。确需修改页面路径时，必须同步更新 `pages.json`、导航配置、页面跳转和相关测试。**
