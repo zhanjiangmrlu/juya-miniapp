@@ -58,14 +58,6 @@ try {
     }
   }
 
-  :deep(.page-header text) {
-    transform: translateY(-4px);
-  }
-
-  :deep(.capsule) {
-    bottom: 9px;
-  }
-
   .entry-body {
     display: flex;
     min-height: calc(

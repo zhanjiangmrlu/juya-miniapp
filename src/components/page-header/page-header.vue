@@ -42,7 +42,12 @@ const goBack = () => {
     }"
   >
     <button v-if="showBack" class="page-header__back" :aria-label="backLabel" @click="goBack">
-      <view class="page-header__chevron" aria-hidden="true" />
+      <image
+        class="back-icon"
+        src="/static/navigation/back.svg"
+        mode="aspectFit"
+        aria-hidden="true"
+      />
     </button>
     <view
       v-else
@@ -81,16 +86,16 @@ const goBack = () => {
   display: grid;
   min-height: var(--navigation-height);
   align-items: center;
-  grid-template-columns: 32px minmax(0, 1fr) var(--capsule-reserve);
+  grid-template-columns: 42px minmax(0, 1fr) var(--capsule-reserve);
   margin: 0 calc(-1 * #{tokens.$space-4}) 20px;
-  padding: 30px 0 0 20px;
+  padding: 30px 0 0 10px;
   border-bottom: 1px solid tokens.$color-border;
   box-sizing: content-box;
 
   &__back {
     display: grid;
-    width: 24px;
-    height: var(--navigation-height);
+    width: 44px;
+    height: 44px;
     place-items: center;
     margin: 0;
     padding: 0;
@@ -107,12 +112,10 @@ const goBack = () => {
     text-align: center;
   }
 
-  &__chevron {
-    width: 6px;
-    height: 6px;
-    border-bottom: 1.5px solid tokens.$color-text;
-    border-left: 1.5px solid tokens.$color-text;
-    transform: rotate(45deg);
+  .back-icon {
+    display: block;
+    width: 24px;
+    height: 24px;
   }
 
   &__content {
@@ -124,6 +127,7 @@ const goBack = () => {
 
     &--leading {
       grid-column: 1 / 3;
+      padding-left: 10px;
       text-align: left;
     }
   }
@@ -139,7 +143,7 @@ const goBack = () => {
     color: tokens.$color-text;
     font-size: 17px;
     font-weight: 700;
-    line-height: 30px;
+    line-height: 32px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
