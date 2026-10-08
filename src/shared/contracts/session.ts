@@ -2,6 +2,7 @@ import type { SessionTokens } from './common'
 
 export interface WechatSessionRequest {
   code: string
+  device: string
 }
 export interface RefreshSessionRequest {
   refresh_token: string

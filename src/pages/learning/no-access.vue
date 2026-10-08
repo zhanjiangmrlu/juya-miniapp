@@ -1,11 +1,10 @@
 <script setup lang="ts">
+import ExplorePageView from '@/features/learning/components/explore-page-view.vue'
 import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
-
-import ExplorePage from './explore.vue'
-const { pageStyle, ownsScrollLock } = usePageScrollLock()
+const { pageStyle } = usePageScrollLock()
 </script>
 <template>
   <!-- #ifdef MP-WEIXIN -->
-  <page-meta v-if="ownsScrollLock" :page-style="pageStyle" />
-  <!-- #endif --><ExplorePage initial-notice />
+  <page-meta :page-style="pageStyle" />
+  <!-- #endif --><ExplorePageView initial-notice />
 </template>

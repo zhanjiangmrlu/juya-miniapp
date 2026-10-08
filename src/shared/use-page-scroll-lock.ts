@@ -49,10 +49,6 @@ const acquireBrowserLock = () => {
 
 /** 在路由页提供滚动锁，pageStyle 必须绑定到页面首节点 page-meta */
 export const usePageScrollLock = () => {
-  const inherited = inject(scrollLockKey, undefined)
-  // 兼容入口嵌入已有页面时复用外层锁，避免渲染两个 page-meta
-  if (inherited) return { ...inherited, ownsScrollLock: false }
-
   const count = ref(0)
   const visible = ref(true)
   const scrollLocked = computed(() => visible.value && count.value > 0)
@@ -93,7 +89,7 @@ export const usePageScrollLock = () => {
   onHide(hide)
   onUnload(hide)
   onBeforeUnmount(release)
-  return { acquire, pageStyle, scrollLocked, ownsScrollLock: true }
+  return { acquire, pageStyle, scrollLocked }
 }
 
 /** 随弹窗显示申请滚动锁，visible 为弹窗是否展示的响应式状态 */

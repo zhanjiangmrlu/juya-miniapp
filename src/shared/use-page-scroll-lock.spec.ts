@@ -60,13 +60,14 @@ describe('页面滚动锁生命周期', () => {
     }
   })
 
-  it('嵌入兼容页面时共用外层锁，只有外层页面负责 page-meta', () => {
+  it('多个弹窗共用本页滚动锁，全部关闭后才恢复滚动', () => {
     let outer!: ReturnType<typeof usePageScrollLock>
-    let inner!: ReturnType<typeof usePageScrollLock>
+    const firstVisible = ref(true)
+    const secondVisible = ref(true)
     const Child = defineComponent({
       setup() {
-        inner = usePageScrollLock()
-        useModalScrollLock()
+        useModalScrollLock(firstVisible)
+        useModalScrollLock(secondVisible)
         return () => h('div')
       }
     })
@@ -79,9 +80,11 @@ describe('页面滚动锁生命周期', () => {
       })
     )
     try {
-      expect(outer.ownsScrollLock).toBe(true)
-      expect(inner.ownsScrollLock).toBe(false)
       expect(outer.pageStyle.value).toBe('overflow: hidden;')
+      firstVisible.value = false
+      expect(outer.pageStyle.value).toBe('overflow: hidden;')
+      secondVisible.value = false
+      expect(outer.pageStyle.value).toBe('')
     } finally {
       wrapper.unmount()
     }

@@ -11,8 +11,8 @@
   "scripts": {
     "build": "pnpm build:mp-weixin",
     "build:h5": "uni build -p h5",
-    "build:mp-weixin": "uni build -p mp-weixin",
-    "build:mp-weixin:local": "uni build -p mp-weixin --mode development",
+    "build:mp-weixin": "uni build -p mp-weixin && node scripts/verify-mp-page-meta.mjs",
+    "build:mp-weixin:local": "uni build -p mp-weixin --mode development && node scripts/verify-mp-page-meta.mjs",
     "check": "pnpm format:check && pnpm lint && pnpm lint:style && pnpm typecheck",
     "dev:mp-weixin": "uni -p mp-weixin",
     "dev:h5": "uni -p h5",

@@ -161,11 +161,11 @@ onShow(() => {
 onPageScroll(handleScroll)
 onHide(cleanup)
 onUnload(cleanup)
-const { pageStyle, ownsScrollLock, scrollLocked } = usePageScrollLock()
+const { pageStyle, scrollLocked } = usePageScrollLock()
 </script>
 <template>
   <!-- #ifdef MP-WEIXIN -->
-  <page-meta v-if="ownsScrollLock" :page-style="pageStyle" />
+  <page-meta :page-style="pageStyle" />
   <!-- #endif -->
   <ScenePageLayout :title="fullModel?.chineseTitle.replace(/^在/, '') ?? '场景对话'">
     <template v-if="fullModel">

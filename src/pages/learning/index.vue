@@ -35,11 +35,11 @@ const handleShow = () => {
 onShow(handleShow)
 onHide(cancel)
 onUnload(cancel)
-const { pageStyle, ownsScrollLock } = usePageScrollLock()
+const { pageStyle } = usePageScrollLock()
 </script>
 <template>
   <!-- #ifdef MP-WEIXIN -->
-  <page-meta v-if="ownsScrollLock" :page-style="pageStyle" />
+  <page-meta :page-style="pageStyle" />
   <!-- #endif -->
   <EntryPageShell active="learning">
     <LearningPageHeading

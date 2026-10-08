@@ -41,11 +41,11 @@ const openStep = async (page: string) => {
 onLoad(handleLoad)
 onHide(disposeAudio)
 onUnload(disposeAudio)
-const { pageStyle, ownsScrollLock } = usePageScrollLock()
+const { pageStyle } = usePageScrollLock()
 </script>
 <template>
   <!-- #ifdef MP-WEIXIN -->
-  <page-meta v-if="ownsScrollLock" :page-style="pageStyle" />
+  <page-meta :page-style="pageStyle" />
   <!-- #endif -->
   <ScenePageLayout :title="fullModel?.chineseTitle.replace(/^在/, '') ?? '场景详情'">
     <template v-if="fullModel">
