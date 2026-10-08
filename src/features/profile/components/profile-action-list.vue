@@ -19,6 +19,7 @@ const emit = defineEmits<{
       title="学习权益"
       :detail="prompt ? '查看开放场景和已有权益' : '查看开放、正式和限时权益'"
       badge="›"
+      :badge-icon="prompt ? undefined : '/static/profile/service-arrow.svg'"
       :size="prompt ? 'normal' : 'short'"
       actionable
       @press="emit('entitlements')"
@@ -28,6 +29,7 @@ const emit = defineEmits<{
         title="站内消息"
         detail="反馈回复与系统消息"
         badge="›"
+        :badge-icon="prompt ? undefined : '/static/profile/service-arrow.svg'"
         :size="prompt ? 'normal' : 'short'"
         actionable
         @press="emit('messages')" /><view
@@ -49,6 +51,7 @@ const emit = defineEmits<{
           title="我的反馈"
           detail="查看记录或提交问题"
           badge="›"
+          badge-icon="/static/profile/service-arrow.svg"
           size="short"
           actionable
           @press="emit('feedback')" /><view
@@ -59,6 +62,7 @@ const emit = defineEmits<{
         title="数据与账号"
         detail="管理学习数据和账号"
         badge="›"
+        badge-icon="/static/profile/service-arrow.svg"
         size="short"
         actionable
         @press="emit('account')"

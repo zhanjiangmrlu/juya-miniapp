@@ -4,11 +4,12 @@ withDefaults(
     title: string
     detail: string
     badge?: string
+    badgeIcon?: string
     size?: 'short' | 'normal' | 'tall' | 'small'
     actionable?: boolean
     danger?: boolean
   }>(),
-  { badge: '', size: 'normal', actionable: false, danger: false }
+  { badge: '', badgeIcon: '', size: 'normal', actionable: false, danger: false }
 )
 const emit = defineEmits<{ press: [] }>()
 /** 只对具有业务入口的信息行发送点击事件 */
@@ -18,14 +19,16 @@ const press = () => emit('press')
   <button v-if="actionable" class="personal-row" :class="[size, { danger }]" @click="press">
     <view class="row-heading"
       ><text class="row-title">{{ title }}</text
-      ><text class="row-badge">{{ badge }}</text></view
+      ><image v-if="badgeIcon" class="row-icon" :src="badgeIcon" aria-hidden="true" />
+      <text v-else class="row-badge">{{ badge }}</text></view
     ><text class="row-detail">{{ detail }}</text
     ><slot />
   </button>
   <view v-else class="personal-row" :class="[size, { danger }]"
     ><view class="row-heading"
       ><text class="row-title">{{ title }}</text
-      ><text class="row-badge">{{ badge }}</text></view
+      ><image v-if="badgeIcon" class="row-icon" :src="badgeIcon" aria-hidden="true" />
+      <text v-else class="row-badge">{{ badge }}</text></view
     ><text class="row-detail">{{ detail }}</text
     ><slot
   /></view>
@@ -65,6 +68,14 @@ const press = () => emit('press')
     font-size: 10px;
     font-weight: 500;
     line-height: 23px;
+  }
+
+  .row-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    align-self: center;
+    margin-right: 3px;
   }
 
   .row-detail {
