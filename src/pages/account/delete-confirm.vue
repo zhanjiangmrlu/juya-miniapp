@@ -187,7 +187,7 @@ onShow(load)
   gap: 7px;
 }
 
-:deep(.deletion-action) {
+:deep(.page-actions .deletion-action) {
   border: 1px solid #bf5d48;
   color: #a8432e;
 }

@@ -61,7 +61,7 @@ const pressWord = () => {
     min-height: 418px;
     flex-direction: column;
     margin: 0;
-    padding: 21px 23px;
+    padding: 20px 23px;
     border: 1px solid #d6dfc9;
     border-radius: 18px;
     background: #fffdf7;
@@ -81,7 +81,7 @@ const pressWord = () => {
 
   .card-word {
     display: block;
-    margin-top: 111px;
+    margin-top: 99px;
     font-size: 46px;
     font-weight: 700;
     line-height: 76px;
@@ -90,7 +90,7 @@ const pressWord = () => {
 
   .card-hint {
     display: block;
-    margin-top: 95px;
+    margin-top: 109px;
     color: #758874;
     font-size: 12px;
     line-height: 30px;

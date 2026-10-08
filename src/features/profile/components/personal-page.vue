@@ -35,7 +35,7 @@ withDefaults(
   min-height: calc(100vh - 115px - 19.487vw - env(safe-area-inset-bottom));
   flex-direction: column;
   max-width: 560px;
-  margin: 2px auto 0;
+  margin: 22px auto 0;
 
   .page-title {
     display: block;
@@ -63,7 +63,7 @@ withDefaults(
     display: grid;
     margin-top: auto;
     padding-top: 16px;
-    gap: 12px;
+    gap: 14px;
   }
 
   :deep(.app-button) {

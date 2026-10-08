@@ -88,6 +88,10 @@ const press = () => emit('press')
   &.small {
     min-height: 62px;
     padding-bottom: 4px;
+
+    .row-detail {
+      line-height: 18px;
+    }
   }
 
   &.danger .row-badge {

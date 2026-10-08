@@ -147,7 +147,7 @@ onPageScroll((event) =>
 
   .section-title {
     flex: 1;
-    margin-top: 10px;
+    margin-top: 0;
   }
 
   .filter-action {

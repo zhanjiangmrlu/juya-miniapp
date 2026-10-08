@@ -363,4 +363,12 @@ onShow(load)
     }
   }
 }
+
+.result-grid + .section-title {
+  margin-top: 9px;
+}
+
+.result-grid ~ .row-list {
+  gap: 7px;
+}
 </style>
