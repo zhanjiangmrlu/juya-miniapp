@@ -218,7 +218,10 @@ const handleStart = () => {
     line-height: tokens.home-size(22);
   }
 
-  .series-label,
+  .series-label {
+    display: block;
+  }
+
   .button-copy,
   .button-arrow {
     @include tokens.home-glyph(3);
