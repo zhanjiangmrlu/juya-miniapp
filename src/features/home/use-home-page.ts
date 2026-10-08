@@ -7,6 +7,7 @@ import { ensureSession } from '@/services/startup'
 import { navigate } from '@/shared/navigation/navigate'
 import { useHomeStore } from '@/stores/home'
 import { useLearningStore } from '@/stores/learning'
+import { useSessionStore } from '@/stores/session'
 
 import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
 
@@ -14,6 +15,7 @@ import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
 export const useHomePage = () => {
   const home = useHomeStore()
   const learning = useLearningStore()
+  const session = useSessionStore()
   const runtime = getRuntimeServices()
   const owner = Symbol('home-page')
   let generation = 0
@@ -47,6 +49,17 @@ export const useHomePage = () => {
       : learning.catalog.items.filter((scene) => scene.access === 'OPEN').length
   )
 
+  /** 补齐首页资料，request 为本页刷新代次，accessToken 为请求所属会话，force 为主动重连 */
+  const loadProfile = async (request: number, accessToken: string | undefined, force: boolean) => {
+    if (!accessToken || (!force && session.profile)) return
+    try {
+      const profile = await runtime.profile.get()
+      if (request === generation && session.accessToken === accessToken) session.profile = profile
+    } catch {
+      // 昵称是可选启动资料，读取失败保留首页和目录各自的网络降级
+    }
+  }
+
   /** 建立身份后刷新首页，forceWechat 表示网络重连时重新静默登录 */
   const load = async (forceWechat = false) => {
     const request = ++generation
@@ -58,7 +71,11 @@ export const useHomePage = () => {
       home.error = true
       return
     }
-    await Promise.all([home.load(runtime.home, owner), learning.load(runtime.catalog, owner)])
+    await Promise.all([
+      home.load(runtime.home, owner),
+      learning.load(runtime.catalog, owner),
+      loadProfile(request, session.accessToken, forceWechat)
+    ])
   }
 
   /** 页面离开时取消本页请求，保留其他页面正在刷新及已缓存的数据 */

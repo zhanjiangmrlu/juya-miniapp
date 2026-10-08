@@ -3,8 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useHomeStore } from '@/stores/home'
 import { useLearningStore } from '@/stores/learning'
+import { useSessionStore } from '@/stores/session'
 
 import type { SceneSummary } from '@/shared/contracts/learning'
+import type { UserProfile } from '@/shared/contracts/profile'
 
 import { useHomePage } from './use-home-page'
 const fixture = vi.hoisted(() => ({
@@ -13,6 +15,7 @@ const fixture = vi.hoisted(() => ({
   forced: [] as boolean[],
   destinations: [] as string[],
   items: [] as SceneSummary[],
+  profileRequest: vi.fn(),
   pendingSession: undefined as Promise<boolean> | undefined
 }))
 vi.mock('@/services/startup', () => ({
@@ -23,6 +26,7 @@ vi.mock('@/services/startup', () => ({
 }))
 vi.mock('@/services/runtime', () => ({
   getRuntimeServices: () => ({
+    profile: { get: fixture.profileRequest },
     home: {
       getHome: async () => {
         fixture.requests++
@@ -49,6 +53,12 @@ describe('首页静默身份及任务入口', () => {
     fixture.items = []
     fixture.destinations = []
     fixture.pendingSession = undefined
+    fixture.profileRequest.mockReset().mockResolvedValue({
+      avatar_url: null,
+      juya_id: 'current-user',
+      nickname: '本地小芽'
+    })
+    useSessionStore().accessToken = 'current-session'
     vi.stubGlobal('uni', {
       removeStorageSync: vi.fn(),
       /** 记录实际导航目的地，options 为平台路由与成功回调 */
@@ -57,6 +67,83 @@ describe('首页静默身份及任务入口', () => {
         options.success()
       }
     })
+  })
+  it('重连成功重新读取资料，恢复真实昵称', async () => {
+    fixture.ready = true
+    const page = useHomePage()
+    await page.retry()
+    expect(fixture.profileRequest).toHaveBeenCalledOnce()
+    expect(useSessionStore().profile?.nickname).toBe('本地小芽')
+    expect(page.home.view.salutation).toContain('本地小芽')
+  })
+  it('已有资料的普通刷新不重复读取，但主动重连会刷新资料', async () => {
+    fixture.ready = true
+    useSessionStore().profile = { avatar_url: null, juya_id: 'current-user', nickname: '旧昵称' }
+    const page = useHomePage()
+    await page.load()
+    expect(fixture.profileRequest).not.toHaveBeenCalled()
+    await page.retry()
+    expect(fixture.profileRequest).toHaveBeenCalledOnce()
+    expect(useSessionStore().profile?.nickname).toBe('本地小芽')
+  })
+  it('页面离开后迟到资料不得写回共享会话', async () => {
+    fixture.ready = true
+    let resolve!: (profile: UserProfile) => void
+    fixture.profileRequest.mockReturnValueOnce(
+      new Promise<UserProfile>((done) => {
+        resolve = done
+      })
+    )
+    const page = useHomePage()
+    const pending = page.retry()
+    await vi.waitFor(() => expect(fixture.profileRequest).toHaveBeenCalledOnce())
+    page.cancel()
+    resolve({ avatar_url: null, juya_id: 'current-user', nickname: '迟到昵称' })
+    await pending
+    expect(useSessionStore().profile).toBeUndefined()
+  })
+  it('会话令牌切换后旧资料不得覆盖新会话', async () => {
+    fixture.ready = true
+    let resolve!: (profile: UserProfile) => void
+    fixture.profileRequest.mockReturnValueOnce(
+      new Promise<UserProfile>((done) => {
+        resolve = done
+      })
+    )
+    const page = useHomePage()
+    const pending = page.retry()
+    await vi.waitFor(() => expect(fixture.profileRequest).toHaveBeenCalledOnce())
+    const session = useSessionStore()
+    session.accessToken = 'new-session'
+    session.profile = { avatar_url: null, juya_id: 'new-user', nickname: '新用户' }
+    resolve({ avatar_url: null, juya_id: 'current-user', nickname: '旧用户' })
+    await pending
+    expect(session.profile?.nickname).toBe('新用户')
+  })
+  it('旧刷新资料晚到不得覆盖同页新请求取得的昵称', async () => {
+    fixture.ready = true
+    let resolve!: (profile: UserProfile) => void
+    fixture.profileRequest.mockReturnValueOnce(
+      new Promise<UserProfile>((done) => {
+        resolve = done
+      })
+    )
+    const page = useHomePage()
+    const old = page.retry()
+    await vi.waitFor(() => expect(fixture.profileRequest).toHaveBeenCalledOnce())
+    await page.retry()
+    resolve({ avatar_url: null, juya_id: 'current-user', nickname: '旧刷新' })
+    await old
+    expect(useSessionStore().profile?.nickname).toBe('本地小芽')
+  })
+  it('可选资料请求失败仍呈现真实首页数据，不生成网络错误', async () => {
+    fixture.ready = true
+    fixture.profileRequest.mockRejectedValueOnce(new Error('资料暂不可用'))
+    const page = useHomePage()
+    await page.retry()
+    expect(fixture.profileRequest).toHaveBeenCalledOnce()
+    expect(page.home.error).toBe(false)
+    expect(page.home.view.todayTask?.url).toBe('/pages/scene/dialogue?sceneId=actual-id')
   })
   it('首页隐藏后迟到身份成功不得再发首页请求', async () => {
     let resolve!: (ready: boolean) => void
