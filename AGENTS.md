@@ -29,7 +29,7 @@
    - **组件拆分以实际复用性和可维护性为准，避免为了组件化而进行过度拆分。**
    - **组件职责保持单一，页面组件主要负责数据组织、状态管理和模块组合，具体展示逻辑尽量下沉到子组件。**
 7. **命名规范**
-   - **源码文件和文件夹统一使用 `kebab-case`（全小写，多词用短横线连接），例如 `app-button.vue`、`use-home-page.ts`、`learning-result`。**
+   - **源码、测试、构建辅助代码和脚本的文件及文件夹统一使用 `kebab-case`（全小写，多词用短横线连接），例如 `app-button.vue`、`use-home-page.spec.ts`、`verify-mp-page-meta.mjs`。**
    - **保留框架和工具约定的名称，例如 `App.vue`、`env.d.ts`、`index.ts`、`pages.json`、`manifest.json`、`uni.scss`；图片资源允许沿用 `@3x` 后缀，例如 `coffee@3x.png`。**
    - **组件导入变量、显式声明的组件名称和 Vue 模板中的组件标签统一使用 `PascalCase`，例如 `AppButton`、`HomePageView`；文件名仍使用 `kebab-case`。**
    - **主包仅保留首页 `src/pages/home/index.vue`；其余路由页面统一放在 `src/sub-packages/<业务目录>/`，在 `pages.json` 中按业务注册普通子包。保留现有 `index.vue`、`detail.vue`、`contact-edit.vue` 等名称；新增页面使用清晰的用途名称，不强制添加 `-page` 后缀。**
@@ -38,5 +38,8 @@
    - **新增完整页面内容组件使用 `*-page-view.vue`，页面布局容器使用 `*-page-layout.vue`，局部展示组件使用 `*-card.vue`、`*-list.vue`、`*-form.vue` 等符合实际职责的名称；已有名称保持兼容，不为统一后缀批量改名。**
    - **Composable 文件使用 `use-xxx.ts`，导出的组合式函数使用 `useXxx`，例如 `use-home-page.ts` 对应 `useHomePage`；普通变量和函数使用 `camelCase`。业务文件沿用 `-service.ts`、`-presenter.ts`、`-controller.ts` 等职责后缀。**
    - **测试文件与被测文件同名并使用 `.spec.ts`，例如 `use-home-page.spec.ts`；跨模块行为测试按被验证的业务行为命名，沿用 `.spec.ts` 后缀。**
+   - **所有自动化测试统一放在 `tests/`：`unit/` 按 `src/` 的目录结构存放单元及组件测试，`contracts/` 存放页面结构、导航及构建约束测试，`integration/` 存放经过共享请求层的 Mock 契约流程测试，`visual/` 存放视觉页面清单、视口和静态样式约束。不得在 `src/`、`build/`、`scripts/` 中新增测试文件。**
+   - **测试导入源码及 Mock 源码路径统一使用 `@/` 别名；测试辅助文件之间使用相对导入。开发预览使用的 Mock 数据和 Transport 保留在 `src/services/mock/`，不搬入测试目录。**
+   - **Mock 流程测试不代表真实后端或浏览器端到端验收；静态视觉约束测试不代表截图像素比对或真机视觉验收。新增共享测试数据、辅助目录时须有实际使用方，不创建空目录。**
    - **同一业务统一英文用词，新增个人中心模块优先使用 `profile`，不再随意交替使用 `personal`；同一层级的单复数约定保持一致，已有 `pages/entitlement` 路径保持兼容。避免中文、拼音、空格和含义不明确的缩写。导入路径的大小写必须与实际文件一致。**
    - **新增或修改代码遵守以上规范；已有文件不因命名规范而批量改名、迁移目录或调整路由。确需修改页面路径时，必须同步更新 `pages.json`、导航配置、页面跳转和相关测试。**

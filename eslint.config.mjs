@@ -77,7 +77,12 @@ export default tseslint.config(
     }
   },
   {
-    files: ['src/**/*.{ts,tsx,vue}'],
+    files: [
+      'src/**/*.{ts,tsx,vue}',
+      'tests/**/*.{js,mjs,cjs,ts,tsx,vue}',
+      'build/**/*.{js,mjs,cjs,ts,tsx}',
+      'scripts/**/*.{js,mjs,cjs,ts,tsx}'
+    ],
     rules: {
       'unicorn/filename-case': [
         'error',
@@ -86,6 +91,18 @@ export default tseslint.config(
             kebabCase: true
           },
           ignore: ['^App\\.vue$', '^env\\.d\\.ts$']
+        }
+      ]
+    }
+  },
+  {
+    files: ['{src,build,scripts}/**/*.{spec,test}.{js,mjs,cjs,ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Program',
+          message: '自动化测试必须放在 tests/ 目录下，并使用 .spec.ts 后缀'
         }
       ]
     }

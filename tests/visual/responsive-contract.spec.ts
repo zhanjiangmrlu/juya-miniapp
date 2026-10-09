@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import { VISUAL_CASES, VISUAL_VIEWPORTS } from './visual-cases'
 
-describe('visual regression contract', () => {
+describe('视觉页面清单、视口与静态样式约束', () => {
   it('covers 69 unique Figma states and fixes explore and history routes', () => {
     expect(VISUAL_CASES).toHaveLength(69)
     expect(new Set(VISUAL_CASES.map((item) => item.nodeId)).size).toBe(69)

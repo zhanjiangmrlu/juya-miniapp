@@ -1,5 +1,6 @@
 .superpowers/
 dist/
 node_modules/
+coverage/
 project.config.json
 project.private.config.json
