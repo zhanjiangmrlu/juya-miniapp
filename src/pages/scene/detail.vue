@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onHide, onLoad, onUnload } from '@dcloudio/uni-app'
 
+import AppImageViewer from '@/components/app-image-viewer/app-image-viewer.vue'
 import AppState from '@/components/app-state/app-state.vue'
-import OriginalImageViewer from '@/features/scene/components/original-image-viewer.vue'
 import SceneHero from '@/features/scene/components/scene-hero.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
@@ -82,11 +82,14 @@ const { pageStyle } = usePageScrollLock()
       icon-label="场景不可用"
       title="暂时无法打开场景"
     />
-    <OriginalImageViewer
+    <AppImageViewer
       v-if="imageOpen && fullModel && originalImageUrl"
-      :chinese-title="fullModel.chineseTitle"
-      :title="fullModel.title"
+      :title="fullModel.chineseTitle"
+      :subtitle="fullModel.title"
       :image-url="originalImageUrl"
+      caption="完整学习原图 · 仅在已获权限场景中查看"
+      dialog-label="完整学习原图"
+      close-label="关闭原图"
       @close="imageOpen = false"
       @error="handleImageError"
     />
