@@ -1,4 +1,6 @@
-export type TodayTaskKind = 'CONTINUE_SCENE' | 'NEW_SCENE' | 'FAVORITE_REVIEW' | 'HISTORY_SCENE'
+import type { TodayTaskKind } from '@/shared/enums/home'
+
+export type { TodayTaskKind } from '@/shared/enums/home'
 export interface CheckinSummary {
   current_streak: number
   longest_streak: number

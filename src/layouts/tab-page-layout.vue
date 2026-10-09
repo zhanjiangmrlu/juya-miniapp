@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import AppPage from '@/components/app-page/app-page.vue'
-import AppTabBar, { type TabKey } from '@/components/app-tab-bar/app-tab-bar.vue'
+import AppTabBar from '@/components/app-tab-bar/app-tab-bar.vue'
 import { resolveNavigationMetrics } from '@/services/navigation-metrics'
+
+import type { TabKey } from '@/shared/enums/navigation'
+import type { PageAppearance, PageTier } from '@/shared/enums/ui'
 
 let navigationOffset = 0
 let safeBottomExtra = 0
@@ -27,8 +30,8 @@ try {
 withDefaults(
   defineProps<{
     active: TabKey
-    tier?: 'primary' | 'secondary'
-    appearance?: 'default' | 'home'
+    tier?: PageTier
+    appearance?: PageAppearance
   }>(),
   { tier: 'primary', appearance: 'default' }
 )

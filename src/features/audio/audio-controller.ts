@@ -1,9 +1,10 @@
 import { type AudioSnapshot, isSameAudioTarget } from '@/features/audio/audio-machine'
 
 import type { AudioTarget } from '@/shared/contracts/learning'
+import type { AudioEventType } from '@/shared/enums/audio'
 
 export interface AudioEvent {
-  type: 'canplay' | 'play' | 'pause' | 'ended' | 'timeupdate' | 'error'
+  type: AudioEventType
   currentTimeMs?: number
   status?: number
 }

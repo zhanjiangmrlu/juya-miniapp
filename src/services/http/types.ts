@@ -1,5 +1,6 @@
 import type { ApiErrorPayload } from '@/shared/contracts/common'
-export type HttpMethod = 'DELETE' | 'GET' | 'POST' | 'PUT'
+import type { HttpMethod } from '@/shared/enums/http'
+export type { HttpMethod } from '@/shared/enums/http'
 export interface TransportRequest {
   body?: unknown
   headers: Record<string, string>

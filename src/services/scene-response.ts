@@ -7,6 +7,7 @@ import type {
   SceneOpenResponse,
   SceneOpenWireResponse
 } from '@/shared/contracts/learning'
+import type { SceneLookupEntryType } from '@/shared/enums/learning'
 
 /** 将指定发布场景的资源与播放类型转换为受修订约束的音频目标 */
 const audioTarget = (
@@ -27,7 +28,7 @@ const audioTarget = (
 const adaptEntry = (
   scene: PublishedScene,
   entry: PublishedEntry,
-  type: 'VOCABULARY' | 'PHRASE'
+  type: SceneLookupEntryType
 ): SceneEntry => ({
   entry_id: entry.entry_id,
   entry_version: entry.entry_version,

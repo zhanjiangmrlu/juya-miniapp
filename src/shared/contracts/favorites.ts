@@ -1,6 +1,7 @@
 import type { CursorPage } from './common'
 import type { AudioTarget, PublishedEntry } from './learning'
-export type FavoriteType = 'VOCABULARY' | 'PHRASE'
+import type { FavoriteType } from '@/shared/enums/favorites'
+export type { FavoriteType } from '@/shared/enums/favorites'
 export interface FavoriteSource {
   scene_title?: string
   revision_id?: string | null

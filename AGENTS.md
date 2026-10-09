@@ -38,6 +38,8 @@
    - **新增完整页面内容组件使用 `*-page-view.vue`，页面布局容器使用 `*-page-layout.vue`，局部展示组件使用 `*-card.vue`、`*-list.vue`、`*-form.vue` 等符合实际职责的名称；已有名称保持兼容，不为统一后缀批量改名。**
    - **Composable 文件使用 `use-xxx.ts`，导出的组合式函数使用 `useXxx`，例如 `use-home-page.ts` 对应 `useHomePage`；普通变量和函数使用 `camelCase`。业务文件沿用 `-service.ts`、`-presenter.ts`、`-controller.ts` 等职责后缀。**
    - **测试文件与被测文件同名并使用 `.spec.ts`，例如 `use-home-page.spec.ts`；跨模块行为测试按被验证的业务行为命名，沿用 `.spec.ts` 后缀。**
+   - **固定取值的业务枚举类型统一定义在 `src/shared/enums/<业务>.ts`，例如 `account.ts`、`entitlements.ts`、`favorites.ts`、`audio.ts`；导航、HTTP 和公共展示类型分别放在 `navigation.ts`、`http.ts`、`ui.ts`。同业务类型归入同一文件，按业务语义命名，不建立混合所有业务的枚举文件。**
+   - **沿用现有字符串或数字联合类型表示枚举，取值须与业务契约一致；源码和测试通过 `import type` 直接引用对应业务枚举文件。已有模块的类型再导出仅用于兼容旧导入路径，不重复定义枚举。对象判别联合、工具类型的属性键及构建环境开关保留其原有类型结构；接口中的开放 `string` 字段不得仅依据 Mock 数据收窄取值。**
    - **所有自动化测试统一放在 `tests/`：`unit/` 按 `src/` 的目录结构存放单元及组件测试，`contracts/` 存放页面结构、导航及构建约束测试，`integration/` 存放经过共享请求层的 Mock 契约流程测试，`visual/` 存放视觉页面清单、视口和静态样式约束。不得在 `src/`、`build/`、`scripts/` 中新增测试文件。**
    - **测试导入源码及 Mock 源码路径统一使用 `@/` 别名；测试辅助文件之间使用相对导入。开发预览使用的 Mock 数据和 Transport 保留在 `src/services/mock/`，不搬入测试目录。**
    - **Mock 流程测试不代表真实后端或浏览器端到端验收；静态视觉约束测试不代表截图像素比对或真机视觉验收。新增共享测试数据、辅助目录时须有实际使用方，不创建空目录。**

@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import type { ButtonVariant } from '@/shared/enums/ui'
+
 const props = withDefaults(
   defineProps<{
     block?: boolean
     disabled?: boolean
     label: string
     loading?: boolean
-    variant?: 'primary' | 'secondary' | 'quiet' | 'danger'
+    variant?: ButtonVariant
   }>(),
   {
     block: true,

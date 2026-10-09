@@ -1,3 +1,5 @@
+import type { LearningResultLabel } from '@/shared/enums/learning-result'
+
 export interface LearningResultDto {
   completed_scenes: number
   favorite_phrases: number
@@ -6,7 +8,7 @@ export interface LearningResultDto {
 }
 
 export interface LearningResultCard {
-  label: '完成场景' | '收藏词汇' | '收藏语块'
+  label: LearningResultLabel
   route: string
   value: number
 }

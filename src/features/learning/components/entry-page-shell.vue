@@ -3,7 +3,7 @@ import PageHeader from '@/components/page-header/page-header.vue'
 import TabPageLayout from '@/layouts/tab-page-layout.vue'
 import { resolveNavigationMetrics } from '@/services/navigation-metrics'
 
-import type { TabKey } from '@/components/app-tab-bar/app-tab-bar.vue'
+import type { TabKey } from '@/shared/enums/navigation'
 defineProps<{ active: TabKey }>()
 let headerReserve = 78
 try {

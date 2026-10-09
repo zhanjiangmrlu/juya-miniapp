@@ -1,5 +1,6 @@
-export type RecordingStatus =
-  'DENIED' | 'FAILED' | 'IDLE' | 'PAUSED' | 'PLAYBACK' | 'RECORDED' | 'RECORDING'
+import type { RecordingStatus } from '@/shared/enums/recording'
+
+export type { RecordingStatus } from '@/shared/enums/recording'
 
 export interface RecordingSnapshot {
   hasRecording?: boolean

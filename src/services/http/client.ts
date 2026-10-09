@@ -1,12 +1,8 @@
+import type { HttpMethod } from '@/shared/enums/http'
+
 import { mapApiError } from './error-map'
 import { createRequestId } from './request-id'
-import {
-  ApiError,
-  type HttpMethod,
-  type HttpTransport,
-  NetworkTransportError,
-  type TransportRequest
-} from './types'
+import { ApiError, type HttpTransport, NetworkTransportError, type TransportRequest } from './types'
 export interface SessionAdapter {
   ensureAuthenticated?(): Promise<void>
   clear(): void

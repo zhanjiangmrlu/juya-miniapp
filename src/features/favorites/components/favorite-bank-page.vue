@@ -11,7 +11,7 @@ import { navigate } from '@/shared/navigation/navigate'
 import { useFavoriteStore } from '@/stores/favorites'
 
 import type { FavoriteGroup } from '@/features/favorites/favorite-presenter'
-import type { FavoriteType } from '@/shared/contracts/favorites'
+import type { FavoriteType } from '@/shared/enums/favorites'
 const props = withDefaults(defineProps<{ initialTab?: FavoriteType }>(), {
   initialTab: 'VOCABULARY'
 })

@@ -1,4 +1,6 @@
-export type Greeting = '下午好' | '早上好' | '晚上好'
+import type { Greeting } from '@/shared/enums/home'
+
+export type { Greeting } from '@/shared/enums/home'
 
 const BEIJING_HOUR_FORMATTER = new Intl.DateTimeFormat('zh-CN', {
   hour: '2-digit',

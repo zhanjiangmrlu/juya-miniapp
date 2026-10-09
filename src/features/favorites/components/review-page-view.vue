@@ -12,8 +12,9 @@ import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 import { useFavoriteStore } from '@/stores/favorites'
 
-import type { FavoriteItem, FavoriteType, ReviewSession } from '@/shared/contracts/favorites'
-const props = defineProps<{ face: 'BACK' | 'FRONT' }>()
+import type { FavoriteItem, ReviewSession } from '@/shared/contracts/favorites'
+import type { FavoriteType, ReviewCardFace } from '@/shared/enums/favorites'
+const props = defineProps<{ face: ReviewCardFace }>()
 const favorites = useFavoriteStore()
 const bank = ref<FavoriteType>('VOCABULARY')
 const cardIds = ref<string[]>([])

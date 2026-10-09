@@ -1,3 +1,5 @@
+import type { FeedbackImageContentType, FeedbackResolutionAction } from '@/shared/enums/feedback'
+
 export interface FeedbackItem {
   category: string
   created_at: string
@@ -18,7 +20,7 @@ export interface FeedbackListResponse {
 export interface FeedbackUploadCredential {
   fields: Record<string, string>
   access_key_id: string
-  content_type: 'image/jpeg' | 'image/png' | 'image/webp'
+  content_type: FeedbackImageContentType
   expires_at: string
   host: string
   key: string
@@ -35,6 +37,6 @@ export interface CreateFeedbackRequest {
 }
 
 export interface FeedbackResolutionRequest {
-  action: 'RESOLVED' | 'REOPEN'
+  action: FeedbackResolutionAction
   reason?: string | null
 }

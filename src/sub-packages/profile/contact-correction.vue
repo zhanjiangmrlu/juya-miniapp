@@ -9,6 +9,8 @@ import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
+
+import type { ContactCorrectionField } from '@/shared/enums/contact-profile'
 const current = ref('')
 const wechatId = ref('')
 const reason = ref('')
@@ -23,7 +25,7 @@ const load = async () => {
   }
 }
 /** 更新更正表单，event 为输入事件，field 为需更新的微信号或原因 */
-const input = (event: unknown, field: 'wechat' | 'reason') => {
+const input = (event: unknown, field: ContactCorrectionField) => {
   const value = (event as { detail: { value: string } }).detail.value
   if (field === 'wechat') wechatId.value = value
   else reason.value = value

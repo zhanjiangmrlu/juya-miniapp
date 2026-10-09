@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { PageAppearance, PageTier } from '@/shared/enums/ui'
+
 withDefaults(
   defineProps<{
     padded?: boolean
-    tier?: 'primary' | 'secondary'
-    appearance?: 'default' | 'home'
+    tier?: PageTier
+    appearance?: PageAppearance
   }>(),
   {
     padded: true,

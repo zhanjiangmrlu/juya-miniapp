@@ -1,6 +1,7 @@
 import type { AudioTarget } from '@/shared/contracts/learning'
+import type { AudioStatus } from '@/shared/enums/audio'
 
-export type AudioStatus = 'FAILED' | 'IDLE' | 'LOADING' | 'PAUSED' | 'PLAYING'
+export type { AudioStatus } from '@/shared/enums/audio'
 
 export interface AudioSnapshot {
   currentTimeMs?: number

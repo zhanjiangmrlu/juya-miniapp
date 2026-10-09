@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import PageHeader from '@/components/page-header/page-header.vue'
 import TabPageLayout from '@/layouts/tab-page-layout.vue'
+
+import type { ProfileTabKey } from '@/shared/enums/profile'
 withDefaults(
   defineProps<{
     title: string
     subtitle: string
     navigation?: string
-    active?: 'favorites' | 'profile'
+    active?: ProfileTabKey
   }>(),
   { navigation: '', active: 'profile' }
 )

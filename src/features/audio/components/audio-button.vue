@@ -7,9 +7,10 @@ import pauseWhite from '@/features/audio/assets/pause-white.svg'
 import playGreen from '@/features/audio/assets/play-green.svg'
 import playLarge from '@/features/audio/assets/play-large.svg'
 import playWhite from '@/features/audio/assets/play-white.svg'
-import { type AudioStatus, getAudioTargetKey } from '@/features/audio/audio-machine'
+import { getAudioTargetKey } from '@/features/audio/audio-machine'
 
 import type { AudioTarget } from '@/shared/contracts/learning'
+import type { AudioButtonVariant, AudioStatus } from '@/shared/enums/audio'
 
 const props = withDefaults(
   defineProps<{
@@ -17,7 +18,7 @@ const props = withDefaults(
     label?: string
     status: AudioStatus
     target: AudioTarget
-    variant?: 'compact' | 'large' | 'inline' | 'pill'
+    variant?: AudioButtonVariant
     selected?: boolean
   }>(),
   { currentKey: null, label: '播放', variant: 'pill', selected: false }

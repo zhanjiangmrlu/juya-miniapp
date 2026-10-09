@@ -4,8 +4,8 @@ import { computed } from 'vue'
 import AudioButton from '@/features/audio/components/audio-button.vue'
 import { createClickableSegments } from '@/features/scene/clickable-segments'
 
-import type { AudioStatus } from '@/features/audio/audio-machine'
 import type { AudioTarget, ClickableSpan, SceneEntry } from '@/shared/contracts/learning'
+import type { AudioStatus } from '@/shared/enums/audio'
 
 const props = withDefaults(
   defineProps<{

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ROUTES } from '@/shared/navigation/routes'
 
-export type TabKey = 'favorites' | 'home' | 'learning' | 'profile'
+import type { TabKey } from '@/shared/enums/navigation'
+import type { PageAppearance } from '@/shared/enums/ui'
 
-withDefaults(defineProps<{ active: TabKey; appearance?: 'default' | 'home' }>(), {
+export type { TabKey } from '@/shared/enums/navigation'
+
+withDefaults(defineProps<{ active: TabKey; appearance?: PageAppearance }>(), {
   appearance: 'default'
 })
 

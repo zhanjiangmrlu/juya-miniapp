@@ -11,7 +11,9 @@ import LearningPageHeading from '@/features/learning/components/learning-page-he
 import SceneListSection from '@/features/learning/components/scene-list-section.vue'
 import { navigate } from '@/shared/navigation/navigate'
 import { useLearningStore } from '@/stores/learning'
-const props = withDefaults(defineProps<{ mode: 'first' | 'today'; embedded?: boolean }>(), {
+
+import type { HomeEntryAction, HomeEntryMode } from '@/shared/enums/home'
+const props = withDefaults(defineProps<{ mode: HomeEntryMode; embedded?: boolean }>(), {
   embedded: false
 })
 const { cancel, canStartTask, home, load, openScene, startTask, taskScene } = useHomePage()
@@ -49,7 +51,7 @@ const handleRetry = async () => {
   await refresh(true)
 }
 /** 将步骤目标转换为真实导航，kind 为对话、跟读或收藏步骤 */
-const openStep = async (kind: 'dialogue' | 'shadowing' | 'favorites') => {
+const openStep = async (kind: HomeEntryAction) => {
   if (kind === 'favorites') {
     await navigate({ type: 'reLaunch', url: '/sub-packages/favorites/index' })
     return

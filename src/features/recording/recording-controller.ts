@@ -1,3 +1,5 @@
+import type { RecordingPlaybackEventType } from '@/shared/enums/recording'
+
 import { createBrowserRecordingPort } from './browser-recording-port'
 import { createRecordingSnapshot, type RecordingSnapshot } from './recording-machine'
 
@@ -9,7 +11,7 @@ export interface RecordingPort {
   stop(): Promise<string>
   stopPlayback(): void
   pausePlayback?(): void
-  subscribePlayback?(listener: (type: 'play' | 'pause' | 'ended' | 'error') => void): () => void
+  subscribePlayback?(listener: (type: RecordingPlaybackEventType) => void): () => void
   subscribeRecording?(listener: (path?: string) => void): () => void
   destroy?(): void
 }
@@ -238,7 +240,7 @@ export const createUniRecordingPort = (): RecordingPort => {
   let stopReject: ((error: unknown) => void) | undefined
   let startResolver: (() => void) | undefined
   let startReject: ((error: unknown) => void) | undefined
-  let playbackListener: ((type: 'play' | 'pause' | 'ended' | 'error') => void) | undefined
+  let playbackListener: ((type: RecordingPlaybackEventType) => void) | undefined
   let recordingListener: ((path?: string) => void) | undefined
   recorder.onStart(() => {
     startResolver?.()

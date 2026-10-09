@@ -10,9 +10,11 @@ import { useHomePage } from '@/features/home/use-home-page'
 import TabPageLayout from '@/layouts/tab-page-layout.vue'
 import { navigate } from '@/shared/navigation/navigate'
 
+import type { HomePageMode } from '@/shared/enums/home'
+
 const props = withDefaults(
   defineProps<{
-    mode?: 'first' | 'normal' | 'today'
+    mode?: HomePageMode
     networkError?: boolean
   }>(),
   { mode: 'normal', networkError: false }

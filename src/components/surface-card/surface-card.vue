@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { SurfaceTone } from '@/shared/enums/ui'
+
 withDefaults(
   defineProps<{
     elevated?: boolean
-    tone?: 'card' | 'module' | 'white'
+    tone?: SurfaceTone
   }>(),
   {
     elevated: false,

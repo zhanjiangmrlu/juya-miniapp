@@ -1,3 +1,5 @@
+import type { ContactCorrectionStatus } from '@/shared/enums/contact-profile'
+
 export interface UserProfile {
   contact_prompt_eligible?: boolean
   avatar_url: string | null
@@ -29,5 +31,5 @@ export interface ContactProfile {
 export interface ContactCorrection {
   created_at: string
   id: string
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  status: ContactCorrectionStatus
 }

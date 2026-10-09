@@ -17,7 +17,7 @@ export interface SessionTokens {
   refresh_token: string
 }
 
-export type AccessLevel = 'OPEN' | 'FORMAL' | 'LIMITED' | 'PREVIEW' | 'HIDDEN'
+export type { AccessLevel } from '@/shared/enums/entitlements'
 
 export interface StablePosition {
   entry_id: string

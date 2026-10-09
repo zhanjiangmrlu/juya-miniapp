@@ -1,8 +1,10 @@
 import { createRequestId } from '@/services/http/request-id'
 
+import type { ReviewCardFace } from '@/shared/enums/favorites'
+
 export interface ReviewSnapshot {
   cardIds: string[]
-  face: 'BACK' | 'FRONT'
+  face: ReviewCardFace
   index: number
 }
 

@@ -4,9 +4,9 @@ import playGreen from '@/features/audio/assets/play-green.svg'
 import playWhite from '@/features/audio/assets/play-white.svg'
 import AudioButton from '@/features/audio/components/audio-button.vue'
 
-import type { AudioStatus } from '@/features/audio/audio-machine'
 import type { RecordingSnapshot } from '@/features/recording/recording-machine'
 import type { SceneEntry } from '@/shared/contracts/learning'
+import type { AudioStatus } from '@/shared/enums/audio'
 
 withDefaults(
   defineProps<{

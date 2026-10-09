@@ -9,7 +9,9 @@ import { useScenePage } from '@/features/scene/use-scene-page'
 import VocabularySheet from '@/features/vocabulary-sheet/components/vocabulary-sheet.vue'
 import { navigate } from '@/shared/navigation/navigate'
 
-const props = defineProps<{ entryType: 'PHRASE' | 'VOCABULARY'; title: string }>()
+import type { SceneLookupEntryType } from '@/shared/enums/learning'
+
+const props = defineProps<{ entryType: SceneLookupEntryType; title: string }>()
 const {
   audio,
   closeSheet,

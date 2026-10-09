@@ -3,6 +3,10 @@ import type {
   FormalEntitlement,
   LimitedEntitlement
 } from '@/shared/contracts/entitlements'
+import type {
+  LimitedEntitlementDuration,
+  LimitedEntitlementState
+} from '@/shared/enums/entitlements'
 import type { ServerClock } from '@/shared/utils/server-clock'
 
 export interface FormalEntitlementViewModel extends FormalEntitlement {
@@ -15,13 +19,13 @@ export interface LimitedEntitlementViewModel {
   status: string
   activatedAt: string | null
   canOpenContent: boolean
-  durationDays: 3 | 5
+  durationDays: LimitedEntitlementDuration
   expiresAt: string | null
   id: string
   keepResults: boolean
   sceneCount: number
   startsBefore: string
-  state: 'ACTIVE' | 'ENDED' | 'ENDING' | 'EXCEPTION' | 'PENDING'
+  state: LimitedEntitlementState
   title: string
 }
 

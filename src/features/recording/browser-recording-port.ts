@@ -1,4 +1,5 @@
 import type { RecordingPort } from './recording-controller'
+import type { RecordingPlaybackEventType } from '@/shared/enums/recording'
 
 /** 创建浏览器本地录音端口，音频仅使用当前页对象 URL */
 export const createBrowserRecordingPort = (): RecordingPort => {
@@ -11,7 +12,7 @@ export const createBrowserRecordingPort = (): RecordingPort => {
   let stopPromise: Promise<string> | undefined
   const paths = new Set<string>()
   const player = new Audio()
-  let listener: ((type: 'play' | 'pause' | 'ended' | 'error') => void) | undefined
+  let listener: ((type: RecordingPlaybackEventType) => void) | undefined
   player.addEventListener('play', () => listener?.('play'))
   player.addEventListener('pause', () => listener?.('pause'))
   player.addEventListener('ended', () => listener?.('ended'))

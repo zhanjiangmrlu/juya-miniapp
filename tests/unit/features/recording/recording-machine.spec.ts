@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { RecordingController, type RecordingPort } from '@/features/recording/recording-controller'
 
+import type { RecordingPlaybackEventType } from '@/shared/enums/recording'
+
 /** 创建端口替身，permission 为设备是否允许录音 */
 const createPort = (permission = true): RecordingPort => {
   return {
@@ -190,7 +192,7 @@ describe('RecordingController', () => {
   })
   it('停止回听后迟到的 pause 事件不覆盖新录音状态', async () => {
     const port = createPort()
-    let listener!: (type: 'play' | 'pause' | 'ended' | 'error') => void
+    let listener!: (type: RecordingPlaybackEventType) => void
     port.subscribePlayback = (next) => {
       listener = next
       return vi.fn()

@@ -1,3 +1,5 @@
+import type { LimitedEntitlementDuration } from '@/shared/enums/entitlements'
+
 export interface FormalEntitlement {
   content_pack_id: string
   effective_at: string
@@ -16,7 +18,7 @@ export interface LimitedEntitlement {
   scene_ids?: string[]
   activated_at: string | null
   activity_id: string
-  duration_days: 3 | 5
+  duration_days: LimitedEntitlementDuration
   expires_at: string | null
   id: string
   scene_count: number

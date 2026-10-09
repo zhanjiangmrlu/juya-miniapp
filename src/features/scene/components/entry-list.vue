@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { AudioStatus } from '@/features/audio/audio-machine'
 import type { AudioTarget, SceneEntry } from '@/shared/contracts/learning'
+import type { AudioStatus } from '@/shared/enums/audio'
 
 withDefaults(
   defineProps<{

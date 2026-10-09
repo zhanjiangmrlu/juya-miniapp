@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import type { ProfileRowSize } from '@/shared/enums/profile'
+
 withDefaults(
   defineProps<{
     title: string
     detail: string
     badge?: string
     badgeIcon?: string
-    size?: 'short' | 'normal' | 'tall' | 'small'
+    size?: ProfileRowSize
     actionable?: boolean
     danger?: boolean
   }>(),

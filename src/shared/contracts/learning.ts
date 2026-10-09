@@ -1,4 +1,6 @@
-import type { AccessLevel, StablePosition } from './common'
+import type { StablePosition } from './common'
+import type { AccessLevel } from '@/shared/enums/entitlements'
+import type { SceneEntryType } from '@/shared/enums/learning'
 
 export interface LearningModule {
   enabled: boolean
@@ -28,7 +30,7 @@ export interface LearningCatalogResponse {
   items: SceneSummary[]
   profile_completion_enabled?: boolean
 }
-export type SceneEntryType = 'DIALOGUE' | 'VOCABULARY' | 'PHRASE'
+export type { SceneEntryType } from '@/shared/enums/learning'
 export interface AudioTarget {
   scene_id?: string
   revision_id?: string

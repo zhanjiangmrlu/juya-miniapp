@@ -5,7 +5,8 @@ import { useAudioStore } from '@/stores/audio'
 
 import type { FavoriteItem } from '@/shared/contracts/favorites'
 import type { AudioTarget } from '@/shared/contracts/learning'
-const props = defineProps<{ face: 'BACK' | 'FRONT'; item: FavoriteItem }>()
+import type { ReviewCardFace } from '@/shared/enums/favorites'
+const props = defineProps<{ face: ReviewCardFace; item: FavoriteItem }>()
 const emit = defineEmits<{ flip: [] }>()
 const audio = useAudioStore()
 /** 播放独立发音，target 为该收藏版本的音频目标 */

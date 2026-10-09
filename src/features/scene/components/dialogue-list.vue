@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import DialogueSentence from '@/features/scene/components/dialogue-sentence.vue'
 
-import type { AudioStatus } from '@/features/audio/audio-machine'
 import type { AudioTarget, ClickableSpan, SceneEntry } from '@/shared/contracts/learning'
+import type { AudioStatus } from '@/shared/enums/audio'
 
 withDefaults(
   defineProps<{

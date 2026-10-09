@@ -4,7 +4,8 @@ import { computed, reactive, ref } from 'vue'
 import { presentFavorites } from '@/features/favorites/favorite-presenter'
 
 import type { FavoriteService } from '@/features/favorites/favorite-service'
-import type { FavoriteItem, FavoriteType, ReviewSession } from '@/shared/contracts/favorites'
+import type { FavoriteItem, ReviewSession } from '@/shared/contracts/favorites'
+import type { FavoriteType, ReviewCardFace } from '@/shared/enums/favorites'
 export interface FavoriteTabState {
   cursor: string | null
   filter: string
@@ -12,7 +13,7 @@ export interface FavoriteTabState {
   review?: {
     cardIds: string[]
     index: number
-    face: 'BACK' | 'FRONT'
+    face: ReviewCardFace
     session?: ReviewSession
     createKey?: string
     completionKey?: string

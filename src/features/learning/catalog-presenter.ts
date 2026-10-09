@@ -3,6 +3,7 @@ import type {
   LearningModule,
   SceneSummary
 } from '@/shared/contracts/learning'
+import type { LearningCatalogStage } from '@/shared/enums/learning'
 
 export interface SceneCardViewModel {
   accessLabel: string
@@ -28,7 +29,7 @@ export interface CatalogSections {
   openScenes: SceneCardViewModel[]
   previewScenes: SceneCardViewModel[]
   showProfileAction: boolean
-  stage: 'ENTITLED' | 'NEW'
+  stage: LearningCatalogStage
 }
 
 export interface CatalogPresentationInput {

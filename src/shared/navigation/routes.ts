@@ -1,3 +1,5 @@
+import type { NavigationType } from '@/shared/enums/navigation'
+
 export const ROUTES = {
   compat: '/sub-packages/compat/index',
   explore: '/sub-packages/learning/explore',
@@ -14,6 +16,6 @@ export const ROUTES = {
 export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES]
 
 export interface NavigationIntent {
-  type: 'navigateTo' | 'reLaunch' | 'redirectTo'
+  type: NavigationType
   url: string
 }
