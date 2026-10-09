@@ -20,7 +20,7 @@ useModalScrollLock()
       ><text class="viewer-english">{{ title }}</text></view
     >
     <view class="viewer-image"
-      ><image class="original-image" :src="imageUrl" mode="widthFix" @error="emit('error')" /><text
+      ><image class="original-image" :src="imageUrl" mode="aspectFit" @error="emit('error')" /><text
         class="viewer-caption"
         >完整学习原图 · 仅在已获权限场景中查看</text
       ></view
@@ -75,9 +75,9 @@ useModalScrollLock()
   }
 
   .viewer-image {
-    width: 100%;
+    width: calc(100% - 40px);
     max-width: 700px;
-    margin: max(72px, calc(30.7vh - 159px)) auto 30px;
+    margin: 24px auto calc(30px + env(safe-area-inset-bottom));
 
     .viewer-caption {
       display: block;
@@ -92,7 +92,11 @@ useModalScrollLock()
   .original-image {
     display: block;
     width: 100%;
-    height: auto;
+    height: 60vh;
+    max-height: min(
+      560px,
+      calc(100vh - 260px - env(safe-area-inset-top) - env(safe-area-inset-bottom))
+    );
     border-radius: 12px;
   }
 }
