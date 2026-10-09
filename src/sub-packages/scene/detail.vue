@@ -6,6 +6,7 @@ import AppState from '@/components/app-state/app-state.vue'
 import SceneHero from '@/features/scene/components/scene-hero.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
+import { SCENE_LEARNING_STEPS as steps } from '@/shared/constants/scene'
 import { navigate } from '@/shared/navigation/navigate'
 import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 
@@ -20,11 +21,6 @@ const {
   scene,
   sceneId
 } = useScenePage()
-const steps = [
-  { number: '01', title: '对话', hint: '从真实对话开始', page: 'dialogue' },
-  { number: '02', title: '重点词汇', hint: '记住实用表达', page: 'vocabulary' },
-  { number: '03', title: 'Useful Chunks', hint: '掌握常用语块', page: 'chunks' }
-]
 
 /** 读取路由标识，query 为当前场景参数 */
 const handleLoad = (query?: Record<string, string>) => {

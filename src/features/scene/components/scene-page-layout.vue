@@ -2,7 +2,9 @@
 import PageHeader from '@/components/page-header/page-header.vue'
 import TabPageLayout from '@/layouts/tab-page-layout.vue'
 
-withDefaults(defineProps<{ title: string; centered?: boolean }>(), { centered: false })
+import type { ScenePageLayoutProps } from '@/shared/types/scene-components'
+
+withDefaults(defineProps<ScenePageLayoutProps>(), { centered: false })
 </script>
 
 <template>

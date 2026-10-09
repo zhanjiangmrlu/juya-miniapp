@@ -1,4 +1,4 @@
-import type { FavoriteService } from '@/features/favorites/favorite-service'
+import type { FavoriteService } from '@/shared/types/favorites'
 
 /** 生成完整收藏复习入口，service 为支持游标分页的收藏服务 */
 export const getResultReviewRoute = async (

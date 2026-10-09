@@ -2,9 +2,9 @@
 import { formatFeedbackTime } from '@/features/feedback/feedback-presenter'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 
-import type { MessageItem } from '@/shared/contracts/messages'
-defineProps<{ item: MessageItem }>()
-const emit = defineEmits<{ open: [item: MessageItem] }>()
+import type { MessageCardEmits, MessageCardProps } from '@/shared/types/messages-components'
+defineProps<MessageCardProps>()
+const emit = defineEmits<MessageCardEmits>()
 </script>
 <template>
   <PersonalRow

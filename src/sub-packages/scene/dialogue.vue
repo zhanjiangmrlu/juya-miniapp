@@ -13,6 +13,13 @@ import VocabularySheet from '@/features/vocabulary-sheet/components/vocabulary-s
 import { navigate } from '@/shared/navigation/navigate'
 import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 
+import type {
+  PageScrollEvent,
+  ScrollBottomRect,
+  ScrollOffset,
+  ScrollTopRect
+} from '@/shared/types/ui'
+
 const {
   audio,
   closeSheet,
@@ -104,20 +111,20 @@ const handleLoad = async (query?: Record<string, string>) => {
   }
 }
 /** 记录真实页面滚动，event 为页面实际滚动位置 */
-const handleScroll = (event: { scrollTop: number }) => {
+const handleScroll = (event: ScrollOffset) => {
   scrollTop.value = event.scrollTop
   const row = scene.dialogueEntries.find((entry) => entry.entry_id === currentSentence.value)
   if (row) savePosition({ entry_id: row.source_locator, offset: event.scrollTop })
 }
 /** 保存列表真实首个可见句，event 为内部滚动事件，使用实际测量避免译文高度误差 */
-const handleListScroll = (event: { detail: { scrollTop: number } }) => {
+const handleListScroll = (event: PageScrollEvent) => {
   listScrollTop.value = event.detail.scrollTop
   const query = uni.createSelectorQuery().in(pageInstance?.proxy)
   query.select('.dialogue-scroll').boundingClientRect()
   query.selectAll('.dialogue-sentence').boundingClientRect()
   query.exec((measurements) => {
-    const viewport = measurements[0] as { top: number } | undefined
-    const rows = measurements[1] as { bottom: number }[] | undefined
+    const viewport = measurements[0] as ScrollTopRect | undefined
+    const rows = measurements[1] as ScrollBottomRect[] | undefined
     if (!viewport || !rows) return
     const index = rows.findIndex((row) => row.bottom > viewport.top)
     const entry = scene.dialogueEntries[index]

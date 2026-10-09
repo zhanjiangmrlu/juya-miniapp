@@ -4,22 +4,19 @@ import playGreen from '@/features/audio/assets/play-green.svg'
 import playWhite from '@/features/audio/assets/play-white.svg'
 import AudioButton from '@/features/audio/components/audio-button.vue'
 
-import type { RecordingSnapshot } from '@/features/recording/recording-machine'
-import type { SceneEntry } from '@/shared/contracts/learning'
-import type { AudioStatus } from '@/shared/enums/audio'
+import type {
+  RecordingControlsEmits,
+  RecordingControlsProps
+} from '@/shared/types/recording-components'
 
-withDefaults(
-  defineProps<{
-    sentence?: SceneEntry
-    snapshot: RecordingSnapshot
-    index?: number
-    total?: number
-    currentAudioKey?: string | null
-    audioStatus?: AudioStatus
-  }>(),
-  { sentence: undefined, currentAudioKey: null, index: 1, total: 0, audioStatus: 'IDLE' }
-)
-const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: []; stop: [] }>()
+withDefaults(defineProps<RecordingControlsProps>(), {
+  sentence: undefined,
+  currentAudioKey: null,
+  index: 1,
+  total: 0,
+  audioStatus: 'IDLE'
+})
+const emit = defineEmits<RecordingControlsEmits>()
 </script>
 <template>
   <view v-if="sentence" class="recording-controls">

@@ -1,14 +1,6 @@
-import type { FeedbackItem } from '@/shared/contracts/feedback'
+import { FEEDBACK_STATUS_LABELS as STATUS_LABELS } from '@/shared/constants/feedback'
 
-const STATUS_LABELS: Record<string, string> = {
-  IN_PROGRESS: '处理中',
-  NEEDS_SUPPLEMENT: '需要补充',
-  PENDING: '待处理',
-  REOPENED: '已重开',
-  RESOLVED: '已处理',
-  SUPPLEMENTED: '用户已补充',
-  UNRESOLVED_CLOSED: '无法处理并关闭'
-}
+import type { FeedbackItem } from '@/shared/contracts/feedback'
 
 /** 把服务端稳定状态码转换为用户可读文案，未知状态保持中性表达。 */
 export function getFeedbackStatusLabel(status: string): string {

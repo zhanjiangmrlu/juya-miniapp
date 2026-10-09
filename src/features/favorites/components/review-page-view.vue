@@ -13,8 +13,9 @@ import { navigate } from '@/shared/navigation/navigate'
 import { useFavoriteStore } from '@/stores/favorites'
 
 import type { FavoriteItem, ReviewSession } from '@/shared/contracts/favorites'
-import type { FavoriteType, ReviewCardFace } from '@/shared/enums/favorites'
-const props = defineProps<{ face: ReviewCardFace }>()
+import type { FavoriteType } from '@/shared/enums/favorites'
+import type { ReviewPageViewProps } from '@/shared/types/favorites-components'
+const props = defineProps<ReviewPageViewProps>()
 const favorites = useFavoriteStore()
 const bank = ref<FavoriteType>('VOCABULARY')
 const cardIds = ref<string[]>([])

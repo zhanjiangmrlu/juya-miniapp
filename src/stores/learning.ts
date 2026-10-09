@@ -2,11 +2,10 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { presentCatalog } from '@/features/learning/catalog-presenter'
+import { EMPTY_LEARNING_CATALOG as EMPTY_CATALOG } from '@/shared/constants/learning'
 
-import type { CatalogService } from '@/features/learning/catalog-service'
 import type { LearningCatalogResponse, LearningModule } from '@/shared/contracts/learning'
-
-const EMPTY_CATALOG: LearningCatalogResponse = { authorization_pending: false, items: [] }
+import type { CatalogService } from '@/shared/types/learning'
 
 export const useLearningStore = defineStore('learning', () => {
   const catalog = ref<LearningCatalogResponse>(EMPTY_CATALOG)

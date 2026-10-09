@@ -1,0 +1,1 @@
+export const RECORDING_MAX_DURATION_MS = 60_000

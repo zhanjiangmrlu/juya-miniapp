@@ -1,9 +1,8 @@
 <script setup lang="ts">
-withDefaults(
-  defineProps<{ juyaId: string; wechatLabel: string; nickname?: string; avatar?: string | null }>(),
-  { nickname: '学习者', avatar: null }
-)
-const emit = defineEmits<{ contact: [] }>()
+import type { ProfileIdentityEmits, ProfileIdentityProps } from '@/shared/types/profile-components'
+
+withDefaults(defineProps<ProfileIdentityProps>(), { nickname: '学习者', avatar: null })
+const emit = defineEmits<ProfileIdentityEmits>()
 /** 复制本人句芽编号，value 为本人服务端编号 */
 const copy = (value: string) => uni.setClipboardData({ data: value })
 </script>

@@ -8,10 +8,7 @@ import {
   clearLocalDeletionDrafts,
   createUniLocalDataScope
 } from '@/features/account/local-data-cleaner'
-import {
-  type EntitlementsViewModel,
-  presentEntitlements
-} from '@/features/entitlements/entitlement-presenter'
+import { presentEntitlements } from '@/features/entitlements/entitlement-presenter'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
@@ -19,6 +16,8 @@ import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 import { createServerClock } from '@/shared/utils/server-clock'
 import { useAccountDeletionStore } from '@/stores/account-deletion'
+
+import type { EntitlementsViewModel } from '@/shared/types/entitlements'
 const deletion = useAccountDeletionStore()
 const error = ref('')
 const loading = ref(false)

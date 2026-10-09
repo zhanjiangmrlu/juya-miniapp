@@ -8,16 +8,12 @@ import { getResultReviewRoute } from '@/features/learning-result/result-review'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
 import { getRuntimeServices } from '@/services/runtime'
+import { SCENE_COMPLETION_DETAILS as details } from '@/shared/constants/scene'
 import { navigate } from '@/shared/navigation/navigate'
 
 const result = ref(presentLearningResult(null))
 const reviewing = ref(false)
 const { disposeAudio, fullModel, initialize, sceneId } = useScenePage()
-const details = [
-  { title: '完成场景明细', hint: '查看学习过的场景' },
-  { title: '词汇银行', hint: '复习本次收藏词汇' },
-  { title: '语块银行', hint: '复习本次收藏语块' }
-]
 
 /** 完成页读取权威成果，query 为已完成场景路由参数 */
 const handleLoad = async (query?: Record<string, string>) => {

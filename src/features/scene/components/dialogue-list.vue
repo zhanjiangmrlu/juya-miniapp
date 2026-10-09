@@ -1,32 +1,17 @@
 <script setup lang="ts">
 import DialogueSentence from '@/features/scene/components/dialogue-sentence.vue'
 
-import type { AudioTarget, ClickableSpan, SceneEntry } from '@/shared/contracts/learning'
-import type { AudioStatus } from '@/shared/enums/audio'
+import type { ClickableSpan, SceneEntry } from '@/shared/contracts/learning'
+import type { DialogueListEmits, DialogueListProps } from '@/shared/types/scene-components'
 
-withDefaults(
-  defineProps<{
-    chineseVisible: boolean
-    currentAudioKey?: string | null
-    entries: SceneEntry[]
-    status: AudioStatus
-    catalog?: SceneEntry[]
-    highlightedId?: string
-    hideAudio?: boolean
-    audioSelectionVisible?: boolean
-  }>(),
-  {
-    currentAudioKey: null,
-    catalog: () => [],
-    highlightedId: '',
-    hideAudio: false,
-    audioSelectionVisible: true
-  }
-)
-const emit = defineEmits<{
-  inspect: [entry: SceneEntry, span: ClickableSpan]
-  play: [target: AudioTarget]
-}>()
+withDefaults(defineProps<DialogueListProps>(), {
+  currentAudioKey: null,
+  catalog: () => [],
+  highlightedId: '',
+  hideAudio: false,
+  audioSelectionVisible: true
+})
+const emit = defineEmits<DialogueListEmits>()
 /** 转发真实片段点击，entry 为句子，span 为词条固定定位 */
 const inspect = (entry: SceneEntry, span: ClickableSpan) => emit('inspect', entry, span)
 </script>

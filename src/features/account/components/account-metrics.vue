@@ -1,11 +1,7 @@
 <script setup lang="ts">
-defineProps<{
-  completedScenes: number
-  favoriteCount: number
-  longestStreak: number
-  totalDays: number
-  validEntitlements: number
-}>()
+import type { AccountMetricsProps } from '@/shared/types/account-components'
+
+defineProps<AccountMetricsProps>()
 </script>
 
 <template>

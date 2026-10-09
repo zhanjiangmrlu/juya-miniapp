@@ -1,14 +1,8 @@
 import type { FavoriteItem, FavoriteSource } from '@/shared/contracts/favorites'
+import type { FavoriteGroup, FavoriteSourceViewModel } from '@/shared/types/favorites'
 
-export interface FavoriteSourceViewModel extends FavoriteSource {
-  returnUrl: string | null
-}
-
-export interface FavoriteGroup {
-  displayKey: string
-  items: FavoriteItem[]
-  sources: FavoriteSourceViewModel[]
-}
+export type { FavoriteSourceViewModel } from '@/shared/types/favorites'
+export type { FavoriteGroup } from '@/shared/types/favorites'
 
 /** 统一展示键大小写和空格，value 为收藏原始归一键，不做词形或语义合并 */
 const normalizeDisplayKey = (value: string): string => {

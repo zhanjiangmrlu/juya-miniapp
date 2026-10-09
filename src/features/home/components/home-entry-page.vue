@@ -12,8 +12,9 @@ import SceneListSection from '@/features/learning/components/scene-list-section.
 import { navigate } from '@/shared/navigation/navigate'
 import { useLearningStore } from '@/stores/learning'
 
-import type { HomeEntryAction, HomeEntryMode } from '@/shared/enums/home'
-const props = withDefaults(defineProps<{ mode: HomeEntryMode; embedded?: boolean }>(), {
+import type { HomeEntryAction } from '@/shared/enums/home'
+import type { HomeEntryPageProps } from '@/shared/types/home-components'
+const props = withDefaults(defineProps<HomeEntryPageProps>(), {
   embedded: false
 })
 const { cancel, canStartTask, home, load, openScene, startTask, taskScene } = useHomePage()

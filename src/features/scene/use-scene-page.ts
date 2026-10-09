@@ -3,16 +3,17 @@ import { computed, ref } from 'vue'
 
 import { createProgressQueue } from '@/features/learning-progress/progress-queue'
 import { getRuntimeServices } from '@/services/runtime'
+import { PROGRESS_QUEUE_KEY } from '@/shared/constants/learning-progress'
 import { useAudioStore } from '@/stores/audio'
 import { useSceneStore } from '@/stores/scene'
 
 import type { StablePosition } from '@/shared/contracts/common'
 import type { AudioTarget, ClickableSpan, SceneEntry } from '@/shared/contracts/learning'
-
-const PROGRESS_QUEUE_KEY = 'juya.progress-queue'
+import type { HttpStatusCarrier } from '@/shared/types/http'
+import type { ScenePageOptions } from '@/shared/types/scene'
 
 /** 编排场景与媒体，options.resume 决定返回页面时是否自动重新核验授权 */
-export const useScenePage = (options: { resume?: boolean } = {}) => {
+export const useScenePage = (options: ScenePageOptions = {}) => {
   const audio = useAudioStore()
   const runtime = getRuntimeServices()
   const scene = useSceneStore()
@@ -57,7 +58,7 @@ export const useScenePage = (options: { resume?: boolean } = {}) => {
 
   /** 处理授权失败，error 为 API 返回错误，拒绝访问时清空正文及媒体 */
   const handleFailure = (error: unknown) => {
-    const status = (error as { status?: number })?.status
+    const status = (error as HttpStatusCarrier)?.status
     if ([401, 403, 404, 409, 410].includes(status ?? 0)) {
       generation++
       sheetRequest++

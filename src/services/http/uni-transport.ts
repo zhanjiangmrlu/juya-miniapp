@@ -1,9 +1,6 @@
-import {
-  type HttpTransport,
-  NetworkTransportError,
-  type TransportRequest,
-  type TransportResponse
-} from './types'
+import { NetworkTransportError } from '@/services/http/errors'
+
+import type { HttpTransport, TransportRequest, TransportResponse } from '@/shared/types/http'
 export class UniTransport implements HttpTransport {
   /** 将 uni.request 回调接口适配为请求层使用的 Promise 传输协议。 */
   request<T>(request: TransportRequest): Promise<TransportResponse<T>> {

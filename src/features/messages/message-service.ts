@@ -1,10 +1,7 @@
-import type { HttpClient } from '@/services/http/client'
-import type { MessageItem, MessagePage } from '@/shared/contracts/messages'
+import type { HttpClient } from '@/shared/types/http'
+import type { MessageService } from '@/shared/types/messages'
 
-export interface MessageService {
-  list(cursor?: string): Promise<MessagePage>
-  markRead(id: string): Promise<MessageItem>
-}
+export type { MessageService } from '@/shared/types/messages'
 
 /** 创建站内消息服务，列表读取与已读命令均复用统一请求层。 */
 export function createMessageService(client: HttpClient): MessageService {

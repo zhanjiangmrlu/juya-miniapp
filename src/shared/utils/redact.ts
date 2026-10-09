@@ -1,8 +1,6 @@
-export type SensitiveKind = 'wechat_id'
+import type { LogSink, SensitiveKind } from '@/shared/types/logging'
 
-interface LogSink {
-  info(message: string, ...arguments_: unknown[]): void
-}
+export type { SensitiveKind } from '@/shared/types/logging'
 
 /** 将敏感值完全替换，不保留可被关联的首尾字符。 */
 export function redactSensitive(_value: string, _kind: SensitiveKind): string {

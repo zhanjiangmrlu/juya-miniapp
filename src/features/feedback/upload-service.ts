@@ -1,11 +1,11 @@
-import type { FeedbackScreenshotDraft } from './feedback-form'
-import type { FeedbackService } from './feedback-service'
 import type { FeedbackUploadCredential } from '@/shared/contracts/feedback'
+import type {
+  FeedbackScreenshotDraft,
+  FeedbackService,
+  FeedbackUploader
+} from '@/shared/types/feedback'
 
-export type FeedbackUploader = (
-  file: FeedbackScreenshotDraft,
-  credential: FeedbackUploadCredential
-) => Promise<void>
+export type { FeedbackUploader } from '@/shared/types/feedback'
 
 /** 使用服务端短期凭证把图片直传 OSS，不读取或记录图片正文。 */
 export function uploadWithUni(

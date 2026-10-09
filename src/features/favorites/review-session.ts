@@ -1,25 +1,18 @@
 import { createRequestId } from '@/services/http/request-id'
 
-import type { ReviewCardFace } from '@/shared/enums/favorites'
+import type {
+  FavoriteReviewOptions,
+  ReviewSessionController,
+  ReviewSnapshot
+} from '@/shared/types/favorites'
 
-export interface ReviewSnapshot {
-  cardIds: string[]
-  face: ReviewCardFace
-  index: number
-}
-
-export interface ReviewSessionController {
-  complete(sender: (idempotencyKey: string) => Promise<void>): Promise<void>
-  flip(): void
-  next(): void
-  playAudio(): void
-  readonly snapshot: ReviewSnapshot
-}
+export type { ReviewSnapshot } from '@/shared/types/favorites'
+export type { ReviewSessionController } from '@/shared/types/favorites'
 
 /** 创建翻卡会话，cardIds 为完整队列，options 为测试可替换的幂等键生成器 */
 export const createReviewSession = (
   cardIds: string[],
-  options: { idFactory?: () => string } = {}
+  options: FavoriteReviewOptions = {}
 ): ReviewSessionController => {
   const snapshot: ReviewSnapshot = { cardIds: [...cardIds], face: 'FRONT', index: 0 }
   const completionKey = (options.idFactory ?? createRequestId)()

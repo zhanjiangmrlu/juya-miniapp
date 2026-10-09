@@ -1,17 +1,9 @@
 <script setup lang="ts">
-import type { AudioTarget, SceneEntry } from '@/shared/contracts/learning'
-import type { AudioStatus } from '@/shared/enums/audio'
+import type { SceneEntry } from '@/shared/contracts/learning'
+import type { EntryListEmits, EntryListProps } from '@/shared/types/scene-components'
 
-withDefaults(
-  defineProps<{
-    currentAudioKey?: string | null
-    entries: SceneEntry[]
-    status: AudioStatus
-    sentences?: SceneEntry[]
-  }>(),
-  { currentAudioKey: null, sentences: () => [] }
-)
-const emit = defineEmits<{ inspect: [entry: SceneEntry]; play: [target: AudioTarget] }>()
+withDefaults(defineProps<EntryListProps>(), { currentAudioKey: null, sentences: () => [] })
+const emit = defineEmits<EntryListEmits>()
 /** 转换来源句编号，entry 为当前词条，sentences 为发布句子顺序 */
 const sourceNumber = (entry: SceneEntry, sentences: SceneEntry[]) => {
   const indexes = sentences

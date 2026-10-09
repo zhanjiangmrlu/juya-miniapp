@@ -1,13 +1,7 @@
-import type { HttpClient } from '@/services/http/client'
-import type {
-  RefreshSessionRequest,
-  SessionResponse,
-  WechatSessionRequest
-} from '@/shared/contracts/session'
-export interface SessionService {
-  loginWithWechat(code: string): Promise<SessionResponse>
-  refresh(refreshToken: string): Promise<SessionResponse>
-}
+import type { RefreshSessionRequest, WechatSessionRequest } from '@/shared/contracts/session'
+import type { HttpClient } from '@/shared/types/http'
+import type { SessionService } from '@/shared/types/session'
+export type { SessionService } from '@/shared/types/session'
 
 /** 获取登录设备的平台、机型和系统描述，限制为接口允许的 200 字符 */
 const describeDevice = (): string => {

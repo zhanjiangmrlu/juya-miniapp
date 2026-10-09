@@ -3,25 +3,27 @@ import { computed, onMounted, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import {
-  FEEDBACK_CATEGORIES,
   preserveDraftAfterUploadFailure,
   validateFeedbackDraft
 } from '@/features/feedback/feedback-form'
 import { chooseFeedbackScreenshot } from '@/features/feedback/screenshot-picker'
 import { uploadFeedbackImage } from '@/features/feedback/upload-service'
-import { ApiError } from '@/services/http/types'
+import { ApiError } from '@/services/http/errors'
 import { getRuntimeServices } from '@/services/runtime'
+import { FEEDBACK_CATEGORIES } from '@/shared/constants/feedback'
 import { navigate } from '@/shared/navigation/navigate'
 import { useFeedbackDraftStore } from '@/stores/feedback-draft'
 
-withDefaults(defineProps<{ blocked?: boolean }>(), { blocked: false })
+import type { FeedbackSourceScene } from '@/shared/types/feedback'
+import type { FeedbackFormProps } from '@/shared/types/feedback-components'
+import type { InputValueEvent } from '@/shared/types/ui'
+
+withDefaults(defineProps<FeedbackFormProps>(), { blocked: false })
 
 const store = useFeedbackDraftStore()
 const error = ref('')
 const loading = ref(false)
-const sourceScenes = ref<
-  Array<{ scene_id: string; title: string; chinese_title: string; series: string }>
->([])
+const sourceScenes = ref<Array<FeedbackSourceScene>>([])
 const sourceOptions = computed(() => [
   { label: '首页', source: { page_label: '首页', page_path: '/pages/home/index' } },
   {
@@ -56,7 +58,7 @@ const loadSources = async () => {
 }
 /** 保存用户选择的相关页面或内容，event 为来源选择器事件 */
 const selectSource = (event: unknown) => {
-  const option = sourceOptions.value[Number((event as { detail: { value: string } }).detail.value)]
+  const option = sourceOptions.value[Number((event as InputValueEvent<string>).detail.value)]
   if (option) {
     store.update({ source: option.source })
     error.value = ''
@@ -67,7 +69,7 @@ if (!store.draft.category) store.update({ category: 'CONTENT' })
 
 /** 从输入事件同步反馈正文，不把敏感原文写入日志 */
 const handleDescriptionInput = (event: unknown) => {
-  store.update({ description: (event as { detail: { value: string } }).detail.value })
+  store.update({ description: (event as InputValueEvent<string>).detail.value })
 }
 
 /** 切换反馈类别，value 为四种允许的问题类别 */

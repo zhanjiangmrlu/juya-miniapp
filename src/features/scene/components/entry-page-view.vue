@@ -9,9 +9,10 @@ import { useScenePage } from '@/features/scene/use-scene-page'
 import VocabularySheet from '@/features/vocabulary-sheet/components/vocabulary-sheet.vue'
 import { navigate } from '@/shared/navigation/navigate'
 
-import type { SceneLookupEntryType } from '@/shared/enums/learning'
+import type { EntryPageViewProps } from '@/shared/types/scene-components'
+import type { ScrollOffset } from '@/shared/types/ui'
 
-const props = defineProps<{ entryType: SceneLookupEntryType; title: string }>()
+const props = defineProps<EntryPageViewProps>()
 const {
   audio,
   closeSheet,
@@ -41,7 +42,7 @@ const handleLoad = (query?: Record<string, string>) => {
   void initialize(query?.sceneId)
 }
 /** 记录真实页面滚动，event 为当前位置 */
-const handleScroll = (event: { scrollTop: number }) => {
+const handleScroll = (event: ScrollOffset) => {
   scrollTop.value = event.scrollTop
 }
 /** 词汇页进入语块，语块页完成后进入成果 */

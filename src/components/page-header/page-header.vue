@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { resolveNavigationMetrics } from '@/services/navigation-metrics'
 
+import type { PageHeaderProps } from '@/shared/types/ui-components'
+
 let metrics = resolveNavigationMetrics(undefined, undefined, 390)
 try {
   const info = uni.getWindowInfo()
@@ -9,21 +11,12 @@ try {
 } catch {
   // H5 与测试环境缺少微信胶囊时使用设计参考尺寸
 }
-withDefaults(
-  defineProps<{
-    backLabel?: string
-    centered?: boolean
-    eyebrow?: string
-    showBack?: boolean
-    title: string
-  }>(),
-  {
-    backLabel: '返回',
-    centered: false,
-    eyebrow: undefined,
-    showBack: true
-  }
-)
+withDefaults(defineProps<PageHeaderProps>(), {
+  backLabel: '返回',
+  centered: false,
+  eyebrow: undefined,
+  showBack: true
+})
 
 /** 返回上一页；没有可返回页面时回到首页，避免用户停留在空白入口 */
 const goBack = () => {

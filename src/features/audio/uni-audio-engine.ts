@@ -1,4 +1,4 @@
-import type { AudioEngine, AudioEvent } from './audio-controller'
+import type { AudioEngine, AudioEvent } from '@/shared/types/audio'
 
 /** 将 uni 播放事件适配为独占设备端口，每次切换源都会使旧设备事件失效 */
 export const createUniAudioEngine = (): AudioEngine => {

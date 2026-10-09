@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import SceneCard from '@/features/learning/components/scene-card.vue'
 
-import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
-withDefaults(
-  defineProps<{
-    actionLabel?: string
-    scenes: SceneCardViewModel[]
-    title: string
-    compact?: boolean
-    cardAction?: string
-  }>(),
-  { compact: false, actionLabel: undefined, cardAction: undefined }
-)
-const emit = defineEmits<{ action: []; select: [scene: SceneCardViewModel] }>()
+import type { SceneCardViewModel } from '@/shared/types/learning'
+import type {
+  SceneListSectionEmits,
+  SceneListSectionProps
+} from '@/shared/types/learning-components'
+withDefaults(defineProps<SceneListSectionProps>(), {
+  compact: false,
+  actionLabel: undefined,
+  cardAction: undefined
+})
+const emit = defineEmits<SceneListSectionEmits>()
 /** 转发标题操作，实际行为由页面提供 */
 const handleAction = () => emit('action')
 /** 转发选择，scene 为被点击的安全场景摘要 */

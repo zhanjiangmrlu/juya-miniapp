@@ -1,18 +1,11 @@
 <script setup lang="ts">
-import type { PageAppearance, PageTier } from '@/shared/enums/ui'
+import type { AppPageProps } from '@/shared/types/ui-components'
 
-withDefaults(
-  defineProps<{
-    padded?: boolean
-    tier?: PageTier
-    appearance?: PageAppearance
-  }>(),
-  {
-    padded: true,
-    appearance: 'default',
-    tier: 'primary'
-  }
-)
+withDefaults(defineProps<AppPageProps>(), {
+  padded: true,
+  appearance: 'default',
+  tier: 'primary'
+})
 </script>
 
 <template>

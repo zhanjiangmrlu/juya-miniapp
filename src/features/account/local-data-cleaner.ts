@@ -1,3 +1,4 @@
+import { LEARNING_STORAGE_KEYS } from '@/shared/constants/account'
 import { useAudioStore } from '@/stores/audio'
 import { useFavoriteStore } from '@/stores/favorites'
 import { useFeedbackDraftStore } from '@/stores/feedback-draft'
@@ -6,19 +7,9 @@ import { useLearningStore } from '@/stores/learning'
 import { useSceneStore } from '@/stores/scene'
 import { useSessionStore } from '@/stores/session'
 
-const LEARNING_STORAGE_KEYS = [
-  'juya.progress-queue',
-  'juya.recordings',
-  'juya.review-session',
-  'juya.history-cache'
-] as const
+import type { LocalDataScope } from '@/shared/types/account'
 
-export interface LocalDataScope {
-  clearFeedbackDraft(): void
-  clearSession(): void
-  removeStorage(key: string): void
-  resetLearningStores(): void
-}
+export type { LocalDataScope } from '@/shared/types/account'
 
 /** 只接受产品约定的固定确认值，防止模糊文案触发不可逆清理。 */
 export function isLearningDataConfirmation(value: string): boolean {

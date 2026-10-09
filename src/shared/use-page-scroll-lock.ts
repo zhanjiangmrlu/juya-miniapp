@@ -1,13 +1,9 @@
 import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, inject, onBeforeUnmount, provide, ref, toValue, watch } from 'vue'
 
-import type { ComputedRef, InjectionKey, MaybeRefOrGetter } from 'vue'
+import type { PageScrollLock } from '@/shared/types/ui'
+import type { InjectionKey, MaybeRefOrGetter } from 'vue'
 
-interface PageScrollLock {
-  acquire: () => () => void
-  pageStyle: ComputedRef<string>
-  scrollLocked: ComputedRef<boolean>
-}
 const scrollLockKey: InjectionKey<PageScrollLock> = Symbol('page-scroll-lock')
 let browserLockCount = 0
 let restoreBrowserStyle: (() => void) | undefined

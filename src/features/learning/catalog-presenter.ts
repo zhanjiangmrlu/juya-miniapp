@@ -1,41 +1,13 @@
+import type { SceneSummary } from '@/shared/contracts/learning'
 import type {
-  LearningCatalogResponse,
-  LearningModule,
-  SceneSummary
-} from '@/shared/contracts/learning'
-import type { LearningCatalogStage } from '@/shared/enums/learning'
+  CatalogPresentationInput,
+  CatalogSections,
+  SceneCardViewModel
+} from '@/shared/types/learning'
 
-export interface SceneCardViewModel {
-  accessLabel: string
-  canOpen: boolean
-  category?: string
-  tags?: string[]
-  chineseTitle: string
-  description: string
-  entryUrl: string | null
-  imageUrl?: string
-  progress: number
-  sceneId: string
-  series: string
-  title: string
-}
-
-export interface CatalogSections {
-  authorizationPending: boolean
-  currentLearning: SceneCardViewModel[]
-  entitledScenes: SceneCardViewModel[]
-  modules: LearningModule[]
-  openReview: { completedCount: number; totalCount: number } | null
-  openScenes: SceneCardViewModel[]
-  previewScenes: SceneCardViewModel[]
-  showProfileAction: boolean
-  stage: LearningCatalogStage
-}
-
-export interface CatalogPresentationInput {
-  catalog: LearningCatalogResponse
-  modules: LearningModule[]
-}
+export type { SceneCardViewModel } from '@/shared/types/learning'
+export type { CatalogSections } from '@/shared/types/learning'
+export type { CatalogPresentationInput } from '@/shared/types/learning'
 
 /** 判断完成记录，scene 为后台场景摘要，完成状态不依赖可选百分比 */
 const hasCompleted = (scene: SceneSummary): boolean =>

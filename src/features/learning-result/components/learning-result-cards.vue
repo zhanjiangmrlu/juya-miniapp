@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import type { LearningResultCard } from '@/features/learning-result/result-presenter'
-defineProps<{ cards: LearningResultCard[] }>()
-const emit = defineEmits<{ select: [route: string] }>()
+import type {
+  LearningResultCardsEmits,
+  LearningResultCardsProps
+} from '@/shared/types/learning-result-components'
+defineProps<LearningResultCardsProps>()
+const emit = defineEmits<LearningResultCardsEmits>()
 </script>
 <template>
   <view class="result-cards"

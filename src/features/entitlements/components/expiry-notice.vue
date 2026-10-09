@@ -1,8 +1,7 @@
 <script setup lang="ts">
-defineProps<{
-  expiresAt: string
-  title?: string
-}>()
+import type { ExpiryNoticeProps } from '@/shared/types/entitlements-components'
+
+defineProps<ExpiryNoticeProps>()
 
 /** 将服务端绝对时间格式化为用户所在界面可读文案，不参与权限计算。 */
 function formatExpiry(value: string) {

@@ -4,16 +4,11 @@ import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import PageHeader from '@/components/page-header/page-header.vue'
 
-defineProps<{
-  actionLabel: string
-  description: string
-  iconLabel: string
-  title: string
-}>()
+import type { SceneStatusPageEmits, SceneStatusPageProps } from '@/shared/types/scene-components'
 
-const emit = defineEmits<{
-  action: []
-}>()
+defineProps<SceneStatusPageProps>()
+
+const emit = defineEmits<SceneStatusPageEmits>()
 
 /** 将状态页主操作交给具体路由页面处理。 */
 function handleAction() {

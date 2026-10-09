@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { loadFavoriteGroup } from '@/features/favorites/load-favorite-group'
 
-import type { FavoriteService } from '@/features/favorites/favorite-service'
 import type { FavoriteItem } from '@/shared/contracts/favorites'
+import type { FavoriteService } from '@/shared/types/favorites'
 
 /** 构建同词不同来源收藏，id 为收藏及稳定词条标识 */
 const favorite = (id: string): FavoriteItem => ({

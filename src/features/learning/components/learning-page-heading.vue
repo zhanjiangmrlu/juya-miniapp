@@ -1,5 +1,7 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ eyebrow: string; title: string; large?: boolean }>(), { large: false })
+import type { LearningPageHeadingProps } from '@/shared/types/learning-components'
+
+withDefaults(defineProps<LearningPageHeadingProps>(), { large: false })
 </script>
 <template>
   <view class="learning-heading" :class="{ large }">

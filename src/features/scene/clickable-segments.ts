@@ -1,9 +1,7 @@
 import type { ClickableSpan, SceneEntry } from '@/shared/contracts/learning'
+import type { ClickableSegment } from '@/shared/types/scene'
 
-export interface ClickableSegment {
-  text: string
-  span?: ClickableSpan
-}
+export type { ClickableSegment } from '@/shared/types/scene'
 
 /** 切分服务端点击片段，text 为当前句正文，spans 为字符区间，entries 为词条类型目录 */
 export const createClickableSegments = (

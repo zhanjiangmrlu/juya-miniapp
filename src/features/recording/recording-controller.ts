@@ -1,20 +1,10 @@
 import type { RecordingPlaybackEventType } from '@/shared/enums/recording'
+import type { RecordingPort, RecordingSnapshot } from '@/shared/types/recording'
 
 import { createBrowserRecordingPort } from './browser-recording-port'
-import { createRecordingSnapshot, type RecordingSnapshot } from './recording-machine'
+import { createRecordingSnapshot } from './recording-machine'
 
-export interface RecordingPort {
-  deleteFile(path: string): Promise<void>
-  playback(path: string): Promise<void>
-  requestPermission(): Promise<boolean>
-  start(sentenceId: string): Promise<void>
-  stop(): Promise<string>
-  stopPlayback(): void
-  pausePlayback?(): void
-  subscribePlayback?(listener: (type: RecordingPlaybackEventType) => void): () => void
-  subscribeRecording?(listener: (path?: string) => void): () => void
-  destroy?(): void
-}
+export type { RecordingPort } from '@/shared/types/recording'
 
 /** 管理逐句录音权限、临时文件与回听生命周期 */
 export class RecordingController {
@@ -305,7 +295,7 @@ export const createUniRecordingPort = (): RecordingPort => {
       new Promise((resolve, reject) => {
         startResolver = resolve
         startReject = reject
-        recorder.start({ duration: 60_000, format: 'aac' })
+        recorder.start({ duration: RECORDING_MAX_DURATION_MS, format: 'aac' })
       }),
     stop: () =>
       new Promise((resolve, reject) => {
@@ -322,3 +312,4 @@ export const createUniRecordingPort = (): RecordingPort => {
   }
   // #endif
 }
+import { RECORDING_MAX_DURATION_MS } from '@/shared/constants/recording'

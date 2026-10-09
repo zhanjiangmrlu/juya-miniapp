@@ -3,12 +3,12 @@ import arrow from '@/features/learning/assets/arrow.svg'
 import book from '@/features/learning/assets/book.svg'
 import lock from '@/features/learning/assets/lock.svg'
 
-import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
-const props = withDefaults(
-  defineProps<{ compact?: boolean; scene: SceneCardViewModel; actionLabel?: string }>(),
-  { compact: false, actionLabel: '开始学习' }
-)
-const emit = defineEmits<{ select: [scene: SceneCardViewModel] }>()
+import type { SceneCardEmits, SceneCardProps } from '@/shared/types/learning-components'
+const props = withDefaults(defineProps<SceneCardProps>(), {
+  compact: false,
+  actionLabel: '开始学习'
+})
+const emit = defineEmits<SceneCardEmits>()
 /** 上抛当前卡片，让页面根据后台权限决定导航或提示 */
 const handleSelect = () => emit('select', props.scene)
 </script>

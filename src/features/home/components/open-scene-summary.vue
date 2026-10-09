@@ -1,5 +1,7 @@
 <script setup lang="ts">
-defineProps<{ count: number | null }>()
+import type { OpenSceneSummaryProps } from '@/shared/types/home-components'
+
+defineProps<OpenSceneSummaryProps>()
 </script>
 
 <template>

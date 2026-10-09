@@ -1,16 +1,9 @@
 import type { StablePosition } from '@/shared/contracts/common'
 import type { SceneEntry } from '@/shared/contracts/learning'
+import type { SheetController, SheetSnapshot } from '@/shared/types/vocabulary-sheet'
 
-export interface SheetSnapshot {
-  entry: SceneEntry
-  open: boolean
-  returnPosition: StablePosition
-}
-
-export interface SheetController {
-  close(): StablePosition
-  readonly snapshot: SheetSnapshot
-}
+export type { SheetSnapshot } from '@/shared/types/vocabulary-sheet'
+export type { SheetController } from '@/shared/types/vocabulary-sheet'
 
 /** 多个文字命中时优先返回更具体的语块，其次才是单词条目。 */
 export function chooseSheetEntry(entries: SceneEntry[]): SceneEntry | undefined {

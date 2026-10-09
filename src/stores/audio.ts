@@ -2,12 +2,13 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { AudioController } from '@/features/audio/audio-controller'
-import { type AudioSnapshot, getAudioTargetKey } from '@/features/audio/audio-machine'
+import { getAudioTargetKey } from '@/features/audio/audio-machine'
 import { createUniAudioEngine } from '@/features/audio/uni-audio-engine'
 import { useSceneStore } from '@/stores/scene'
 
-import type { SceneService } from '@/features/scene/scene-service'
 import type { AudioTarget } from '@/shared/contracts/learning'
+import type { AudioSnapshot } from '@/shared/types/audio'
+import type { SceneService } from '@/shared/types/scene'
 
 export const useAudioStore = defineStore('audio', () => {
   const snapshot = ref<AudioSnapshot>({ status: 'IDLE', target: null })

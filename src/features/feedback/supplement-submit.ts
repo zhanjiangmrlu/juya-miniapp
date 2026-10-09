@@ -1,6 +1,5 @@
-import type { FeedbackScreenshotDraft } from './feedback-form'
-import type { FeedbackService } from './feedback-service'
 import type { FeedbackItem } from '@/shared/contracts/feedback'
+import type { FeedbackScreenshotDraft, FeedbackService } from '@/shared/types/feedback'
 
 import { validateFeedbackDraft } from './feedback-form'
 import { uploadFeedbackImage } from './upload-service'

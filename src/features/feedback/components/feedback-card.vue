@@ -1,16 +1,11 @@
 <script setup lang="ts">
 import { formatFeedbackTime, getFeedbackStatusLabel } from '@/features/feedback/feedback-presenter'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
+import { FEEDBACK_CATEGORY_LABELS as categories } from '@/shared/constants/feedback'
 
-import type { FeedbackItem } from '@/shared/contracts/feedback'
-defineProps<{ item: FeedbackItem }>()
-const emit = defineEmits<{ open: [item: FeedbackItem] }>()
-const categories: Record<string, string> = {
-  CONTENT: '内容问题',
-  PRONUNCIATION: '发音问题',
-  DISPLAY: '显示问题',
-  FUNCTION: '功能问题'
-}
+import type { FeedbackCardEmits, FeedbackCardProps } from '@/shared/types/feedback-components'
+defineProps<FeedbackCardProps>()
+const emit = defineEmits<FeedbackCardEmits>()
 </script>
 <template>
   <PersonalRow

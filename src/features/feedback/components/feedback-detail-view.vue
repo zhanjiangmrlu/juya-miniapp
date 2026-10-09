@@ -7,24 +7,23 @@ import AppState from '@/components/app-state/app-state.vue'
 import FeedbackImagePicker from '@/features/feedback/components/feedback-image-picker.vue'
 import FeedbackResolutionActions from '@/features/feedback/components/feedback-resolution-actions.vue'
 import FeedbackTimeline from '@/features/feedback/components/feedback-timeline.vue'
-import {
-  canSupplementFeedback,
-  FEEDBACK_CATEGORIES,
-  validateSupplement
-} from '@/features/feedback/feedback-form'
+import { canSupplementFeedback, validateSupplement } from '@/features/feedback/feedback-form'
 import { getFeedbackStatusLabel } from '@/features/feedback/feedback-presenter'
 import { submitSupplement } from '@/features/feedback/supplement-submit'
 import { loadAllMessages } from '@/features/messages/load-messages'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
-import { ApiError } from '@/services/http/types'
+import { ApiError } from '@/services/http/errors'
 import { getRuntimeServices } from '@/services/runtime'
+import { FEEDBACK_CATEGORIES } from '@/shared/constants/feedback'
 import { navigate } from '@/shared/navigation/navigate'
 
-import type { FeedbackScreenshotDraft } from '@/features/feedback/feedback-form'
 import type { FeedbackItem, FeedbackResolutionRequest } from '@/shared/contracts/feedback'
-withDefaults(defineProps<{ resultMode?: boolean }>(), { resultMode: false })
+import type { FeedbackScreenshotDraft } from '@/shared/types/feedback'
+import type { FeedbackDetailViewProps } from '@/shared/types/feedback-components'
+import type { InputValueEvent } from '@/shared/types/ui'
+withDefaults(defineProps<FeedbackDetailViewProps>(), { resultMode: false })
 const feedbackId = ref('')
 const item = ref<FeedbackItem>()
 const supplement = ref('')
@@ -61,7 +60,7 @@ const load = async () => {
 }
 /** 同步本机补充草稿，event 为输入事件 */
 const input = (event: unknown) => {
-  supplement.value = (event as { detail: { value: string } }).detail.value
+  supplement.value = (event as InputValueEvent<string>).detail.value
 }
 /** 提交补充说明，失败保留草稿供修改或重试 */
 const submit = async () => {

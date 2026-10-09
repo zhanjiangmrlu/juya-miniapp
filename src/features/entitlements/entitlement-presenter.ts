@@ -1,41 +1,15 @@
+import { LIMITED_ENTITLEMENT_ENDING_WINDOW_MS as ENDING_WINDOW } from '@/shared/constants/entitlements'
+
+import type { EntitlementsResponse, LimitedEntitlement } from '@/shared/contracts/entitlements'
 import type {
-  EntitlementsResponse,
-  FormalEntitlement,
-  LimitedEntitlement
-} from '@/shared/contracts/entitlements'
-import type {
-  LimitedEntitlementDuration,
-  LimitedEntitlementState
-} from '@/shared/enums/entitlements'
-import type { ServerClock } from '@/shared/utils/server-clock'
+  EntitlementsViewModel,
+  LimitedEntitlementViewModel
+} from '@/shared/types/entitlements'
+import type { ServerClock } from '@/shared/types/time'
 
-export interface FormalEntitlementViewModel extends FormalEntitlement {
-  canOpenContent: boolean
-}
-
-export interface LimitedEntitlementViewModel {
-  achievements?: LimitedEntitlement['achievements']
-  sceneIds: string[]
-  status: string
-  activatedAt: string | null
-  canOpenContent: boolean
-  durationDays: LimitedEntitlementDuration
-  expiresAt: string | null
-  id: string
-  keepResults: boolean
-  sceneCount: number
-  startsBefore: string
-  state: LimitedEntitlementState
-  title: string
-}
-
-export interface EntitlementsViewModel {
-  authorizationPending: boolean
-  formal: FormalEntitlementViewModel[]
-  limited: LimitedEntitlementViewModel[]
-}
-
-const ENDING_WINDOW = 24 * 60 * 60 * 1000
+export type { FormalEntitlementViewModel } from '@/shared/types/entitlements'
+export type { LimitedEntitlementViewModel } from '@/shared/types/entitlements'
+export type { EntitlementsViewModel } from '@/shared/types/entitlements'
 
 /** 按服务端绝对时间映射限时权益状态，不在客户端创建激活时间 */
 const presentLimited = (

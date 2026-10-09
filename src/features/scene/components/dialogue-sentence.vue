@@ -4,39 +4,20 @@ import { computed } from 'vue'
 import AudioButton from '@/features/audio/components/audio-button.vue'
 import { createClickableSegments } from '@/features/scene/clickable-segments'
 
-import type { AudioTarget, ClickableSpan, SceneEntry } from '@/shared/contracts/learning'
-import type { AudioStatus } from '@/shared/enums/audio'
+import type { ClickableSpan } from '@/shared/contracts/learning'
+import type { DialogueSentenceEmits, DialogueSentenceProps } from '@/shared/types/scene-components'
 
-const props = withDefaults(
-  defineProps<{
-    chineseVisible: boolean
-    currentAudioKey?: string | null
-    entry: SceneEntry
-    status: AudioStatus
-    catalog?: SceneEntry[]
-    highlighted?: boolean
-    number?: number
-    selected?: boolean
-    hideAudio?: boolean
-    audioSelectionVisible?: boolean
-    inspectEnabled?: boolean
-  }>(),
-  {
-    currentAudioKey: null,
-    number: undefined,
-    catalog: () => [],
-    highlighted: false,
-    selected: false,
-    hideAudio: false,
-    audioSelectionVisible: true,
-    inspectEnabled: true
-  }
-)
-const emit = defineEmits<{
-  inspect: [entry: SceneEntry, span: ClickableSpan]
-  play: [target: AudioTarget]
-  select: [entry: SceneEntry]
-}>()
+const props = withDefaults(defineProps<DialogueSentenceProps>(), {
+  currentAudioKey: null,
+  number: undefined,
+  catalog: () => [],
+  highlighted: false,
+  selected: false,
+  hideAudio: false,
+  audioSelectionVisible: true,
+  inspectEnabled: true
+})
+const emit = defineEmits<DialogueSentenceEmits>()
 const segments = computed(() =>
   createClickableSegments(
     props.entry.text,

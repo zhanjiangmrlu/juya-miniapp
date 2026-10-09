@@ -10,29 +10,18 @@ import { createMessageService } from '@/features/messages/message-service'
 import { createProfileService } from '@/features/profile/profile-service'
 import { createSceneService } from '@/features/scene/scene-service'
 import { resolveApiBaseUrl } from '@/services/api-config'
-import { createHttpClient, type HttpClient } from '@/services/http/client'
-import { ApiError } from '@/services/http/types'
+import { createHttpClient } from '@/services/http/client'
+import { ApiError } from '@/services/http/errors'
 import { UniTransport } from '@/services/http/uni-transport'
 import { MockTransport } from '@/services/mock/mock-transport'
 import { configureSessionBootstrap, ensureSession } from '@/services/startup'
 import { useSessionStore } from '@/stores/session'
 
 import type { SessionResponse } from '@/shared/contracts/session'
+import type { HttpClient } from '@/shared/types/http'
+import type { RuntimeServices } from '@/shared/types/runtime'
 
-export interface RuntimeServices {
-  account: ReturnType<typeof createAccountService>
-  catalog: ReturnType<typeof createCatalogService>
-  client: HttpClient
-  contact: ReturnType<typeof createContactService>
-  home: ReturnType<typeof createHomeService>
-  favorites: ReturnType<typeof createFavoriteService>
-  entitlements: ReturnType<typeof createEntitlementService>
-  feedback: ReturnType<typeof createFeedbackService>
-  result: ReturnType<typeof createResultService>
-  messages: ReturnType<typeof createMessageService>
-  profile: ReturnType<typeof createProfileService>
-  scene: ReturnType<typeof createSceneService>
-}
+export type { RuntimeServices } from '@/shared/types/runtime'
 
 let services: RuntimeServices | undefined
 

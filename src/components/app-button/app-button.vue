@@ -1,25 +1,14 @@
 <script setup lang="ts">
-import type { ButtonVariant } from '@/shared/enums/ui'
+import type { AppButtonEmits, AppButtonProps } from '@/shared/types/ui-components'
 
-const props = withDefaults(
-  defineProps<{
-    block?: boolean
-    disabled?: boolean
-    label: string
-    loading?: boolean
-    variant?: ButtonVariant
-  }>(),
-  {
-    block: true,
-    disabled: false,
-    loading: false,
-    variant: 'primary'
-  }
-)
+const props = withDefaults(defineProps<AppButtonProps>(), {
+  block: true,
+  disabled: false,
+  loading: false,
+  variant: 'primary'
+})
 
-const emit = defineEmits<{
-  press: []
-}>()
+const emit = defineEmits<AppButtonEmits>()
 
 /** 在禁用或处理中阻止重复操作，其余点击统一转换为 press 事件 */
 const handlePress = () => {

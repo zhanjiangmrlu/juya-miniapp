@@ -1,11 +1,10 @@
-import type { RuntimeServices } from '@/services/runtime'
+import type { AccountLearningHistoryResponse } from '@/shared/types/account'
+import type { RuntimeServices } from '@/shared/types/runtime'
 /** 读取注销挽留统计，runtime 为当前用户的真实接口服务 */
 export const loadAccountMetrics = async (runtime: RuntimeServices) => {
   const [home, history] = await Promise.all([
     runtime.home.getHome(),
-    runtime.client.get<{ items: Array<{ scene_id: string; completed_at: string | null }> }>(
-      '/api/v1/history/scenes'
-    )
+    runtime.client.get<AccountLearningHistoryResponse>('/api/v1/history/scenes')
   ])
   const ids = new Set<string>()
   const cursors = new Set<string>()

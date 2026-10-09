@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import FeedbackForm from '@/features/feedback/components/feedback-form.vue'
-import { ApiError } from '@/services/http/types'
+import { ApiError } from '@/services/http/errors'
 import { useFeedbackDraftStore } from '@/stores/feedback-draft'
 const dependencies = vi.hoisted(() => ({ create: vi.fn(), credential: vi.fn(), navigate: vi.fn() }))
 vi.mock('@/services/runtime', () => ({

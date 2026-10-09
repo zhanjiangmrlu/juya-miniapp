@@ -3,9 +3,12 @@ import { ref } from 'vue'
 
 import { chooseFeedbackScreenshot } from '@/features/feedback/screenshot-picker'
 
-import type { FeedbackScreenshotDraft } from '@/features/feedback/feedback-form'
-defineProps<{ image?: FeedbackScreenshotDraft }>()
-const emit = defineEmits<{ select: [file: FeedbackScreenshotDraft | undefined] }>()
+import type {
+  FeedbackImagePickerEmits,
+  FeedbackImagePickerProps
+} from '@/shared/types/feedback-components'
+defineProps<FeedbackImagePickerProps>()
+const emit = defineEmits<FeedbackImagePickerEmits>()
 const error = ref('')
 /** 选择单张压缩图片并校验格式和体积 */
 const choose = () =>

@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import PersonalRow from '@/features/profile/components/personal-row.vue'
-withDefaults(defineProps<{ unread?: number; feedbackUnread?: number; prompt?: boolean }>(), {
+
+import type {
+  ProfileActionListEmits,
+  ProfileActionListProps
+} from '@/shared/types/profile-components'
+withDefaults(defineProps<ProfileActionListProps>(), {
   feedbackUnread: 0,
   unread: 0,
   prompt: false
 })
-const emit = defineEmits<{
-  account: []
-  entitlements: []
-  feedback: []
-  messages: []
-  contact: []
-}>()
+const emit = defineEmits<ProfileActionListEmits>()
 </script>
 <template>
   <view class="profile-actions">

@@ -4,20 +4,11 @@ import OpenSceneSummary from '@/features/home/components/open-scene-summary.vue'
 import StreakCard from '@/features/home/components/streak-card.vue'
 import TodayTaskCard from '@/features/home/components/today-task-card.vue'
 
-import type { HomeViewModel } from '@/features/home/home-presenter'
-import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
+import type { HomeDashboardEmits, HomeDashboardProps } from '@/shared/types/home-components'
 
-withDefaults(
-  defineProps<{
-    canStartTask?: boolean
-    openSceneCount: number | null
-    taskScene?: SceneCardViewModel
-    view: HomeViewModel
-  }>(),
-  { canStartTask: true, taskScene: undefined }
-)
+withDefaults(defineProps<HomeDashboardProps>(), { canStartTask: true, taskScene: undefined })
 
-const emit = defineEmits<{ startTask: []; openReview: [] }>()
+const emit = defineEmits<HomeDashboardEmits>()
 
 let contentTopInset: number | undefined
 // #ifdef MP-WEIXIN

@@ -1,10 +1,8 @@
-import { type NavigationIntent, ROUTES } from './routes'
+import { ROUTES } from '@/shared/constants/navigation'
 
-export interface LegacyRouteInput {
-  pageId: string
-  sceneId?: string
-  sourceLocator?: string
-}
+import type { LegacyRouteInput, NavigationIntent } from '@/shared/types/navigation'
+
+export type { LegacyRouteInput } from '@/shared/types/navigation'
 
 /** 将有效查询参数安全编码后追加到目标路径。 */
 function appendQuery(path: string, query: Record<string, string | undefined>) {

@@ -10,15 +10,12 @@ import { useHomePage } from '@/features/home/use-home-page'
 import TabPageLayout from '@/layouts/tab-page-layout.vue'
 import { navigate } from '@/shared/navigation/navigate'
 
-import type { HomePageMode } from '@/shared/enums/home'
+import type { HomePageViewProps } from '@/shared/types/home-components'
 
-const props = withDefaults(
-  defineProps<{
-    mode?: HomePageMode
-    networkError?: boolean
-  }>(),
-  { mode: 'normal', networkError: false }
-)
+const props = withDefaults(defineProps<HomePageViewProps>(), {
+  mode: 'normal',
+  networkError: false
+})
 
 const { cancel, canStartTask, home, load, openSceneCount, retry, startTask, taskScene } =
   useHomePage()

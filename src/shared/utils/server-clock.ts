@@ -1,7 +1,6 @@
-export interface ServerClock {
-  now(): Date
-  remainingUntil(value: string): number
-}
+import type { ServerClock } from '@/shared/types/time'
+
+export type { ServerClock } from '@/shared/types/time'
 
 /** 基于一次服务端采样建立时间偏移，后续不依赖用户设备时钟是否准确。 */
 export function createServerClock(serverNow = new Date(), clientNow = new Date()): ServerClock {

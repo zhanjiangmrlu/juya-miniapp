@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { AudioController, type AudioEngine } from '@/features/audio/audio-controller'
+import { AudioController } from '@/features/audio/audio-controller'
 
 import type { AudioTarget } from '@/shared/contracts/learning'
+import type { AudioEngine } from '@/shared/types/audio'
 
 const first: AudioTarget = { target_id: 'one', target_type: 'sentence', version_id: 'v1' }
 const second: AudioTarget = { target_id: 'two', target_type: 'sentence', version_id: 'v1' }

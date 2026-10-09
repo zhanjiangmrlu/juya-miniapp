@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import type { LimitedEntitlementViewModel } from '@/features/entitlements/entitlement-presenter'
+import type { LimitedEntitlementViewModel } from '@/shared/types/entitlements'
+import type {
+  EntitlementCardEmits,
+  EntitlementCardProps
+} from '@/shared/types/entitlements-components'
 
-defineProps<{ item: LimitedEntitlementViewModel }>()
+defineProps<EntitlementCardProps>()
 
-const emit = defineEmits<{
-  open: [item: LimitedEntitlementViewModel]
-}>()
+const emit = defineEmits<EntitlementCardEmits>()
 
 /** 打开权益对应的状态页，不在卡片内改变服务端状态。 */
 function handleOpen(item: LimitedEntitlementViewModel) {

@@ -9,8 +9,9 @@ import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 
 import type { SceneEntry } from '@/shared/contracts/learning'
+import type { PositionPageViewProps } from '@/shared/types/scene-components'
 
-const props = withDefaults(defineProps<{ source?: boolean }>(), { source: false })
+const props = withDefaults(defineProps<PositionPageViewProps>(), { source: false })
 const { audio, disposeAudio, fullModel, handleFailure, initialize, play, scene, sceneId } =
   useScenePage()
 const locator = ref('')

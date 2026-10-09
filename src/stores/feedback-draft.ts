@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { reactive } from 'vue'
 
-import type { FeedbackDraft } from '@/features/feedback/feedback-form'
+import type { FeedbackDraft } from '@/shared/types/feedback'
 /** 创建不持久化敏感正文的空反馈草稿 */
 const empty = (): FeedbackDraft => ({
   category: '',

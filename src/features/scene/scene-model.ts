@@ -1,39 +1,11 @@
-import type { AudioTarget, SceneEntry, SceneOpenResponse } from '@/shared/contracts/learning'
+import type { SceneOpenResponse } from '@/shared/contracts/learning'
+import type { SceneModel, SceneSummaryModel, SceneViewState } from '@/shared/types/scene'
 
-interface SceneSummaryModel {
-  chineseTitle: string
-  imageUrl?: string
-  sceneId: string
-  series: string
-  title: string
-}
-
-export interface FullSceneModel extends SceneSummaryModel {
-  audio?: AudioTarget
-  revision_id?: string
-  content_version?: number
-  original_image_asset_id?: string | null
-  cover_asset_id?: string | null
-  description: string
-  entries: SceneEntry[]
-  kind: 'FULL'
-}
-
-export interface PreviewSceneModel extends SceneSummaryModel {
-  description: string
-  kind: 'PREVIEW'
-}
-
-export interface DeniedSceneModel {
-  authorizationPending: boolean
-  kind: 'DENIED'
-}
-
-export type SceneModel = DeniedSceneModel | FullSceneModel | PreviewSceneModel
-
-export interface SceneViewState {
-  chineseVisible: boolean
-}
+export type { FullSceneModel } from '@/shared/types/scene'
+export type { PreviewSceneModel } from '@/shared/types/scene'
+export type { DeniedSceneModel } from '@/shared/types/scene'
+export type { SceneModel } from '@/shared/types/scene'
+export type { SceneViewState } from '@/shared/types/scene'
 
 /** 提取安全摘要字段，response 为已授权场景打开响应 */
 const summarize = (response: SceneOpenResponse): SceneSummaryModel | null => {

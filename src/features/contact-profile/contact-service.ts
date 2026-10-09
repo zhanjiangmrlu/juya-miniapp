@@ -1,13 +1,7 @@
-import type { HttpClient } from '@/services/http/client'
-import type { ContactCorrection, ContactProfile } from '@/shared/contracts/profile'
+import type { ContactService } from '@/shared/types/contact-profile'
+import type { HttpClient } from '@/shared/types/http'
 
-export interface ContactService {
-  recordPromptExposure(idempotencyKey: string): Promise<{ created: boolean }>
-  correct(reason: string): Promise<ContactCorrection>
-  get(): Promise<ContactProfile | null>
-  remove(): Promise<void>
-  save(wechatId: string): Promise<ContactProfile>
-}
+export type { ContactService } from '@/shared/types/contact-profile'
 
 /** 创建联系资料服务，client 为统一身份与幂等请求端口 */
 export const createContactService = (client: HttpClient): ContactService => {

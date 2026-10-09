@@ -1,5 +1,5 @@
-import type { RecordingPort } from './recording-controller'
 import type { RecordingPlaybackEventType } from '@/shared/enums/recording'
+import type { RecordingPort } from '@/shared/types/recording'
 
 /** 创建浏览器本地录音端口，音频仅使用当前页对象 URL */
 export const createBrowserRecordingPort = (): RecordingPort => {

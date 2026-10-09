@@ -4,10 +4,10 @@ import PersonalRow from '@/features/profile/components/personal-row.vue'
 import { getRuntimeServices } from '@/services/runtime'
 import { useAudioStore } from '@/stores/audio'
 
-import type { FavoriteGroup } from '@/features/favorites/favorite-presenter'
 import type { AudioTarget } from '@/shared/contracts/learning'
-defineProps<{ groups: FavoriteGroup[] }>()
-const emit = defineEmits<{ select: [group: FavoriteGroup] }>()
+import type { FavoriteListEmits, FavoriteListProps } from '@/shared/types/favorites-components'
+defineProps<FavoriteListProps>()
+const emit = defineEmits<FavoriteListEmits>()
 const audio = useAudioStore()
 /** 播放独立发音，target 为当前收藏的已校对音频目标 */
 const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().scene)

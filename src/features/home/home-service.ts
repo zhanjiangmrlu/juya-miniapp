@@ -1,9 +1,8 @@
-import type { HttpClient } from '@/services/http/client'
 import type { HomeResponse } from '@/shared/contracts/home'
+import type { HomeService } from '@/shared/types/home'
+import type { HttpClient } from '@/shared/types/http'
 
-export interface HomeService {
-  getHome(): Promise<HomeResponse>
-}
+export type { HomeService } from '@/shared/types/home'
 
 /** 创建首页聚合服务，页面只消费一次服务端整理后的首页快照。 */
 export function createHomeService(client: HttpClient): HomeService {

@@ -3,7 +3,9 @@ import { computed } from 'vue'
 
 import { getFeedbackStatusLabel } from '@/features/feedback/feedback-presenter'
 
-const props = defineProps<{ status: string }>()
+import type { FeedbackStatusProps } from '@/shared/types/feedback-components'
+
+const props = defineProps<FeedbackStatusProps>()
 const label = computed(() => getFeedbackStatusLabel(props.status))
 </script>
 

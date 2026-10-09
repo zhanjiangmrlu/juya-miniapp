@@ -1,31 +1,23 @@
+import {
+  CONTACT_STATUS_LABELS as contactStatusLabels,
+  CORRECTION_REASON_MAX_LENGTH,
+  CORRECTION_REASON_MIN_LENGTH
+} from '@/shared/constants/contact-profile'
+
 import type { ContactProfile } from '@/shared/contracts/profile'
+import type {
+  ContactFormInput,
+  ContactViewModel,
+  CorrectionValidationResult,
+  ValidationResult
+} from '@/shared/types/contact-profile'
 
-export type ValidationResult =
-  { error: string; valid: false } | { normalizedWechatId: string; valid: true }
-
-export type CorrectionValidationResult =
-  { error: string; valid: false } | { normalizedReason: string; valid: true }
-
-export interface ContactViewModel {
-  canSelfEdit: boolean
-  selfEditCount: number
-  statusLabel: string
-  wechatId: string | null
-}
-
-const contactStatusLabels: Record<string, string> = {
-  NOT_PROVIDED: '未填写',
-  PENDING: '待联系',
-  CONTACTED: '已联系',
-  UNREACHABLE: '暂无法联系',
-  DO_NOT_CONTACT: '不希望联系'
-}
+export type { ValidationResult } from '@/shared/types/contact-profile'
+export type { CorrectionValidationResult } from '@/shared/types/contact-profile'
+export type { ContactViewModel } from '@/shared/types/contact-profile'
 
 /** 校验微信号与协议确认；相同值和修改次数不在客户端推导。 */
-export function validateContactForm(input: {
-  consentConfirmed: boolean
-  wechatId: string
-}): ValidationResult {
+export function validateContactForm(input: ContactFormInput): ValidationResult {
   if (!input.consentConfirmed) {
     return { error: '请先阅读并同意联系资料使用说明', valid: false }
   }
@@ -41,7 +33,10 @@ export function validateContactForm(input: {
 /** 校验更正原因，按去除首尾空格后的 2 至 500 字符计算。 */
 export function validateCorrectionReason(reason: string): CorrectionValidationResult {
   const normalizedReason = reason.trim()
-  if (normalizedReason.length < 2 || normalizedReason.length > 500) {
+  if (
+    normalizedReason.length < CORRECTION_REASON_MIN_LENGTH ||
+    normalizedReason.length > CORRECTION_REASON_MAX_LENGTH
+  ) {
     return { error: '更正原因需为 2 至 500 个字符', valid: false }
   }
   return { normalizedReason, valid: true }

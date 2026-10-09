@@ -3,8 +3,8 @@ import { ref } from 'vue'
 
 import { getRuntimeServices } from '@/services/runtime'
 
-import type { FavoriteGroup } from './favorite-presenter'
 import type { FavoriteItem } from '@/shared/contracts/favorites'
+import type { FavoriteGroup } from '@/shared/types/favorites'
 
 import { loadFavoriteGroup } from './load-favorite-group'
 

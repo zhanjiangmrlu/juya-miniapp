@@ -1,9 +1,11 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/shared/constants/session'
+
 import type { UserProfile } from '@/shared/contracts/profile'
-const ACCESS_TOKEN_KEY = 'juya.access-token'
-const REFRESH_TOKEN_KEY = 'juya.refresh-token'
+import type { SessionTokenPair } from '@/shared/types/session'
+
 export const useSessionStore = defineStore('session', () => {
   const accessToken = ref<string>()
   const profile = ref<UserProfile>()
@@ -18,7 +20,7 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   /** 同步更新内存和持久化令牌，确保后续请求读取到同一份会话。 */
-  function saveTokens(tokens: { access_token: string; refresh_token: string }) {
+  function saveTokens(tokens: SessionTokenPair) {
     accessToken.value = tokens.access_token
     refreshToken.value = tokens.refresh_token
     uni.setStorageSync(ACCESS_TOKEN_KEY, tokens.access_token)

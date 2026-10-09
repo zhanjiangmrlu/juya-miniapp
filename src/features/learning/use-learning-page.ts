@@ -4,7 +4,7 @@ import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 import { useLearningStore } from '@/stores/learning'
 
-import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
+import type { SceneCardViewModel } from '@/shared/types/learning'
 
 /** 复用学习列表与探索页的数据加载、权限提示和导航逻辑 */
 export const useLearningPage = () => {

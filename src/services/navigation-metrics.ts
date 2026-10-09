@@ -1,11 +1,4 @@
-interface CapsuleRect {
-  top: number
-  bottom: number
-  left: number
-  right: number
-  width: number
-  height: number
-}
+import type { CapsuleRect } from '@/shared/types/navigation'
 
 /** 根据状态栏高度、胶囊边界和窗口宽度计算导航尺寸 */
 export const resolveNavigationMetrics = (

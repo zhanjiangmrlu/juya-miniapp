@@ -4,16 +4,14 @@ import { ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
-import {
-  type HistoryItem,
-  type HistoryRow,
-  presentHistory
-} from '@/features/favorites/history-presenter'
+import { presentHistory } from '@/features/favorites/history-presenter'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
+
+import type { FavoriteHistoryResponse, HistoryRow } from '@/shared/types/favorites'
 const rows = ref<HistoryRow[]>([])
 const error = ref('')
 /** 读取完整历史和当前目录，授权未确认时仅保留摘要 */
@@ -21,7 +19,7 @@ const load = async () => {
   try {
     const runtime = getRuntimeServices()
     const [history, catalog] = await Promise.all([
-      runtime.client.get<{ items: HistoryItem[] }>('/api/v1/history/scenes'),
+      runtime.client.get<FavoriteHistoryResponse>('/api/v1/history/scenes'),
       runtime.catalog.getCatalog()
     ])
     rows.value = presentHistory(history.items, catalog.authorization_pending ? [] : catalog.items)

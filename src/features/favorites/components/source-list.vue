@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 
-import type { FavoriteSourceViewModel } from '@/features/favorites/favorite-presenter'
-defineProps<{ sources: FavoriteSourceViewModel[] }>()
-const emit = defineEmits<{ open: [route: string] }>()
+import type { SourceListEmits, SourceListProps } from '@/shared/types/favorites-components'
+defineProps<SourceListProps>()
+const emit = defineEmits<SourceListEmits>()
 /** 打开具备权限的来源，route 为稳定原文定位地址 */
 const open = (route: string | null) => {
   if (route) emit('open', route)

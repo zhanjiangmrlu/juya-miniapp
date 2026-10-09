@@ -10,9 +10,10 @@ import { getRuntimeServices } from '@/services/runtime'
 import { navigate } from '@/shared/navigation/navigate'
 import { useFavoriteStore } from '@/stores/favorites'
 
-import type { FavoriteGroup } from '@/features/favorites/favorite-presenter'
 import type { FavoriteType } from '@/shared/enums/favorites'
-const props = withDefaults(defineProps<{ initialTab?: FavoriteType }>(), {
+import type { FavoriteGroup } from '@/shared/types/favorites'
+import type { FavoriteBankPageProps } from '@/shared/types/favorites-components'
+const props = withDefaults(defineProps<FavoriteBankPageProps>(), {
   initialTab: 'VOCABULARY'
 })
 const favorites = useFavoriteStore()

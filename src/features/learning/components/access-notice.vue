@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
 
+import type { AccessNoticeEmits, AccessNoticeProps } from '@/shared/types/learning-components'
+
 useModalScrollLock()
-withDefaults(defineProps<{ showProfileAction?: boolean }>(), { showProfileAction: false })
-const emit = defineEmits<{ close: []; profile: [] }>()
+withDefaults(defineProps<AccessNoticeProps>(), { showProfileAction: false })
+const emit = defineEmits<AccessNoticeEmits>()
 /** 关闭提示，原页面和滚动位置保持不变 */
 const handleClose = () => emit('close')
 /** 进入服务端开关允许的联系资料流程 */

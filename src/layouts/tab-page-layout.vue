@@ -3,8 +3,7 @@ import AppPage from '@/components/app-page/app-page.vue'
 import AppTabBar from '@/components/app-tab-bar/app-tab-bar.vue'
 import { resolveNavigationMetrics } from '@/services/navigation-metrics'
 
-import type { TabKey } from '@/shared/enums/navigation'
-import type { PageAppearance, PageTier } from '@/shared/enums/ui'
+import type { TabPageLayoutProps } from '@/shared/types/ui-components'
 
 let navigationOffset = 0
 let safeBottomExtra = 0
@@ -27,14 +26,7 @@ try {
   // 浏览器采用设计导航与底部安全区
 }
 
-withDefaults(
-  defineProps<{
-    active: TabKey
-    tier?: PageTier
-    appearance?: PageAppearance
-  }>(),
-  { tier: 'primary', appearance: 'default' }
-)
+withDefaults(defineProps<TabPageLayoutProps>(), { tier: 'primary', appearance: 'default' })
 </script>
 
 <template>

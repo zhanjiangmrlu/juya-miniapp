@@ -3,11 +3,10 @@ import AudioButton from '@/features/audio/components/audio-button.vue'
 import { getRuntimeServices } from '@/services/runtime'
 import { useAudioStore } from '@/stores/audio'
 
-import type { FavoriteItem } from '@/shared/contracts/favorites'
 import type { AudioTarget } from '@/shared/contracts/learning'
-import type { ReviewCardFace } from '@/shared/enums/favorites'
-const props = defineProps<{ face: ReviewCardFace; item: FavoriteItem }>()
-const emit = defineEmits<{ flip: [] }>()
+import type { ReviewCardEmits, ReviewCardProps } from '@/shared/types/favorites-components'
+const props = defineProps<ReviewCardProps>()
+const emit = defineEmits<ReviewCardEmits>()
 const audio = useAudioStore()
 /** 播放独立发音，target 为该收藏版本的音频目标 */
 const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().scene)

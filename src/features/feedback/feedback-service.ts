@@ -1,20 +1,7 @@
-import type { HttpClient } from '@/services/http/client'
-import type {
-  CreateFeedbackRequest,
-  FeedbackItem,
-  FeedbackListResponse,
-  FeedbackResolutionRequest,
-  FeedbackUploadCredential
-} from '@/shared/contracts/feedback'
+import type { FeedbackService } from '@/shared/types/feedback'
+import type { HttpClient } from '@/shared/types/http'
 
-export interface FeedbackService {
-  create(payload: CreateFeedbackRequest): Promise<FeedbackItem>
-  get(id: string): Promise<FeedbackItem>
-  getUploadCredential(contentType: string): Promise<FeedbackUploadCredential>
-  list(): Promise<FeedbackListResponse>
-  resolve(id: string, payload: FeedbackResolutionRequest): Promise<FeedbackItem>
-  supplement(id: string, text: string, screenshots?: string[]): Promise<FeedbackItem>
-}
+export type { FeedbackService } from '@/shared/types/feedback'
 
 /** 创建反馈服务，client 为统一认证与幂等请求客户端 */
 export const createFeedbackService = (client: HttpClient): FeedbackService => {

@@ -2,24 +2,17 @@
 import AudioButton from '@/features/audio/components/audio-button.vue'
 import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
 
-import type { AudioTarget, SceneEntry } from '@/shared/contracts/learning'
-import type { AudioStatus } from '@/shared/enums/audio'
+import type {
+  VocabularySheetEmits,
+  VocabularySheetProps
+} from '@/shared/types/vocabulary-sheet-components'
 
-withDefaults(
-  defineProps<{
-    currentAudioKey?: string | null
-    entry: SceneEntry
-    status: AudioStatus
-    sceneTitle?: string
-    sourceChinese?: string
-  }>(),
-  { currentAudioKey: null, sceneTitle: '', sourceChinese: '' }
-)
-const emit = defineEmits<{
-  close: []
-  favorite: [entry: SceneEntry]
-  play: [target: AudioTarget]
-}>()
+withDefaults(defineProps<VocabularySheetProps>(), {
+  currentAudioKey: null,
+  sceneTitle: '',
+  sourceChinese: ''
+})
+const emit = defineEmits<VocabularySheetEmits>()
 
 useModalScrollLock()
 </script>

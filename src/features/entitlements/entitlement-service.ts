@@ -1,9 +1,7 @@
-import type { HttpClient } from '@/services/http/client'
-import type { EntitlementsResponse } from '@/shared/contracts/entitlements'
+import type { EntitlementService } from '@/shared/types/entitlements'
+import type { HttpClient } from '@/shared/types/http'
 
-export interface EntitlementService {
-  get(): Promise<EntitlementsResponse>
-}
+export type { EntitlementService } from '@/shared/types/entitlements'
 
 /** 创建本人权益只读服务，客户端不进行本地授予或延期。 */
 export function createEntitlementService(client: HttpClient): EntitlementService {

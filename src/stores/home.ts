@@ -4,8 +4,8 @@ import { computed, ref } from 'vue'
 import { presentHome } from '@/features/home/home-presenter'
 import { useSessionStore } from '@/stores/session'
 
-import type { HomeService } from '@/features/home/home-service'
 import type { HomeResponse } from '@/shared/contracts/home'
+import type { HomeService } from '@/shared/types/home'
 
 export const useHomeStore = defineStore('home', () => {
   const data = ref<HomeResponse | null>(null)

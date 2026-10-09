@@ -1,6 +1,8 @@
 <script setup lang="ts">
-defineProps<{ unreadMessageCount: number | null }>()
-const emit = defineEmits<{ openMessages: [] }>()
+import type { HomeNavigationEmits, HomeNavigationProps } from '@/shared/types/home-components'
+
+defineProps<HomeNavigationProps>()
+const emit = defineEmits<HomeNavigationEmits>()
 let statusBarHeight: number | undefined
 let brandOffset: number | undefined
 // #ifdef MP-WEIXIN

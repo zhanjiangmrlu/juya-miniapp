@@ -1,18 +1,7 @@
 import type { SceneSummary } from '@/shared/contracts/learning'
-export interface HistoryItem {
-  completed_at: string | null
-  last_learned_at: string
-  scene_id: string
-  scene_title?: string
-  progress?: number
-  favorite_count?: number
-}
-export interface HistoryRow {
-  title: string
-  detail: string
-  badge: string
-  route: string | null
-}
+import type { HistoryItem, HistoryRow } from '@/shared/types/favorites'
+export type { HistoryItem } from '@/shared/types/favorites'
+export type { HistoryRow } from '@/shared/types/favorites'
 /** 转换全部历史，items 为历史快照，catalog 为服务端当前访问目录 */
 export const presentHistory = (items: HistoryItem[], catalog: SceneSummary[]): HistoryRow[] =>
   items.map((item) => {

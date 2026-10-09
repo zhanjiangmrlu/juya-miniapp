@@ -9,7 +9,7 @@ import { useHomeStore } from '@/stores/home'
 import { useLearningStore } from '@/stores/learning'
 import { useSessionStore } from '@/stores/session'
 
-import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
+import type { SceneCardViewModel } from '@/shared/types/learning'
 
 /** 复用首页状态页的数据加载与导航编排 */
 export const useHomePage = () => {

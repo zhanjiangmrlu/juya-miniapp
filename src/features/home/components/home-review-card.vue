@@ -1,5 +1,7 @@
 <script setup lang="ts">
-const emit = defineEmits<{ review: [] }>()
+import type { HomeReviewCardEmits } from '@/shared/types/home-components'
+
+const emit = defineEmits<HomeReviewCardEmits>()
 
 /** 请求打开词汇银行和语块银行。 */
 function handleReview() {

@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
 
+import type { NetworkReconnectDialogEmits } from '@/shared/types/ui-components'
+
 useModalScrollLock()
-const emit = defineEmits<{
-  close: []
-  retry: []
-}>()
+const emit = defineEmits<NetworkReconnectDialogEmits>()
 
 /** 触发页面重新执行身份与首页数据加载 */
 const handleRetry = () => {

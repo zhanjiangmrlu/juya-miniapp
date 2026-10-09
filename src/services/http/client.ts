@@ -1,32 +1,19 @@
+import { ApiError, NetworkTransportError } from '@/services/http/errors'
+
 import type { HttpMethod } from '@/shared/enums/http'
+import type {
+  HttpClient,
+  HttpClientOptions,
+  RequestOptions,
+  TransportRequest
+} from '@/shared/types/http'
 
 import { mapApiError } from './error-map'
 import { createRequestId } from './request-id'
-import { ApiError, type HttpTransport, NetworkTransportError, type TransportRequest } from './types'
-export interface SessionAdapter {
-  ensureAuthenticated?(): Promise<void>
-  clear(): void
-  getAccessToken(): string | undefined
-  refresh(): Promise<string | undefined>
-}
-export interface RequestOptions {
-  auth?: boolean
-  idempotencyKey?: string | false
-  timeout?: number
-}
-export interface HttpClient {
-  delete<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T>
-  get<T>(path: string, options?: RequestOptions): Promise<T>
-  post<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T>
-  put<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T>
-}
-export interface HttpClientOptions {
-  baseUrl: string
-  clientVersion: string
-  idFactory?: () => string
-  session: SessionAdapter
-  transport: HttpTransport
-}
+export type { SessionAdapter } from '@/shared/types/http'
+export type { RequestOptions } from '@/shared/types/http'
+export type { HttpClient } from '@/shared/types/http'
+export type { HttpClientOptions } from '@/shared/types/http'
 
 /**
  * 创建统一 HTTP 客户端，options 提供传输端口、会话状态与请求标识策略
@@ -74,7 +61,7 @@ export const createHttpClient = (options: HttpClientOptions): HttpClient => {
         body,
         headers,
         method,
-        timeout: requestOptions.timeout ?? 10_000,
+        timeout: requestOptions.timeout ?? HTTP_REQUEST_TIMEOUT_MS,
         url: `${options.baseUrl.replace(/\/$/, '')}${path}`
       }
       try {
@@ -108,3 +95,4 @@ export const createHttpClient = (options: HttpClientOptions): HttpClient => {
     put: (path, body, requestOptions) => send('PUT', path, body, requestOptions)
   }
 }
+import { HTTP_REQUEST_TIMEOUT_MS } from '@/shared/constants/http'

@@ -1,28 +1,12 @@
-import { type AudioSnapshot, isSameAudioTarget } from '@/features/audio/audio-machine'
+import { isSameAudioTarget } from '@/features/audio/audio-machine'
 
 import type { AudioTarget } from '@/shared/contracts/learning'
-import type { AudioEventType } from '@/shared/enums/audio'
+import type { AudioControllerOptions, AudioSnapshot } from '@/shared/types/audio'
+import type { HttpStatusCarrier } from '@/shared/types/http'
 
-export interface AudioEvent {
-  type: AudioEventType
-  currentTimeMs?: number
-  status?: number
-}
-export interface AudioEngine {
-  destroy(): void
-  pause(): void
-  play(): void
-  seek(seconds: number): void
-  setSource(url: string): void
-  stop(): void
-  subscribe(listener: (event: AudioEvent) => void): () => void
-}
-export interface AudioControllerOptions {
-  engine: AudioEngine
-  onChange?: (snapshot: AudioSnapshot) => void
-  onAccessDenied?: () => void
-  resolveUrl(target: AudioTarget): Promise<string>
-}
+export type { AudioEvent } from '@/shared/types/audio'
+export type { AudioEngine } from '@/shared/types/audio'
+export type { AudioControllerOptions } from '@/shared/types/audio'
 
 /** 管理唯一播放器，签名与设备事件均绑定当前请求代次 */
 export class AudioController {
@@ -127,7 +111,7 @@ export class AudioController {
       this.options.engine.setSource(url)
     } catch (error) {
       if (generation !== this.generation) return
-      const status = (error as { status?: number })?.status
+      const status = (error as HttpStatusCarrier)?.status
       if (status === 401 || status === 403 || status === 404 || status === 409 || status === 410) {
         this.stop()
         this.options.onAccessDenied?.()

@@ -1,22 +1,8 @@
-import type { LearningResultLabel } from '@/shared/enums/learning-result'
+import type { LearningResultDto, LearningResultViewModel } from '@/shared/types/learning-result'
 
-export interface LearningResultDto {
-  completed_scenes: number
-  favorite_phrases: number
-  favorite_vocabulary: number
-  streak_days: number
-}
-
-export interface LearningResultCard {
-  label: LearningResultLabel
-  route: string
-  value: number
-}
-
-export interface LearningResultViewModel {
-  cards: LearningResultCard[]
-  streakDays: number
-}
+export type { LearningResultDto } from '@/shared/types/learning-result'
+export type { LearningResultCard } from '@/shared/types/learning-result'
+export type { LearningResultViewModel } from '@/shared/types/learning-result'
 
 /** 将学习结果转换为三张始终可点击的成果卡，无数据时使用 0 而非隐藏入口。 */
 export function presentLearningResult(dto: LearningResultDto | null): LearningResultViewModel {

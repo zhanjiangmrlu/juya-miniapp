@@ -1,8 +1,7 @@
 <script setup lang="ts">
-withDefaults(
-  defineProps<{ label: string; value: string; description: string; sentence?: boolean }>(),
-  { sentence: false }
-)
+import type { EntrySummaryProps } from '@/shared/types/learning-components'
+
+withDefaults(defineProps<EntrySummaryProps>(), { sentence: false })
 </script>
 <template>
   <view class="entry-summary" :class="{ sentence }"

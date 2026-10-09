@@ -1,17 +1,10 @@
 <script setup lang="ts">
 import SceneHeading from '@/features/scene/components/scene-heading.vue'
 
-withDefaults(
-  defineProps<{
-    chineseTitle: string
-    imageUrl?: string
-    series: string
-    title: string
-    description?: string
-  }>(),
-  { imageUrl: '', description: '' }
-)
-const emit = defineEmits<{ viewImage: []; imageError: [] }>()
+import type { SceneHeroEmits, SceneHeroProps } from '@/shared/types/scene-components'
+
+withDefaults(defineProps<SceneHeroProps>(), { imageUrl: '', description: '' })
+const emit = defineEmits<SceneHeroEmits>()
 </script>
 <template>
   <view class="scene-hero">

@@ -1,19 +1,14 @@
 <script setup lang="ts">
-import type { ProfileRowSize } from '@/shared/enums/profile'
+import type { PersonalRowEmits, PersonalRowProps } from '@/shared/types/profile-components'
 
-withDefaults(
-  defineProps<{
-    title: string
-    detail: string
-    badge?: string
-    badgeIcon?: string
-    size?: ProfileRowSize
-    actionable?: boolean
-    danger?: boolean
-  }>(),
-  { badge: '', badgeIcon: '', size: 'normal', actionable: false, danger: false }
-)
-const emit = defineEmits<{ press: [] }>()
+withDefaults(defineProps<PersonalRowProps>(), {
+  badge: '',
+  badgeIcon: '',
+  size: 'normal',
+  actionable: false,
+  danger: false
+})
+const emit = defineEmits<PersonalRowEmits>()
 /** 只对具有业务入口的信息行发送点击事件 */
 const press = () => emit('press')
 </script>

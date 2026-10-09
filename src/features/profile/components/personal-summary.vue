@@ -1,5 +1,7 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ label: string; value: string; note: string; compact?: boolean }>(), {
+import type { PersonalSummaryProps } from '@/shared/types/profile-components'
+
+withDefaults(defineProps<PersonalSummaryProps>(), {
   compact: false
 })
 </script>

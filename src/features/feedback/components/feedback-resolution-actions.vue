@@ -4,18 +4,22 @@ import { computed, ref } from 'vue'
 import AppButton from '@/components/app-button/app-button.vue'
 import { getResolutionActions, validateSupplement } from '@/features/feedback/feedback-form'
 
-import type { FeedbackItem, FeedbackResolutionRequest } from '@/shared/contracts/feedback'
-const props = withDefaults(defineProps<{ item: FeedbackItem; loading?: boolean }>(), {
+import type {
+  FeedbackResolutionActionsEmits,
+  FeedbackResolutionActionsProps
+} from '@/shared/types/feedback-components'
+import type { InputValueEvent } from '@/shared/types/ui'
+const props = withDefaults(defineProps<FeedbackResolutionActionsProps>(), {
   loading: false
 })
-const emit = defineEmits<{ resolve: [payload: FeedbackResolutionRequest] }>()
+const emit = defineEmits<FeedbackResolutionActionsEmits>()
 const reason = ref('')
 const error = ref('')
 const reopening = ref(false)
 const actions = computed(() => getResolutionActions(props.item))
 /** 同步重开原因，event 为用户输入事件 */
 const input = (event: unknown) => {
-  reason.value = (event as { detail: { value: string } }).detail.value
+  reason.value = (event as InputValueEvent<string>).detail.value
 }
 /** 确认问题已经解决 */
 const resolved = () => {

@@ -1,19 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { TodayTaskViewModel } from '@/features/home/home-presenter'
-import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
+import type { TodayTaskCardEmits, TodayTaskCardProps } from '@/shared/types/home-components'
 
-const props = withDefaults(
-  defineProps<{
-    canStart?: boolean
-    scene?: SceneCardViewModel
-    task: TodayTaskViewModel | null
-  }>(),
-  { canStart: true, scene: undefined }
-)
+const props = withDefaults(defineProps<TodayTaskCardProps>(), { canStart: true, scene: undefined })
 
-const emit = defineEmits<{ start: [] }>()
+const emit = defineEmits<TodayTaskCardEmits>()
 const imageUrl = computed(() => props.scene?.imageUrl)
 
 /** 将任务启动操作交给页面统一执行导航 */

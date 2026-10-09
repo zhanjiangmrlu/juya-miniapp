@@ -1,52 +1,13 @@
+import { TODAY_TASK_COPY as TASK_COPY } from '@/shared/constants/home'
 import { formatBeijingDate, getBeijingGreeting } from '@/shared/utils/beijing-time'
 
-import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
 import type { HomeResponse, TodayTask } from '@/shared/contracts/home'
 import type { UserProfile } from '@/shared/contracts/profile'
+import type { HomeViewModel, TodayTaskViewModel } from '@/shared/types/home'
+import type { SceneCardViewModel } from '@/shared/types/learning'
 
-export interface TodayTaskViewModel {
-  buttonLabel: string
-  description: string
-  eyebrow: string
-  title: string
-  url: string
-}
-
-export interface HomeViewModel {
-  checkins: HomeResponse['checkins'] | null
-  dateLabel: string
-  isFallback: boolean
-  salutation: string
-  todayTask: TodayTaskViewModel | null
-  unreadMessageCount: number | null
-}
-
-const TASK_COPY: Record<TodayTask['kind'], Omit<TodayTaskViewModel, 'url'>> = {
-  CONTINUE_SCENE: {
-    buttonLabel: '继续学习',
-    description: '从上次停下的位置继续阅读。',
-    eyebrow: '继续上次进度',
-    title: '继续今日任务'
-  },
-  FAVORITE_REVIEW: {
-    buttonLabel: '开始翻卡',
-    description: '用一次轻量复习巩固收藏内容。',
-    eyebrow: '不限张数',
-    title: '收藏翻卡复习'
-  },
-  HISTORY_SCENE: {
-    buttonLabel: '复习场景',
-    description: '回到最久未复习的场景温故知新。',
-    eyebrow: '复习建议',
-    title: '重温一个真实场景'
-  },
-  NEW_SCENE: {
-    buttonLabel: '开始今日学习',
-    description: '完成一个场景，建立今天的学习记录。',
-    eyebrow: '第一步',
-    title: '从一个真实场景开始'
-  }
-}
+export type { TodayTaskViewModel } from '@/shared/types/home'
+export type { HomeViewModel } from '@/shared/types/home'
 
 /** 对查询参数进行编码，确保任务标识可以安全进入小程序路由。 */
 function queryValue(value: string): string {

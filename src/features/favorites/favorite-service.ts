@@ -1,15 +1,10 @@
 import { adaptFavoriteItem } from '@/services/favorite-response'
 
-import type { HttpClient } from '@/services/http/client'
-import type { FavoriteItem, FavoritePage, ReviewSession } from '@/shared/contracts/favorites'
+import type { FavoriteItem, FavoritePage } from '@/shared/contracts/favorites'
+import type { FavoriteService } from '@/shared/types/favorites'
+import type { HttpClient } from '@/shared/types/http'
 
-export interface FavoriteService {
-  completeReview(reviewId: string, idempotencyKey: string): Promise<void>
-  createReview(cardIds: string[], idempotencyKey?: string): Promise<ReviewSession>
-  get(id: string): Promise<FavoriteItem>
-  list(cursor?: string): Promise<FavoritePage>
-  remove(id: string): Promise<void>
-}
+export type { FavoriteService } from '@/shared/types/favorites'
 
 /** 创建收藏与复习服务，client 为统一认证客户端 */
 export const createFavoriteService = (client: HttpClient): FavoriteService => {

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createSessionService } from '@/services/auth/session-service'
 import { createHttpClient } from '@/services/http/client'
 
-import type { TransportRequest } from '@/services/http/types'
+import type { TransportRequest } from '@/shared/types/http'
 
 afterEach(() => vi.unstubAllGlobals())
 

@@ -19,7 +19,7 @@ import { useLearningStore } from '@/stores/learning'
 import { useSessionStore } from '@/stores/session'
 
 import type { DeletionRequest } from '@/shared/contracts/account'
-import type { ServerClock } from '@/shared/utils/server-clock'
+import type { ServerClock } from '@/shared/types/time'
 
 const deletion = useAccountDeletionStore()
 const error = ref('')

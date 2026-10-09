@@ -1,13 +1,7 @@
-import type { RecordingStatus } from '@/shared/enums/recording'
+import type { RecordingSnapshot } from '@/shared/types/recording'
 
 export type { RecordingStatus } from '@/shared/enums/recording'
-
-export interface RecordingSnapshot {
-  hasRecording?: boolean
-  recordingDisabled: boolean
-  selectedSentenceId: string | null
-  status: RecordingStatus
-}
+export type { RecordingSnapshot } from '@/shared/types/recording'
 
 /** 创建录音状态初值，不默认选句也不提前请求权限 */
 export const createRecordingSnapshot = (): RecordingSnapshot => {

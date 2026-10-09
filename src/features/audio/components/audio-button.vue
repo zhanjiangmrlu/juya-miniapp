@@ -9,21 +9,15 @@ import playLarge from '@/features/audio/assets/play-large.svg'
 import playWhite from '@/features/audio/assets/play-white.svg'
 import { getAudioTargetKey } from '@/features/audio/audio-machine'
 
-import type { AudioTarget } from '@/shared/contracts/learning'
-import type { AudioButtonVariant, AudioStatus } from '@/shared/enums/audio'
+import type { AudioButtonEmits, AudioButtonProps } from '@/shared/types/audio-components'
 
-const props = withDefaults(
-  defineProps<{
-    currentKey?: string | null
-    label?: string
-    status: AudioStatus
-    target: AudioTarget
-    variant?: AudioButtonVariant
-    selected?: boolean
-  }>(),
-  { currentKey: null, label: '播放', variant: 'pill', selected: false }
-)
-const emit = defineEmits<{ play: [target: AudioTarget] }>()
+const props = withDefaults(defineProps<AudioButtonProps>(), {
+  currentKey: null,
+  label: '播放',
+  variant: 'pill',
+  selected: false
+})
+const emit = defineEmits<AudioButtonEmits>()
 const isCurrent = computed(() => props.currentKey === getAudioTargetKey(props.target))
 const playing = computed(() => isCurrent.value && props.status === 'PLAYING')
 const active = computed(

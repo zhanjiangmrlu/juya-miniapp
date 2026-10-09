@@ -1,46 +1,10 @@
 import { adaptSceneResponse } from '@/services/scene-response'
 
-import type { HttpClient } from '@/services/http/client'
-import type {
-  AudioTarget,
-  LearningProgress,
-  PublishedEntry,
-  SceneEntryQuery,
-  SceneOpenResponse,
-  SceneOpenWireResponse,
-  SignedMediaResponse,
-  SignedResourceResponse
-} from '@/shared/contracts/learning'
+import type { SceneOpenWireResponse, SignedResourceResponse } from '@/shared/contracts/learning'
+import type { HttpClient } from '@/shared/types/http'
+import type { SceneService } from '@/shared/types/scene'
 
-export interface SceneService {
-  complete(sceneId: string, idempotencyKey?: string): Promise<{ progress: LearningProgress }>
-  getSignedUrl(target: AudioTarget): Promise<SignedMediaResponse>
-  open(sceneId: string): Promise<SceneOpenResponse>
-  getEntry(
-    sceneId: string,
-    entryId: string,
-    query: SceneEntryQuery
-  ): Promise<
-    PublishedEntry & {
-      sentence_snapshot: string
-      source_locator: string
-      scene_id: string
-      revision_id: string
-      entry_type?: string
-      favorited?: boolean
-    }
-  >
-  getResource(
-    sceneId: string,
-    resourceId: string,
-    revisionId: string
-  ): Promise<SignedResourceResponse>
-  savePosition(
-    sceneId: string,
-    position: { client_sequence: number; entry_id: string; offset: number },
-    idempotencyKey?: string
-  ): Promise<LearningProgress>
-}
+export type { SceneService } from '@/shared/types/scene'
 
 /** 创建场景领域服务，client 为统一身份、签名与幂等请求端口 */
 export const createSceneService = (client: HttpClient): SceneService => {

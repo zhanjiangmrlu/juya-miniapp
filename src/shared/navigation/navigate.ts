@@ -1,4 +1,4 @@
-import type { NavigationIntent } from './routes'
+import type { NavigationIntent } from '@/shared/types/navigation'
 
 import { normalizePageUrl } from './page-url'
 

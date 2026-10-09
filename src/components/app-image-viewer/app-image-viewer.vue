@@ -1,23 +1,26 @@
 <script setup lang="ts">
+import {
+  DEFAULT_IMAGE_VIEWER_CLOSE_RIGHT,
+  DEFAULT_IMAGE_VIEWER_CLOSE_TOP
+} from '@/shared/constants/ui'
 import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
 
-withDefaults(
-  defineProps<{
-    imageUrl: string
-    title?: string
-    subtitle?: string
-    caption?: string
-    dialogLabel?: string
-    closeLabel?: string
-  }>(),
-  { title: '', subtitle: '', caption: '', dialogLabel: '图片预览', closeLabel: '关闭图片' }
-)
-const emit = defineEmits<{ close: []; error: [] }>()
+import type { AppImageViewerEmits, AppImageViewerProps } from '@/shared/types/ui-components'
+
+withDefaults(defineProps<AppImageViewerProps>(), {
+  title: '',
+  subtitle: '',
+  caption: '',
+  dialogLabel: '图片预览',
+  closeLabel: '关闭图片'
+})
+const emit = defineEmits<AppImageViewerEmits>()
 
 useModalScrollLock()
 
-let closeTop = 39
-let closeRight = 19
+let closeTop = DEFAULT_IMAGE_VIEWER_CLOSE_TOP
+let closeRight = DEFAULT_IMAGE_VIEWER_CLOSE_RIGHT
+
 // #ifdef MP-WEIXIN
 // 微信胶囊是原生层控件，关闭按钮放在其左侧并与胶囊中心对齐
 closeRight = 122

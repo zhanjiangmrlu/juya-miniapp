@@ -1,6 +1,6 @@
-import type { FeedbackScreenshotDraft } from './feedback-form'
+import { FEEDBACK_IMAGE_MAX_BYTES, FEEDBACK_IMAGE_MIME_TYPES } from '@/shared/constants/feedback'
 
-import { FEEDBACK_IMAGE_MAX_BYTES, FEEDBACK_IMAGE_MIME_TYPES } from './feedback-form'
+import type { FeedbackScreenshotDraft, PickedFeedbackFile } from '@/shared/types/feedback'
 /** 选择截图，select 为成功后的附件回调，fail 为可展示的校验提示 */
 export const chooseFeedbackScreenshot = (
   select: (file: FeedbackScreenshotDraft) => void,
@@ -10,7 +10,7 @@ export const chooseFeedbackScreenshot = (
     count: 1,
     sizeType: ['compressed'],
     success: (result) => {
-      const file = (result.tempFiles as Array<{ path: string; size: number; type?: string }>)[0]
+      const file = (result.tempFiles as Array<PickedFeedbackFile>)[0]
       if (!file) return
       const extension = file.path.split('.').pop()?.toLocaleLowerCase()
       const mimeType =

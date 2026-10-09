@@ -1,5 +1,5 @@
-import type { FavoriteService } from './favorite-service'
 import type { FavoriteItem } from '@/shared/contracts/favorites'
+import type { FavoriteService } from '@/shared/types/favorites'
 
 import { presentFavorites } from './favorite-presenter'
 

@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import { presentHome, resolveTaskScene, resolveTodayTask } from '@/features/home/home-presenter'
 
-import type { SceneCardViewModel } from '@/features/learning/catalog-presenter'
 import type { HomeResponse, TodayTask } from '@/shared/contracts/home'
 import type { UserProfile } from '@/shared/contracts/profile'
+import type { SceneCardViewModel } from '@/shared/types/learning'
 
 const profile: UserProfile = {
   avatar_url: null,

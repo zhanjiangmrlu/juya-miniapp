@@ -2,10 +2,13 @@
 import PageHeader from '@/components/page-header/page-header.vue'
 import TabPageLayout from '@/layouts/tab-page-layout.vue'
 import { resolveNavigationMetrics } from '@/services/navigation-metrics'
+import { DEFAULT_LEARNING_HEADER_RESERVE } from '@/shared/constants/learning'
 
-import type { TabKey } from '@/shared/enums/navigation'
-defineProps<{ active: TabKey }>()
-let headerReserve = 78
+import type { EntryPageShellProps } from '@/shared/types/learning-components'
+defineProps<EntryPageShellProps>()
+
+let headerReserve = DEFAULT_LEARNING_HEADER_RESERVE
+
 try {
   const info = uni.getWindowInfo()
   const metrics = resolveNavigationMetrics(

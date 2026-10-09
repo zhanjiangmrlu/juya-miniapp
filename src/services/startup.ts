@@ -1,18 +1,9 @@
 import { createSessionService } from '@/services/auth/session-service'
 import { useSessionStore } from '@/stores/session'
 
-import type { HttpClient } from '@/services/http/client'
 import type { SessionResponse } from '@/shared/contracts/session'
-
-interface SessionBootstrapDependencies {
-  isAuthenticated(): boolean
-  refreshToken(): string | undefined
-  saveTokens(tokens: SessionResponse): void
-  clear(): void
-  wechatLogin(): Promise<string>
-  login(code: string): Promise<SessionResponse>
-  refresh(token: string): Promise<SessionResponse>
-}
+import type { HttpClient } from '@/shared/types/http'
+import type { SessionBootstrapDependencies } from '@/shared/types/session'
 
 /** 为会话依赖创建单飞登录入口，参数明确存储与微信登录能力 */
 export const createSessionBootstrap = (dependencies: SessionBootstrapDependencies) => {

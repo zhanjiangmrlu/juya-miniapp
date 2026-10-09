@@ -1,9 +1,7 @@
 <script setup lang="ts">
-defineProps<{
-  description: string
-  iconLabel?: string
-  title: string
-}>()
+import type { AppStateProps } from '@/shared/types/ui-components'
+
+defineProps<AppStateProps>()
 </script>
 
 <template>

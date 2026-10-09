@@ -7,7 +7,9 @@ import EntryPageShell from '@/features/learning/components/entry-page-shell.vue'
 import LearningPageHeading from '@/features/learning/components/learning-page-heading.vue'
 import SceneListSection from '@/features/learning/components/scene-list-section.vue'
 import { useLearningPage } from '@/features/learning/use-learning-page'
-const props = withDefaults(defineProps<{ initialNotice?: boolean }>(), { initialNotice: false })
+
+import type { ExplorePageViewProps } from '@/shared/types/learning-components'
+const props = withDefaults(defineProps<ExplorePageViewProps>(), { initialNotice: false })
 const { cancel, closeNotice, learning, load, noticeVisible, openProfile, selectScene } =
   useLearningPage()
 noticeVisible.value = props.initialNotice

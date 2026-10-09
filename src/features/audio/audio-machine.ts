@@ -1,13 +1,7 @@
 import type { AudioTarget } from '@/shared/contracts/learning'
-import type { AudioStatus } from '@/shared/enums/audio'
 
 export type { AudioStatus } from '@/shared/enums/audio'
-
-export interface AudioSnapshot {
-  currentTimeMs?: number
-  status: AudioStatus
-  target: AudioTarget | null
-}
+export type { AudioSnapshot } from '@/shared/types/audio'
 
 /** 生成稳定播放键，target 为资源及句子区间，避免对象引用导致重复播放 */
 export const getAudioTargetKey = (target: AudioTarget): string => {

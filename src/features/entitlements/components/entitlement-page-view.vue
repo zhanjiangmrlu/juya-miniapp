@@ -4,11 +4,7 @@ import { computed, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
-import {
-  type EntitlementsViewModel,
-  type LimitedEntitlementViewModel,
-  presentEntitlements
-} from '@/features/entitlements/entitlement-presenter'
+import { presentEntitlements } from '@/features/entitlements/entitlement-presenter'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
@@ -17,10 +13,15 @@ import { navigate } from '@/shared/navigation/navigate'
 import { createServerClock } from '@/shared/utils/server-clock'
 
 import type { SceneSummary } from '@/shared/contracts/learning'
-const props = withDefaults(
-  defineProps<{ state?: LimitedEntitlementViewModel['state'] | 'ALL'; title?: string }>(),
-  { state: 'ALL', title: '我的学习权益' }
-)
+import type {
+  EntitlementsViewModel,
+  LimitedEntitlementViewModel
+} from '@/shared/types/entitlements'
+import type { EntitlementPageViewProps } from '@/shared/types/entitlements-components'
+const props = withDefaults(defineProps<EntitlementPageViewProps>(), {
+  state: 'ALL',
+  title: '我的学习权益'
+})
 const view = ref<EntitlementsViewModel>({ authorizationPending: false, formal: [], limited: [] })
 const catalog = ref<SceneSummary[]>([])
 const selectedId = ref('')

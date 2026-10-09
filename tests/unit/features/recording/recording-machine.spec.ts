@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { RecordingController, type RecordingPort } from '@/features/recording/recording-controller'
+import { RecordingController } from '@/features/recording/recording-controller'
 
 import type { RecordingPlaybackEventType } from '@/shared/enums/recording'
+import type { RecordingPort } from '@/shared/types/recording'
 
 /** 创建端口替身，permission 为设备是否允许录音 */
 const createPort = (permission = true): RecordingPort => {

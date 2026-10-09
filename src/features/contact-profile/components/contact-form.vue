@@ -2,21 +2,24 @@
 import { ref } from 'vue'
 
 import { validateContactForm } from '@/features/contact-profile/contact-form'
-withDefaults(defineProps<{ management?: boolean; disabled?: boolean }>(), {
+
+import type { ContactFormEmits, ContactFormProps } from '@/shared/types/contact-profile-components'
+import type { InputValueEvent } from '@/shared/types/ui'
+withDefaults(defineProps<ContactFormProps>(), {
   management: false,
   disabled: false
 })
-const emit = defineEmits<{ submit: [wechatId: string] }>()
+const emit = defineEmits<ContactFormEmits>()
 const consentConfirmed = ref(false)
 const error = ref('')
 const wechatId = ref('')
 /** 同步微信号输入，event 为原生表单输入事件 */
 const input = (event: unknown) => {
-  wechatId.value = (event as { detail: { value: string } }).detail.value
+  wechatId.value = (event as InputValueEvent<string>).detail.value
 }
 /** 同步用途同意，event 为复选框选择事件 */
 const consent = (event: unknown) => {
-  consentConfirmed.value = (event as { detail: { value: string[] } }).detail.value.length > 0
+  consentConfirmed.value = (event as InputValueEvent<string[]>).detail.value.length > 0
 }
 /** 校验并提交本人联系资料 */
 const submit = () => {

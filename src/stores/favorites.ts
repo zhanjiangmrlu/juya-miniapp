@@ -3,22 +3,10 @@ import { computed, reactive, ref } from 'vue'
 
 import { presentFavorites } from '@/features/favorites/favorite-presenter'
 
-import type { FavoriteService } from '@/features/favorites/favorite-service'
-import type { FavoriteItem, ReviewSession } from '@/shared/contracts/favorites'
-import type { FavoriteType, ReviewCardFace } from '@/shared/enums/favorites'
-export interface FavoriteTabState {
-  cursor: string | null
-  filter: string
-  scrollTop: number
-  review?: {
-    cardIds: string[]
-    index: number
-    face: ReviewCardFace
-    session?: ReviewSession
-    createKey?: string
-    completionKey?: string
-  } | null
-}
+import type { FavoriteItem } from '@/shared/contracts/favorites'
+import type { FavoriteType } from '@/shared/enums/favorites'
+import type { FavoriteService, FavoriteTabState } from '@/shared/types/favorites'
+export type { FavoriteTabState } from '@/shared/types/favorites'
 /** 创建互相独立的银行筛选与阅读位置 */
 const createTabState = (): FavoriteTabState => ({ cursor: null, filter: '', scrollTop: 0 })
 export const useFavoriteStore = defineStore('favorites', () => {

@@ -1,18 +1,6 @@
-import type { SessionResponse } from '@/shared/contracts/session'
-export interface BootstrapDependencies {
-  preload: Array<() => Promise<unknown> | unknown>
-  sessionService: {
-    loginWithWechat(code: string): Promise<SessionResponse>
-    refresh(refreshToken: string): Promise<SessionResponse>
-  }
-  storage: {
-    clear(): void
-    getRefreshToken(): string | undefined
-    saveTokens(tokens: SessionResponse): void
-  }
-  wechatLogin(): Promise<string>
-}
-export type BootstrapResult = { status: 'network-error' } | { status: 'ready' }
+import type { BootstrapDependencies, BootstrapResult } from '@/shared/types/app'
+export type { BootstrapDependencies } from '@/shared/types/app'
+export type { BootstrapResult } from '@/shared/types/app'
 
 /**
  * 完成用户端启动编排：优先刷新已有会话，无会话时静默微信登录，随后并行预加载首页数据。

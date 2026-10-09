@@ -15,6 +15,7 @@ import { navigate } from '@/shared/navigation/navigate'
 import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
 
 import type { UserProfile } from '@/shared/contracts/profile'
+import type { ContactPromptReceipt } from '@/shared/types/profile'
 const profile = ref<UserProfile>()
 const contact = ref(presentContact(null))
 const unread = ref(0)
@@ -61,7 +62,7 @@ const load = async () => {
       (message) => !message.read_at && message.related_type === 'FEEDBACK'
     ).length
     const storageKey = `juya.contact-prompt.${user.juya_id}`
-    let exposure = uni.getStorageSync(storageKey) as { key: string; recorded: boolean } | ''
+    let exposure = uni.getStorageSync(storageKey) as ContactPromptReceipt | ''
     if (
       shouldExposeContactPrompt(
         Boolean(user.contact_prompt_eligible),

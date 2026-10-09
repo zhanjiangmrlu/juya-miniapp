@@ -1,12 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import {
-  createProgressQueue,
-  type ProgressCommand,
-  type ProgressQueueStorage
-} from '@/features/learning-progress/progress-queue'
+import { createProgressQueue } from '@/features/learning-progress/progress-queue'
 
 import type { StablePosition } from '@/shared/contracts/common'
+import type { ProgressCommand, ProgressQueueStorage } from '@/shared/types/learning-progress'
 
 /** 创建内存队列存储，便于观察持久化与清理行为。 */
 function createStorage(): ProgressQueueStorage {

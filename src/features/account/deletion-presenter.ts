@@ -1,13 +1,8 @@
 import type { DeletionRequest } from '@/shared/contracts/account'
-import type { ServerClock } from '@/shared/utils/server-clock'
+import type { AccountDeletionSummary, DeletionViewModel } from '@/shared/types/account'
+import type { ServerClock } from '@/shared/types/time'
 
-export interface DeletionViewModel {
-  canRevoke: boolean
-  effectiveAt: string
-  effectiveLabel: string
-  remainingMs: number
-  status: DeletionRequest['status']
-}
+export type { DeletionViewModel } from '@/shared/types/account'
 
 /** 展示注销状态，dto 为服务端注销记录，clock 为剩余时间展示用采样时钟 */
 export const presentDeletionState = (
@@ -33,8 +28,6 @@ export const presentDeletionState = (
 }
 
 /** 判断冷启动注销门禁，deletion 为本人资料提供的最新注销状态摘要 */
-export const shouldGateStartupForDeletion = (
-  deletion?: { effective_at: string; status: string } | null
-): boolean => {
+export const shouldGateStartupForDeletion = (deletion?: AccountDeletionSummary | null): boolean => {
   return deletion?.status === 'PENDING' || deletion?.status === 'PROCESSING'
 }

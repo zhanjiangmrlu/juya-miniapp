@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { CheckinSummary } from '@/shared/contracts/home'
+import type { StreakCardProps } from '@/shared/types/home-components'
 
-defineProps<{ checkins: CheckinSummary | null }>()
+defineProps<StreakCardProps>()
 </script>
 
 <template>

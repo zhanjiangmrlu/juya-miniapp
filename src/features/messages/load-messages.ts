@@ -1,5 +1,5 @@
-import type { MessageService } from './message-service'
 import type { MessageItem } from '@/shared/contracts/messages'
+import type { MessageService } from '@/shared/types/messages'
 /** 读取完整消息列表并按标识去重，service 为本人消息接口 */
 export const loadAllMessages = async (service: MessageService): Promise<MessageItem[]> => {
   const items = new Map<string, MessageItem>()

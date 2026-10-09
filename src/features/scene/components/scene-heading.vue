@@ -1,11 +1,10 @@
 <script setup lang="ts">
-withDefaults(
-  defineProps<{ chineseTitle: string; title: string; series?: string; spacious?: boolean }>(),
-  {
-    series: '',
-    spacious: false
-  }
-)
+import type { SceneHeadingProps } from '@/shared/types/scene-components'
+
+withDefaults(defineProps<SceneHeadingProps>(), {
+  series: '',
+  spacious: false
+})
 </script>
 <template>
   <view class="scene-heading" :class="{ spacious }">

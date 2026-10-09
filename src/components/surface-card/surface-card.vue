@@ -1,16 +1,10 @@
 <script setup lang="ts">
-import type { SurfaceTone } from '@/shared/enums/ui'
+import type { SurfaceCardProps } from '@/shared/types/ui-components'
 
-withDefaults(
-  defineProps<{
-    elevated?: boolean
-    tone?: SurfaceTone
-  }>(),
-  {
-    elevated: false,
-    tone: 'card'
-  }
-)
+withDefaults(defineProps<SurfaceCardProps>(), {
+  elevated: false,
+  tone: 'card'
+})
 </script>
 
 <template>

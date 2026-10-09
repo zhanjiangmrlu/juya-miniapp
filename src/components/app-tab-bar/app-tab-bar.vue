@@ -1,21 +1,13 @@
 <script setup lang="ts">
-import { ROUTES } from '@/shared/navigation/routes'
+import { APP_TABS as tabs } from '@/shared/constants/navigation'
 
-import type { TabKey } from '@/shared/enums/navigation'
-import type { PageAppearance } from '@/shared/enums/ui'
+import type { AppTabBarProps } from '@/shared/types/navigation-components'
 
 export type { TabKey } from '@/shared/enums/navigation'
 
-withDefaults(defineProps<{ active: TabKey; appearance?: PageAppearance }>(), {
+withDefaults(defineProps<AppTabBarProps>(), {
   appearance: 'default'
 })
-
-const tabs = [
-  { key: 'home', label: '首页', route: ROUTES.home },
-  { key: 'learning', label: '学习', route: ROUTES.learning },
-  { key: 'favorites', label: '收藏', route: ROUTES.favorites },
-  { key: 'profile', label: '我的', route: ROUTES.profile }
-] as const
 
 /** 使用重启式导航切换一级页面，避免 Tab 历史栈持续增长。 */
 function selectTab(route: string) {

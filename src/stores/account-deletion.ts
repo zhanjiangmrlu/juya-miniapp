@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-import type { DeletionRequest } from '@/shared/contracts/account'
+import { DELETION_STATE_KEY } from '@/shared/constants/account'
 
-const DELETION_STATE_KEY = 'juya.deletion-state'
+import type { DeletionRequest } from '@/shared/contracts/account'
 
 export const useAccountDeletionStore = defineStore('account-deletion', () => {
   const request = ref<DeletionRequest>()

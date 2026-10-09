@@ -2,7 +2,9 @@
 import ExplorePageView from '@/features/learning/components/explore-page-view.vue'
 import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 
-withDefaults(defineProps<{ initialNotice?: boolean }>(), { initialNotice: false })
+import type { ExploreProps } from '@/shared/types/learning-components'
+
+withDefaults(defineProps<ExploreProps>(), { initialNotice: false })
 const { pageStyle } = usePageScrollLock()
 </script>
 <template>

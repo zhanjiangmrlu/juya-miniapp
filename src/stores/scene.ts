@@ -1,16 +1,13 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import {
-  createSceneModel,
-  createSceneViewState,
-  type SceneModel
-} from '@/features/scene/scene-model'
-import { openSheet, type SheetController } from '@/features/vocabulary-sheet/sheet-controller'
+import { createSceneModel, createSceneViewState } from '@/features/scene/scene-model'
+import { openSheet } from '@/features/vocabulary-sheet/sheet-controller'
 
-import type { SceneService } from '@/features/scene/scene-service'
 import type { StablePosition } from '@/shared/contracts/common'
 import type { SceneEntry } from '@/shared/contracts/learning'
+import type { SceneModel, SceneService } from '@/shared/types/scene'
+import type { SheetController } from '@/shared/types/vocabulary-sheet'
 
 export const useSceneStore = defineStore('scene', () => {
   const error = ref(false)

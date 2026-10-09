@@ -1,41 +1,18 @@
 import { createRequestId } from '@/services/http/request-id'
 
-import type { StablePosition } from '@/shared/contracts/common'
+import type {
+  ProgressCommand,
+  ProgressQueue,
+  ProgressQueueOptions,
+  ProgressQueueStorage,
+  ProgressSender
+} from '@/shared/types/learning-progress'
 
-export type ProgressCommand =
-  | {
-      idempotencyKey: string
-      kind: 'COMPLETE'
-      sceneId: string
-    }
-  | {
-      clientSequence: number
-      idempotencyKey: string
-      kind: 'POSITION'
-      position: StablePosition
-      sceneId: string
-    }
-
-export interface ProgressQueueStorage {
-  clear(): void
-  load(): ProgressCommand[]
-  save(commands: ProgressCommand[]): void
-}
-
-export interface ProgressQueueOptions {
-  delay?: number
-  idFactory?: () => string
-}
-
-export type ProgressSender = (command: ProgressCommand, idempotencyKey: string) => Promise<void>
-
-export interface ProgressQueue {
-  clear(): void
-  enqueueCompletion(sceneId: string): void
-  enqueuePosition(sceneId: string, position: StablePosition): void
-  flush(): Promise<void>
-  readonly snapshot: ProgressCommand[]
-}
+export type { ProgressCommand } from '@/shared/types/learning-progress'
+export type { ProgressQueueStorage } from '@/shared/types/learning-progress'
+export type { ProgressQueueOptions } from '@/shared/types/learning-progress'
+export type { ProgressSender } from '@/shared/types/learning-progress'
+export type { ProgressQueue } from '@/shared/types/learning-progress'
 
 /** 创建可持久化的学习进度队列，位置合并而完成命令保持逐条发送。 */
 export function createProgressQueue(
@@ -43,7 +20,7 @@ export function createProgressQueue(
   sender: ProgressSender,
   options: ProgressQueueOptions = {}
 ): ProgressQueue {
-  const delay = options.delay ?? 800
+  const delay = options.delay ?? PROGRESS_QUEUE_DELAY_MS
   const idFactory = options.idFactory ?? createRequestId
   let commands = storage.load()
   let flushing = false
@@ -125,3 +102,4 @@ export function createProgressQueue(
     }
   }
 }
+import { PROGRESS_QUEUE_DELAY_MS } from '@/shared/constants/learning-progress'

@@ -4,8 +4,8 @@ import { computed } from 'vue'
 import { formatFeedbackTime, presentFeedbackTimeline } from '@/features/feedback/feedback-presenter'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 
-import type { FeedbackItem } from '@/shared/contracts/feedback'
-const props = defineProps<{ item: FeedbackItem }>()
+import type { FeedbackTimelineProps } from '@/shared/types/feedback-components'
+const props = defineProps<FeedbackTimelineProps>()
 const entries = computed(() => presentFeedbackTimeline(props.item))
 </script>
 <template>

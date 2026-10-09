@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { ROUTES } from '@/shared/constants/navigation'
 import { navigate } from '@/shared/navigation/navigate'
-import { ROUTES } from '@/shared/navigation/routes'
 
 afterEach(() => vi.unstubAllGlobals())
 
