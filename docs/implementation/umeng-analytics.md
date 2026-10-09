@@ -6,14 +6,14 @@
 
 项目锁定 `umtrack-wx@2.8.0`。构建同时校验 SDK 原文件 SHA-256；更新依赖时必须重新验证隔离及撤回，不能直接更新指纹绕过检查。
 
-开发与正式环境分别创建友盟小程序应用，使用不同 AppKey。实际账户配置通过本机环境文件或构建环境注入，仓库不保存微信 AppSecret。环境变量示例：
+默认建议开发与正式环境分别创建友盟小程序应用，使用不同 AppKey。2026-10-09 用户明确要求本地也使用已提供的同一个 AppKey，当前本机开发与正式配置按此要求启用；本地测试行为会进入该应用的统计。实际账户配置通过本机环境文件或构建环境注入，仓库不保存微信 AppSecret。环境变量示例：
 
 ```dotenv
 VITE_ANALYTICS_ENABLED=true
 VITE_UMENG_APP_KEY=填写当前环境的友盟AppKey
 ```
 
-未配置时默认不开启统计。2026-10-09 用户提供 AppKey 后，当前工作区已在 Git 忽略的 `.env.production.local` 配置正式构建统计；开发环境继续关闭，测试应用 AppKey 尚未提供。生产构建使用 `pnpm build:mp-weixin`，不改变既有 API 地址配置。AppKey 缺失、格式错误、微信能力不存在或 SDK 故障时降级，不影响业务。AppKey 是客户端应用标识，不是微信密钥；友盟账号凭据及微信 AppSecret 不进入代码。
+未配置时默认不开启统计。2026-10-09 用户提供 AppKey 后，当前工作区已在 Git 忽略的 `.env.production.local` 配置正式构建统计；按用户后续指示，Git 忽略的 `.env.development.local` 也启用统计并配置相同 AppKey，既有 API 等环境设置保留。正式构建使用 `pnpm build:mp-weixin`，本地开发使用 `pnpm dev:mp-weixin`；修改环境文件后须重启开发编译器，确认 `dist/dev/mp-weixin` 使用新配置。AppKey 缺失、格式错误、微信能力不存在或 SDK 故障时降级，不影响业务。AppKey 是客户端应用标识，不是微信密钥；友盟账号凭据及微信 AppSecret 不进入代码。
 
 微信公众平台的 request 合法域名须包含 `https://umini.shujupie.com` 和本 SDK 使用的备用地址 `https://ulogs.umeng.com`。开发者工具关闭域名校验不能代替真机验证。未启用云配、AB 测试、OpenID、UnionID、应用账号关联或用户资料上传。
 
@@ -96,8 +96,9 @@ Ruling：复习原来只在完成时创建服务端会话。为了准确统计�
 - 包体：配置用户 AppKey 后的正式微信构建主包文件合计 458,007 字节（约 447 KiB，不含普通子包）；这是本地文件测量，不是微信上传审核结果。
 - 开启分支：仅在独立子进程设置非有效验证标识 `integration-test-key` 和统计开关，构建到 `dist/analytics-verification/mp-weixin`；44 个路由及 page-meta 校验通过。没有用该标识向友盟验证收数；普通构建不含此验证标识，真实环境文件未改动。
 - 独立代码审查：完成。发现并修复热启动来源使用冷启动信息的问题，新增回归已通过；未留下明确 P1/P2。审查者仅做只读检查，未修改或提交代码。
-- 外部准备：用户已提供一个 AppKey，当前工作区按正式应用配置；测试 AppKey 尚未提供。未访问控制台确认应用类型、登记事件、配置漏斗或修改微信后台合法域名。既有环境文件保持原值，仅新增本机正式统计配置。
-- AppKey 配置复核：Vite production 模式读取已提供的 AppKey 且统计开启；development 模式统计关闭、没有配置 AppKey。正式微信产物确认包含已提供的 AppKey；授权、SDK 撤回、设置开关与联系事件的 18 项定向回归通过。没有模拟或制造真实用户事件来证明友盟收数。
+- 外部准备：用户已提供一个 AppKey，并明确授权本地及正式构建使用同一个应用标识；未访问控制台确认应用类型、登记事件、配置漏斗或修改微信后台合法域名。Git 忽略的本机环境文件仅更新统计开关及 AppKey，API 等原设置保持原值。
+- 首次正式配置复核：当时 production 统计开启、development 统计关闭；正式微信产物包含已提供的 AppKey，授权、SDK 撤回、设置开关与联系事件的 18 项定向回归通过。
+- 本地配置复核：按用户后续指示，Vite development 和 production 均读取同一个 AppKey 且统计开启。已重启确认属于本项目的微信开发编译器，`dist/dev/mp-weixin` 构建完成并确认包含该 AppKey；10 页 page-meta 校验通过，授权状态机、真实 SDK 隔离与设置开关的 18 项定向回归通过。仍须用户明确同意才创建 SDK；没有向友盟模拟用户事件来证明后台收数。
 - 待真实验收：体验版 iOS/Android 来源、事件参数、页面返回和撤回请求；友盟后台接收；正式发布后的报表对账。自动化不替代以上验收。
 
-上线条件：隐私说明及 SDK 清单发布到产品实际使用位置；平台隐私配置与采集一致；测试 AppKey 验证完成后配置正式 AppKey；正式版 debug/enableVerify 固定关闭。回退时设置 `VITE_ANALYTICS_ENABLED=false` 并重新构建发布。
+上线条件：隐私说明及 SDK 清单发布到产品实际使用位置；平台隐私配置与采集一致；完成受控联调和真实设备收数核验；正式版 debug/enableVerify 固定关闭。回退时设置 `VITE_ANALYTICS_ENABLED=false` 并重新构建发布。
