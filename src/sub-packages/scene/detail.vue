@@ -34,7 +34,7 @@ const handleLoad = (query?: Record<string, string>) => {
 const openStep = async (page: string) => {
   await navigate({
     type: 'navigateTo',
-    url: `/pages/scene/${page}?sceneId=${encodeURIComponent(sceneId.value)}`
+    url: `/sub-packages/scene/${page}?sceneId=${encodeURIComponent(sceneId.value)}`
   })
 }
 

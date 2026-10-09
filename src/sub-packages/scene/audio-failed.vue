@@ -27,7 +27,7 @@ const retry = async () => {
 const shadowing = async () => {
   await navigate({
     type: 'navigateTo',
-    url: `/pages/scene/shadowing?sceneId=${encodeURIComponent(sceneId.value)}`
+    url: `/sub-packages/scene/shadowing?sceneId=${encodeURIComponent(sceneId.value)}`
   })
 }
 onLoad(handleLoad)

@@ -59,7 +59,7 @@ const requestDeletion = async () => {
     const accepted = await getRuntimeServices().account.requestDeletion()
     deletion.save(accepted)
     clearLocalDeletionDrafts(createUniLocalDataScope())
-    await navigate({ type: 'redirectTo', url: '/pages/account/deletion-pending' })
+    await navigate({ type: 'redirectTo', url: '/sub-packages/account/deletion-pending' })
   } catch {
     error.value = '暂时无法申请注销，请稍后重试'
   } finally {

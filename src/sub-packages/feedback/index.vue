@@ -29,13 +29,13 @@ const loadFeedback = async () => {
 const openFeedback = async (item: FeedbackItem) => {
   await navigate({
     type: 'navigateTo',
-    url: `/pages/feedback/detail?id=${encodeURIComponent(item.id)}`
+    url: `/sub-packages/feedback/detail?id=${encodeURIComponent(item.id)}`
   })
 }
 
 /** 打开新反馈表单 */
 const createFeedback = async () => {
-  await navigate({ type: 'navigateTo', url: '/pages/feedback/create' })
+  await navigate({ type: 'navigateTo', url: '/sub-packages/feedback/create' })
 }
 
 onShow(loadFeedback)

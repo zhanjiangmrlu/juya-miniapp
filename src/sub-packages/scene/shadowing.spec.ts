@@ -96,7 +96,7 @@ describe('跟读页异步操作生命周期', () => {
     await flushPromises()
     expect(dependencies.navigate).toHaveBeenCalledWith({
       type: 'redirectTo',
-      url: '/pages/scene/completed?sceneId=coffee'
+      url: '/sub-packages/scene/completed?sceneId=coffee'
     })
     dependencies.hide?.()
     wrapper.unmount()
@@ -119,7 +119,7 @@ describe('跟读页异步操作生命周期', () => {
     await flushPromises()
     expect(dependencies.navigate).toHaveBeenCalledWith({
       type: 'redirectTo',
-      url: '/pages/scene/completed?sceneId=coffee'
+      url: '/sub-packages/scene/completed?sceneId=coffee'
     })
     expect(dependencies.complete).toHaveBeenCalledOnce()
     dependencies.hide?.()

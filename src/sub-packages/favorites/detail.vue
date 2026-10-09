@@ -22,7 +22,7 @@ const returnSource = async () => {
   const url =
     group.value.sources.length === 1 && group.value.sources[0]?.returnUrl
       ? group.value.sources[0].returnUrl
-      : `/pages/favorites/sources?id=${encodeURIComponent(item.value.id)}`
+      : `/sub-packages/favorites/sources?id=${encodeURIComponent(item.value.id)}`
   await navigate({ type: 'navigateTo', url })
 }
 /** 删除当前收藏并返回银行 */

@@ -51,12 +51,12 @@ const handleRetry = async () => {
 
 /** 打开顶部品牌入口对应的站内消息列表 */
 const openMessages = async () => {
-  await navigate({ type: 'navigateTo', url: '/pages/feedback/messages' })
+  await navigate({ type: 'navigateTo', url: '/sub-packages/feedback/messages' })
 }
 
 /** 复习入口进入收藏银行，继续沿用一级页面导航 */
 const openReview = async () => {
-  await navigate({ type: 'reLaunch', url: '/pages/favorites/index' })
+  await navigate({ type: 'reLaunch', url: '/sub-packages/favorites/index' })
 }
 
 watch(() => props.networkError, handleNetworkErrorChange)

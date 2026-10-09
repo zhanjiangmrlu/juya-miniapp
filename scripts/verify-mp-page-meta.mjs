@@ -4,7 +4,13 @@ import path from 'node:path'
 import process from 'node:process'
 
 const output = path.resolve(process.argv[2] || 'dist/build/mp-weixin')
-const pages = new Set(JSON.parse(readFileSync(path.join(output, 'app.json'), 'utf8')).pages)
+const config = JSON.parse(readFileSync(path.join(output, 'app.json'), 'utf8'))
+const pages = new Set([
+  ...config.pages,
+  ...(config.subPackages ?? config.subpackages ?? []).flatMap((subpackage) =>
+    subpackage.pages.map((page) => `${subpackage.root}/${page}`)
+  )
+])
 const failures = []
 let checked = 0
 

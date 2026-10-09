@@ -63,7 +63,9 @@ const presentScene = (scene: SceneSummary): SceneCardViewModel => {
     tags: scene.tags,
     chineseTitle: scene.chinese_title,
     description: scene.description ?? '可查看主题、难度与简介',
-    entryUrl: canOpen ? `/pages/scene/detail?sceneId=${encodeURIComponent(scene.scene_id)}` : null,
+    entryUrl: canOpen
+      ? `/sub-packages/scene/detail?sceneId=${encodeURIComponent(scene.scene_id)}`
+      : null,
     imageUrl: scene.image_url,
     progress: hasCompleted(scene) ? 100 : Math.max(0, Math.min(100, scene.progress ?? 0)),
     sceneId: scene.scene_id,

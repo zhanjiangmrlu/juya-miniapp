@@ -20,7 +20,7 @@ const presentSource = (source: FavoriteSource, entryId: string): FavoriteSourceV
   return {
     ...source,
     returnUrl: source.original_link
-      ? `/pages/scene/return-source?sceneId=${encodeURIComponent(source.scene_id)}&sourceLocator=${encodeURIComponent(source.source_locator)}${source.revision_id ? '&revisionId=' + encodeURIComponent(source.revision_id) : ''}${source.entry_version ? '&entryVersion=' + source.entry_version : ''}${source.revision_id && source.entry_version ? '&entryId=' + encodeURIComponent(entryId) : ''}`
+      ? `/sub-packages/scene/return-source?sceneId=${encodeURIComponent(source.scene_id)}&sourceLocator=${encodeURIComponent(source.source_locator)}${source.revision_id ? '&revisionId=' + encodeURIComponent(source.revision_id) : ''}${source.entry_version ? '&entryVersion=' + source.entry_version : ''}${source.revision_id && source.entry_version ? '&entryId=' + encodeURIComponent(entryId) : ''}`
       : null
   }
 }

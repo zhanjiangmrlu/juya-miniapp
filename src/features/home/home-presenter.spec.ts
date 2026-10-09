@@ -45,19 +45,19 @@ describe('resolveTodayTask', () => {
   it.each<[TodayTask, string]>([
     [
       { card_ids: [], kind: 'CONTINUE_SCENE', target_id: 'scene-001' },
-      '/pages/scene/dialogue?sceneId=scene-001'
+      '/sub-packages/scene/dialogue?sceneId=scene-001'
     ],
     [
       { card_ids: [], kind: 'NEW_SCENE', target_id: 'scene-002' },
-      '/pages/scene/detail?sceneId=scene-002'
+      '/sub-packages/scene/detail?sceneId=scene-002'
     ],
     [
       { card_ids: ['card-1', 'card-2'], kind: 'FAVORITE_REVIEW', target_id: null },
-      '/pages/favorites/review-front?cardIds=card-1%2Ccard-2'
+      '/sub-packages/favorites/review-front?cardIds=card-1%2Ccard-2'
     ],
     [
       { card_ids: [], kind: 'HISTORY_SCENE', target_id: 'scene-003' },
-      '/pages/scene/dialogue?sceneId=scene-003&from=history'
+      '/sub-packages/scene/dialogue?sceneId=scene-003&from=history'
     ]
   ])('为 $kind 生成稳定目标路由', (task, url) => {
     expect(resolveTodayTask(task)?.url).toBe(url)
@@ -70,7 +70,7 @@ describe('首页任务场景展示', () => {
     canOpen: true,
     chineseTitle: '在咖啡店',
     description: '',
-    entryUrl: '/pages/scene/detail?sceneId=coffee',
+    entryUrl: '/sub-packages/scene/detail?sceneId=coffee',
     progress: 68,
     sceneId: 'coffee',
     series: '日常英语',

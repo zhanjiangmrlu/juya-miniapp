@@ -69,13 +69,13 @@ export function resolveTodayTask(task: TodayTask | null): TodayTaskViewModel | n
   let url: string | null = null
 
   if (task.kind === 'FAVORITE_REVIEW' && task.card_ids.length > 0) {
-    url = `/pages/favorites/review-front?cardIds=${queryValue(task.card_ids.join(','))}`
+    url = `/sub-packages/favorites/review-front?cardIds=${queryValue(task.card_ids.join(','))}`
   } else if (task.target_id && task.kind === 'NEW_SCENE') {
-    url = `/pages/scene/detail?sceneId=${queryValue(task.target_id)}`
+    url = `/sub-packages/scene/detail?sceneId=${queryValue(task.target_id)}`
   } else if (task.target_id && task.kind === 'HISTORY_SCENE') {
-    url = `/pages/scene/dialogue?sceneId=${queryValue(task.target_id)}&from=history`
+    url = `/sub-packages/scene/dialogue?sceneId=${queryValue(task.target_id)}&from=history`
   } else if (task.target_id && task.kind === 'CONTINUE_SCENE') {
-    url = `/pages/scene/dialogue?sceneId=${queryValue(task.target_id)}`
+    url = `/sub-packages/scene/dialogue?sceneId=${queryValue(task.target_id)}`
   }
 
   return url ? { ...TASK_COPY[task.kind], url } : null

@@ -47,7 +47,7 @@ const submit = async () => {
   loading.value = true
   try {
     await getRuntimeServices().contact.correct(cause.normalizedReason)
-    await navigate({ type: 'redirectTo', url: '/pages/profile/contact-manage' })
+    await navigate({ type: 'redirectTo', url: '/sub-packages/profile/contact-manage' })
   } catch {
     error.value = '更正申请提交失败，请重试'
   } finally {
@@ -55,7 +55,7 @@ const submit = async () => {
   }
 }
 /** 返回联系资料管理页 */
-const back = () => navigate({ type: 'redirectTo', url: '/pages/profile/contact-manage' })
+const back = () => navigate({ type: 'redirectTo', url: '/sub-packages/profile/contact-manage' })
 onShow(load)
 </script>
 <template>

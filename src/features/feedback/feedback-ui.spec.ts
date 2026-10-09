@@ -65,7 +65,7 @@ describe('反馈草稿提交', () => {
     expect(store.draft.description).toBe('待修改的问题内容')
     expect(dependencies.navigate).toHaveBeenCalledWith({
       type: 'redirectTo',
-      url: '/pages/feedback/content-blocked'
+      url: '/sub-packages/feedback/content-blocked'
     })
     wrapper.unmount()
   })

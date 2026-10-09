@@ -24,11 +24,17 @@ const sourceScenes = ref<
 >([])
 const sourceOptions = computed(() => [
   { label: '首页', source: { page_label: '首页', page_path: '/pages/home/index' } },
-  { label: '场景学习', source: { page_label: '场景学习', page_path: '/pages/learning/index' } },
-  { label: '收藏银行', source: { page_label: '收藏银行', page_path: '/pages/favorites/index' } },
+  {
+    label: '场景学习',
+    source: { page_label: '场景学习', page_path: '/sub-packages/learning/index' }
+  },
+  {
+    label: '收藏银行',
+    source: { page_label: '收藏银行', page_path: '/sub-packages/favorites/index' }
+  },
   {
     label: '我的学习档案',
-    source: { page_label: '我的学习档案', page_path: '/pages/profile/index' }
+    source: { page_label: '我的学习档案', page_path: '/sub-packages/profile/index' }
   },
   ...sourceScenes.value.map((scene) => ({
     label: scene.chinese_title || scene.title,
@@ -36,7 +42,7 @@ const sourceOptions = computed(() => [
       scene_id: scene.scene_id,
       scene_title: scene.chinese_title || scene.title,
       series: scene.series,
-      page_path: '/pages/scene/detail'
+      page_path: '/sub-packages/scene/detail'
     }
   }))
 ])
@@ -117,10 +123,10 @@ const submit = async () => {
       source: validation.normalized.source
     })
     store.clear()
-    await navigate({ type: 'redirectTo', url: `/pages/feedback/detail?id=${created.id}` })
+    await navigate({ type: 'redirectTo', url: `/sub-packages/feedback/detail?id=${created.id}` })
   } catch (caught) {
     if (caught instanceof ApiError && caught.code === 'FEEDBACK_CONTENT_BLOCKED') {
-      await navigate({ type: 'redirectTo', url: '/pages/feedback/content-blocked' })
+      await navigate({ type: 'redirectTo', url: '/sub-packages/feedback/content-blocked' })
       return
     }
     error.value = '暂时无法提交，请稍后重试'

@@ -36,6 +36,14 @@ H5 开发时，浏览器通过 Vite 的同源 `/api/v1` 代理访问 `VITE_API_B
 
 所有 API 调用通过 `src/services/runtime.ts` 创建的共享服务进入统一请求层。页面不直接维护授权、权益、反馈或注销等服务端事实。
 
+## 页面与子包
+
+主包仅保留首页 `src/pages/home/index.vue`，访问地址仍为 `/pages/home/index`。其余 43 个页面统一存放在 `src/sub-packages/` 下，按 home、learning、scene、favorites、profile、entitlement、feedback、account、compat 分为 9 个普通子包。
+
+子包页面地址为 `/sub-packages/<业务>/<页面>`，例如 `/sub-packages/scene/dialogue?sceneId=one`。`pages.json` 的子包 `root` 为 `sub-packages/<业务>`，内部 `pages[].path` 仅填写相对页面路径。公共组件、业务组件、服务、状态和静态资源继续使用现有目录，不启用独立分包或预加载。
+
+底部导航仍使用自定义组件和 `reLaunch`。统一导航入口兼容已知 `/pages/<业务>/<页面>` 旧地址，查询参数及片段原样保留；不注册旧路径占位页，也不改写未知地址。
+
 ## 验收
 
 - `pnpm check`：格式、脚本、样式与 TypeScript 门禁。

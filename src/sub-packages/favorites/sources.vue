@@ -14,7 +14,10 @@ const open = (url: string) => navigate({ type: 'navigateTo', url })
 const back = () =>
   navigate({
     type: 'reLaunch',
-    url: item.value?.entry_type === 'PHRASE' ? '/pages/favorites/phrases' : '/pages/favorites/index'
+    url:
+      item.value?.entry_type === 'PHRASE'
+        ? '/sub-packages/favorites/phrases'
+        : '/sub-packages/favorites/index'
   })
 </script>
 <template>

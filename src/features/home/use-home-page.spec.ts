@@ -143,7 +143,7 @@ describe('首页静默身份及任务入口', () => {
     await page.retry()
     expect(fixture.profileRequest).toHaveBeenCalledOnce()
     expect(page.home.error).toBe(false)
-    expect(page.home.view.todayTask?.url).toBe('/pages/scene/dialogue?sceneId=actual-id')
+    expect(page.home.view.todayTask?.url).toBe('/sub-packages/scene/dialogue?sceneId=actual-id')
   })
   it('首页隐藏后迟到身份成功不得再发首页请求', async () => {
     let resolve!: (ready: boolean) => void
@@ -226,7 +226,7 @@ describe('首页静默身份及任务入口', () => {
     const page = useHomePage()
     await page.load()
     await page.startTask()
-    expect(fixture.destinations).toEqual(['/pages/scene/dialogue?sceneId=actual-id'])
+    expect(fixture.destinations).toEqual(['/sub-packages/scene/dialogue?sceneId=actual-id'])
   })
   it('收藏翻卡不依赖目录授权，仍执行完整卡片队列', async () => {
     fixture.ready = true
@@ -239,7 +239,9 @@ describe('首页静默身份及任务入口', () => {
       card_ids: ['first', 'last']
     }
     await page.startTask()
-    expect(fixture.destinations).toEqual(['/pages/favorites/review-front?cardIds=first%2Clast'])
+    expect(fixture.destinations).toEqual([
+      '/sub-packages/favorites/review-front?cardIds=first%2Clast'
+    ])
   })
   it('静默登录失败保持兜底且不请求身份首页数据', async () => {
     const page = useHomePage()
@@ -254,7 +256,7 @@ describe('首页静默身份及任务入口', () => {
     fixture.ready = true
     await page.retry()
     expect(page.home.error).toBe(false)
-    expect(page.home.view.todayTask?.url).toBe('/pages/scene/dialogue?sceneId=actual-id')
+    expect(page.home.view.todayTask?.url).toBe('/sub-packages/scene/dialogue?sceneId=actual-id')
     expect(fixture.forced).toEqual([false, true])
   })
   it('权益用户的开放场景历史任务仍能展示真实目标摘要', async () => {

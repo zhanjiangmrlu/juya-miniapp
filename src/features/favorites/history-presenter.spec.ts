@@ -34,7 +34,7 @@ describe('学习历史权限', () => {
     expect(result).toHaveLength(2)
     expect(result[0]).toMatchObject({
       title: '开放',
-      route: '/pages/scene/detail?sceneId=open',
+      route: '/sub-packages/scene/detail?sceneId=open',
       badge: '可进入'
     })
     expect(result[1]).toMatchObject({ title: '旅行英语', route: null, badge: '仅摘要' })

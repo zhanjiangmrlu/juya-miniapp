@@ -2,8 +2,8 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import FavoriteDetail from '@/pages/favorites/detail.vue'
-import FavoriteSources from '@/pages/favorites/sources.vue'
+import FavoriteDetail from '@/sub-packages/favorites/detail.vue'
+import FavoriteSources from '@/sub-packages/favorites/sources.vue'
 
 import type { FavoriteItem } from '@/shared/contracts/favorites'
 
@@ -99,7 +99,7 @@ describe.each([
       await flushPromises()
       expect(dependencies.navigate).toHaveBeenLastCalledWith({
         type: 'navigateTo',
-        url: '/pages/favorites/sources?id=one'
+        url: '/sub-packages/favorites/sources?id=one'
       })
     }
     dependencies.hide?.()

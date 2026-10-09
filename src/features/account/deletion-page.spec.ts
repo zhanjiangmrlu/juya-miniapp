@@ -3,8 +3,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import DeletionPending from '@/pages/account/deletion-pending.vue'
 import { useAccountDeletionStore } from '@/stores/account-deletion'
+import DeletionPending from '@/sub-packages/account/deletion-pending.vue'
 
 import type { UserProfile } from '@/shared/contracts/profile'
 

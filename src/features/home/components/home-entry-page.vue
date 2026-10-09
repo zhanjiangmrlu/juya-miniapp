@@ -51,7 +51,7 @@ const handleRetry = async () => {
 /** 将步骤目标转换为真实导航，kind 为对话、跟读或收藏步骤 */
 const openStep = async (kind: 'dialogue' | 'shadowing' | 'favorites') => {
   if (kind === 'favorites') {
-    await navigate({ type: 'reLaunch', url: '/pages/favorites/index' })
+    await navigate({ type: 'reLaunch', url: '/sub-packages/favorites/index' })
     return
   }
   if (kind === 'dialogue') {
@@ -61,7 +61,7 @@ const openStep = async (kind: 'dialogue' | 'shadowing' | 'favorites') => {
   if (!taskScene.value) return
   await navigate({
     type: 'navigateTo',
-    url: `/pages/scene/shadowing?sceneId=${encodeURIComponent(taskScene.value.sceneId)}`
+    url: `/sub-packages/scene/shadowing?sceneId=${encodeURIComponent(taskScene.value.sceneId)}`
   })
 }
 // 动态首页子组件共享父页刷新，不向页面根注册卸载后残留的生命周期

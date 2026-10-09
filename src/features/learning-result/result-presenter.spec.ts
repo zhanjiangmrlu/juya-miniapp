@@ -12,9 +12,9 @@ describe('presentLearningResult', () => {
     })
 
     expect(result.cards).toEqual([
-      { label: '完成场景', route: '/pages/favorites/history', value: 1 },
-      { label: '收藏词汇', route: '/pages/favorites/index?tab=vocabulary', value: 6 },
-      { label: '收藏语块', route: '/pages/favorites/index?tab=phrases', value: 3 }
+      { label: '完成场景', route: '/sub-packages/favorites/history', value: 1 },
+      { label: '收藏词汇', route: '/sub-packages/favorites/index?tab=vocabulary', value: 6 },
+      { label: '收藏语块', route: '/sub-packages/favorites/index?tab=phrases', value: 3 }
     ])
   })
 

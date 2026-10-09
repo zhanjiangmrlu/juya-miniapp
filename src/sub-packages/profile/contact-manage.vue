@@ -27,7 +27,8 @@ const copy = () => {
   if (contact.value.wechatId) uni.setClipboardData({ data: contact.value.wechatId })
 }
 /** 进入更正申请 */
-const correct = () => navigate({ type: 'navigateTo', url: '/pages/profile/contact-correction' })
+const correct = () =>
+  navigate({ type: 'navigateTo', url: '/sub-packages/profile/contact-correction' })
 /** 自助修改本人微信号，value 为用户同意用途后校验的微信号 */
 const save = async (value: string) => {
   if (loading.value || !contact.value.canSelfEdit) return
@@ -47,7 +48,7 @@ const remove = async () => {
   loading.value = true
   try {
     await getRuntimeServices().contact.remove()
-    await navigate({ type: 'reLaunch', url: '/pages/profile/index' })
+    await navigate({ type: 'reLaunch', url: '/sub-packages/profile/index' })
   } catch {
     error.value = '撤回失败，请重试'
   } finally {
@@ -87,7 +88,7 @@ onShow(load)
         @press="form?.submit()" /><AppButton
         v-else
         label="返回学习档案"
-        @press="navigate({ type: 'reLaunch', url: '/pages/profile/index' })"
+        @press="navigate({ type: 'reLaunch', url: '/sub-packages/profile/index' })"
     /></template>
   </PersonalPage>
 </template>

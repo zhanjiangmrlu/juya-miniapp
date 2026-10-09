@@ -3,9 +3,9 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, expect, it, vi } from 'vitest'
 
-import ClearConfirm from '@/pages/account/clear-confirm.vue'
 import { useFavoriteStore } from '@/stores/favorites'
 import { useFeedbackDraftStore } from '@/stores/feedback-draft'
+import ClearConfirm from '@/sub-packages/account/clear-confirm.vue'
 
 const dependencies = vi.hoisted(() => ({ clear: vi.fn(), navigate: vi.fn() }))
 vi.mock('@/services/runtime', () => ({

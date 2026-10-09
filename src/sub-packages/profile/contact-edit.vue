@@ -15,7 +15,7 @@ const save = async (wechatId: string) => {
   loading.value = true
   try {
     await getRuntimeServices().contact.save(wechatId)
-    await navigate({ type: 'redirectTo', url: '/pages/profile/contact-manage' })
+    await navigate({ type: 'redirectTo', url: '/sub-packages/profile/contact-manage' })
   } catch {
     error.value = '保存失败，请重试'
   } finally {
@@ -23,7 +23,7 @@ const save = async (wechatId: string) => {
   }
 }
 /** 暂不填写并返回档案 */
-const skip = () => navigate({ type: 'reLaunch', url: '/pages/profile/index' })
+const skip = () => navigate({ type: 'reLaunch', url: '/sub-packages/profile/index' })
 </script>
 <template>
   <PersonalPage navigation="联系资料" title="完善联系资料" subtitle="填写与否不影响开放学习场景"

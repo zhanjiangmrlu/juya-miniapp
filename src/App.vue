@@ -20,7 +20,7 @@ export default defineComponent({
         const profile = await getRuntimeServices().profile.get()
         session.profile = profile
         if (shouldGateStartupForDeletion(profile.deletion))
-          await uni.reLaunch({ url: '/pages/account/deletion-pending' })
+          await uni.reLaunch({ url: '/sub-packages/account/deletion-pending' })
       } catch {
         // 启动期网络异常由各业务页现有降级状态处理。
       }

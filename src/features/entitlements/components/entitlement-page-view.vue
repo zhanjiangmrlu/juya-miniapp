@@ -122,19 +122,19 @@ const preserved = computed(() =>
     ? [
         {
           title: '学习历史',
-          route: '/pages/favorites/history',
+          route: '/sub-packages/favorites/history',
           detail: '查看完成场景和历史进度',
           badge: '仅摘要'
         },
         {
           title: '词汇银行',
-          route: '/pages/favorites/index',
+          route: '/sub-packages/favorites/index',
           detail: '已收藏词汇继续保留',
           badge: '可查看'
         },
         {
           title: '语块银行',
-          route: '/pages/favorites/phrases',
+          route: '/sub-packages/favorites/phrases',
           detail: '已收藏语块继续保留',
           badge: '可查看'
         }
@@ -142,7 +142,7 @@ const preserved = computed(() =>
     : [
         {
           title: '收藏词汇',
-          route: '/pages/favorites/index',
+          route: '/sub-packages/favorites/index',
           detail:
             props.state === 'ENDED' && result.value
               ? `${result.value.favorite_vocabulary} 条 · 进入词汇银行`
@@ -151,7 +151,7 @@ const preserved = computed(() =>
         },
         {
           title: '收藏语块',
-          route: '/pages/favorites/phrases',
+          route: '/sub-packages/favorites/phrases',
           detail:
             props.state === 'ENDED' && result.value
               ? `${result.value.favorite_phrases} 条 · 进入语块银行`
@@ -160,7 +160,7 @@ const preserved = computed(() =>
         },
         {
           title: '学习过的场景',
-          route: '/pages/favorites/history',
+          route: '/sub-packages/favorites/history',
           detail: '查看完成场景和历史进度',
           badge: '›'
         }
@@ -181,7 +181,7 @@ const load = async () => {
     if (props.state !== 'ALL' && selected.value && selected.value.state !== props.state) {
       await navigate({
         type: 'redirectTo',
-        url: `/pages/entitlement/${selected.value.state.toLocaleLowerCase()}?id=${encodeURIComponent(selected.value.id)}`
+        url: `/sub-packages/entitlement/${selected.value.state.toLocaleLowerCase()}?id=${encodeURIComponent(selected.value.id)}`
       })
       return
     }
@@ -195,7 +195,7 @@ const load = async () => {
 const openItem = (item: LimitedEntitlementViewModel) =>
   navigate({
     type: 'navigateTo',
-    url: `/pages/entitlement/${item.state.toLocaleLowerCase()}?id=${encodeURIComponent(item.id)}`
+    url: `/sub-packages/entitlement/${item.state.toLocaleLowerCase()}?id=${encodeURIComponent(item.id)}`
   })
 /** 打开站内明细，url 为收藏或历史地址 */
 const open = (url: string) => navigate({ type: 'navigateTo', url })
@@ -204,8 +204,8 @@ const action = () =>
   props.state === 'PENDING' && limitedScenes.value[0]
     ? openScene(limitedScenes.value[0])
     : ['ENDED', 'EXCEPTION'].includes(props.state)
-      ? open('/pages/favorites/history')
-      : navigate({ type: 'reLaunch', url: '/pages/learning/index' })
+      ? open('/sub-packages/favorites/history')
+      : navigate({ type: 'reLaunch', url: '/sub-packages/learning/index' })
 /** 打开服务器目录仍可学习的场景，item 为当前场景摘要 */
 const openScene = (item: SceneSummary) => {
   if (
@@ -214,7 +214,7 @@ const openScene = (item: SceneSummary) => {
     selected.value?.sceneIds.includes(item.scene_id) &&
     (props.state === 'PENDING' || ['OPEN', 'FORMAL', 'LIMITED'].includes(item.access))
   )
-    void open(`/pages/scene/detail?sceneId=${encodeURIComponent(item.scene_id)}`)
+    void open(`/sub-packages/scene/detail?sceneId=${encodeURIComponent(item.scene_id)}`)
 }
 onLoad((query) => {
   selectedId.value = query?.id || ''
@@ -312,7 +312,7 @@ onShow(load)
           detail="查看本次学习进度和收藏"
           badge="可查看"
           actionable
-          @press="open('/pages/favorites/history')"
+          @press="open('/sub-packages/favorites/history')"
       /></template>
     </view>
     <AppState

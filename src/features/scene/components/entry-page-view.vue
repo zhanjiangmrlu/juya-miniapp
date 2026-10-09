@@ -48,12 +48,12 @@ const next = async () => {
     if (await complete())
       await navigate({
         type: 'redirectTo',
-        url: `/pages/scene/completed?sceneId=${encodeURIComponent(sceneId.value)}`
+        url: `/sub-packages/scene/completed?sceneId=${encodeURIComponent(sceneId.value)}`
       })
   } else
     await navigate({
       type: 'navigateTo',
-      url: `/pages/scene/chunks?sceneId=${encodeURIComponent(sceneId.value)}`
+      url: `/sub-packages/scene/chunks?sceneId=${encodeURIComponent(sceneId.value)}`
     })
 }
 

@@ -142,7 +142,7 @@ describe('presentFavorites', () => {
       })
     ])
     expect(group.sources[0]?.returnUrl).toBe(
-      '/pages/scene/return-source?sceneId=cafe&sourceLocator=sentence-2&revisionId=r-8&entryVersion=3&entryId=fixed'
+      '/sub-packages/scene/return-source?sceneId=cafe&sourceLocator=sentence-2&revisionId=r-8&entryVersion=3&entryId=fixed'
     )
   })
   it('大小写与多余空格仅用于展示合并，不合并不同词形', () => {
@@ -184,7 +184,7 @@ describe('presentFavorites', () => {
 
     expect(group.sources).toHaveLength(2)
     expect(group.sources.map((source) => source.returnUrl)).toEqual([
-      '/pages/scene/return-source?sceneId=one&sourceLocator=sentence-1',
+      '/sub-packages/scene/return-source?sceneId=one&sourceLocator=sentence-1',
       null
     ])
   })

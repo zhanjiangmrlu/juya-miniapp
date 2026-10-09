@@ -15,18 +15,18 @@ describe('resolveLegacyRoute', () => {
       resolveLegacyRoute({ pageId: 'M10', sceneId: 'scene-1', sourceLocator: 'sentence-2' })
     ).toEqual({
       type: 'redirectTo',
-      url: '/pages/scene/dialogue?sceneId=scene-1&sourceLocator=sentence-2&sheet=vocabulary'
+      url: '/sub-packages/scene/dialogue?sceneId=scene-1&sourceLocator=sentence-2&sheet=vocabulary'
     })
     expect(resolveLegacyRoute({ pageId: 'M11', sceneId: 'scene-1' })).toEqual({
       type: 'redirectTo',
-      url: '/pages/scene/dialogue?sceneId=scene-1&sheet=phrase'
+      url: '/sub-packages/scene/dialogue?sceneId=scene-1&sheet=phrase'
     })
   })
 
   it('M26 替换到唯一学习档案', () => {
     expect(resolveLegacyRoute({ pageId: 'M26' })).toEqual({
       type: 'reLaunch',
-      url: '/pages/profile/index'
+      url: '/sub-packages/profile/index'
     })
   })
 

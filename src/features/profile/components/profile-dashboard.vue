@@ -28,7 +28,11 @@ let generation = 0
 const open = (url: string) => navigate({ type: 'navigateTo', url })
 /** 主动完善时直接进入表单，已填写则进入管理页 */
 const openContact = () =>
-  open(contact.value.wechatId ? '/pages/profile/contact-manage' : '/pages/profile/contact-edit')
+  open(
+    contact.value.wechatId
+      ? '/sub-packages/profile/contact-manage'
+      : '/sub-packages/profile/contact-edit'
+  )
 /** 关闭一次提示，实际曝光记录在显示时已经写入 */
 const dismiss = () => {
   promptVisible.value = false
@@ -117,10 +121,10 @@ onUnload(hide)
       :feedback-unread="feedbackUnread"
       :prompt="promptVisible"
       @contact="openContact"
-      @entitlements="open('/pages/entitlement/index')"
-      @messages="open('/pages/feedback/messages')"
-      @feedback="open('/pages/feedback/index')"
-      @account="open('/pages/account/index')"
+      @entitlements="open('/sub-packages/entitlement/index')"
+      @messages="open('/sub-packages/feedback/messages')"
+      @feedback="open('/sub-packages/feedback/index')"
+      @account="open('/sub-packages/account/index')"
     />
     <text v-if="error" class="form-error">{{ error }}</text
     ><AppButton v-if="error" label="重新加载" variant="secondary" @press="load" />

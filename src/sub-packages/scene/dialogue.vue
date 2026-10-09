@@ -131,7 +131,7 @@ const handleListScroll = (event: { detail: { scrollTop: number } }) => {
 const openShadowing = async () => {
   await navigate({
     type: 'navigateTo',
-    url: `/pages/scene/shadowing?sceneId=${encodeURIComponent(sceneId.value)}`
+    url: `/sub-packages/scene/shadowing?sceneId=${encodeURIComponent(sceneId.value)}`
   })
 }
 /** 离开页面取消定位高亮和媒体资源 */
@@ -149,7 +149,7 @@ watch(
     const sentenceId = audio.snapshot.target?.sentence_id
     void navigate({
       type: 'redirectTo',
-      url: `/pages/scene/audio-failed?sceneId=${encodeURIComponent(sceneId.value)}${sentenceId ? '&sentenceId=' + encodeURIComponent(sentenceId) : ''}`
+      url: `/sub-packages/scene/audio-failed?sceneId=${encodeURIComponent(sceneId.value)}${sentenceId ? '&sentenceId=' + encodeURIComponent(sentenceId) : ''}`
     })
   }
 )

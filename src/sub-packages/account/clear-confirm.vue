@@ -29,7 +29,7 @@ const confirmClear = async () => {
     await getRuntimeServices().account.clearLearningData()
     clearLocalLearningData(createUniLocalDataScope())
     uni.showToast({ icon: 'success', title: '学习数据已清空' })
-    await navigate({ type: 'reLaunch', url: '/pages/profile/index' })
+    await navigate({ type: 'reLaunch', url: '/sub-packages/profile/index' })
   } catch {
     error.value = '暂时无法清空，请稍后重试'
   } finally {

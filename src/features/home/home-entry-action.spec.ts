@@ -25,7 +25,7 @@ vi.mock('@/features/home/use-home-page', async () => {
             buttonLabel: '开始翻卡',
             title: '收藏翻卡',
             description: '不限张数',
-            url: '/pages/favorites/review-front?cardIds=real'
+            url: '/sub-packages/favorites/review-front?cardIds=real'
           }
         }
       },

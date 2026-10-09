@@ -18,7 +18,7 @@ const loadAccountState = async () => {
   try {
     const profile = await getRuntimeServices().profile.get()
     if (shouldGateStartupForDeletion(profile.deletion))
-      await navigate({ type: 'redirectTo', url: '/pages/account/deletion-pending' })
+      await navigate({ type: 'redirectTo', url: '/sub-packages/account/deletion-pending' })
     error.value = ''
   } catch {
     error.value = '账号状态读取失败，请重试'
@@ -29,12 +29,12 @@ const loadAccountState = async () => {
 
 /** 打开清空学习数据影响确认页 */
 const openClearData = async () => {
-  await navigate({ type: 'navigateTo', url: '/pages/account/clear-confirm' })
+  await navigate({ type: 'navigateTo', url: '/sub-packages/account/clear-confirm' })
 }
 
 /** 打开注销挽留与二次确认页 */
 const openDeletion = async () => {
-  await navigate({ type: 'navigateTo', url: '/pages/account/delete-confirm' })
+  await navigate({ type: 'navigateTo', url: '/sub-packages/account/delete-confirm' })
 }
 
 onShow(loadAccountState)

@@ -74,7 +74,7 @@ const continueReading = async () => {
   const sourceLocator = selectedSentence.value?.source_locator ?? ''
   await navigate({
     type: 'redirectTo',
-    url: `/pages/scene/dialogue?sceneId=${encodeURIComponent(sceneId.value)}&sourceLocator=${encodeURIComponent(sourceLocator)}`
+    url: `/sub-packages/scene/dialogue?sceneId=${encodeURIComponent(sceneId.value)}&sourceLocator=${encodeURIComponent(sourceLocator)}`
   })
 }
 /** 播放定位句原音，继续沿用当前发布整段音频 */
@@ -85,7 +85,7 @@ const playCurrent = async () => {
 const vocabulary = async () => {
   await navigate({
     type: 'navigateTo',
-    url: `/pages/scene/vocabulary?sceneId=${encodeURIComponent(sceneId.value)}`
+    url: `/sub-packages/scene/vocabulary?sceneId=${encodeURIComponent(sceneId.value)}`
   })
 }
 onLoad(handleLoad)

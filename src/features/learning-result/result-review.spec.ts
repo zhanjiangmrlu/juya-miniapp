@@ -18,7 +18,7 @@ describe('学习成果复习入口', () => {
         next_cursor: null
       })
     expect(await getResultReviewRoute({ list })).toBe(
-      '/pages/favorites/review-front?cardIds=word-1%2Cword-2&index=0&bank=VOCABULARY'
+      '/sub-packages/favorites/review-front?cardIds=word-1%2Cword-2&index=0&bank=VOCABULARY'
     )
     expect(list).toHaveBeenLastCalledWith('page-2')
   })
@@ -27,6 +27,6 @@ describe('学习成果复习入口', () => {
       await getResultReviewRoute({
         list: vi.fn(async () => ({ items: [], next_cursor: null, has_more: false }))
       })
-    ).toBe('/pages/favorites/index?tab=vocabulary')
+    ).toBe('/sub-packages/favorites/index?tab=vocabulary')
   })
 })

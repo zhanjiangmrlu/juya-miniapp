@@ -22,9 +22,18 @@ describe('visual regression contract', () => {
   })
 
   it('registers every critical visual route in pages.json', () => {
-    const pages = readFileSync(resolve(process.cwd(), 'src/pages.json'), 'utf8')
+    const config = JSON.parse(readFileSync(resolve(process.cwd(), 'src/pages.json'), 'utf8')) as {
+      pages: Array<{ path: string }>
+      subPackages: Array<{ root: string; pages: Array<{ path: string }> }>
+    }
+    const pages = new Set([
+      ...config.pages.map((page) => page.path),
+      ...config.subPackages.flatMap((subpackage) =>
+        subpackage.pages.map((page) => `${subpackage.root}/${page.path}`)
+      )
+    ])
     for (const visualCase of VISUAL_CASES) {
-      expect(pages).toContain(visualCase.path.split('?')[0]?.replace(/^\//, ''))
+      expect(pages.has(visualCase.path.split('?')[0]?.replace(/^\//, '') ?? '')).toBe(true)
     }
   })
 

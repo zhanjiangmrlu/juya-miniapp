@@ -128,7 +128,7 @@ const completeLearning = async () => {
     if (!active || request !== interaction) return
     await navigate({
       type: 'redirectTo',
-      url: `/pages/scene/completed?sceneId=${encodeURIComponent(sceneId.value)}`
+      url: `/sub-packages/scene/completed?sceneId=${encodeURIComponent(sceneId.value)}`
     })
   } finally {
     completingLearning.value = false

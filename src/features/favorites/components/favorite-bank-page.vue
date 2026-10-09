@@ -46,7 +46,7 @@ const openGroup = async (group: FavoriteGroup) => {
   if (id)
     await navigate({
       type: 'navigateTo',
-      url: `/pages/favorites/detail?id=${encodeURIComponent(id)}`
+      url: `/sub-packages/favorites/detail?id=${encodeURIComponent(id)}`
     })
 }
 /** 编辑当前银行筛选，确认后保留另一银行的筛选与滚动位置 */
@@ -75,7 +75,7 @@ const startReview = async () => {
   favorites.updateTabState(favorites.activeTab, { review })
   await navigate({
     type: 'navigateTo',
-    url: `/pages/favorites/review-${review.face.toLocaleLowerCase()}?index=${review.index}&bank=${favorites.activeTab}`
+    url: `/sub-packages/favorites/review-${review.face.toLocaleLowerCase()}?index=${review.index}&bank=${favorites.activeTab}`
   })
 }
 onLoad(handleLoad)

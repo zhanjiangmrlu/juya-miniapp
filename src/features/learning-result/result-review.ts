@@ -15,6 +15,6 @@ export const getResultReviewRoute = async (
     if (cursor) cursors.add(cursor)
   } while (cursor)
   return ids.size
-    ? `/pages/favorites/review-front?cardIds=${encodeURIComponent([...ids].join(','))}&index=0&bank=VOCABULARY`
-    : '/pages/favorites/index?tab=vocabulary'
+    ? `/sub-packages/favorites/review-front?cardIds=${encodeURIComponent([...ids].join(','))}&index=0&bank=VOCABULARY`
+    : '/sub-packages/favorites/index?tab=vocabulary'
 }

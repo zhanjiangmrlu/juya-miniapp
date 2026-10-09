@@ -100,7 +100,7 @@ const submit = async () => {
 const open = (result: boolean) =>
   navigate({
     type: 'navigateTo',
-    url: `/pages/feedback/${result ? 'resolution' : 'detail'}?id=${encodeURIComponent(feedbackId.value)}`
+    url: `/sub-packages/feedback/${result ? 'resolution' : 'detail'}?id=${encodeURIComponent(feedbackId.value)}`
   })
 /** 发送用户解决状态，payload 为已解决或含原因的重开命令 */
 const resolve = async (payload: FeedbackResolutionRequest) => {
@@ -112,7 +112,7 @@ const resolve = async (payload: FeedbackResolutionRequest) => {
     if (payload.action === 'REOPEN')
       await navigate({
         type: 'redirectTo',
-        url: `/pages/feedback/detail?id=${encodeURIComponent(feedbackId.value)}`
+        url: `/sub-packages/feedback/detail?id=${encodeURIComponent(feedbackId.value)}`
       })
   } catch {
     error.value = '结果提交失败，请重试'

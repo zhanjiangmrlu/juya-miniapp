@@ -60,7 +60,7 @@ const load = async (query?: Record<string, string>) => {
 const go = (page: string, position: number) =>
   navigate({
     type: 'redirectTo',
-    url: `/pages/favorites/${page}?index=${position}&bank=${bank.value}`
+    url: `/sub-packages/favorites/${page}?index=${position}&bank=${bank.value}`
   })
 /** 明确点击卡片或翻面按钮时切换卡面 */
 const flip = () => go(props.face === 'FRONT' ? 'review-back' : 'review-front', index.value)

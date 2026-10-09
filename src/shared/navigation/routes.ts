@@ -1,14 +1,14 @@
 export const ROUTES = {
-  compat: '/pages/compat/index',
-  explore: '/pages/learning/explore',
-  favorites: '/pages/favorites/index',
+  compat: '/sub-packages/compat/index',
+  explore: '/sub-packages/learning/explore',
+  favorites: '/sub-packages/favorites/index',
   home: '/pages/home/index',
-  homeFirstVisit: '/pages/home/first-visit',
-  homeTodayTask: '/pages/home/today-task',
-  learning: '/pages/learning/index',
-  learningNoAccess: '/pages/learning/no-access',
-  profile: '/pages/profile/index',
-  sceneDialogue: '/pages/scene/dialogue'
+  homeFirstVisit: '/sub-packages/home/first-visit',
+  homeTodayTask: '/sub-packages/home/today-task',
+  learning: '/sub-packages/learning/index',
+  learningNoAccess: '/sub-packages/learning/no-access',
+  profile: '/sub-packages/profile/index',
+  sceneDialogue: '/sub-packages/scene/dialogue'
 } as const
 
 export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES]

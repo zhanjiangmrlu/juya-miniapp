@@ -34,7 +34,7 @@ describe('首页入口补齐', () => {
           canOpen: true,
           chineseTitle: '在咖啡店',
           description: '',
-          entryUrl: '/pages/scene/detail?sceneId=server',
+          entryUrl: '/sub-packages/scene/detail?sceneId=server',
           progress: 68,
           sceneId: 'server',
           series: '后台系列',
@@ -45,7 +45,7 @@ describe('首页入口补齐', () => {
           description: '',
           eyebrow: '继续上次进度',
           title: '场景',
-          url: '/pages/scene/dialogue?sceneId=server'
+          url: '/sub-packages/scene/dialogue?sceneId=server'
         }
       }
     })

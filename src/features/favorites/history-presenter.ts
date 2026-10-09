@@ -34,6 +34,8 @@ export const presentHistory = (items: HistoryItem[], catalog: SceneSummary[]): H
       title: item.scene_title || scene?.chinese_title || scene?.title || item.scene_id,
       detail: parts.join(' · '),
       badge: accessible ? '可进入' : '仅摘要',
-      route: accessible ? `/pages/scene/detail?sceneId=${encodeURIComponent(item.scene_id)}` : null
+      route: accessible
+        ? `/sub-packages/scene/detail?sceneId=${encodeURIComponent(item.scene_id)}`
+        : null
     }
   })

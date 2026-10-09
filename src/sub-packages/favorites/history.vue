@@ -35,7 +35,7 @@ const open = (route: string | null) => {
   if (route) void navigate({ type: 'navigateTo', url: route })
 }
 /** 返回收藏银行 */
-const back = () => navigate({ type: 'reLaunch', url: '/pages/favorites/index' })
+const back = () => navigate({ type: 'reLaunch', url: '/sub-packages/favorites/index' })
 onShow(load)
 </script>
 <template>

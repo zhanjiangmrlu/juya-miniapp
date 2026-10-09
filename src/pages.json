@@ -5,232 +5,311 @@
       "style": {
         "navigationStyle": "custom"
       }
+    }
+  ],
+  "subPackages": [
+    {
+      "root": "sub-packages/home",
+      "pages": [
+        {
+          "path": "first-visit",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "today-task",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        }
+      ]
     },
     {
-      "path": "pages/home/first-visit",
-      "style": {
-        "navigationStyle": "custom"
-      }
+      "root": "sub-packages/learning",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "explore",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "no-access",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        }
+      ]
     },
     {
-      "path": "pages/home/today-task",
-      "style": {
-        "navigationStyle": "custom"
-      }
+      "root": "sub-packages/scene",
+      "pages": [
+        {
+          "path": "detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "dialogue",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "vocabulary",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "chunks",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "audio-failed",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "restore-position",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "return-source",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "shadowing",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "completed",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        }
+      ]
     },
     {
-      "path": "pages/learning/index",
-      "style": {
-        "navigationStyle": "custom"
-      }
+      "root": "sub-packages/favorites",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "phrases",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "sources",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "review-front",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "review-back",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "history",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        }
+      ]
     },
     {
-      "path": "pages/learning/explore",
-      "style": {
-        "navigationStyle": "custom"
-      }
+      "root": "sub-packages/profile",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "contact-prompt",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "contact-edit",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "contact-manage",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "contact-correction",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        }
+      ]
     },
     {
-      "path": "pages/learning/no-access",
-      "style": {
-        "navigationStyle": "custom"
-      }
+      "root": "sub-packages/entitlement",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "pending",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "active",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "ending",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "ended",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "exception",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        }
+      ]
     },
     {
-      "path": "pages/scene/detail",
-      "style": {
-        "navigationStyle": "custom"
-      }
+      "root": "sub-packages/feedback",
+      "pages": [
+        {
+          "path": "messages",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "index",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "create",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "resolution",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "content-blocked",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        }
+      ]
     },
     {
-      "path": "pages/scene/dialogue",
-      "style": {
-        "navigationStyle": "custom"
-      }
+      "root": "sub-packages/account",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "clear-confirm",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "delete-confirm",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "deletion-pending",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        }
+      ]
     },
     {
-      "path": "pages/scene/vocabulary",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/scene/chunks",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/scene/audio-failed",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/scene/restore-position",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/scene/return-source",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/scene/shadowing",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/scene/completed",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/favorites/index",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/favorites/phrases",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/favorites/detail",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/favorites/sources",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/favorites/review-front",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/favorites/review-back",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/favorites/history",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/profile/index",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/profile/contact-prompt",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/profile/contact-edit",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/profile/contact-manage",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/profile/contact-correction",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/entitlement/index",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/entitlement/pending",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/entitlement/active",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/entitlement/ending",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/entitlement/ended",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/entitlement/exception",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/feedback/messages",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/feedback/index",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/feedback/create",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/feedback/detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/feedback/resolution",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/feedback/content-blocked",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/account/index",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/account/clear-confirm",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/account/delete-confirm",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/account/deletion-pending",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/compat/index",
-      "style": {
-        "navigationStyle": "custom"
-      }
+      "root": "sub-packages/compat",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        }
+      ]
     }
   ],
   "globalStyle": {

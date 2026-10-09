@@ -17,12 +17,12 @@ const message: MessageItem = {
 
 describe('message router', () => {
   it('maps supported related objects and falls back for unknown links', () => {
-    expect(resolveMessageRoute(message)).toBe('/pages/feedback/detail?id=feedback-1')
+    expect(resolveMessageRoute(message)).toBe('/sub-packages/feedback/detail?id=feedback-1')
     expect(
       resolveMessageRoute({ ...message, related_id: 'limited-1', related_type: 'ENTITLEMENT' })
-    ).toBe('/pages/entitlement/index?id=limited-1')
+    ).toBe('/sub-packages/entitlement/index?id=limited-1')
     expect(resolveMessageRoute({ ...message, related_type: 'UNKNOWN' })).toBe(
-      '/pages/feedback/messages'
+      '/sub-packages/feedback/messages'
     )
   })
 
@@ -38,6 +38,6 @@ describe('message router', () => {
     await openMessage(message, markRead, navigate)
 
     expect(order).toEqual(['read', 'navigate'])
-    expect(navigate).toHaveBeenCalledWith('/pages/feedback/detail?id=feedback-1')
+    expect(navigate).toHaveBeenCalledWith('/sub-packages/feedback/detail?id=feedback-1')
   })
 })

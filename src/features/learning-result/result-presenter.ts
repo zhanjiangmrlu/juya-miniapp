@@ -22,17 +22,17 @@ export function presentLearningResult(dto: LearningResultDto | null): LearningRe
     cards: [
       {
         label: '完成场景',
-        route: '/pages/favorites/history',
+        route: '/sub-packages/favorites/history',
         value: dto?.completed_scenes ?? 0
       },
       {
         label: '收藏词汇',
-        route: '/pages/favorites/index?tab=vocabulary',
+        route: '/sub-packages/favorites/index?tab=vocabulary',
         value: dto?.favorite_vocabulary ?? 0
       },
       {
         label: '收藏语块',
-        route: '/pages/favorites/index?tab=phrases',
+        route: '/sub-packages/favorites/index?tab=phrases',
         value: dto?.favorite_phrases ?? 0
       }
     ],
