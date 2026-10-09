@@ -17,6 +17,10 @@ import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { ApiError } from '@/services/http/errors'
 import { getRuntimeServices } from '@/services/runtime'
 import { FEEDBACK_CATEGORIES } from '@/shared/constants/feedback'
+import { FeedbackResolutionAction, FeedbackStatus } from '@/shared/enums/feedback'
+import { MessageRelatedType } from '@/shared/enums/messages'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ProfileRowSize } from '@/shared/enums/profile'
 import { navigate } from '@/shared/navigation/navigate'
 
 import type { FeedbackItem, FeedbackResolutionRequest } from '@/shared/contracts/feedback'
@@ -48,7 +52,7 @@ const load = async () => {
         .filter(
           (message) =>
             !message.read_at &&
-            message.related_type === 'FEEDBACK' &&
+            message.related_type === MessageRelatedType.FEEDBACK &&
             message.related_id === feedbackId.value
         )
         .map((message) => runtime.messages.markRead(message.id))
@@ -98,7 +102,7 @@ const submit = async () => {
 /** 在详情和结果页面间跳转，result 为是否打开结果页面 */
 const open = (result: boolean) =>
   navigate({
-    type: 'navigateTo',
+    type: NavigationType.NAVIGATE_TO,
     url: `/sub-packages/feedback/${result ? 'resolution' : 'detail'}?id=${encodeURIComponent(feedbackId.value)}`
   })
 /** 发送用户解决状态，payload 为已解决或含原因的重开命令 */
@@ -108,9 +112,9 @@ const resolve = async (payload: FeedbackResolutionRequest) => {
   try {
     item.value = await getRuntimeServices().feedback.resolve(feedbackId.value, payload)
     error.value = ''
-    if (payload.action === 'REOPEN')
+    if (payload.action === FeedbackResolutionAction.REOPEN)
       await navigate({
-        type: 'redirectTo',
+        type: NavigationType.REDIRECT_TO,
         url: `/sub-packages/feedback/detail?id=${encodeURIComponent(feedbackId.value)}`
       })
   } catch {
@@ -150,13 +154,13 @@ onShow(load)
           title="查看完整时间线"
           detail="原说明、补充和回复都在同一条记录中"
           badge="查看"
-          size="tall"
+          :size="ProfileRowSize.TALL"
           actionable
           @press="open(false)" /><PersonalRow
           title="确认是否解决"
           detail="已处理后 7 天内可以反馈结果"
           badge="操作"
-          size="tall"
+          :size="ProfileRowSize.TALL"
       /></view>
       <template v-else
         ><FeedbackTimeline :item="item" /><view v-if="canSupplement" class="supplement-card"
@@ -195,7 +199,7 @@ onShow(load)
         label="提交补充"
         :loading="busy"
         @press="submit" /><AppButton
-        v-else-if="item?.status === 'RESOLVED'"
+        v-else-if="item?.status === FeedbackStatus.RESOLVED"
         label="查看处理结果"
         @press="open(true)"
     /></template>

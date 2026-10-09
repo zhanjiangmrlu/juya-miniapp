@@ -3,6 +3,8 @@ import pauseReplayWhite from '@/features/audio/assets/pause-replay-white.svg'
 import playGreen from '@/features/audio/assets/play-green.svg'
 import playWhite from '@/features/audio/assets/play-white.svg'
 import AudioButton from '@/features/audio/components/audio-button.vue'
+import { AudioButtonVariant, AudioStatus } from '@/shared/enums/audio'
+import { RecordingStatus } from '@/shared/enums/recording'
 
 import type {
   RecordingControlsEmits,
@@ -14,7 +16,7 @@ withDefaults(defineProps<RecordingControlsProps>(), {
   currentAudioKey: null,
   index: 1,
   total: 0,
-  audioStatus: 'IDLE'
+  audioStatus: AudioStatus.IDLE
 })
 const emit = defineEmits<RecordingControlsEmits>()
 </script>
@@ -24,7 +26,7 @@ const emit = defineEmits<RecordingControlsEmits>()
       ><text>当前句 {{ index }} / {{ total }}</text
       ><AudioButton
         v-if="sentence.audio"
-        variant="inline"
+        :variant="AudioButtonVariant.INLINE"
         :current-key="currentAudioKey"
         :status="audioStatus"
         :target="sentence.audio"
@@ -34,15 +36,17 @@ const emit = defineEmits<RecordingControlsEmits>()
     ><text class="recording-hint">{{
       snapshot.recordingDisabled
         ? '录音权限未开启，仍可播放原音'
-        : snapshot.status === 'FAILED'
+        : snapshot.status === RecordingStatus.FAILED
           ? '录音暂不可用，请重试'
           : '录音仅保留本次回听，不评分'
     }}</text>
     <view class="recording-grid">
       <button
         class="recording-action primary"
-        :class="{ 'is-disabled': snapshot.recordingDisabled || snapshot.status === 'RECORDING' }"
-        :disabled="snapshot.recordingDisabled || snapshot.status === 'RECORDING'"
+        :class="{
+          'is-disabled': snapshot.recordingDisabled || snapshot.status === RecordingStatus.RECORDING
+        }"
+        :disabled="snapshot.recordingDisabled || snapshot.status === RecordingStatus.RECORDING"
         @click="emit('start')"
       >
         ● 开始录音
@@ -50,10 +54,10 @@ const emit = defineEmits<RecordingControlsEmits>()
       <button
         class="recording-action"
         :class="{
-          primary: snapshot.status === 'RECORDING',
-          'is-disabled': snapshot.status !== 'RECORDING'
+          primary: snapshot.status === RecordingStatus.RECORDING,
+          'is-disabled': snapshot.status !== RecordingStatus.RECORDING
         }"
-        :disabled="snapshot.status !== 'RECORDING'"
+        :disabled="snapshot.status !== RecordingStatus.RECORDING"
         @click="emit('stop')"
       >
         ■ 停止
@@ -62,33 +66,47 @@ const emit = defineEmits<RecordingControlsEmits>()
         class="recording-action"
         :class="{
           primary: snapshot.hasRecording,
-          'is-disabled': !snapshot.hasRecording || snapshot.status === 'RECORDING'
+          'is-disabled': !snapshot.hasRecording || snapshot.status === RecordingStatus.RECORDING
         }"
-        :disabled="!snapshot.hasRecording || snapshot.status === 'RECORDING'"
+        :disabled="!snapshot.hasRecording || snapshot.status === RecordingStatus.RECORDING"
         @click="emit('playback')"
       >
-        <view v-if="snapshot.status === 'PLAYBACK'" class="recording-pause" aria-hidden="true">
+        <view
+          v-if="snapshot.status === RecordingStatus.PLAYBACK"
+          class="recording-pause"
+          aria-hidden="true"
+        >
           <image class="pause-bar" :src="pauseReplayWhite" mode="aspectFit" />
           <image class="pause-bar" :src="pauseReplayWhite" mode="aspectFit" />
         </view>
         <image
           v-else
           class="recording-play"
-          :class="{ enabled: snapshot.hasRecording && snapshot.status !== 'RECORDING' }"
-          :src="snapshot.hasRecording && snapshot.status !== 'RECORDING' ? playWhite : playGreen"
+          :class="{
+            enabled: snapshot.hasRecording && snapshot.status !== RecordingStatus.RECORDING
+          }"
+          :src="
+            snapshot.hasRecording && snapshot.status !== RecordingStatus.RECORDING
+              ? playWhite
+              : playGreen
+          "
           mode="aspectFit"
           aria-hidden="true"
         />
-        <text>{{ snapshot.status === 'PLAYBACK' ? '暂停回听' : '当次回听' }}</text>
+        <text>{{ snapshot.status === RecordingStatus.PLAYBACK ? '暂停回听' : '当次回听' }}</text>
       </button>
       <button
         class="recording-action"
         :class="{
           'is-disabled':
-            !snapshot.hasRecording || snapshot.status === 'RECORDING' || snapshot.recordingDisabled
+            !snapshot.hasRecording ||
+            snapshot.status === RecordingStatus.RECORDING ||
+            snapshot.recordingDisabled
         }"
         :disabled="
-          !snapshot.hasRecording || snapshot.status === 'RECORDING' || snapshot.recordingDisabled
+          !snapshot.hasRecording ||
+          snapshot.status === RecordingStatus.RECORDING ||
+          snapshot.recordingDisabled
         "
         @click="emit('rerecord')"
       >

@@ -8,6 +8,8 @@ import FeedbackCard from '@/features/feedback/components/feedback-card.vue'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 
 import type { FeedbackItem } from '@/shared/contracts/feedback'
@@ -28,14 +30,14 @@ const loadFeedback = async () => {
 /** 打开指定反馈的时间线详情 */
 const openFeedback = async (item: FeedbackItem) => {
   await navigate({
-    type: 'navigateTo',
+    type: NavigationType.NAVIGATE_TO,
     url: `/sub-packages/feedback/detail?id=${encodeURIComponent(item.id)}`
   })
 }
 
 /** 打开新反馈表单 */
 const createFeedback = async () => {
-  await navigate({ type: 'navigateTo', url: '/sub-packages/feedback/create' })
+  await navigate({ type: NavigationType.NAVIGATE_TO, url: '/sub-packages/feedback/create' })
 }
 
 onShow(loadFeedback)
@@ -58,7 +60,12 @@ onShow(loadFeedback)
       description="提交的问题会在这里保存记录"
     />
     <text v-if="error" class="form-error">{{ error }}</text
-    ><AppButton v-if="error" label="重新加载" variant="secondary" @press="loadFeedback" />
+    ><AppButton
+      v-if="error"
+      label="重新加载"
+      :variant="ButtonVariant.SECONDARY"
+      @press="loadFeedback"
+    />
     <template #actions><AppButton label="提交问题反馈" @press="createFeedback" /></template>
   </PersonalPage>
 </template>

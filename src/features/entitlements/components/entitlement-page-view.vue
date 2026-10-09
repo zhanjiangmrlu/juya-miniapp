@@ -9,6 +9,20 @@ import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
+import {
+  CONTENT_ACCESS_LEVELS,
+  LIMITED_ENTITLEMENT_CONTENT_STATES,
+  LIMITED_ENTITLEMENT_RESULT_STATES
+} from '@/shared/constants/entitlements'
+import {
+  AccessLevel,
+  EntitlementPageState,
+  EntitlementStatus,
+  LimitedEntitlementState
+} from '@/shared/enums/entitlements'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ProfileRowSize } from '@/shared/enums/profile'
+import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 import { createServerClock } from '@/shared/utils/server-clock'
 
@@ -19,7 +33,7 @@ import type {
 } from '@/shared/types/entitlements'
 import type { EntitlementPageViewProps } from '@/shared/types/entitlements-components'
 const props = withDefaults(defineProps<EntitlementPageViewProps>(), {
-  state: 'ALL',
+  state: EntitlementPageState.ALL,
   title: '我的学习权益'
 })
 const view = ref<EntitlementsViewModel>({ authorizationPending: false, formal: [], limited: [] })
@@ -35,27 +49,42 @@ const selected = computed(() =>
 const stateCopy = computed(
   () =>
     ({
-      ALL: ['我的学习权益', '不同权益分别展示状态与期限', '权益分区', '前往场景学习'],
-      PENDING: [
+      [EntitlementPageState.ALL]: [
+        '我的学习权益',
+        '不同权益分别展示状态与期限',
+        '权益分区',
+        '前往场景学习'
+      ],
+      [LimitedEntitlementState.PENDING]: [
         '限时学习待开始',
         `${selected.value?.durationDays || ''} 天活动 · 首次打开场景后开始计时`,
         '本次开放场景',
         '开始学习'
       ],
-      ACTIVE: [
+      [LimitedEntitlementState.ACTIVE]: [
         '限时学习中',
         `${selected.value?.durationDays || ''} 天活动 · 场景已全部开放`,
         '继续学习',
         '继续学习'
       ],
-      ENDING: [
+      [LimitedEntitlementState.ENDING]: [
         '即将结束',
         `${selected.value?.durationDays || ''} 天限时学习 · 即将结束`,
         '最后的学习时间',
         '继续学习'
       ],
-      ENDED: ['限时学习已结束', '成果与收藏仍可查看', '查看保留内容', '查看学习记录'],
-      EXCEPTION: ['限时权益状态', '当前不可进入完整活动内容', '你仍可以查看', '查看学习历史']
+      [LimitedEntitlementState.ENDED]: [
+        '限时学习已结束',
+        '成果与收藏仍可查看',
+        '查看保留内容',
+        '查看学习记录'
+      ],
+      [LimitedEntitlementState.EXCEPTION]: [
+        '限时权益状态',
+        '当前不可进入完整活动内容',
+        '你仍可以查看',
+        '查看学习历史'
+      ]
     })[props.state]
 )
 /** 将服务端绝对时间显示为北京时间，value 为启动或结束时刻 */
@@ -71,46 +100,48 @@ const formatTime = (value?: string | null) =>
       }).format(new Date(value))
     : '以服务端状态为准'
 const summary = computed(() => {
-  if (props.state === 'ALL')
+  if (props.state === EntitlementPageState.ALL)
     return {
       label: '开放场景',
-      value: `${catalog.value.filter((item) => item.access === 'OPEN').length} 个`,
+      value: `${catalog.value.filter((item) => item.access === AccessLevel.OPEN).length} 个`,
       note: '当前均可学习'
     }
-  if (props.state === 'ENDED')
+  if (props.state === LimitedEntitlementState.ENDED)
     return {
       label: '本次成果',
       value: `${result.value?.learning_days ?? '—'} 天`,
       note: '实际学习天数'
     }
-  if (props.state === 'EXCEPTION')
+  if (props.state === LimitedEntitlementState.EXCEPTION)
     return {
       label: '当前状态',
       value: view.value.authorizationPending
         ? '待确认'
-        : selected.value?.status === 'PAUSED'
+        : selected.value?.status === EntitlementStatus.PAUSED
           ? '已暂停'
-          : selected.value?.status === 'REVOKED'
+          : selected.value?.status === EntitlementStatus.REVOKED
             ? '已撤销'
-            : selected.value?.status === 'START_EXPIRED'
+            : selected.value?.status === EntitlementStatus.START_EXPIRED
               ? '已过启动截止'
               : '暂不可用',
       note: '收藏、进度和历史成果继续保留'
     }
   return {
     label:
-      props.state === 'PENDING'
+      props.state === LimitedEntitlementState.PENDING
         ? '启动截止'
-        : props.state === 'ENDING'
+        : props.state === LimitedEntitlementState.ENDING
           ? '学习权益将于'
           : '结束时间',
     value: formatTime(
-      props.state === 'PENDING' ? selected.value?.startsBefore : selected.value?.expiresAt
+      props.state === LimitedEntitlementState.PENDING
+        ? selected.value?.startsBefore
+        : selected.value?.expiresAt
     ),
     note:
-      props.state === 'PENDING'
+      props.state === LimitedEntitlementState.PENDING
         ? '请在截止前首次打开任一活动场景'
-        : props.state === 'ACTIVE'
+        : props.state === LimitedEntitlementState.ACTIVE
           ? '按服务端时间计算，进度和收藏会保留'
           : '收藏和学习进度会继续保留。'
   }
@@ -119,7 +150,7 @@ const limitedScenes = computed(() =>
   catalog.value.filter((item) => selected.value?.sceneIds.includes(item.scene_id))
 )
 const preserved = computed(() =>
-  props.state === 'EXCEPTION'
+  props.state === LimitedEntitlementState.EXCEPTION
     ? [
         {
           title: '学习历史',
@@ -145,7 +176,7 @@ const preserved = computed(() =>
           title: '收藏词汇',
           route: '/sub-packages/favorites/index',
           detail:
-            props.state === 'ENDED' && result.value
+            props.state === LimitedEntitlementState.ENDED && result.value
               ? `${result.value.favorite_vocabulary} 条 · 进入词汇银行`
               : '已收藏词汇继续保留',
           badge: '›'
@@ -154,7 +185,7 @@ const preserved = computed(() =>
           title: '收藏语块',
           route: '/sub-packages/favorites/phrases',
           detail:
-            props.state === 'ENDED' && result.value
+            props.state === LimitedEntitlementState.ENDED && result.value
               ? `${result.value.favorite_phrases} 条 · 进入语块银行`
               : '已收藏语块继续保留',
           badge: '›'
@@ -179,9 +210,13 @@ const load = async () => {
       dto,
       createServerClock(dto.server_now ? new Date(dto.server_now) : undefined)
     )
-    if (props.state !== 'ALL' && selected.value && selected.value.state !== props.state) {
+    if (
+      props.state !== EntitlementPageState.ALL &&
+      selected.value &&
+      selected.value.state !== props.state
+    ) {
       await navigate({
-        type: 'redirectTo',
+        type: NavigationType.REDIRECT_TO,
         url: `/sub-packages/entitlement/${selected.value.state.toLocaleLowerCase()}?id=${encodeURIComponent(selected.value.id)}`
       })
       return
@@ -195,25 +230,25 @@ const load = async () => {
 /** 按权益投影进入状态页，item 为选中限时权益 */
 const openItem = (item: LimitedEntitlementViewModel) =>
   navigate({
-    type: 'navigateTo',
+    type: NavigationType.NAVIGATE_TO,
     url: `/sub-packages/entitlement/${item.state.toLocaleLowerCase()}?id=${encodeURIComponent(item.id)}`
   })
 /** 打开站内明细，url 为收藏或历史地址 */
-const open = (url: string) => navigate({ type: 'navigateTo', url })
+const open = (url: string) => navigate({ type: NavigationType.NAVIGATE_TO, url })
 /** 从状态页前往目录或只读历史，不在此页激活限时权益 */
 const action = () =>
-  props.state === 'PENDING' && limitedScenes.value[0]
+  props.state === LimitedEntitlementState.PENDING && limitedScenes.value[0]
     ? openScene(limitedScenes.value[0])
-    : ['ENDED', 'EXCEPTION'].includes(props.state)
+    : LIMITED_ENTITLEMENT_RESULT_STATES.includes(props.state)
       ? open('/sub-packages/favorites/history')
-      : navigate({ type: 'reLaunch', url: '/sub-packages/learning/index' })
+      : navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/learning/index' })
 /** 打开服务器目录仍可学习的场景，item 为当前场景摘要 */
 const openScene = (item: SceneSummary) => {
   if (
     !view.value.authorizationPending &&
-    ['PENDING', 'ACTIVE', 'ENDING'].includes(props.state) &&
+    LIMITED_ENTITLEMENT_CONTENT_STATES.includes(props.state) &&
     selected.value?.sceneIds.includes(item.scene_id) &&
-    (props.state === 'PENDING' || ['OPEN', 'FORMAL', 'LIMITED'].includes(item.access))
+    (props.state === LimitedEntitlementState.PENDING || CONTENT_ACCESS_LEVELS.includes(item.access))
   )
     void open(`/sub-packages/scene/detail?sceneId=${encodeURIComponent(item.scene_id)}`)
 }
@@ -225,11 +260,20 @@ onShow(load)
 <template>
   <PersonalPage
     :title="stateCopy[0] || title"
-    :navigation="state === 'ALL' ? '学习权益' : state === 'ENDED' ? '学习成果' : '限时学习'"
+    :navigation="
+      state === EntitlementPageState.ALL
+        ? '学习权益'
+        : state === LimitedEntitlementState.ENDED
+          ? '学习成果'
+          : '限时学习'
+    "
     :subtitle="stateCopy[1] || ''"
   >
-    <PersonalSummary v-bind="summary" :compact="['PENDING', 'ACTIVE', 'ENDING'].includes(state)" />
-    <view v-if="state === 'ENDED'" class="result-grid"
+    <PersonalSummary
+      v-bind="summary"
+      :compact="LIMITED_ENTITLEMENT_CONTENT_STATES.includes(state)"
+    />
+    <view v-if="state === LimitedEntitlementState.ENDED" class="result-grid"
       ><view class="result-card"
         ><text class="result-value">{{ result?.completed_scenes ?? '—' }}</text
         ><text class="result-label">完成场景</text></view
@@ -245,7 +289,7 @@ onShow(load)
     >
     <text class="section-title">{{ stateCopy[2] }}</text>
     <view class="row-list">
-      <template v-if="state === 'ALL'">
+      <template v-if="state === EntitlementPageState.ALL">
         <PersonalRow
           v-for="item in view.formal"
           :key="item.id"
@@ -257,13 +301,13 @@ onShow(load)
           v-for="item in view.limited"
           :key="item.id"
           title="限时活动"
-          :detail="`${item.title} · ${item.state === 'PENDING' ? '待开始' : item.state === 'ENDED' ? '已结束' : '查看状态'} · ${formatTime(item.expiresAt || item.startsBefore)}`"
+          :detail="`${item.title} · ${item.state === LimitedEntitlementState.PENDING ? '待开始' : item.state === LimitedEntitlementState.ENDED ? '已结束' : '查看状态'} · ${formatTime(item.expiresAt || item.startsBefore)}`"
           :badge="
-            item.state === 'PENDING'
+            item.state === LimitedEntitlementState.PENDING
               ? '待开始'
-              : item.state === 'ENDED'
+              : item.state === LimitedEntitlementState.ENDED
                 ? '已结束'
-                : item.state === 'EXCEPTION'
+                : item.state === LimitedEntitlementState.EXCEPTION
                   ? '暂不可用'
                   : '学习中'
           "
@@ -274,21 +318,27 @@ onShow(load)
           title="开放场景"
           :detail="
             catalog
-              .filter((item) => item.access === 'OPEN')
+              .filter((item) => item.access === AccessLevel.OPEN)
               .map((item) => item.chinese_title || item.title)
               .join('、')
           "
           badge="永久开放"
         />
       </template>
-      <template v-else-if="state === 'ENDED' || state === 'EXCEPTION'">
+      <template
+        v-else-if="
+          state === LimitedEntitlementState.ENDED || state === LimitedEntitlementState.EXCEPTION
+        "
+      >
         <PersonalRow
           v-for="row in preserved"
           :key="row.route"
           :title="row.title"
           :detail="row.detail"
           :badge="row.badge"
-          :size="state === 'ENDED' ? 'small' : 'normal'"
+          :size="
+            state === LimitedEntitlementState.ENDED ? ProfileRowSize.SMALL : ProfileRowSize.NORMAL
+          "
           actionable
           @press="open(row.route)"
         />
@@ -299,16 +349,16 @@ onShow(load)
           :key="item.scene_id"
           :title="item.chinese_title || item.title"
           :detail="
-            state === 'PENDING'
+            state === LimitedEntitlementState.PENDING
               ? `${selected?.durationDays} 天活动场景之一`
               : item.progress
                 ? `学习中 · 进度 ${item.progress}%`
                 : '尚未开始'
           "
-          :badge="state === 'PENDING' ? '待开始' : '可学习'"
+          :badge="state === LimitedEntitlementState.PENDING ? '待开始' : '可学习'"
           actionable
           @press="openScene(item)" /><PersonalRow
-          v-if="state === 'ENDING'"
+          v-if="state === LimitedEntitlementState.ENDING"
           title="学习历史"
           detail="查看本次学习进度和收藏"
           badge="可查看"
@@ -317,17 +367,17 @@ onShow(load)
       /></template>
     </view>
     <AppState
-      v-if="state !== 'ALL' && !selected && !error"
+      v-if="state !== EntitlementPageState.ALL && !selected && !error"
       icon-label="状态"
       title="暂无该状态权益"
       description="请从权益列表进入当前有效记录"
     />
     <text v-if="error" class="form-error">{{ error }}</text
-    ><AppButton v-if="error" label="重新加载" variant="secondary" @press="load" />
+    ><AppButton v-if="error" label="重新加载" :variant="ButtonVariant.SECONDARY" @press="load" />
     <template #actions
       ><AppButton
         :label="stateCopy[3] || ''"
-        :disabled="state !== 'ALL' && !selected"
+        :disabled="state !== EntitlementPageState.ALL && !selected"
         @press="action"
     /></template>
   </PersonalPage>

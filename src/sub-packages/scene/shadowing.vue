@@ -12,6 +12,7 @@ import { createRecordingSnapshot } from '@/features/recording/recording-machine'
 import DialogueSentence from '@/features/scene/components/dialogue-sentence.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
+import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
 
 import type { AudioTarget, SceneEntry } from '@/shared/contracts/learning'
@@ -127,7 +128,7 @@ const completeLearning = async () => {
     await releasing
     if (!active || request !== interaction) return
     await navigate({
-      type: 'redirectTo',
+      type: NavigationType.REDIRECT_TO,
       url: `/sub-packages/scene/completed?sceneId=${encodeURIComponent(sceneId.value)}`
     })
   } finally {

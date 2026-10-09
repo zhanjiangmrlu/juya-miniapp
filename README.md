@@ -52,7 +52,7 @@ H5 开发时，浏览器通过 Vite 的同源 `/api/v1` 代理访问 `VITE_API_B
 | 目录                    | 职责                                                                               |
 | ----------------------- | ---------------------------------------------------------------------------------- |
 | `src/shared/contracts/` | 按业务存放 API 数据契约                                                            |
-| `src/shared/enums/`     | 按业务存放固定取值的枚举类型                                                       |
+| `src/shared/enums/`     | 按业务存放运行时枚举成员及同名联合类型                                             |
 | `src/shared/types/`     | 业务结构、服务端口、参数和结果类型；`*-components.ts` 存放同业务的组件 Props/Emits |
 | `src/shared/constants/` | 按业务存放固定配置、文案映射、静态列表、存储键和校验阈值                           |
 
@@ -60,9 +60,11 @@ H5 开发时，浏览器通过 Vite 的同源 `/api/v1` 代理访问 `VITE_API_B
 
 响应式状态、函数局部变量、用户或设备数据及运行时实例保留在实现文件；组件默认参数保留在调用处。国际化文案继续由 `src/i18n/` 管理，运行时 Mock 数据在 `src/services/mock/` 的独立数据文件中维护，测试样本继续归入 `tests/`。这些目录调整不改变原取值、接口数据或业务规则。
 
-固定取值的字符串和数字联合类型集中在 `src/shared/enums/`，按业务拆分为账号、联系资料、权益、首页、学习、学习成果、收藏、个人页面、音频和录音文件；导航、HTTP 和公共组件展示类型分别放在 `navigation.ts`、`http.ts`、`ui.ts`。
+固定取值的业务枚举集中在 `src/shared/enums/`，按业务拆分为账号、联系资料、权益、首页、学习、学习成果、收藏、个人页面、音频、录音、场景模型、学习进度、消息关联和应用启动文件；导航、HTTP 和公共组件展示类型分别放在 `navigation.ts`、`http.ts`、`ui.ts`。
 
-契约接口、业务实现、组件和测试通过 `import type` 直接引用对应枚举文件，例如 `import type { AccountDeletionStatus } from '@/shared/enums/account'`。这些类型在编译后被擦除，不改变接口取值或运行时比较。开放字符串字段、对象判别联合、工具类型属性键和构建环境开关保持原有结构。
+每个枚举使用 `as const` 对象提供运行时值，并派生同名联合类型。业务实现和组件使用普通导入，例如 `import { AudioStatus } from '@/shared/enums/audio'`，状态判断写为 `props.status === AudioStatus.LOADING`；契约接口及纯类型依赖使用 `import type`。原始接口值保持不变，既有字符串值仍与派生类型兼容；状态集合和文案映射在 `shared/constants/` 中引用枚举成员。开放字符串字段仍允许未知后端状态，判别联合保持成员特定的类型与收窄能力；系统事件、工具类型属性键和构建环境开关保持原有结构。测试样本和期望值可保留独立字面量，以验证枚举值与既有契约一致。
+
+派生枚举类型显式交叉 `string` 或 `number`，例如 `(typeof AudioStatus)[keyof typeof AudioStatus] & string`。这不会扩大枚举取值，基础类型提示用于兼容 Vue 3.4 的 Props 推导，保留开发与生产编译的原有运行时校验。
 
 ## 测试目录
 

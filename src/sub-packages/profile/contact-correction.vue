@@ -8,9 +8,11 @@ import { composeCorrectionReason } from '@/features/contact-profile/correction-r
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
+import { ContactCorrectionField } from '@/shared/enums/contact-profile'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 
-import type { ContactCorrectionField } from '@/shared/enums/contact-profile'
 import type { InputValueEvent } from '@/shared/types/ui'
 const current = ref('')
 const wechatId = ref('')
@@ -28,7 +30,7 @@ const load = async () => {
 /** 更新更正表单，event 为输入事件，field 为需更新的微信号或原因 */
 const input = (event: unknown, field: ContactCorrectionField) => {
   const value = (event as InputValueEvent<string>).detail.value
-  if (field === 'wechat') wechatId.value = value
+  if (field === ContactCorrectionField.WECHAT) wechatId.value = value
   else reason.value = value
 }
 /** 提交本人更正申请，不在客户端重置修改次数 */
@@ -50,7 +52,10 @@ const submit = async () => {
   loading.value = true
   try {
     await getRuntimeServices().contact.correct(cause.normalizedReason)
-    await navigate({ type: 'redirectTo', url: '/sub-packages/profile/contact-manage' })
+    await navigate({
+      type: NavigationType.REDIRECT_TO,
+      url: '/sub-packages/profile/contact-manage'
+    })
   } catch {
     error.value = '更正申请提交失败，请重试'
   } finally {
@@ -58,7 +63,8 @@ const submit = async () => {
   }
 }
 /** 返回联系资料管理页 */
-const back = () => navigate({ type: 'redirectTo', url: '/sub-packages/profile/contact-manage' })
+const back = () =>
+  navigate({ type: NavigationType.REDIRECT_TO, url: '/sub-packages/profile/contact-manage' })
 onShow(load)
 </script>
 <template>
@@ -76,7 +82,7 @@ onShow(load)
       :value="wechatId"
       maxlength="20"
       placeholder="请输入更正后的微信号"
-      @input="input($event, 'wechat')"
+      @input="input($event, ContactCorrectionField.WECHAT)"
     />
     <text class="form-label correction-label">更正原因</text
     ><textarea
@@ -84,11 +90,11 @@ onShow(load)
       :value="reason"
       maxlength="470"
       placeholder="请简要说明需要更正的原因"
-      @input="input($event, 'reason')"
+      @input="input($event, ContactCorrectionField.REASON)"
     />
     <text v-if="error" class="form-error">{{ error }}</text>
     <template #actions
-      ><AppButton label="返回联系资料" variant="secondary" @press="back" /><AppButton
+      ><AppButton label="返回联系资料" :variant="ButtonVariant.SECONDARY" @press="back" /><AppButton
         label="提交更正申请"
         :loading="loading"
         @press="submit"

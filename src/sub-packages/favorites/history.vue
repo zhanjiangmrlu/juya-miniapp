@@ -9,6 +9,9 @@ import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ProfileTabKey } from '@/shared/enums/profile'
+import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 
 import type { FavoriteHistoryResponse, HistoryRow } from '@/shared/types/favorites'
@@ -30,15 +33,16 @@ const load = async () => {
 }
 /** 打开历史场景，route 为权限校验后的正文地址 */
 const open = (route: string | null) => {
-  if (route) void navigate({ type: 'navigateTo', url: route })
+  if (route) void navigate({ type: NavigationType.NAVIGATE_TO, url: route })
 }
 /** 返回收藏银行 */
-const back = () => navigate({ type: 'reLaunch', url: '/sub-packages/favorites/index' })
+const back = () =>
+  navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/favorites/index' })
 onShow(load)
 </script>
 <template>
   <PersonalPage
-    active="favorites"
+    :active="ProfileTabKey.FAVORITES"
     navigation="学习记录"
     title="学习过的场景"
     subtitle="历史记录和收藏会持续保留"
@@ -61,8 +65,11 @@ onShow(load)
       v-if="error"
       class="form-error"
       >{{ error }}</text
-    ><AppButton v-if="error" label="重新加载" variant="secondary" @press="load" /><template #actions
-      ><AppButton label="返回收藏" @press="back" /></template
+    ><AppButton
+      v-if="error"
+      label="重新加载"
+      :variant="ButtonVariant.SECONDARY"
+      @press="load" /><template #actions><AppButton label="返回收藏" @press="back" /></template
   ></PersonalPage>
 </template>
 <style scoped lang="scss">

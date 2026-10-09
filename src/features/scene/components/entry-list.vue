@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { SceneEntryType } from '@/shared/enums/learning'
+
 import type { SceneEntry } from '@/shared/contracts/learning'
 import type { EntryListEmits, EntryListProps } from '@/shared/types/scene-components'
 
@@ -25,15 +27,20 @@ const sourceNumber = (entry: SceneEntry, sentences: SceneEntry[]) => {
       <view class="entry-top"
         ><text class="entry-text"
           >{{ entry.text
-          }}<text v-if="entry.phonetic && entry.entry_type === 'VOCABULARY'" class="entry-phonetic">
+          }}<text
+            v-if="entry.phonetic && entry.entry_type === SceneEntryType.VOCABULARY"
+            class="entry-phonetic"
+          >
             {{ entry.phonetic }}</text
           ></text
         ><text class="entry-type">{{
-          entry.entry_type === 'PHRASE' ? '可点语块' : '可点词'
+          entry.entry_type === SceneEntryType.PHRASE ? '可点语块' : '可点词'
         }}</text></view
       ><text class="entry-meaning"
         >{{ entry.chinese
-        }}{{ entry.entry_type === 'VOCABULARY' ? sourceNumber(entry, sentences) : '' }}</text
+        }}{{
+          entry.entry_type === SceneEntryType.VOCABULARY ? sourceNumber(entry, sentences) : ''
+        }}</text
       >
     </button>
   </view>

@@ -1,3 +1,5 @@
+import { LearningResultLabel } from '@/shared/enums/learning-result'
+
 import type { LearningResultDto, LearningResultViewModel } from '@/shared/types/learning-result'
 
 export type { LearningResultDto } from '@/shared/types/learning-result'
@@ -9,17 +11,17 @@ export function presentLearningResult(dto: LearningResultDto | null): LearningRe
   return {
     cards: [
       {
-        label: '完成场景',
+        label: LearningResultLabel.COMPLETED_SCENES,
         route: '/sub-packages/favorites/history',
         value: dto?.completed_scenes ?? 0
       },
       {
-        label: '收藏词汇',
+        label: LearningResultLabel.FAVORITE_VOCABULARY,
         route: '/sub-packages/favorites/index?tab=vocabulary',
         value: dto?.favorite_vocabulary ?? 0
       },
       {
-        label: '收藏语块',
+        label: LearningResultLabel.FAVORITE_PHRASES,
         route: '/sub-packages/favorites/index?tab=phrases',
         value: dto?.favorite_phrases ?? 0
       }

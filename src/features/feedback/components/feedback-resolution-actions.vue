@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import { getResolutionActions, validateSupplement } from '@/features/feedback/feedback-form'
+import { FeedbackResolutionAction } from '@/shared/enums/feedback'
 
 import type {
   FeedbackResolutionActionsEmits,
@@ -23,7 +24,7 @@ const input = (event: unknown) => {
 }
 /** 确认问题已经解决 */
 const resolved = () => {
-  if (!props.loading) emit('resolve', { action: 'RESOLVED' })
+  if (!props.loading) emit('resolve', { action: FeedbackResolutionAction.RESOLVED })
 }
 /** 先收集原因，再发送七天内唯一一次重开动作 */
 const reopen = () => {
@@ -38,7 +39,7 @@ const reopen = () => {
     return
   }
   error.value = ''
-  emit('resolve', { action: 'REOPEN', reason: validation.normalized })
+  emit('resolve', { action: FeedbackResolutionAction.REOPEN, reason: validation.normalized })
 }
 </script>
 <template>

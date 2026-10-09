@@ -1,3 +1,4 @@
+import type { EntitlementPageState } from '@/shared/enums/entitlements'
 import type { LimitedEntitlementViewModel } from '@/shared/types/entitlements'
 
 /** EntitlementCard 输入属性 */
@@ -10,7 +11,7 @@ export type EntitlementCardEmits = {
 
 /** EntitlementPageView 输入属性 */
 export type EntitlementPageViewProps = {
-  state?: LimitedEntitlementViewModel['state'] | 'ALL'
+  state?: LimitedEntitlementViewModel['state'] | EntitlementPageState
   title?: string
 }
 

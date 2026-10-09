@@ -2,6 +2,7 @@
 import AppPage from '@/components/app-page/app-page.vue'
 import AppTabBar from '@/components/app-tab-bar/app-tab-bar.vue'
 import { resolveNavigationMetrics } from '@/services/navigation-metrics'
+import { PageAppearance, PageTier } from '@/shared/enums/ui'
 
 import type { TabPageLayoutProps } from '@/shared/types/ui-components'
 
@@ -26,14 +27,17 @@ try {
   // 浏览器采用设计导航与底部安全区
 }
 
-withDefaults(defineProps<TabPageLayoutProps>(), { tier: 'primary', appearance: 'default' })
+withDefaults(defineProps<TabPageLayoutProps>(), {
+  tier: PageTier.PRIMARY,
+  appearance: PageAppearance.DEFAULT
+})
 </script>
 
 <template>
   <AppPage
     class="tab-layout"
-    :class="{ 'home-theme': appearance === 'home' }"
-    :padded="appearance !== 'home'"
+    :class="{ 'home-theme': appearance === PageAppearance.HOME }"
+    :padded="appearance !== PageAppearance.HOME"
     :tier="tier"
     :appearance="appearance"
     :style="{
@@ -41,7 +45,9 @@ withDefaults(defineProps<TabPageLayoutProps>(), { tier: 'primary', appearance: '
       '--safe-bottom-extra': `${safeBottomExtra}px`
     }"
   >
-    <view class="tab-content" :class="{ 'home-content': appearance === 'home' }"><slot /></view>
+    <view class="tab-content" :class="{ 'home-content': appearance === PageAppearance.HOME }"
+      ><slot
+    /></view>
     <AppTabBar :active="active" :appearance="appearance" />
   </AppPage>
 </template>

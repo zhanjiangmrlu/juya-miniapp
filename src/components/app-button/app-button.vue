@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { ButtonVariant } from '@/shared/enums/ui'
+
 import type { AppButtonEmits, AppButtonProps } from '@/shared/types/ui-components'
 
 const props = withDefaults(defineProps<AppButtonProps>(), {
   block: true,
   disabled: false,
   loading: false,
-  variant: 'primary'
+  variant: ButtonVariant.PRIMARY
 })
 
 const emit = defineEmits<AppButtonEmits>()

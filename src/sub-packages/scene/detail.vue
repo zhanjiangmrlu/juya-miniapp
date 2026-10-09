@@ -7,6 +7,7 @@ import SceneHero from '@/features/scene/components/scene-hero.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
 import { SCENE_LEARNING_STEPS as steps } from '@/shared/constants/scene'
+import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
 import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 
@@ -29,7 +30,7 @@ const handleLoad = (query?: Record<string, string>) => {
 /** 打开学习步骤，page 为对应学习页路由片段 */
 const openStep = async (page: string) => {
   await navigate({
-    type: 'navigateTo',
+    type: NavigationType.NAVIGATE_TO,
     url: `/sub-packages/scene/${page}?sceneId=${encodeURIComponent(sceneId.value)}`
   })
 }

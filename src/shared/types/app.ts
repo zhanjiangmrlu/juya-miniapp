@@ -1,4 +1,5 @@
 import type { SessionResponse } from '@/shared/contracts/session'
+import type { BootstrapStatus } from '@/shared/enums/app'
 
 export interface BootstrapDependencies {
   preload: Array<() => Promise<unknown> | unknown>
@@ -14,7 +15,8 @@ export interface BootstrapDependencies {
   wechatLogin(): Promise<string>
 }
 
-export type BootstrapResult = { status: 'network-error' } | { status: 'ready' }
+export type BootstrapResult =
+  { status: typeof BootstrapStatus.NETWORK_ERROR } | { status: typeof BootstrapStatus.READY }
 
 export type AppMetadata = {
   description: string

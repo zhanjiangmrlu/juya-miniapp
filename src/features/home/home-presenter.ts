@@ -1,4 +1,5 @@
 import { TODAY_TASK_COPY as TASK_COPY } from '@/shared/constants/home'
+import { TodayTaskKind } from '@/shared/enums/home'
 import { formatBeijingDate, getBeijingGreeting } from '@/shared/utils/beijing-time'
 
 import type { HomeResponse, TodayTask } from '@/shared/contracts/home'
@@ -19,7 +20,7 @@ export function resolveTaskScene(
   task: TodayTask | null,
   scenes: SceneCardViewModel[]
 ): SceneCardViewModel | undefined {
-  if (!task?.target_id || task.kind === 'FAVORITE_REVIEW') return undefined
+  if (!task?.target_id || task.kind === TodayTaskKind.FAVORITE_REVIEW) return undefined
   return scenes.find((scene) => scene.sceneId === task.target_id && scene.canOpen)
 }
 
@@ -29,13 +30,13 @@ export function resolveTodayTask(task: TodayTask | null): TodayTaskViewModel | n
 
   let url: string | null = null
 
-  if (task.kind === 'FAVORITE_REVIEW' && task.card_ids.length > 0) {
+  if (task.kind === TodayTaskKind.FAVORITE_REVIEW && task.card_ids.length > 0) {
     url = `/sub-packages/favorites/review-front?cardIds=${queryValue(task.card_ids.join(','))}`
-  } else if (task.target_id && task.kind === 'NEW_SCENE') {
+  } else if (task.target_id && task.kind === TodayTaskKind.NEW_SCENE) {
     url = `/sub-packages/scene/detail?sceneId=${queryValue(task.target_id)}`
-  } else if (task.target_id && task.kind === 'HISTORY_SCENE') {
+  } else if (task.target_id && task.kind === TodayTaskKind.HISTORY_SCENE) {
     url = `/sub-packages/scene/dialogue?sceneId=${queryValue(task.target_id)}&from=history`
-  } else if (task.target_id && task.kind === 'CONTINUE_SCENE') {
+  } else if (task.target_id && task.kind === TodayTaskKind.CONTINUE_SCENE) {
     url = `/sub-packages/scene/dialogue?sceneId=${queryValue(task.target_id)}`
   }
 

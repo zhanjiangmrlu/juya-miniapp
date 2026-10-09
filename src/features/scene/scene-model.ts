@@ -1,3 +1,6 @@
+import { AccessLevel } from '@/shared/enums/entitlements'
+import { SceneModelKind } from '@/shared/enums/scene'
+
 import type { SceneOpenResponse } from '@/shared/contracts/learning'
 import type { SceneModel, SceneSummaryModel, SceneViewState } from '@/shared/types/scene'
 
@@ -24,22 +27,22 @@ const summarize = (response: SceneOpenResponse): SceneSummaryModel | null => {
  */
 export const createSceneModel = (response: SceneOpenResponse): SceneModel => {
   const summary = summarize(response)
-  if (!summary || !response.access || response.access === 'HIDDEN') {
-    return { authorizationPending: response.authorization_pending, kind: 'DENIED' }
+  if (!summary || !response.access || response.access === AccessLevel.HIDDEN) {
+    return { authorizationPending: response.authorization_pending, kind: SceneModelKind.DENIED }
   }
 
-  if (response.access === 'PREVIEW') {
+  if (response.access === AccessLevel.PREVIEW) {
     return {
       ...summary,
       description: response.scene?.description ?? '可查看主题、难度与简介',
-      kind: 'PREVIEW'
+      kind: SceneModelKind.PREVIEW
     }
   }
 
   return {
     ...summary,
     entries: response.scene?.entries ?? [],
-    kind: 'FULL',
+    kind: SceneModelKind.FULL,
     audio: response.scene?.audio,
     revision_id: response.scene?.revision_id,
     content_version: response.scene?.content_version,

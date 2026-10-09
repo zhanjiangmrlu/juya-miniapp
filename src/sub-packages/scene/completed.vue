@@ -9,6 +9,7 @@ import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { SCENE_COMPLETION_DETAILS as details } from '@/shared/constants/scene'
+import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
 
 const result = ref(presentLearningResult(null))
@@ -26,11 +27,11 @@ const handleLoad = async (query?: Record<string, string>) => {
 }
 /** 打开明细，route 为成果卡定义的真实入口 */
 const openDetail = async (route: string) => {
-  await navigate({ type: 'navigateTo', url: route })
+  await navigate({ type: NavigationType.NAVIGATE_TO, url: route })
 }
 /** 返回首页继续学习 */
 const home = async () => {
-  await navigate({ type: 'reLaunch', url: '/pages/home/index' })
+  await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/home/index' })
 }
 /** 读取完整收藏词汇队列并打开既有翻卡入口 */
 const review = async () => {
@@ -38,7 +39,7 @@ const review = async () => {
   reviewing.value = true
   try {
     await navigate({
-      type: 'navigateTo',
+      type: NavigationType.NAVIGATE_TO,
       url: await getResultReviewRoute(getRuntimeServices().favorites)
     })
   } catch {

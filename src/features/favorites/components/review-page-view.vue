@@ -9,15 +9,18 @@ import { createReviewSession } from '@/features/favorites/review-session'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import { createRequestId } from '@/services/http/request-id'
 import { getRuntimeServices } from '@/services/runtime'
+import { FavoriteType, ReviewCardFace } from '@/shared/enums/favorites'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ProfileTabKey } from '@/shared/enums/profile'
+import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 import { useFavoriteStore } from '@/stores/favorites'
 
 import type { FavoriteItem, ReviewSession } from '@/shared/contracts/favorites'
-import type { FavoriteType } from '@/shared/enums/favorites'
 import type { ReviewPageViewProps } from '@/shared/types/favorites-components'
 const props = defineProps<ReviewPageViewProps>()
 const favorites = useFavoriteStore()
-const bank = ref<FavoriteType>('VOCABULARY')
+const bank = ref<FavoriteType>(FavoriteType.VOCABULARY)
 const cardIds = ref<string[]>([])
 const index = ref(0)
 const item = ref<FavoriteItem>()
@@ -29,7 +32,7 @@ let apiSession: ReviewSession | undefined
 const nextLabel = computed(() => (index.value < cardIds.value.length - 1 ? '下一个' : '完成复习'))
 /** 从路由恢复队列并读取真实词卡，query 为卡片标识与当前位置 */
 const load = async (query?: Record<string, string>) => {
-  bank.value = query?.bank === 'PHRASE' ? 'PHRASE' : 'VOCABULARY'
+  bank.value = query?.bank === FavoriteType.PHRASE ? FavoriteType.PHRASE : FavoriteType.VOCABULARY
   cardIds.value =
     query?.cardIds?.split(',').filter(Boolean) ??
     (query?.id ? [query.id] : favorites.tabState[bank.value].review?.cardIds || [])
@@ -61,11 +64,12 @@ const load = async (query?: Record<string, string>) => {
 /** 导航到指定卡面，page 为正面或背面页，position 为队列中的位置 */
 const go = (page: string, position: number) =>
   navigate({
-    type: 'redirectTo',
+    type: NavigationType.REDIRECT_TO,
     url: `/sub-packages/favorites/${page}?index=${position}&bank=${bank.value}`
   })
 /** 明确点击卡片或翻面按钮时切换卡面 */
-const flip = () => go(props.face === 'FRONT' ? 'review-back' : 'review-front', index.value)
+const flip = () =>
+  go(props.face === ReviewCardFace.FRONT ? 'review-back' : 'review-front', index.value)
 /** 完成全部卡片后记录一次复习，失败重试复用已创建会话与固定幂等键 */
 const next = async () => {
   if (busy.value || !item.value) return
@@ -82,7 +86,7 @@ const next = async () => {
     })
     await controller.complete((key) => service.completeReview(apiSession!.id, key))
     favorites.updateTabState(bank.value, { review: null })
-    await navigate({ type: 'reLaunch', url: '/pages/home/index' })
+    await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/home/index' })
   } catch {
     error.value = '复习记录提交失败，请重试'
   } finally {
@@ -93,9 +97,9 @@ onLoad(load)
 </script>
 <template>
   <PersonalPage
-    active="favorites"
+    :active="ProfileTabKey.FAVORITES"
     title="翻卡复习"
-    :subtitle="`第 ${index + 1} 张 · ${face === 'FRONT' ? '收藏词汇可全部复习' : '答案面'}`"
+    :subtitle="`第 ${index + 1} 张 · ${face === ReviewCardFace.FRONT ? '收藏词汇可全部复习' : '答案面'}`"
   >
     <ReviewCard v-if="item" :item="item" :face="face" @flip="flip" />
     <AppState
@@ -107,14 +111,14 @@ onLoad(load)
     <text v-if="error && item" class="form-error">{{ error }}</text>
     <template #actions
       ><AppButton
-        v-if="item && face === 'BACK'"
+        v-if="item && face === ReviewCardFace.BACK"
         label="再看一次"
-        variant="secondary"
+        :variant="ButtonVariant.SECONDARY"
         @press="flip" /><AppButton
         v-if="item"
-        :label="face === 'FRONT' ? '翻面' : nextLabel"
+        :label="face === ReviewCardFace.FRONT ? '翻面' : nextLabel"
         :loading="busy"
-        @press="face === 'FRONT' ? flip() : next()"
+        @press="face === ReviewCardFace.FRONT ? flip() : next()"
     /></template>
   </PersonalPage>
 </template>

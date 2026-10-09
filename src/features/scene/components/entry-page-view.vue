@@ -7,6 +7,8 @@ import EntryList from '@/features/scene/components/entry-list.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
 import VocabularySheet from '@/features/vocabulary-sheet/components/vocabulary-sheet.vue'
+import { SceneLookupEntryType } from '@/shared/enums/learning'
+import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
 
 import type { EntryPageViewProps } from '@/shared/types/scene-components'
@@ -27,7 +29,7 @@ const {
   sceneId,
   scrollTop
 } = useScenePage()
-const phrase = computed(() => props.entryType === 'PHRASE')
+const phrase = computed(() => props.entryType === SceneLookupEntryType.PHRASE)
 const entries = computed(() => (phrase.value ? scene.phraseEntries : scene.vocabularyEntries))
 const sourceChinese = computed(() =>
   scene.dialogueEntries
@@ -50,12 +52,12 @@ const next = async () => {
   if (phrase.value) {
     if (await complete())
       await navigate({
-        type: 'redirectTo',
+        type: NavigationType.REDIRECT_TO,
         url: `/sub-packages/scene/completed?sceneId=${encodeURIComponent(sceneId.value)}`
       })
   } else
     await navigate({
-      type: 'navigateTo',
+      type: NavigationType.NAVIGATE_TO,
       url: `/sub-packages/scene/chunks?sceneId=${encodeURIComponent(sceneId.value)}`
     })
 }

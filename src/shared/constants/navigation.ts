@@ -1,3 +1,4 @@
+import { TabKey } from '@/shared/enums/navigation'
 export const ROUTES = {
   compat: '/sub-packages/compat/index',
   explore: '/sub-packages/learning/explore',
@@ -12,8 +13,8 @@ export const ROUTES = {
 } as const
 
 export const APP_TABS = [
-  { key: 'home', label: '首页', route: ROUTES.home },
-  { key: 'learning', label: '学习', route: ROUTES.learning },
-  { key: 'favorites', label: '收藏', route: ROUTES.favorites },
-  { key: 'profile', label: '我的', route: ROUTES.profile }
+  { key: TabKey.HOME, label: '首页', route: ROUTES.home },
+  { key: TabKey.LEARNING, label: '学习', route: ROUTES.learning },
+  { key: TabKey.FAVORITES, label: '收藏', route: ROUTES.favorites },
+  { key: TabKey.PROFILE, label: '我的', route: ROUTES.profile }
 ] as const

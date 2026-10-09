@@ -8,12 +8,15 @@ import HomeEntryPage from '@/features/home/components/home-entry-page.vue'
 import HomeNavigation from '@/features/home/components/home-navigation.vue'
 import { useHomePage } from '@/features/home/use-home-page'
 import TabPageLayout from '@/layouts/tab-page-layout.vue'
+import { HomeEntryMode, HomePageMode, TodayTaskKind } from '@/shared/enums/home'
+import { NavigationType, TabKey } from '@/shared/enums/navigation'
+import { PageAppearance } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 
 import type { HomePageViewProps } from '@/shared/types/home-components'
 
 const props = withDefaults(defineProps<HomePageViewProps>(), {
-  mode: 'normal',
+  mode: HomePageMode.NORMAL,
   networkError: false
 })
 
@@ -22,8 +25,8 @@ const { cancel, canStartTask, home, load, openSceneCount, retry, startTask, task
 const forcedNetworkError = ref(props.networkError)
 const isFirstVisit = computed(
   () =>
-    props.mode === 'first' ||
-    (home.data?.today_task?.kind === 'NEW_SCENE' && home.data.checkins.total_days === 0)
+    props.mode === HomePageMode.FIRST ||
+    (home.data?.today_task?.kind === TodayTaskKind.NEW_SCENE && home.data.checkins.total_days === 0)
 )
 
 /** 页面显示时刷新首页快照，确保打卡和任务状态及时同步 */
@@ -50,12 +53,12 @@ const handleRetry = async () => {
 
 /** 打开顶部品牌入口对应的站内消息列表 */
 const openMessages = async () => {
-  await navigate({ type: 'navigateTo', url: '/sub-packages/feedback/messages' })
+  await navigate({ type: NavigationType.NAVIGATE_TO, url: '/sub-packages/feedback/messages' })
 }
 
 /** 复习入口进入收藏银行，继续沿用一级页面导航 */
 const openReview = async () => {
-  await navigate({ type: 'reLaunch', url: '/sub-packages/favorites/index' })
+  await navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/favorites/index' })
 }
 
 watch(() => props.networkError, handleNetworkErrorChange)
@@ -66,9 +69,18 @@ onBeforeUnmount(cancel)
 </script>
 
 <template>
-  <HomeEntryPage v-if="isFirstVisit && !home.error && !forcedNetworkError" mode="first" embedded />
-  <HomeEntryPage v-else-if="mode === 'today'" mode="today" />
-  <TabPageLayout v-else class="home-page-view" active="home" appearance="home">
+  <HomeEntryPage
+    v-if="isFirstVisit && !home.error && !forcedNetworkError"
+    :mode="HomeEntryMode.FIRST"
+    embedded
+  />
+  <HomeEntryPage v-else-if="mode === HomePageMode.TODAY" :mode="HomeEntryMode.TODAY" />
+  <TabPageLayout
+    v-else
+    class="home-page-view"
+    :active="TabKey.HOME"
+    :appearance="PageAppearance.HOME"
+  >
     <HomeNavigation
       :unread-message-count="home.view.unreadMessageCount"
       @open-messages="openMessages"

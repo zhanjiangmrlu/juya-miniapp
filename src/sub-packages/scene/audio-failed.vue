@@ -6,6 +6,8 @@ import AppState from '@/components/app-state/app-state.vue'
 import DialogueList from '@/features/scene/components/dialogue-list.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
+import { AudioStatus } from '@/shared/enums/audio'
+import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
 
 const { audio, disposeAudio, fullModel, initialize, play, scene, sceneId } = useScenePage()
@@ -26,7 +28,7 @@ const retry = async () => {
 /** 进入跟读页保留场景标识 */
 const shadowing = async () => {
   await navigate({
-    type: 'navigateTo',
+    type: NavigationType.NAVIGATE_TO,
     url: `/sub-packages/scene/shadowing?sceneId=${encodeURIComponent(sceneId.value)}`
   })
 }
@@ -43,7 +45,7 @@ onUnload(disposeAudio)
         ><text class="failure-mark">!</text
         ><view
           ><text class="failure-title">{{
-            audio.snapshot.status === 'PLAYING' ? '音频已恢复' : '音频加载失败'
+            audio.snapshot.status === AudioStatus.PLAYING ? '音频已恢复' : '音频加载失败'
           }}</text
           ><text class="failure-hint">对话正文仍可阅读。请稍后重试音频。</text></view
         ></view

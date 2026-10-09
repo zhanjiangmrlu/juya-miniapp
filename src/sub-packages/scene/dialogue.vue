@@ -10,6 +10,9 @@ import SceneHeading from '@/features/scene/components/scene-heading.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
 import VocabularySheet from '@/features/vocabulary-sheet/components/vocabulary-sheet.vue'
+import { AUDIO_PLAYBACK_STATUSES } from '@/shared/constants/audio'
+import { AudioButtonVariant, AudioStatus } from '@/shared/enums/audio'
+import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
 import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 
@@ -44,13 +47,13 @@ let highlightTimer: ReturnType<typeof globalThis.setTimeout> | undefined
 /** 按设备位置定位当前句，暂停和句间停顿保留激活，下一句开始时切换 */
 const currentSentence = computed(() => {
   const snapshot = audio.snapshot
-  if (snapshot.target?.sentence_id && ['PLAYING', 'PAUSED'].includes(snapshot.status))
+  if (snapshot.target?.sentence_id && AUDIO_PLAYBACK_STATUSES.includes(snapshot.status))
     return snapshot.target.sentence_id
   if (
     snapshot.target &&
     fullModel.value?.audio &&
     isSameAudioTarget(snapshot.target, fullModel.value.audio) &&
-    ['PLAYING', 'PAUSED'].includes(snapshot.status)
+    AUDIO_PLAYBACK_STATUSES.includes(snapshot.status)
   ) {
     let activeId = scene.dialogueEntries[0]?.entry_id
     let activeStartMs = -1
@@ -79,7 +82,7 @@ const duration = computed(() => {
 })
 const wholePlaying = computed(
   () =>
-    audio.snapshot.status === 'PLAYING' &&
+    audio.snapshot.status === AudioStatus.PLAYING &&
     audio.snapshot.target &&
     !audio.snapshot.target.sentence_id
 )
@@ -137,7 +140,7 @@ const handleListScroll = (event: PageScrollEvent) => {
 /** 进入逐句跟读并保留场景标识 */
 const openShadowing = async () => {
   await navigate({
-    type: 'navigateTo',
+    type: NavigationType.NAVIGATE_TO,
     url: `/sub-packages/scene/shadowing?sceneId=${encodeURIComponent(sceneId.value)}`
   })
 }
@@ -152,10 +155,10 @@ const cleanup = () => {
 watch(
   () => audio.snapshot.status,
   (status) => {
-    if (status !== 'FAILED' || !fullModel.value || !pageActive.value) return
+    if (status !== AudioStatus.FAILED || !fullModel.value || !pageActive.value) return
     const sentenceId = audio.snapshot.target?.sentence_id
     void navigate({
-      type: 'redirectTo',
+      type: NavigationType.REDIRECT_TO,
       url: `/sub-packages/scene/audio-failed?sceneId=${encodeURIComponent(sceneId.value)}${sentenceId ? '&sentenceId=' + encodeURIComponent(sentenceId) : ''}`
     })
   }
@@ -183,7 +186,7 @@ const { pageStyle, scrollLocked } = usePageScrollLock()
       />
       <view v-if="fullModel.audio" class="whole-player">
         <AudioButton
-          variant="large"
+          :variant="AudioButtonVariant.LARGE"
           :current-key="audio.currentKey"
           label="整段播放"
           :status="audio.snapshot.status"
@@ -229,7 +232,7 @@ const { pageStyle, scrollLocked } = usePageScrollLock()
           @play="play"
         />
       </scroll-view>
-      <view v-if="audio.snapshot.status === 'FAILED'" class="audio-failure" role="alert"
+      <view v-if="audio.snapshot.status === AudioStatus.FAILED" class="audio-failure" role="alert"
         ><text>音频加载失败，正文可继续阅读</text
         ><button @click="audio.snapshot.target && play(audio.snapshot.target)">
           重新加载音频

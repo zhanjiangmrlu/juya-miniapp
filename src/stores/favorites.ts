@@ -2,21 +2,21 @@ import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
 
 import { presentFavorites } from '@/features/favorites/favorite-presenter'
+import { FavoriteType } from '@/shared/enums/favorites'
 
 import type { FavoriteItem } from '@/shared/contracts/favorites'
-import type { FavoriteType } from '@/shared/enums/favorites'
 import type { FavoriteService, FavoriteTabState } from '@/shared/types/favorites'
 export type { FavoriteTabState } from '@/shared/types/favorites'
 /** 创建互相独立的银行筛选与阅读位置 */
 const createTabState = (): FavoriteTabState => ({ cursor: null, filter: '', scrollTop: 0 })
 export const useFavoriteStore = defineStore('favorites', () => {
-  const activeTab = ref<FavoriteType>('VOCABULARY')
+  const activeTab = ref<FavoriteType>(FavoriteType.VOCABULARY)
   const items = ref<FavoriteItem[]>([])
   const loading = ref(false)
   let generation = 0
   const tabState = reactive<Record<FavoriteType, FavoriteTabState>>({
-    PHRASE: createTabState(),
-    VOCABULARY: createTabState()
+    [FavoriteType.PHRASE]: createTabState(),
+    [FavoriteType.VOCABULARY]: createTabState()
   })
   const visibleGroups = computed(() =>
     presentFavorites(
@@ -71,13 +71,13 @@ export const useFavoriteStore = defineStore('favorites', () => {
   /** 清空学习缓存时移除收藏与银行状态 */
   const clear = () => {
     generation++
-    activeTab.value = 'VOCABULARY'
+    activeTab.value = FavoriteType.VOCABULARY
     items.value = []
     loading.value = false
-    delete tabState.PHRASE.review
-    delete tabState.VOCABULARY.review
-    Object.assign(tabState.PHRASE, createTabState())
-    Object.assign(tabState.VOCABULARY, createTabState())
+    delete tabState[FavoriteType.PHRASE].review
+    delete tabState[FavoriteType.VOCABULARY].review
+    Object.assign(tabState[FavoriteType.PHRASE], createTabState())
+    Object.assign(tabState[FavoriteType.VOCABULARY], createTabState())
   }
   return {
     activeTab,

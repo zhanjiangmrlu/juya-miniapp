@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 
 import { getRuntimeServices } from '@/services/runtime'
+import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
 import { useLearningStore } from '@/stores/learning'
 
@@ -28,7 +29,7 @@ export const useLearningPage = () => {
       return
     }
 
-    await navigate({ type: 'navigateTo', url: scene.entryUrl })
+    await navigate({ type: NavigationType.NAVIGATE_TO, url: scene.entryUrl })
   }
 
   /** 关闭无权限提示并保留当前探索位置。 */
@@ -38,18 +39,24 @@ export const useLearningPage = () => {
 
   /** 进入只读探索列表。 */
   async function openExplore() {
-    await navigate({ type: 'navigateTo', url: '/sub-packages/learning/explore' })
+    await navigate({ type: NavigationType.NAVIGATE_TO, url: '/sub-packages/learning/explore' })
   }
 
   /** 进入已学习场景列表，作为已有权益用户唯一开放场景复习入口。 */
   async function openReview() {
-    await navigate({ type: 'navigateTo', url: '/sub-packages/favorites/history?filter=open' })
+    await navigate({
+      type: NavigationType.NAVIGATE_TO,
+      url: '/sub-packages/favorites/history?filter=open'
+    })
   }
 
   /** 从服务端允许的次级入口前往联系资料，不承诺开通内容。 */
   async function openProfile() {
     noticeVisible.value = false
-    await navigate({ type: 'navigateTo', url: '/sub-packages/profile/contact-prompt' })
+    await navigate({
+      type: NavigationType.NAVIGATE_TO,
+      url: '/sub-packages/profile/contact-prompt'
+    })
   }
 
   return {

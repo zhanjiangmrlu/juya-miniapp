@@ -1,4 +1,5 @@
 import { ROUTES } from '@/shared/constants/navigation'
+import { NavigationType } from '@/shared/enums/navigation'
 
 import type { LegacyRouteInput, NavigationIntent } from '@/shared/types/navigation'
 
@@ -15,12 +16,12 @@ function appendQuery(path: string, query: Record<string, string | undefined>) {
 /** 将旧版页面编号映射为 V1.3 的唯一导航意图，集中承接历史入口。 */
 export function resolveLegacyRoute(input: LegacyRouteInput): NavigationIntent {
   if (input.pageId === 'M04') {
-    return { type: 'reLaunch', url: appendQuery(ROUTES.home, { networkError: '1' }) }
+    return { type: NavigationType.RE_LAUNCH, url: appendQuery(ROUTES.home, { networkError: '1' }) }
   }
 
   if (input.pageId === 'M10' || input.pageId === 'M11') {
     return {
-      type: 'redirectTo',
+      type: NavigationType.REDIRECT_TO,
       url: appendQuery(ROUTES.sceneDialogue, {
         sceneId: input.sceneId,
         sourceLocator: input.sourceLocator,
@@ -30,8 +31,8 @@ export function resolveLegacyRoute(input: LegacyRouteInput): NavigationIntent {
   }
 
   if (input.pageId === 'M26') {
-    return { type: 'reLaunch', url: ROUTES.profile }
+    return { type: NavigationType.RE_LAUNCH, url: ROUTES.profile }
   }
 
-  return { type: 'reLaunch', url: ROUTES.home }
+  return { type: NavigationType.RE_LAUNCH, url: ROUTES.home }
 }

@@ -1,3 +1,6 @@
+import { AccessLevel } from '@/shared/enums/entitlements'
+import { LearningCatalogStage, LearningSceneStatus } from '@/shared/enums/learning'
+
 import type { SceneSummary } from '@/shared/contracts/learning'
 import type {
   CatalogPresentationInput,
@@ -11,21 +14,25 @@ export type { CatalogPresentationInput } from '@/shared/types/learning'
 
 /** 判断完成记录，scene 为后台场景摘要，完成状态不依赖可选百分比 */
 const hasCompleted = (scene: SceneSummary): boolean =>
-  scene.status === 'COMPLETED' || (scene.progress ?? 0) >= 100
+  scene.status === LearningSceneStatus.COMPLETED || (scene.progress ?? 0) >= 100
 
 /** 判断未完成的学习进度，scene 为后台场景摘要 */
 const hasStarted = (scene: SceneSummary): boolean =>
-  ((scene.progress ?? 0) > 0 || scene.status === 'IN_PROGRESS') && !hasCompleted(scene)
+  ((scene.progress ?? 0) > 0 || scene.status === LearningSceneStatus.IN_PROGRESS) &&
+  !hasCompleted(scene)
 
 /** 将摘要映射为卡片，scene 为后台提供的安全展示信息 */
 const presentScene = (scene: SceneSummary): SceneCardViewModel => {
-  const canOpen = scene.access === 'OPEN' || scene.access === 'FORMAL' || scene.access === 'LIMITED'
+  const canOpen =
+    scene.access === AccessLevel.OPEN ||
+    scene.access === AccessLevel.FORMAL ||
+    scene.access === AccessLevel.LIMITED
   const accessLabel =
-    scene.access === 'OPEN'
+    scene.access === AccessLevel.OPEN
       ? '开放学习场景'
-      : scene.access === 'FORMAL'
+      : scene.access === AccessLevel.FORMAL
         ? '正式内容包'
-        : scene.access === 'LIMITED'
+        : scene.access === AccessLevel.LIMITED
           ? '限时学习权益'
           : '只读预览'
 
@@ -52,21 +59,23 @@ export const presentCatalog = (input: CatalogPresentationInput): CatalogSections
   const modules = input.modules.filter(
     (module) => module.enabled && module.key === 'scene_learning'
   )
-  const visible = input.catalog.items.filter((scene) => scene.access !== 'HIDDEN')
-  const open = visible.filter((scene) => scene.access === 'OPEN')
+  const visible = input.catalog.items.filter((scene) => scene.access !== AccessLevel.HIDDEN)
+  const open = visible.filter((scene) => scene.access === AccessLevel.OPEN)
   const entitled = visible.filter(
-    (scene) => scene.access === 'FORMAL' || scene.access === 'LIMITED'
+    (scene) => scene.access === AccessLevel.FORMAL || scene.access === AccessLevel.LIMITED
   )
   const hasEntitlement =
     entitled.length > 0 ||
     visible.some(
       (scene) =>
-        scene.access !== 'OPEN' &&
-        ((scene.progress ?? 0) > 0 || scene.status === 'IN_PROGRESS' || hasCompleted(scene))
+        scene.access !== AccessLevel.OPEN &&
+        ((scene.progress ?? 0) > 0 ||
+          scene.status === LearningSceneStatus.IN_PROGRESS ||
+          hasCompleted(scene))
     )
   const accessibleIds = new Set([...open, ...entitled].map((scene) => scene.scene_id))
   const preview = visible.filter(
-    (scene) => scene.access === 'PREVIEW' && !accessibleIds.has(scene.scene_id)
+    (scene) => scene.access === AccessLevel.PREVIEW && !accessibleIds.has(scene.scene_id)
   )
 
   return {
@@ -87,6 +96,6 @@ export const presentCatalog = (input: CatalogPresentationInput): CatalogSections
     openScenes: hasEntitlement ? [] : open.map(presentScene),
     previewScenes: preview.map(presentScene),
     showProfileAction: input.catalog.profile_completion_enabled === true,
-    stage: hasEntitlement ? 'ENTITLED' : 'NEW'
+    stage: hasEntitlement ? LearningCatalogStage.ENTITLED : LearningCatalogStage.NEW
   }
 }

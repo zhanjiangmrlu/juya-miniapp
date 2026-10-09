@@ -1,3 +1,5 @@
+import { AccountDeletionStatus } from '@/shared/enums/account'
+
 import type { DeletionRequest } from '@/shared/contracts/account'
 import type { AccountDeletionSummary, DeletionViewModel } from '@/shared/types/account'
 import type { ServerClock } from '@/shared/types/time'
@@ -11,7 +13,7 @@ export const presentDeletionState = (
 ): DeletionViewModel => {
   return {
     // 未提供可靠服务端采样时不能用设备时间隐藏撤回，真实期限由撤回接口判定
-    canRevoke: dto.status === 'PENDING',
+    canRevoke: dto.status === AccountDeletionStatus.PENDING,
     effectiveAt: dto.effective_at,
     effectiveLabel: new Intl.DateTimeFormat('zh-CN', {
       day: '2-digit',
@@ -29,5 +31,8 @@ export const presentDeletionState = (
 
 /** 判断冷启动注销门禁，deletion 为本人资料提供的最新注销状态摘要 */
 export const shouldGateStartupForDeletion = (deletion?: AccountDeletionSummary | null): boolean => {
-  return deletion?.status === 'PENDING' || deletion?.status === 'PROCESSING'
+  return (
+    deletion?.status === AccountDeletionStatus.PENDING ||
+    deletion?.status === AccountDeletionStatus.PROCESSING
+  )
 }

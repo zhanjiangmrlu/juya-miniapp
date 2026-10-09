@@ -3,6 +3,7 @@ import PageHeader from '@/components/page-header/page-header.vue'
 import TabPageLayout from '@/layouts/tab-page-layout.vue'
 import { resolveNavigationMetrics } from '@/services/navigation-metrics'
 import { DEFAULT_LEARNING_HEADER_RESERVE } from '@/shared/constants/learning'
+import { PageAppearance } from '@/shared/enums/ui'
 
 import type { EntryPageShellProps } from '@/shared/types/learning-components'
 defineProps<EntryPageShellProps>()
@@ -25,7 +26,7 @@ try {
 <template>
   <TabPageLayout
     :active="active"
-    appearance="home"
+    :appearance="PageAppearance.HOME"
     class="entry-layout"
     :style="{ '--entry-header-reserve': `${headerReserve}px` }"
   >

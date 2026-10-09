@@ -1,3 +1,5 @@
+import { AudioEventType } from '@/shared/enums/audio'
+
 import type { AudioEngine, AudioEvent } from '@/shared/types/audio'
 
 /** 将 uni 播放事件适配为独占设备端口，每次切换源都会使旧设备事件失效 */
@@ -41,17 +43,23 @@ export const createUniAudioEngine = (): AudioEngine => {
       const emit = (event: AudioEvent) => {
         if (active === generation) listener?.(event)
       }
-      device.onCanplay(() => emit({ type: 'canplay' }))
-      device.onPlay(() => emit({ type: 'play' }))
+      device.onCanplay(() => emit({ type: AudioEventType.CANPLAY }))
+      device.onPlay(() => emit({ type: AudioEventType.PLAY }))
       device.onPause(() =>
-        emit({ type: 'pause', currentTimeMs: Math.round(device.currentTime * 1000) })
+        emit({ type: AudioEventType.PAUSE, currentTimeMs: Math.round(device.currentTime * 1000) })
       )
-      device.onEnded(() => emit({ type: 'ended' }))
+      device.onEnded(() => emit({ type: AudioEventType.ENDED }))
       device.onTimeUpdate(() =>
-        emit({ type: 'timeupdate', currentTimeMs: Math.round(device.currentTime * 1000) })
+        emit({
+          type: AudioEventType.TIMEUPDATE,
+          currentTimeMs: Math.round(device.currentTime * 1000)
+        })
       )
       device.onError((error) =>
-        emit({ type: 'error', status: error.errMsg.includes('403') ? 403 : error.errCode })
+        emit({
+          type: AudioEventType.ERROR,
+          status: error.errMsg.includes('403') ? 403 : error.errCode
+        })
       )
       device.autoplay = false
       device.src = url

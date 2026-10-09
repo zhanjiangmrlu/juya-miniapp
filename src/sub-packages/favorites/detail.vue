@@ -9,6 +9,9 @@ import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
+import { FavoriteType } from '@/shared/enums/favorites'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ProfileTabKey } from '@/shared/enums/profile'
 import { navigate } from '@/shared/navigation/navigate'
 import { useAudioStore } from '@/stores/audio'
 
@@ -23,7 +26,7 @@ const returnSource = async () => {
     group.value.sources.length === 1 && group.value.sources[0]?.returnUrl
       ? group.value.sources[0].returnUrl
       : `/sub-packages/favorites/sources?id=${encodeURIComponent(item.value.id)}`
-  await navigate({ type: 'navigateTo', url })
+  await navigate({ type: NavigationType.NAVIGATE_TO, url })
 }
 /** 删除当前收藏并返回银行 */
 const remove = async () => {
@@ -47,10 +50,10 @@ const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().sc
 </script>
 <template>
   <PersonalPage
-    active="favorites"
+    :active="ProfileTabKey.FAVORITES"
     navigation="收藏详情"
     title="收藏条目详情"
-    :subtitle="`${item?.entry_type === 'PHRASE' ? '语块银行' : '词汇银行'} · 来自「${group?.sources[0]?.scene_title || '来源场景'}」`"
+    :subtitle="`${item?.entry_type === FavoriteType.PHRASE ? '语块银行' : '词汇银行'} · 来自「${group?.sources[0]?.scene_title || '来源场景'}」`"
   >
     <template v-if="item">
       <PersonalSummary
@@ -74,7 +77,7 @@ const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().sc
         />
         <PersonalRow
           title="收藏状态"
-          :detail="`已加入${item.entry_type === 'PHRASE' ? '语块银行' : '词汇银行'}`"
+          :detail="`已加入${item.entry_type === FavoriteType.PHRASE ? '语块银行' : '词汇银行'}`"
           :badge="removing ? '处理中' : '取消收藏'"
           actionable
           @press="remove"

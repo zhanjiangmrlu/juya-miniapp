@@ -1,4 +1,5 @@
-import type { RecordingPlaybackEventType } from '@/shared/enums/recording'
+import { RecordingPlaybackEventType, RecordingStatus } from '@/shared/enums/recording'
+
 import type { RecordingPort, RecordingSnapshot } from '@/shared/types/recording'
 
 import { createBrowserRecordingPort } from './browser-recording-port'
@@ -27,22 +28,25 @@ export class RecordingController {
   ) {
     this.unsubscribe = port.subscribePlayback?.((type) => {
       if (this.disposed || !this.playbackRequested) return
-      if (type === 'play') this.update({ ...this.state, status: 'PLAYBACK' })
-      else if (type === 'pause') this.update({ ...this.state, status: 'PAUSED' })
-      else if (type === 'ended') this.update({ ...this.state, status: 'RECORDED' })
-      else this.update({ ...this.state, status: 'FAILED' })
+      if (type === RecordingPlaybackEventType.PLAY)
+        this.update({ ...this.state, status: RecordingStatus.PLAYBACK })
+      else if (type === RecordingPlaybackEventType.PAUSE)
+        this.update({ ...this.state, status: RecordingStatus.PAUSED })
+      else if (type === RecordingPlaybackEventType.ENDED)
+        this.update({ ...this.state, status: RecordingStatus.RECORDED })
+      else this.update({ ...this.state, status: RecordingStatus.FAILED })
     })
     this.unsubscribeRecording = port.subscribeRecording?.((path) => {
       const id = this.state.selectedSentenceId
-      if (this.disposed || !id || this.state.status !== 'RECORDING') return
+      if (this.disposed || !id || this.state.status !== RecordingStatus.RECORDING) return
       if (!path) {
-        this.update({ ...this.state, status: 'FAILED' })
+        this.update({ ...this.state, status: RecordingStatus.FAILED })
         return
       }
       const previous = this.recordings.get(id)
       if (previous && previous !== path) void port.deleteFile(previous)
       this.recordings.set(id, path)
-      this.update({ ...this.state, hasRecording: true, status: 'RECORDED' })
+      this.update({ ...this.state, hasRecording: true, status: RecordingStatus.RECORDED })
     })
   }
 
@@ -59,7 +63,7 @@ export class RecordingController {
       ...this.state,
       selectedSentenceId: id,
       hasRecording: this.recordings.has(id),
-      status: 'IDLE'
+      status: RecordingStatus.IDLE
     })
     await stopping
   }
@@ -72,7 +76,7 @@ export class RecordingController {
       this.state.recordingDisabled ||
       this.disposed ||
       this.pendingStart ||
-      this.state.status === 'RECORDING'
+      this.state.status === RecordingStatus.RECORDING
     )
       return
     const generation = ++this.generation
@@ -84,7 +88,7 @@ export class RecordingController {
     }
     if (generation !== this.generation || this.disposed) return
     if (!this.permission) {
-      this.update({ ...this.state, recordingDisabled: true, status: 'DENIED' })
+      this.update({ ...this.state, recordingDisabled: true, status: RecordingStatus.DENIED })
       return
     }
     this.stopPlayback()
@@ -103,10 +107,10 @@ export class RecordingController {
         await this.port.deleteFile(path)
         return
       }
-      this.update({ ...this.state, status: 'RECORDING' })
+      this.update({ ...this.state, status: RecordingStatus.RECORDING })
     } catch {
       if (generation === this.generation && !this.disposed)
-        this.update({ ...this.state, status: 'FAILED' })
+        this.update({ ...this.state, status: RecordingStatus.FAILED })
     }
   }
 
@@ -117,7 +121,7 @@ export class RecordingController {
     if (this.pendingStart) return this.pendingStart
     if (this.pendingStop) return this.pendingStop
     const sentenceId = this.state.selectedSentenceId
-    if (!sentenceId || this.state.status !== 'RECORDING') return Promise.resolve()
+    if (!sentenceId || this.state.status !== RecordingStatus.RECORDING) return Promise.resolve()
     this.pendingStop = this.port
       .stop()
       .then(async (path) => {
@@ -126,18 +130,18 @@ export class RecordingController {
         this.recordings.set(sentenceId, path)
         if (
           this.state.selectedSentenceId === sentenceId &&
-          this.state.status === 'RECORDING' &&
+          this.state.status === RecordingStatus.RECORDING &&
           !this.disposed
         )
-          this.update({ ...this.state, hasRecording: true, status: 'RECORDED' })
+          this.update({ ...this.state, hasRecording: true, status: RecordingStatus.RECORDED })
       })
       .catch(() => {
         if (
           this.state.selectedSentenceId === sentenceId &&
-          this.state.status === 'RECORDING' &&
+          this.state.status === RecordingStatus.RECORDING &&
           !this.disposed
         )
-          this.update({ ...this.state, status: 'FAILED' })
+          this.update({ ...this.state, status: RecordingStatus.FAILED })
       })
       .finally(() => {
         this.pendingStop = undefined
@@ -148,22 +152,23 @@ export class RecordingController {
   /** 回听当前句最近录音，设备事件决定实际播放状态 */
   playback = async (): Promise<void> => {
     if (this.pendingStart) return
-    if (this.state.status === 'PLAYBACK') {
+    if (this.state.status === RecordingStatus.PLAYBACK) {
       this.port.pausePlayback?.()
       return
     }
     const sentenceId = this.state.selectedSentenceId
     const path = sentenceId ? this.recordings.get(sentenceId) : undefined
-    if (!path || this.disposed || this.state.status === 'RECORDING') return
+    if (!path || this.disposed || this.state.status === RecordingStatus.RECORDING) return
     const generation = this.generation
     this.playbackRequested = true
     try {
       await this.port.playback(path)
       if (generation !== this.generation || this.disposed) return
-      if (!this.port.subscribePlayback) this.update({ ...this.state, status: 'PLAYBACK' })
+      if (!this.port.subscribePlayback)
+        this.update({ ...this.state, status: RecordingStatus.PLAYBACK })
     } catch {
       if (generation === this.generation && !this.disposed)
-        this.update({ ...this.state, status: 'FAILED' })
+        this.update({ ...this.state, status: RecordingStatus.FAILED })
     }
   }
 
@@ -171,8 +176,11 @@ export class RecordingController {
   stopPlayback = (): void => {
     this.playbackRequested = false
     this.port.stopPlayback()
-    if (this.state.status === 'PLAYBACK' || this.state.status === 'PAUSED')
-      this.update({ ...this.state, status: 'RECORDED' })
+    if (
+      this.state.status === RecordingStatus.PLAYBACK ||
+      this.state.status === RecordingStatus.PAUSED
+    )
+      this.update({ ...this.state, status: RecordingStatus.RECORDED })
   }
 
   /** 删除当前句旧文件后立即开始重录 */
@@ -190,7 +198,7 @@ export class RecordingController {
       this.recordings.delete(sentenceId)
     }
     if (generation !== this.generation || this.disposed) return
-    this.update({ ...this.state, hasRecording: false, status: 'IDLE' })
+    this.update({ ...this.state, hasRecording: false, status: RecordingStatus.IDLE })
     await this.start()
   }
 
@@ -250,10 +258,10 @@ export const createUniRecordingPort = (): RecordingPort => {
     startResolver = undefined
     stopResolver = undefined
   })
-  playback.onPlay(() => playbackListener?.('play'))
-  playback.onPause(() => playbackListener?.('pause'))
-  playback.onEnded(() => playbackListener?.('ended'))
-  playback.onError(() => playbackListener?.('error'))
+  playback.onPlay(() => playbackListener?.(RecordingPlaybackEventType.PLAY))
+  playback.onPause(() => playbackListener?.(RecordingPlaybackEventType.PAUSE))
+  playback.onEnded(() => playbackListener?.(RecordingPlaybackEventType.ENDED))
+  playback.onError(() => playbackListener?.(RecordingPlaybackEventType.ERROR))
   return {
     deleteFile: (path) =>
       new Promise((resolve) => {

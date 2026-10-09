@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AudioButton from '@/features/audio/components/audio-button.vue'
 import { getRuntimeServices } from '@/services/runtime'
+import { ReviewCardFace } from '@/shared/enums/favorites'
 import { useAudioStore } from '@/stores/audio'
 
 import type { AudioTarget } from '@/shared/contracts/learning'
@@ -12,21 +13,21 @@ const audio = useAudioStore()
 const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().scene)
 /** 正面英文翻面，答案英文只在有独立发音时播放且不冒泡翻卡 */
 const pressWord = () => {
-  if (props.face === 'FRONT') emit('flip')
+  if (props.face === ReviewCardFace.FRONT) emit('flip')
   else if (props.item.audio) void play(props.item.audio)
 }
 </script>
 <template>
-  <view class="review-card" :class="{ back: face === 'BACK' }">
+  <view class="review-card" :class="{ back: face === ReviewCardFace.BACK }">
     <button class="card-surface" @click="emit('flip')">
       <text class="card-face"
-        >{{ face === 'FRONT' ? '正面' : '背面' }} ·
+        >{{ face === ReviewCardFace.FRONT ? '正面' : '背面' }} ·
         {{ item.sources[0]?.scene_title || '来源场景' }}</text
       >
       <text class="card-word" @click.stop="pressWord">{{
         item.english || item.normalized_key
       }}</text>
-      <template v-if="face === 'BACK'">
+      <template v-if="face === ReviewCardFace.BACK">
         <text v-if="item.phonetic" class="card-phonetic">{{ item.phonetic }}</text>
         <text class="card-translation">{{ item.chinese || '' }}</text>
         <view class="card-explanation"

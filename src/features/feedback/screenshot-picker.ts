@@ -1,4 +1,5 @@
 import { FEEDBACK_IMAGE_MAX_BYTES, FEEDBACK_IMAGE_MIME_TYPES } from '@/shared/constants/feedback'
+import { FeedbackImageContentType } from '@/shared/enums/feedback'
 
 import type { FeedbackScreenshotDraft, PickedFeedbackFile } from '@/shared/types/feedback'
 /** 选择截图，select 为成功后的附件回调，fail 为可展示的校验提示 */
@@ -16,12 +17,12 @@ export const chooseFeedbackScreenshot = (
       const mimeType =
         file.type ||
         (extension === 'png'
-          ? 'image/png'
+          ? FeedbackImageContentType.PNG
           : extension === 'webp'
-            ? 'image/webp'
+            ? FeedbackImageContentType.WEBP
             : extension === 'gif'
               ? 'image/gif'
-              : 'image/jpeg')
+              : FeedbackImageContentType.JPEG)
       if (!FEEDBACK_IMAGE_MIME_TYPES.includes(mimeType as never)) {
         fail('仅支持 JPG、PNG 或 WebP 图片')
         return

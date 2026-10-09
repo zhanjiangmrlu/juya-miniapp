@@ -1,4 +1,5 @@
 import { FEEDBACK_STATUS_LABELS as STATUS_LABELS } from '@/shared/constants/feedback'
+import { FeedbackTimelineTone } from '@/shared/enums/feedback'
 
 import type { FeedbackItem } from '@/shared/contracts/feedback'
 
@@ -22,14 +23,19 @@ export function formatFeedbackTime(value: string): string {
 /** 按时间顺序合并用户说明、管理员回复和用户补充，供时间线组件统一渲染。 */
 export function presentFeedbackTimeline(feedback: FeedbackItem) {
   const entries = [
-    { at: feedback.created_at, label: '已提交', text: feedback.description, tone: 'user' as const },
+    {
+      at: feedback.created_at,
+      label: '已提交',
+      text: feedback.description,
+      tone: FeedbackTimelineTone.USER
+    },
     ...(feedback.reply
       ? [
           {
             at: feedback.resolved_at ?? feedback.created_at,
             label: '句芽回复',
             text: feedback.reply,
-            tone: 'service' as const
+            tone: FeedbackTimelineTone.SERVICE
           }
         ]
       : []),
@@ -37,7 +43,7 @@ export function presentFeedbackTimeline(feedback: FeedbackItem) {
       at: item.created_at,
       label: '我的补充',
       text: item.text,
-      tone: 'user' as const
+      tone: FeedbackTimelineTone.USER
     }))
   ]
   return entries.sort((left, right) => Date.parse(left.at) - Date.parse(right.at))

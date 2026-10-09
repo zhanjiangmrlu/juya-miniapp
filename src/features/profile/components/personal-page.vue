@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import PageHeader from '@/components/page-header/page-header.vue'
 import TabPageLayout from '@/layouts/tab-page-layout.vue'
+import { ProfileTabKey } from '@/shared/enums/profile'
 
 import type { PersonalPageProps } from '@/shared/types/profile-components'
-withDefaults(defineProps<PersonalPageProps>(), { navigation: '', active: 'profile' })
+withDefaults(defineProps<PersonalPageProps>(), { navigation: '', active: ProfileTabKey.PROFILE })
 </script>
 <template>
   <TabPageLayout class="personal-layout" :active="active">

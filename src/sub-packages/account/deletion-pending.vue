@@ -10,6 +10,8 @@ import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 import { createServerClock } from '@/shared/utils/server-clock'
 import { useAccountDeletionStore } from '@/stores/account-deletion'
@@ -55,7 +57,7 @@ const loadDeletion = async () => {
       : undefined
     if (!profile.deletion) {
       deletion.clear()
-      await navigate({ type: 'reLaunch', url: '/sub-packages/profile/index' })
+      await navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/profile/index' })
       return
     }
     deletion.save({
@@ -103,7 +105,7 @@ const revokeDeletion = async () => {
       () => favorites.load(runtime.favorites, true),
       () => runtime.entitlements.get()
     ])
-    await navigate({ type: 'reLaunch', url: '/sub-packages/profile/index' })
+    await navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/profile/index' })
   } catch {
     error.value = revoked.value
       ? '注销已撤回，资料刷新失败，请重新加载'
@@ -156,8 +158,11 @@ onUnload(leave)
         description="注销正在生效，当前阶段无法撤回"
         icon-label="处理中" /></template
     ><text v-if="error && !view" class="form-error">{{ error }}</text
-    ><AppButton v-if="error" label="重新加载" variant="secondary" @press="loadDeletion" /><template
-      #actions
+    ><AppButton
+      v-if="error"
+      label="重新加载"
+      :variant="ButtonVariant.SECONDARY"
+      @press="loadDeletion" /><template #actions
       ><AppButton
         v-if="view?.canRevoke"
         label="撤回注销"

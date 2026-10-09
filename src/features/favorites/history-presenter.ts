@@ -1,3 +1,5 @@
+import { CONTENT_ACCESS_LEVELS } from '@/shared/constants/entitlements'
+
 import type { SceneSummary } from '@/shared/contracts/learning'
 import type { HistoryItem, HistoryRow } from '@/shared/types/favorites'
 export type { HistoryItem } from '@/shared/types/favorites'
@@ -6,7 +8,7 @@ export type { HistoryRow } from '@/shared/types/favorites'
 export const presentHistory = (items: HistoryItem[], catalog: SceneSummary[]): HistoryRow[] =>
   items.map((item) => {
     const scene = catalog.find((entry) => entry.scene_id === item.scene_id)
-    const accessible = Boolean(scene && ['OPEN', 'FORMAL', 'LIMITED'].includes(scene.access))
+    const accessible = Boolean(scene && CONTENT_ACCESS_LEVELS.includes(scene.access))
     const parts = [item.completed_at ? '已完成' : '学习中']
     if (item.progress !== undefined && !item.completed_at) parts.push(`进度 ${item.progress}%`)
     if (item.favorite_count !== undefined) parts.push(`收藏 ${item.favorite_count} 条`)

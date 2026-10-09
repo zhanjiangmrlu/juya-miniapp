@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import PersonalRow from '@/features/profile/components/personal-row.vue'
+import { ProfileRowSize } from '@/shared/enums/profile'
 
 import type {
   ProfileActionListEmits,
@@ -19,7 +20,7 @@ const emit = defineEmits<ProfileActionListEmits>()
       :detail="prompt ? '查看开放场景和已有权益' : '查看开放、正式和限时权益'"
       badge="›"
       :badge-icon="prompt ? undefined : '/static/profile/service-arrow.svg'"
-      :size="prompt ? 'normal' : 'short'"
+      :size="prompt ? ProfileRowSize.NORMAL : ProfileRowSize.SHORT"
       actionable
       @press="emit('entitlements')"
     />
@@ -29,7 +30,7 @@ const emit = defineEmits<ProfileActionListEmits>()
         detail="反馈回复与系统消息"
         badge="›"
         :badge-icon="prompt ? undefined : '/static/profile/service-arrow.svg'"
-        :size="prompt ? 'normal' : 'short'"
+        :size="prompt ? ProfileRowSize.NORMAL : ProfileRowSize.SHORT"
         actionable
         @press="emit('messages')" /><view
         v-if="unread"
@@ -51,7 +52,7 @@ const emit = defineEmits<ProfileActionListEmits>()
           detail="查看记录或提交问题"
           badge="›"
           badge-icon="/static/profile/service-arrow.svg"
-          size="short"
+          :size="ProfileRowSize.SHORT"
           actionable
           @press="emit('feedback')" /><view
           v-if="feedbackUnread"
@@ -62,7 +63,7 @@ const emit = defineEmits<ProfileActionListEmits>()
         detail="管理学习数据和账号"
         badge="›"
         badge-icon="/static/profile/service-arrow.svg"
-        size="short"
+        :size="ProfileRowSize.SHORT"
         actionable
         @press="emit('account')"
     /></template>

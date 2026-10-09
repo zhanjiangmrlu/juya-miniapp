@@ -1,3 +1,5 @@
+import { NavigationType } from '@/shared/enums/navigation'
+
 import type { NavigationIntent } from '@/shared/types/navigation'
 
 import { normalizePageUrl } from './page-url'
@@ -7,12 +9,12 @@ export const navigate = (intent: NavigationIntent): Promise<void> => {
   return new Promise((resolve, reject) => {
     const options = { fail: reject, success: () => resolve(), url: normalizePageUrl(intent.url) }
 
-    if (intent.type === 'navigateTo') {
+    if (intent.type === NavigationType.NAVIGATE_TO) {
       uni.navigateTo(options)
       return
     }
 
-    if (intent.type === 'redirectTo') {
+    if (intent.type === NavigationType.REDIRECT_TO) {
       uni.redirectTo(options)
       return
     }

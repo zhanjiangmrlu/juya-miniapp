@@ -8,6 +8,7 @@ import {
   FEEDBACK_REOPEN_WINDOW_MS,
   FEEDBACK_SCREENSHOT_LIMIT
 } from '@/shared/constants/feedback'
+import { FeedbackStatus } from '@/shared/enums/feedback'
 
 import type { FeedbackItem } from '@/shared/contracts/feedback'
 import type {
@@ -73,7 +74,7 @@ export const validateSupplement = (text: string): FeedbackSupplementValidation =
 
 /** 仅在服务端明确要求补充且已有管理员回复时开放补充入口 */
 export const canSupplementFeedback = (feedback: FeedbackItem): boolean => {
-  return feedback.status === 'NEEDS_SUPPLEMENT' && Boolean(feedback.reply?.trim())
+  return feedback.status === FeedbackStatus.NEEDS_SUPPLEMENT && Boolean(feedback.reply?.trim())
 }
 
 /** 依据处理时间与已重开次数生成结果页操作，不在客户端改变服务端反馈状态 */
@@ -85,11 +86,11 @@ export const getResolutionActions = (feedback: FeedbackItem, now = new Date()) =
     : false
   return {
     canReopen:
-      feedback.status === 'RESOLVED' &&
+      feedback.status === FeedbackStatus.RESOLVED &&
       withinSevenDays &&
       (feedback.reopen_count ?? 0) < FEEDBACK_REOPEN_LIMIT,
     reopenPrimaryLabel: '仍有问题',
     reopenSecondaryLabel: '（可重开一次）',
-    showResolvedAction: feedback.status === 'RESOLVED' && withinSevenDays
+    showResolvedAction: feedback.status === FeedbackStatus.RESOLVED && withinSevenDays
   }
 }

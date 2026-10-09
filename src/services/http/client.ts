@@ -1,6 +1,6 @@
 import { ApiError, NetworkTransportError } from '@/services/http/errors'
+import { HttpMethod } from '@/shared/enums/http'
 
-import type { HttpMethod } from '@/shared/enums/http'
 import type {
   HttpClient,
   HttpClientOptions,
@@ -41,7 +41,7 @@ export const createHttpClient = (options: HttpClientOptions): HttpClient => {
     if (requiresAuth) await options.session.ensureAuthenticated?.()
     const requestId = idFactory()
     const idempotencyKey =
-      method === 'GET' || requestOptions.idempotencyKey === false
+      method === HttpMethod.GET || requestOptions.idempotencyKey === false
         ? undefined
         : (requestOptions.idempotencyKey ?? idFactory())
 
@@ -80,7 +80,11 @@ export const createHttpClient = (options: HttpClientOptions): HttpClient => {
           throw mapApiError(response.status, response.data)
         return response.data
       } catch (error) {
-        if (error instanceof NetworkTransportError && method === 'GET' && networkAttempt === 0) {
+        if (
+          error instanceof NetworkTransportError &&
+          method === HttpMethod.GET &&
+          networkAttempt === 0
+        ) {
           return execute(1, canRefresh)
         }
         throw error
@@ -89,10 +93,10 @@ export const createHttpClient = (options: HttpClientOptions): HttpClient => {
     return execute(0, true)
   }
   return {
-    delete: (path, body, requestOptions) => send('DELETE', path, body, requestOptions),
-    get: (path, requestOptions) => send('GET', path, undefined, requestOptions),
-    post: (path, body, requestOptions) => send('POST', path, body, requestOptions),
-    put: (path, body, requestOptions) => send('PUT', path, body, requestOptions)
+    delete: (path, body, requestOptions) => send(HttpMethod.DELETE, path, body, requestOptions),
+    get: (path, requestOptions) => send(HttpMethod.GET, path, undefined, requestOptions),
+    post: (path, body, requestOptions) => send(HttpMethod.POST, path, body, requestOptions),
+    put: (path, body, requestOptions) => send(HttpMethod.PUT, path, body, requestOptions)
   }
 }
 import { HTTP_REQUEST_TIMEOUT_MS } from '@/shared/constants/http'

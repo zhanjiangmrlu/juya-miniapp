@@ -6,6 +6,8 @@ import AppState from '@/components/app-state/app-state.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
 import { getRuntimeServices } from '@/services/runtime'
+import { AudioStatus } from '@/shared/enums/audio'
+import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
 
 import type { SceneEntry } from '@/shared/contracts/learning'
@@ -74,7 +76,7 @@ const handleLoad = async (query?: Record<string, string>) => {
 const continueReading = async () => {
   const sourceLocator = selectedSentence.value?.source_locator ?? ''
   await navigate({
-    type: 'redirectTo',
+    type: NavigationType.REDIRECT_TO,
     url: `/sub-packages/scene/dialogue?sceneId=${encodeURIComponent(sceneId.value)}&sourceLocator=${encodeURIComponent(sourceLocator)}`
   })
 }
@@ -85,7 +87,7 @@ const playCurrent = async () => {
 /** 进入重点词汇并保留场景 */
 const vocabulary = async () => {
   await navigate({
-    type: 'navigateTo',
+    type: NavigationType.NAVIGATE_TO,
     url: `/sub-packages/scene/vocabulary?sceneId=${encodeURIComponent(sceneId.value)}`
   })
 }
@@ -127,7 +129,11 @@ onUnload(disposeAudio)
           <view class="card-top"
             ><text>{{ source ? `来源词汇 ${sourceEntry?.text ?? ''}` : '播放当前句原音' }}</text
             ><text class="card-status">{{
-              source ? '当前句' : audio.snapshot.status === 'PLAYING' ? '播放中' : '可播放'
+              source
+                ? '当前句'
+                : audio.snapshot.status === AudioStatus.PLAYING
+                  ? '播放中'
+                  : '可播放'
             }}</text></view
           ><text class="card-hint">{{
             source ? `${sourceEntry?.chinese ?? ''} · 已收藏` : `同一整段音频的第 ${index} 句`

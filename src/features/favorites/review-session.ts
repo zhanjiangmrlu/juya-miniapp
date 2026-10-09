@@ -1,4 +1,5 @@
 import { createRequestId } from '@/services/http/request-id'
+import { ReviewCardFace } from '@/shared/enums/favorites'
 
 import type {
   FavoriteReviewOptions,
@@ -14,7 +15,7 @@ export const createReviewSession = (
   cardIds: string[],
   options: FavoriteReviewOptions = {}
 ): ReviewSessionController => {
-  const snapshot: ReviewSnapshot = { cardIds: [...cardIds], face: 'FRONT', index: 0 }
+  const snapshot: ReviewSnapshot = { cardIds: [...cardIds], face: ReviewCardFace.FRONT, index: 0 }
   const completionKey = (options.idFactory ?? createRequestId)()
 
   return {
@@ -24,12 +25,13 @@ export const createReviewSession = (
     },
     /** 只在用户明确点击卡面时翻转正反面 */
     flip: () => {
-      snapshot.face = snapshot.face === 'FRONT' ? 'BACK' : 'FRONT'
+      snapshot.face =
+        snapshot.face === ReviewCardFace.FRONT ? ReviewCardFace.BACK : ReviewCardFace.FRONT
     },
     /** 前往下一张卡并恢复正面 */
     next: () => {
       if (snapshot.index < snapshot.cardIds.length - 1) snapshot.index += 1
-      snapshot.face = 'FRONT'
+      snapshot.face = ReviewCardFace.FRONT
     },
     /** 音频播放由页面处理，此方法刻意不改变卡面状态 */
     playAudio: () => {},

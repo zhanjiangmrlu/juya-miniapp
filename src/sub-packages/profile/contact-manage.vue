@@ -9,6 +9,8 @@ import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 const contact = ref(presentContact(null))
 const form = ref<InstanceType<typeof ContactForm>>()
@@ -28,7 +30,7 @@ const copy = () => {
 }
 /** 进入更正申请 */
 const correct = () =>
-  navigate({ type: 'navigateTo', url: '/sub-packages/profile/contact-correction' })
+  navigate({ type: NavigationType.NAVIGATE_TO, url: '/sub-packages/profile/contact-correction' })
 /** 自助修改本人微信号，value 为用户同意用途后校验的微信号 */
 const save = async (value: string) => {
   if (loading.value || !contact.value.canSelfEdit) return
@@ -48,7 +50,7 @@ const remove = async () => {
   loading.value = true
   try {
     await getRuntimeServices().contact.remove()
-    await navigate({ type: 'reLaunch', url: '/sub-packages/profile/index' })
+    await navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/profile/index' })
   } catch {
     error.value = '撤回失败，请重试'
   } finally {
@@ -81,14 +83,14 @@ onShow(load)
     /></view>
     <text v-if="error" class="form-error">{{ error }}</text>
     <template #actions
-      ><AppButton label="申请更正" variant="secondary" @press="correct" /><AppButton
+      ><AppButton label="申请更正" :variant="ButtonVariant.SECONDARY" @press="correct" /><AppButton
         v-if="contact.canSelfEdit"
         label="保存修改"
         :loading="loading"
         @press="form?.submit()" /><AppButton
         v-else
         label="返回学习档案"
-        @press="navigate({ type: 'reLaunch', url: '/sub-packages/profile/index' })"
+        @press="navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/profile/index' })"
     /></template>
   </PersonalPage>
 </template>

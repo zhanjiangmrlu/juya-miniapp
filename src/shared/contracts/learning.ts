@@ -131,7 +131,7 @@ export interface PreviewScene {
   series?: string | null
   cover_url?: string | null
   introduction?: string | null
-  preview_status?: 'PREVIEW'
+  preview_status?: typeof AccessLevel.PREVIEW
 }
 export interface SceneOpenWireResponse {
   access: AccessLevel | null

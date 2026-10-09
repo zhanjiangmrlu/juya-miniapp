@@ -1,4 +1,8 @@
 import { MOCK_FEEDBACK, MOCK_ROUTES as ROUTES } from '@/services/mock/mock-data'
+import { AccessLevel } from '@/shared/enums/entitlements'
+import { FeedbackResolutionAction, FeedbackStatus } from '@/shared/enums/feedback'
+import { HttpMethod } from '@/shared/enums/http'
+import { SceneEntryType } from '@/shared/enums/learning'
 
 import type { HttpTransport, TransportRequest, TransportResponse } from '@/shared/types/http'
 import type { MockActionRequest, MockItemsResponse, MockTextRequest } from '@/shared/types/mock'
@@ -21,7 +25,7 @@ export class MockTransport implements HttpTransport {
     if (routeKey === 'POST /api/v1/scenes/scene-weekend-trip/open')
       fixture = {
         ...publishedScene,
-        access: 'PREVIEW',
+        access: AccessLevel.PREVIEW,
         sources: [],
         scene: {
           public_id: 'scene-weekend-trip',
@@ -34,7 +38,7 @@ export class MockTransport implements HttpTransport {
         }
       }
     if (
-      request.method === 'GET' &&
+      request.method === HttpMethod.GET &&
       /\/scenes\/scene-coffee-shop\/resources\/[^/]+\/signed-url$/.test(url.pathname)
     ) {
       const resourceId = decodeURIComponent(url.pathname.split('/')[6] ?? '')
@@ -48,7 +52,7 @@ export class MockTransport implements HttpTransport {
       }
     }
     if (
-      request.method === 'GET' &&
+      request.method === HttpMethod.GET &&
       /\/scenes\/scene-coffee-shop\/entries\/[^/]+$/.test(url.pathname)
     ) {
       const entryId = decodeURIComponent(url.pathname.split('/')[6] ?? '')
@@ -100,7 +104,7 @@ export class MockTransport implements HttpTransport {
                           items: [
                             {
                               entry_stable_id: 'word-evolved',
-                              entry_type: 'VOCABULARY',
+                              entry_type: SceneEntryType.VOCABULARY,
                               favorited_at: '2026-09-28T08:30:00Z',
                               id: 'favorite-evolved',
                               last_reviewed_at: null,
@@ -120,7 +124,7 @@ export class MockTransport implements HttpTransport {
                       : routeKey.match(/^GET \/api\/v1\/favorites\/[^/]+$/)
                         ? {
                             entry_stable_id: 'word-evolved',
-                            entry_type: 'VOCABULARY',
+                            entry_type: SceneEntryType.VOCABULARY,
                             favorited_at: '2026-09-28T08:30:00Z',
                             id: 'favorite-evolved',
                             last_reviewed_at: null,
@@ -184,14 +188,14 @@ export class MockTransport implements HttpTransport {
                                               ...MOCK_FEEDBACK,
                                               reopen_count:
                                                 (request.body as MockActionRequest).action ===
-                                                'REOPEN'
+                                                FeedbackResolutionAction.REOPEN
                                                   ? 1
                                                   : 0,
                                               status:
                                                 (request.body as MockActionRequest).action ===
-                                                'REOPEN'
-                                                  ? 'REOPENED'
-                                                  : 'RESOLVED'
+                                                FeedbackResolutionAction.REOPEN
+                                                  ? FeedbackStatus.REOPENED
+                                                  : FeedbackStatus.RESOLVED
                                             }
                                           : routeKey.match(
                                                 /^POST \/api\/v1\/messages\/[^/]+\/read$/

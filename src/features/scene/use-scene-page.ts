@@ -4,6 +4,10 @@ import { computed, ref } from 'vue'
 import { createProgressQueue } from '@/features/learning-progress/progress-queue'
 import { getRuntimeServices } from '@/services/runtime'
 import { PROGRESS_QUEUE_KEY } from '@/shared/constants/learning-progress'
+import { AudioTargetType } from '@/shared/enums/audio'
+import { SceneEntryType } from '@/shared/enums/learning'
+import { ProgressCommandKind } from '@/shared/enums/learning-progress'
+import { SceneModelKind } from '@/shared/enums/scene'
 import { useAudioStore } from '@/stores/audio'
 import { useSceneStore } from '@/stores/scene'
 
@@ -25,7 +29,9 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
   const imageLoading = ref(false)
   const sheetLoading = ref(false)
   const fullModel = computed(() =>
-    scene.model?.kind === 'FULL' && scene.model.sceneId === sceneId.value ? scene.model : undefined
+    scene.model?.kind === SceneModelKind.FULL && scene.model.sceneId === sceneId.value
+      ? scene.model
+      : undefined
   )
   const originalImageUrl = computed(() => (fullModel.value ? imageUrl.value : ''))
   let generation = 0
@@ -40,7 +46,7 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
       save: (commands) => uni.setStorageSync(PROGRESS_QUEUE_KEY, commands)
     },
     async (command, idempotencyKey) => {
-      if (command.kind === 'COMPLETE') {
+      if (command.kind === ProgressCommandKind.COMPLETE) {
         await runtime.scene.complete(command.sceneId, idempotencyKey)
         return
       }
@@ -147,7 +153,7 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
               ? {
                   target_id: result.audio_target_id,
                   version_id: result.audio_version_id,
-                  target_type: 'ENTRY',
+                  target_type: AudioTargetType.LEGACY_ENTRY,
                   scene_id: model.sceneId,
                   revision_id: model.revision_id
                 }
@@ -168,7 +174,8 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
     const request = generation
     const model = fullModel.value
     const matched = fullModel.value?.entries.find(
-      (candidate) => candidate.entry_id === span.entry_id && candidate.entry_type !== 'DIALOGUE'
+      (candidate) =>
+        candidate.entry_id === span.entry_id && candidate.entry_type !== SceneEntryType.DIALOGUE
     )
     if (!matched) return
     const inspecting = inspectEntry(matched, span)

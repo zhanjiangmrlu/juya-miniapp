@@ -5,6 +5,8 @@ import AppButton from '@/components/app-button/app-button.vue'
 import ContactForm from '@/features/contact-profile/components/contact-form.vue'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import { getRuntimeServices } from '@/services/runtime'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 const form = ref<InstanceType<typeof ContactForm>>()
 const loading = ref(false)
@@ -15,7 +17,10 @@ const save = async (wechatId: string) => {
   loading.value = true
   try {
     await getRuntimeServices().contact.save(wechatId)
-    await navigate({ type: 'redirectTo', url: '/sub-packages/profile/contact-manage' })
+    await navigate({
+      type: NavigationType.REDIRECT_TO,
+      url: '/sub-packages/profile/contact-manage'
+    })
   } catch {
     error.value = '保存失败，请重试'
   } finally {
@@ -23,7 +28,7 @@ const save = async (wechatId: string) => {
   }
 }
 /** 暂不填写并返回档案 */
-const skip = () => navigate({ type: 'reLaunch', url: '/sub-packages/profile/index' })
+const skip = () => navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/profile/index' })
 </script>
 <template>
   <PersonalPage navigation="联系资料" title="完善联系资料" subtitle="填写与否不影响开放学习场景"
@@ -32,7 +37,7 @@ const skip = () => navigate({ type: 'reLaunch', url: '/sub-packages/profile/inde
       class="form-error"
       >{{ error }}</text
     ><template #actions
-      ><AppButton label="暂不填写" variant="secondary" @press="skip" /><AppButton
+      ><AppButton label="暂不填写" :variant="ButtonVariant.SECONDARY" @press="skip" /><AppButton
         label="保存联系资料"
         :loading="loading"
         @press="form?.submit()" /></template

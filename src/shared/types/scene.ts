@@ -9,6 +9,7 @@ import type {
   SignedMediaResponse,
   SignedResourceResponse
 } from '@/shared/contracts/learning'
+import type { SceneModelKind } from '@/shared/enums/scene'
 
 export interface ClickableSegment {
   text: string
@@ -31,17 +32,17 @@ export interface FullSceneModel extends SceneSummaryModel {
   cover_asset_id?: string | null
   description: string
   entries: SceneEntry[]
-  kind: 'FULL'
+  kind: typeof SceneModelKind.FULL
 }
 
 export interface PreviewSceneModel extends SceneSummaryModel {
   description: string
-  kind: 'PREVIEW'
+  kind: typeof SceneModelKind.PREVIEW
 }
 
 export interface DeniedSceneModel {
   authorizationPending: boolean
-  kind: 'DENIED'
+  kind: typeof SceneModelKind.DENIED
 }
 
 export type SceneModel = DeniedSceneModel | FullSceneModel | PreviewSceneModel

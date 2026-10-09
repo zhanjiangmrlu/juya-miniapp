@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { APP_TABS as tabs } from '@/shared/constants/navigation'
+import { PageAppearance } from '@/shared/enums/ui'
 
 import type { AppTabBarProps } from '@/shared/types/navigation-components'
 
 export type { TabKey } from '@/shared/enums/navigation'
 
 withDefaults(defineProps<AppTabBarProps>(), {
-  appearance: 'default'
+  appearance: PageAppearance.DEFAULT
 })
 
 /** 使用重启式导航切换一级页面，避免 Tab 历史栈持续增长。 */

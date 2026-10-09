@@ -11,6 +11,9 @@ import ProfileActionList from '@/features/profile/components/profile-action-list
 import ProfileIdentity from '@/features/profile/components/profile-identity.vue'
 import { createRequestId } from '@/services/http/request-id'
 import { getRuntimeServices } from '@/services/runtime'
+import { MessageRelatedType } from '@/shared/enums/messages'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
 
@@ -26,7 +29,7 @@ const error = ref('')
 let visible = false
 let generation = 0
 /** 跳转档案服务，url 为当前用户允许访问的站内地址 */
-const open = (url: string) => navigate({ type: 'navigateTo', url })
+const open = (url: string) => navigate({ type: NavigationType.NAVIGATE_TO, url })
 /** 主动完善时直接进入表单，已填写则进入管理页 */
 const openContact = () =>
   open(
@@ -59,7 +62,7 @@ const load = async () => {
     contact.value = presentContact(info)
     unread.value = home.unread_message_count
     feedbackUnread.value = messages.filter(
-      (message) => !message.read_at && message.related_type === 'FEEDBACK'
+      (message) => !message.read_at && message.related_type === MessageRelatedType.FEEDBACK
     ).length
     const storageKey = `juya.contact-prompt.${user.juya_id}`
     let exposure = uni.getStorageSync(storageKey) as ContactPromptReceipt | ''
@@ -128,7 +131,7 @@ onUnload(hide)
       @account="open('/sub-packages/account/index')"
     />
     <text v-if="error" class="form-error">{{ error }}</text
-    ><AppButton v-if="error" label="重新加载" variant="secondary" @press="load" />
+    ><AppButton v-if="error" label="重新加载" :variant="ButtonVariant.SECONDARY" @press="load" />
     <template #overlay
       ><view v-if="promptVisible" class="prompt-overlay" @touchmove.stop.prevent @wheel.stop.prevent
         ><view class="prompt-dialog" role="dialog" aria-modal="true" aria-label="完善联系资料"
@@ -136,7 +139,10 @@ onUnload(hide)
           ><text class="prompt-copy"
             >微信号用于账号服务、学习协助和重要信息通知。填写不会自动获得新的学习权限，也不影响已开放的内容。</text
           ><view class="prompt-actions"
-            ><AppButton label="稍后再说" variant="secondary" @press="dismiss" /><AppButton
+            ><AppButton
+              label="稍后再说"
+              :variant="ButtonVariant.SECONDARY"
+              @press="dismiss" /><AppButton
               label="前往完善"
               @press="continueForm" /></view></view></view
     ></template>

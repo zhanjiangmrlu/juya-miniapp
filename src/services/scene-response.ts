@@ -1,3 +1,7 @@
+import { AudioTargetType } from '@/shared/enums/audio'
+import { AccessLevel } from '@/shared/enums/entitlements'
+import { SceneEntryType, SceneLookupEntryType } from '@/shared/enums/learning'
+
 import type {
   AudioTarget,
   PublishedEntry,
@@ -7,7 +11,6 @@ import type {
   SceneOpenResponse,
   SceneOpenWireResponse
 } from '@/shared/contracts/learning'
-import type { SceneLookupEntryType } from '@/shared/enums/learning'
 
 /** 将指定发布场景的资源与播放类型转换为受修订约束的音频目标 */
 const audioTarget = (
@@ -40,7 +43,7 @@ const adaptEntry = (
   revision_id: scene.revision_id,
   scene_id: scene.scene_id,
   source_sentence_ids: [...entry.source_sentence_ids],
-  source_locator: `${type === 'PHRASE' ? 'chunks' : 'vocabulary'}:${entry.entry_id}`,
+  source_locator: `${type === SceneLookupEntryType.PHRASE ? 'chunks' : 'vocabulary'}:${entry.entry_id}`,
   sentence_snapshot:
     scene.content.dialogue
       .filter((sentence) => entry.source_sentence_ids.includes(sentence.id))
@@ -52,7 +55,7 @@ const adaptEntry = (
           scene,
           entry.audio_target_id,
           entry.audio_version_id,
-          type === 'PHRASE' ? 'phrase' : 'word'
+          type === SceneLookupEntryType.PHRASE ? AudioTargetType.PHRASE : AudioTargetType.WORD
         )
       }
     : {})
@@ -62,13 +65,13 @@ const adaptEntry = (
 export const adaptSceneResponse = (response: SceneOpenWireResponse): SceneOpenResponse => {
   const result: SceneOpenResponse = { ...response, sources: [...response.sources], scene: null }
   const scene = response.scene
-  if (!scene || !response.access || response.access === 'HIDDEN') return result
-  if (response.access === 'PREVIEW') {
+  if (!scene || !response.access || response.access === AccessLevel.HIDDEN) return result
+  if (response.access === AccessLevel.PREVIEW) {
     if (!('public_id' in scene || 'entries' in scene)) return result
     const preview = 'public_id' in scene ? scene : undefined
     const legacy = 'entries' in scene ? scene : undefined
     result.scene = {
-      access: 'PREVIEW',
+      access: AccessLevel.PREVIEW,
       scene_id: preview?.public_id ?? legacy!.scene_id,
       title: preview?.title_en || preview?.title || legacy?.title || '',
       chinese_title: preview?.title_zh || legacy?.chinese_title || '',
@@ -87,7 +90,12 @@ export const adaptSceneResponse = (response: SceneOpenWireResponse): SceneOpenRe
   const content = scene.content
   const audio = content.audio
     ? {
-        ...audioTarget(scene, content.audio.target_id, content.audio.version_id, 'scene'),
+        ...audioTarget(
+          scene,
+          content.audio.target_id,
+          content.audio.version_id,
+          AudioTargetType.SCENE
+        ),
         duration_ms: content.audio.duration_ms
       }
     : undefined
@@ -113,7 +121,7 @@ export const adaptSceneResponse = (response: SceneOpenWireResponse): SceneOpenRe
         : undefined
     return {
       entry_id: sentence.id,
-      entry_type: 'DIALOGUE',
+      entry_type: SceneEntryType.DIALOGUE,
       text: sentence.english,
       chinese: sentence.chinese,
       speaker: sentence.speaker,
@@ -126,7 +134,7 @@ export const adaptSceneResponse = (response: SceneOpenWireResponse): SceneOpenRe
         ? {
             audio: {
               ...audio,
-              target_type: 'sentence',
+              target_type: AudioTargetType.SENTENCE,
               sentence_id: sentence.id,
               start_ms: timing.start_ms,
               end_ms: timing.end_ms
@@ -136,8 +144,8 @@ export const adaptSceneResponse = (response: SceneOpenWireResponse): SceneOpenRe
     }
   })
   entries.push(
-    ...content.vocabulary.map((entry) => adaptEntry(scene, entry, 'VOCABULARY')),
-    ...content.chunks.map((entry) => adaptEntry(scene, entry, 'PHRASE'))
+    ...content.vocabulary.map((entry) => adaptEntry(scene, entry, SceneLookupEntryType.VOCABULARY)),
+    ...content.chunks.map((entry) => adaptEntry(scene, entry, SceneLookupEntryType.PHRASE))
   )
   const adapted: SceneContent = {
     scene_id: scene.scene_id,

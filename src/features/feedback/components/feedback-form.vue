@@ -11,6 +11,8 @@ import { uploadFeedbackImage } from '@/features/feedback/upload-service'
 import { ApiError } from '@/services/http/errors'
 import { getRuntimeServices } from '@/services/runtime'
 import { FEEDBACK_CATEGORIES } from '@/shared/constants/feedback'
+import { FeedbackCategory } from '@/shared/enums/feedback'
+import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
 import { useFeedbackDraftStore } from '@/stores/feedback-draft'
 
@@ -65,7 +67,7 @@ const selectSource = (event: unknown) => {
   }
 }
 onMounted(loadSources)
-if (!store.draft.category) store.update({ category: 'CONTENT' })
+if (!store.draft.category) store.update({ category: FeedbackCategory.CONTENT })
 
 /** 从输入事件同步反馈正文，不把敏感原文写入日志 */
 const handleDescriptionInput = (event: unknown) => {
@@ -125,10 +127,16 @@ const submit = async () => {
       source: validation.normalized.source
     })
     store.clear()
-    await navigate({ type: 'redirectTo', url: `/sub-packages/feedback/detail?id=${created.id}` })
+    await navigate({
+      type: NavigationType.REDIRECT_TO,
+      url: `/sub-packages/feedback/detail?id=${created.id}`
+    })
   } catch (caught) {
     if (caught instanceof ApiError && caught.code === 'FEEDBACK_CONTENT_BLOCKED') {
-      await navigate({ type: 'redirectTo', url: '/sub-packages/feedback/content-blocked' })
+      await navigate({
+        type: NavigationType.REDIRECT_TO,
+        url: '/sub-packages/feedback/content-blocked'
+      })
       return
     }
     error.value = '暂时无法提交，请稍后重试'

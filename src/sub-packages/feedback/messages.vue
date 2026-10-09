@@ -10,6 +10,8 @@ import { openMessage } from '@/features/messages/message-router'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 
 import type { MessageItem } from '@/shared/contracts/messages'
@@ -32,7 +34,7 @@ const handleOpen = async (item: MessageItem) => {
   await openMessage(
     item,
     (id) => getRuntimeServices().messages.markRead(id),
-    (url) => navigate({ type: 'navigateTo', url })
+    (url) => navigate({ type: NavigationType.NAVIGATE_TO, url })
   )
 }
 
@@ -56,7 +58,12 @@ onShow(loadMessages)
       description="反馈回复和系统状态消息会显示在这里"
     />
     <text v-if="error" class="form-error">{{ error }}</text
-    ><AppButton v-if="error" label="重新加载" variant="secondary" @press="loadMessages" />
+    ><AppButton
+      v-if="error"
+      label="重新加载"
+      :variant="ButtonVariant.SECONDARY"
+      @press="loadMessages"
+    />
   </PersonalPage>
 </template>
 <style scoped lang="scss">

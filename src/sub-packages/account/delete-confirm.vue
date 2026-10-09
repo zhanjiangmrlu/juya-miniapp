@@ -13,6 +13,10 @@ import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
+import { AccessLevel } from '@/shared/enums/entitlements'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ProfileRowSize } from '@/shared/enums/profile'
+import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 import { createServerClock } from '@/shared/utils/server-clock'
 import { useAccountDeletionStore } from '@/stores/account-deletion'
@@ -35,7 +39,7 @@ const load = async () => {
       runtime.entitlements.get(),
       runtime.catalog.getCatalog()
     ])
-    openCount.value = directory.items.filter((item) => item.access === 'OPEN').length
+    openCount.value = directory.items.filter((item) => item.access === AccessLevel.OPEN).length
     metrics.value = stats
     rights.value = presentEntitlements(
       dto,
@@ -48,7 +52,7 @@ const load = async () => {
   }
 }
 /** 保留账号并回到首页继续学习 */
-const keepAccount = () => navigate({ type: 'reLaunch', url: '/pages/home/index' })
+const keepAccount = () => navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/home/index' })
 /** 经当前确认页再次确认后申请注销，受理成功才清除敏感本地草稿 */
 const requestDeletion = async () => {
   if (loading.value || !loaded.value) return
@@ -58,7 +62,10 @@ const requestDeletion = async () => {
     const accepted = await getRuntimeServices().account.requestDeletion()
     deletion.save(accepted)
     clearLocalDeletionDrafts(createUniLocalDataScope())
-    await navigate({ type: 'redirectTo', url: '/sub-packages/account/deletion-pending' })
+    await navigate({
+      type: NavigationType.REDIRECT_TO,
+      url: '/sub-packages/account/deletion-pending'
+    })
   } catch {
     error.value = '暂时无法申请注销，请稍后重试'
   } finally {
@@ -97,7 +104,7 @@ onShow(load)
         title="开放场景"
         detail="仍可自由学习"
         badge="有效"
-        size="small"
+        :size="ProfileRowSize.SMALL"
       />
       <PersonalRow
         v-for="item in rights.formal.filter((item) => item.canOpenContent)"
@@ -105,7 +112,7 @@ onShow(load)
         :title="item.title"
         :detail="item.expires_at ? '有效至 ' + item.expires_at.slice(0, 10) : '永久有效'"
         badge="有效"
-        size="small"
+        :size="ProfileRowSize.SMALL"
       />
       <PersonalRow
         v-for="item in rights.limited.filter((item) => item.canOpenContent)"
@@ -113,7 +120,7 @@ onShow(load)
         :title="item.title"
         :detail="item.expiresAt ? '有效至 ' + item.expiresAt.slice(0, 10) : '以服务端期限为准'"
         badge="有效"
-        size="small"
+        :size="ProfileRowSize.SMALL"
       />
       <PersonalRow
         v-if="
@@ -123,7 +130,7 @@ onShow(load)
         "
         title="当前无有效学习权益"
         detail="以最新服务端状态为准"
-        size="small"
+        :size="ProfileRowSize.SMALL"
       />
     </view>
     <view class="delete-warning"
@@ -131,12 +138,17 @@ onShow(load)
       ><text>提交后有 7 天冷静期，可在生效前撤回。</text></view
     >
     <text v-if="error" class="form-error">{{ error }}</text
-    ><AppButton v-if="!loaded" label="重新读取学习数据" variant="secondary" @press="load" />
+    ><AppButton
+      v-if="!loaded"
+      label="重新读取学习数据"
+      :variant="ButtonVariant.SECONDARY"
+      @press="load"
+    />
     <template #actions
       ><AppButton
         class="deletion-action"
         label="继续注销"
-        variant="secondary"
+        :variant="ButtonVariant.SECONDARY"
         :disabled="!loaded"
         :loading="loading"
         @press="requestDeletion" /><AppButton label="保留账号，继续学习" @press="keepAccount"

@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import { AudioController } from '@/features/audio/audio-controller'
 import { getAudioTargetKey } from '@/features/audio/audio-machine'
 import { createUniAudioEngine } from '@/features/audio/uni-audio-engine'
+import { AudioStatus } from '@/shared/enums/audio'
 import { useSceneStore } from '@/stores/scene'
 
 import type { AudioTarget } from '@/shared/contracts/learning'
@@ -11,7 +12,7 @@ import type { AudioSnapshot } from '@/shared/types/audio'
 import type { SceneService } from '@/shared/types/scene'
 
 export const useAudioStore = defineStore('audio', () => {
-  const snapshot = ref<AudioSnapshot>({ status: 'IDLE', target: null })
+  const snapshot = ref<AudioSnapshot>({ status: AudioStatus.IDLE, target: null })
   let controller: AudioController | undefined
 
   const currentKey = computed(() =>
@@ -40,7 +41,7 @@ export const useAudioStore = defineStore('audio', () => {
   const dispose = () => {
     controller?.dispose()
     controller = undefined
-    snapshot.value = { status: 'IDLE', target: null }
+    snapshot.value = { status: AudioStatus.IDLE, target: null }
   }
 
   /** 停止原音以便开始录音或本地回听 */

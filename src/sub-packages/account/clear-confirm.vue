@@ -10,6 +10,8 @@ import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 
 const loading = ref(false)
@@ -29,7 +31,7 @@ const confirmClear = async () => {
     await getRuntimeServices().account.clearLearningData()
     clearLocalLearningData(createUniLocalDataScope())
     uni.showToast({ icon: 'success', title: '学习数据已清空' })
-    await navigate({ type: 'reLaunch', url: '/sub-packages/profile/index' })
+    await navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/profile/index' })
   } catch {
     error.value = '暂时无法清空，请稍后重试'
   } finally {
@@ -59,9 +61,9 @@ const confirmClear = async () => {
         badge="保留" /></view
     ><text v-if="error" class="form-error">{{ error }}</text
     ><template #actions
-      ><AppButton label="取消" variant="secondary" @press="cancel" /><AppButton
+      ><AppButton label="取消" :variant="ButtonVariant.SECONDARY" @press="cancel" /><AppButton
         label="确认清空"
-        variant="danger"
+        :variant="ButtonVariant.DANGER"
         :loading="loading"
         @press="confirmClear" /></template
   ></PersonalPage>

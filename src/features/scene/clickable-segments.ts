@@ -1,3 +1,5 @@
+import { SceneEntryType } from '@/shared/enums/learning'
+
 import type { ClickableSpan, SceneEntry } from '@/shared/contracts/learning'
 import type { ClickableSegment } from '@/shared/types/scene'
 
@@ -12,7 +14,9 @@ export const createClickableSegments = (
   const points = [...text]
   /** 语块优先于重叠词汇，span 为当前候选点击区间 */
   const priority = (span: ClickableSpan) =>
-    entries.find((entry) => entry.entry_id === span.entry_id)?.entry_type === 'PHRASE' ? 0 : 1
+    entries.find((entry) => entry.entry_id === span.entry_id)?.entry_type === SceneEntryType.PHRASE
+      ? 0
+      : 1
   const valid = spans
     .filter(
       (span) =>

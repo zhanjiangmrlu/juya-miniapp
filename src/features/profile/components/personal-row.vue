@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { ProfileRowSize } from '@/shared/enums/profile'
+
 import type { PersonalRowEmits, PersonalRowProps } from '@/shared/types/profile-components'
 
 withDefaults(defineProps<PersonalRowProps>(), {
   badge: '',
   badgeIcon: '',
-  size: 'normal',
+  size: ProfileRowSize.NORMAL,
   actionable: false,
   danger: false
 })

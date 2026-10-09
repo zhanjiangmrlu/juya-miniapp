@@ -1,4 +1,5 @@
 import { createRequestId } from '@/services/http/request-id'
+import { ProgressCommandKind } from '@/shared/enums/learning-progress'
 
 import type {
   ProgressCommand,
@@ -71,18 +72,18 @@ export function createProgressQueue(
     },
     /** 完成命令始终追加，禁止与同场景的另一完成动作合并。 */
     enqueueCompletion(sceneId) {
-      commands.push({ idempotencyKey: idFactory(), kind: 'COMPLETE', sceneId })
+      commands.push({ idempotencyKey: idFactory(), kind: ProgressCommandKind.COMPLETE, sceneId })
       persist()
     },
     /** 同场景待发送位置只保留最新稳定定位。 */
     enqueuePosition(sceneId, position) {
       const existing = commands.findIndex(
-        (command) => command.kind === 'POSITION' && command.sceneId === sceneId
+        (command) => command.kind === ProgressCommandKind.POSITION && command.sceneId === sceneId
       )
       const command: ProgressCommand = {
         clientSequence: Date.now(),
         idempotencyKey: existing >= 0 ? commands[existing].idempotencyKey : idFactory(),
-        kind: 'POSITION',
+        kind: ProgressCommandKind.POSITION,
         position,
         sceneId
       }
@@ -95,7 +96,7 @@ export function createProgressQueue(
     flush,
     get snapshot() {
       return commands.map((command) =>
-        command.kind === 'POSITION'
+        command.kind === ProgressCommandKind.POSITION
           ? { ...command, position: { ...command.position } }
           : { ...command }
       )

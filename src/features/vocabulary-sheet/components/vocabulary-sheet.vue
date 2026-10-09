@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import AudioButton from '@/features/audio/components/audio-button.vue'
+import { AudioButtonVariant } from '@/shared/enums/audio'
+import { SceneEntryType } from '@/shared/enums/learning'
 import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
 
 import type {
@@ -29,19 +31,19 @@ useModalScrollLock()
       <view class="sheet-handle" />
       <button class="sheet-close" aria-label="关闭词卡" @click="emit('close')">×</button>
       <view class="sheet-word-row"
-        ><text class="sheet-word" :class="{ phrase: entry.entry_type === 'PHRASE' }">{{
+        ><text class="sheet-word" :class="{ phrase: entry.entry_type === SceneEntryType.PHRASE }">{{
           entry.text
         }}</text
         ><AudioButton
           v-if="entry.audio"
-          variant="compact"
+          :variant="AudioButtonVariant.COMPACT"
           :current-key="currentAudioKey"
           :status="status"
           :target="entry.audio"
           @play="emit('play', $event)"
       /></view>
       <text class="sheet-phonetic">{{
-        entry.entry_type === 'PHRASE' ? 'Useful Chunk' : entry.phonetic
+        entry.entry_type === SceneEntryType.PHRASE ? 'Useful Chunk' : entry.phonetic
       }}</text>
       <text v-if="entry.chinese" class="sheet-meaning">{{ entry.chinese }}</text>
       <text class="sheet-explanation">{{ entry.explanation }}</text>
@@ -54,7 +56,7 @@ useModalScrollLock()
         {{
           entry.favorited
             ? '♡  已收藏'
-            : entry.entry_type === 'PHRASE'
+            : entry.entry_type === SceneEntryType.PHRASE
               ? '♡  收藏语块'
               : '♡  收藏词汇'
         }}

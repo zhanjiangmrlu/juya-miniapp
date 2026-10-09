@@ -4,6 +4,9 @@ import { resolveTaskScene } from '@/features/home/home-presenter'
 import { presentCatalog } from '@/features/learning/catalog-presenter'
 import { getRuntimeServices } from '@/services/runtime'
 import { ensureSession } from '@/services/startup'
+import { AccessLevel } from '@/shared/enums/entitlements'
+import { TodayTaskKind } from '@/shared/enums/home'
+import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
 import { useHomeStore } from '@/stores/home'
 import { useLearningStore } from '@/stores/learning'
@@ -32,7 +35,7 @@ export const useHomePage = () => {
           ...presentCatalog({
             catalog: {
               ...learning.catalog,
-              items: learning.catalog.items.filter((scene) => scene.access === 'OPEN')
+              items: learning.catalog.items.filter((scene) => scene.access === AccessLevel.OPEN)
             },
             modules: learning.modules
           }).openScenes
@@ -40,13 +43,14 @@ export const useHomePage = () => {
   )
   const canStartTask = computed(() =>
     Boolean(
-      home.view.todayTask && (home.data?.today_task?.kind === 'FAVORITE_REVIEW' || taskScene.value)
+      home.view.todayTask &&
+      (home.data?.today_task?.kind === TodayTaskKind.FAVORITE_REVIEW || taskScene.value)
     )
   )
   const openSceneCount = computed(() =>
     learning.error || !home.data
       ? null
-      : learning.catalog.items.filter((scene) => scene.access === 'OPEN').length
+      : learning.catalog.items.filter((scene) => scene.access === AccessLevel.OPEN).length
   )
 
   /** 补齐首页资料，request 为本页刷新代次，accessToken 为请求所属会话，force 为主动重连 */
@@ -88,13 +92,13 @@ export const useHomePage = () => {
   /** 打开真实今日任务，场景权限待确认或已失效时保持当前页面 */
   const startTask = async () => {
     if (!canStartTask.value || !home.view.todayTask) return
-    await navigate({ type: 'navigateTo', url: home.view.todayTask.url })
+    await navigate({ type: NavigationType.NAVIGATE_TO, url: home.view.todayTask.url })
   }
 
   /** 打开可访问摘要，scene 为当前用户可学习的场景卡片 */
   const openScene = async (scene: SceneCardViewModel) => {
     if (!scene.entryUrl) return
-    await navigate({ type: 'navigateTo', url: scene.entryUrl })
+    await navigate({ type: NavigationType.NAVIGATE_TO, url: scene.entryUrl })
   }
 
   /** 在当前页重新静默登录并加载任务 */

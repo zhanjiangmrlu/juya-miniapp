@@ -1,3 +1,5 @@
+import { FeedbackCategory } from '@/shared/enums/feedback'
+
 import type { FeedbackItem } from '@/shared/contracts/feedback'
 import type { FeedbackScreenshotDraft, FeedbackService } from '@/shared/types/feedback'
 
@@ -11,7 +13,7 @@ export const submitSupplement = async (
   screenshot?: FeedbackScreenshotDraft
 ) => {
   const validation = validateFeedbackDraft({
-    category: 'CONTENT',
+    category: FeedbackCategory.CONTENT,
     description: text,
     screenshots: screenshot ? [screenshot] : []
   })

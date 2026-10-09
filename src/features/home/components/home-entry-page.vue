@@ -9,27 +9,31 @@ import EntryPageShell from '@/features/learning/components/entry-page-shell.vue'
 import EntrySummary from '@/features/learning/components/entry-summary.vue'
 import LearningPageHeading from '@/features/learning/components/learning-page-heading.vue'
 import SceneListSection from '@/features/learning/components/scene-list-section.vue'
+import { AccessLevel } from '@/shared/enums/entitlements'
+import { HomeEntryAction, HomeEntryMode } from '@/shared/enums/home'
+import { NavigationType, TabKey } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
 import { useLearningStore } from '@/stores/learning'
 
-import type { HomeEntryAction } from '@/shared/enums/home'
 import type { HomeEntryPageProps } from '@/shared/types/home-components'
 const props = withDefaults(defineProps<HomeEntryPageProps>(), {
   embedded: false
 })
 const { cancel, canStartTask, home, load, openScene, startTask, taskScene } = useHomePage()
 const sample = computed(() => (home.error ? null : resolveOpenSample(learning.catalog)))
-const openScenes = computed(() => learning.catalog.items.filter((scene) => scene.access === 'OPEN'))
+const openScenes = computed(() =>
+  learning.catalog.items.filter((scene) => scene.access === AccessLevel.OPEN)
+)
 const learning = useLearningStore()
 const summaryValue = computed(() =>
-  props.mode === 'first'
+  props.mode === HomeEntryMode.FIRST
     ? (sample.value?.text ?? '从真实场景开始练习')
     : taskScene.value
       ? `${taskScene.value.progress}%`
       : (home.view.todayTask?.title ?? '今日任务暂不可用')
 )
 const summaryDescription = computed(() =>
-  props.mode === 'first'
+  props.mode === HomeEntryMode.FIRST
     ? sample.value
       ? `从「${sample.value.sceneTitle}」开始，让英语用在生活里。`
       : '选择一个开放场景，开始生活英语练习。'
@@ -53,17 +57,17 @@ const handleRetry = async () => {
 }
 /** 将步骤目标转换为真实导航，kind 为对话、跟读或收藏步骤 */
 const openStep = async (kind: HomeEntryAction) => {
-  if (kind === 'favorites') {
-    await navigate({ type: 'reLaunch', url: '/sub-packages/favorites/index' })
+  if (kind === HomeEntryAction.FAVORITES) {
+    await navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/favorites/index' })
     return
   }
-  if (kind === 'dialogue') {
+  if (kind === HomeEntryAction.DIALOGUE) {
     await startTask()
     return
   }
   if (!taskScene.value) return
   await navigate({
-    type: 'navigateTo',
+    type: NavigationType.NAVIGATE_TO,
     url: `/sub-packages/scene/shadowing?sceneId=${encodeURIComponent(taskScene.value.sceneId)}`
   })
 }
@@ -76,24 +80,24 @@ if (!props.embedded) {
 onBeforeUnmount(cancel)
 </script>
 <template>
-  <EntryPageShell active="home">
+  <EntryPageShell :active="TabKey.HOME">
     <LearningPageHeading
-      :title="mode === 'first' ? '从真实场景开始' : '今日学习任务'"
+      :title="mode === HomeEntryMode.FIRST ? '从真实场景开始' : '今日学习任务'"
       :eyebrow="
-        mode === 'first'
+        mode === HomeEntryMode.FIRST
           ? `${openScenes.length} 个开放场景，随时开始练习`
           : '接着上次的位置，继续完成这一场景'
       "
     />
     <EntrySummary
       class="home-summary"
-      :sentence="mode === 'first'"
-      :label="mode === 'first' ? '先学一句' : (taskScene?.chineseTitle ?? '今日任务')"
+      :sentence="mode === HomeEntryMode.FIRST"
+      :label="mode === HomeEntryMode.FIRST ? '先学一句' : (taskScene?.chineseTitle ?? '今日任务')"
       :value="summaryValue"
       :description="summaryDescription"
     />
     <SceneListSection
-      v-if="mode === 'first'"
+      v-if="mode === HomeEntryMode.FIRST"
       title="自由选择场景"
       compact
       card-action="可学习"
@@ -102,7 +106,11 @@ onBeforeUnmount(cancel)
     />
     <view v-else class="next-steps">
       <text class="steps-heading">下一步</text>
-      <button class="step-card" :disabled="!canStartTask" @click="openStep('dialogue')">
+      <button
+        class="step-card"
+        :disabled="!canStartTask"
+        @click="openStep(HomeEntryAction.DIALOGUE)"
+      >
         <view class="step-heading"
           ><text>{{
             home.view.todayTask?.buttonLabel === '开始翻卡' ? '收藏翻卡复习' : '继续场景对话'
@@ -114,18 +122,20 @@ onBeforeUnmount(cancel)
             : '从上次阅读位置继续'
         }}</text>
       </button>
-      <button class="step-card" :disabled="!taskScene" @click="openStep('shadowing')">
+      <button class="step-card" :disabled="!taskScene" @click="openStep(HomeEntryAction.SHADOWING)">
         <view class="step-heading"><text>逐句跟读</text><text class="step-state">练习</text></view
         ><text class="step-copy">可从任一句开始练习</text>
       </button>
-      <button class="step-card" @click="openStep('favorites')">
+      <button class="step-card" @click="openStep(HomeEntryAction.FAVORITES)">
         <view class="step-heading"
           ><text>完成后复习收藏</text><text class="step-state">下一步</text></view
         ><text class="step-copy">词汇与语块都可以翻卡，不限张数</text>
       </button>
     </view>
     <button class="home-primary" :disabled="!canStartTask" @click="startTask">
-      {{ mode === 'first' ? '开始学习' : (home.view.todayTask?.buttonLabel ?? '继续学习') }}
+      {{
+        mode === HomeEntryMode.FIRST ? '开始学习' : (home.view.todayTask?.buttonLabel ?? '继续学习')
+      }}
     </button>
     <NetworkReconnectDialog v-if="home.error" @close="home.dismissError" @retry="handleRetry" />
   </EntryPageShell>

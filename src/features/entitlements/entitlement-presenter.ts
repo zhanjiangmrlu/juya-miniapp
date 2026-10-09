@@ -1,4 +1,8 @@
-import { LIMITED_ENTITLEMENT_ENDING_WINDOW_MS as ENDING_WINDOW } from '@/shared/constants/entitlements'
+import {
+  LIMITED_ENTITLEMENT_ENDING_WINDOW_MS as ENDING_WINDOW,
+  LIMITED_ENTITLEMENT_STATUS_VALUES
+} from '@/shared/constants/entitlements'
+import { EntitlementStatus, LimitedEntitlementState } from '@/shared/enums/entitlements'
 
 import type { EntitlementsResponse, LimitedEntitlement } from '@/shared/contracts/entitlements'
 import type {
@@ -17,18 +21,22 @@ const presentLimited = (
   clock: ServerClock,
   authorizationPending: boolean
 ): LimitedEntitlementViewModel => {
-  let state: LimitedEntitlementViewModel['state'] = 'PENDING'
+  let state: LimitedEntitlementViewModel['state'] = LimitedEntitlementState.PENDING
 
-  if (authorizationPending || !['PENDING', 'ACTIVE', 'ENDED'].includes(item.status))
-    state = 'EXCEPTION'
-  else if (!item.activated_at && clock.remainingUntil(item.starts_before) === 0) state = 'EXCEPTION'
+  if (authorizationPending || !LIMITED_ENTITLEMENT_STATUS_VALUES.includes(item.status))
+    state = LimitedEntitlementState.EXCEPTION
+  else if (!item.activated_at && clock.remainingUntil(item.starts_before) === 0)
+    state = LimitedEntitlementState.EXCEPTION
   else if (
-    item.status === 'ENDED' ||
+    item.status === EntitlementStatus.ENDED ||
     (item.expires_at && clock.remainingUntil(item.expires_at) === 0)
   )
-    state = 'ENDED'
+    state = LimitedEntitlementState.ENDED
   else if (item.activated_at && item.expires_at) {
-    state = clock.remainingUntil(item.expires_at) <= ENDING_WINDOW ? 'ENDING' : 'ACTIVE'
+    state =
+      clock.remainingUntil(item.expires_at) <= ENDING_WINDOW
+        ? LimitedEntitlementState.ENDING
+        : LimitedEntitlementState.ACTIVE
   }
 
   return {
@@ -36,11 +44,13 @@ const presentLimited = (
     sceneIds: item.scene_ids ?? [],
     status: item.status,
     activatedAt: item.activated_at,
-    canOpenContent: !authorizationPending && (state === 'ACTIVE' || state === 'ENDING'),
+    canOpenContent:
+      !authorizationPending &&
+      (state === LimitedEntitlementState.ACTIVE || state === LimitedEntitlementState.ENDING),
     durationDays: item.duration_days,
     expiresAt: item.expires_at,
     id: item.id,
-    keepResults: state === 'ENDED',
+    keepResults: state === LimitedEntitlementState.ENDED,
     sceneCount: item.scene_count,
     startsBefore: item.starts_before,
     state,
@@ -59,7 +69,7 @@ export const presentEntitlements = (
       ...item,
       canOpenContent:
         !dto.authorization_pending &&
-        item.status === 'ACTIVE' &&
+        item.status === EntitlementStatus.ACTIVE &&
         Date.parse(item.effective_at) <= clock.now().getTime() &&
         (!item.expires_at || clock.remainingUntil(item.expires_at) > 0)
     })),

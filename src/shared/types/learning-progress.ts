@@ -1,15 +1,16 @@
 import type { StablePosition } from '@/shared/contracts/common'
+import type { ProgressCommandKind } from '@/shared/enums/learning-progress'
 
 export type ProgressCommand =
   | {
       idempotencyKey: string
-      kind: 'COMPLETE'
+      kind: typeof ProgressCommandKind.COMPLETE
       sceneId: string
     }
   | {
       clientSequence: number
       idempotencyKey: string
-      kind: 'POSITION'
+      kind: typeof ProgressCommandKind.POSITION
       position: StablePosition
       sceneId: string
     }

@@ -7,23 +7,28 @@ import AppState from '@/components/app-state/app-state.vue'
 import FavoriteList from '@/features/favorites/components/favorite-list.vue'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import { getRuntimeServices } from '@/services/runtime'
+import { FavoriteType, ReviewCardFace } from '@/shared/enums/favorites'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ProfileTabKey } from '@/shared/enums/profile'
+import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 import { useFavoriteStore } from '@/stores/favorites'
 
-import type { FavoriteType } from '@/shared/enums/favorites'
 import type { FavoriteGroup } from '@/shared/types/favorites'
 import type { FavoriteBankPageProps } from '@/shared/types/favorites-components'
 const props = withDefaults(defineProps<FavoriteBankPageProps>(), {
-  initialTab: 'VOCABULARY'
+  initialTab: FavoriteType.VOCABULARY
 })
 const favorites = useFavoriteStore()
 const error = ref('')
 let visible = false
 let generation = 0
-const title = computed(() => (favorites.activeTab === 'PHRASE' ? '语块银行' : '词汇银行'))
+const title = computed(() =>
+  favorites.activeTab === FavoriteType.PHRASE ? '语块银行' : '词汇银行'
+)
 /** 恢复路由选择的银行，query 为入口携带的标签参数 */
 const handleLoad = (query?: Record<string, string>) =>
-  favorites.selectTab(query?.tab === 'phrases' ? 'PHRASE' : props.initialTab)
+  favorites.selectTab(query?.tab === 'phrases' ? FavoriteType.PHRASE : props.initialTab)
 /** 刷新完整收藏并恢复当前银行滚动位置 */
 const handleShow = async () => {
   const current = ++generation
@@ -46,7 +51,7 @@ const openGroup = async (group: FavoriteGroup) => {
   const id = group.items[0]?.id
   if (id)
     await navigate({
-      type: 'navigateTo',
+      type: NavigationType.NAVIGATE_TO,
       url: `/sub-packages/favorites/detail?id=${encodeURIComponent(id)}`
     })
 }
@@ -54,7 +59,7 @@ const openGroup = async (group: FavoriteGroup) => {
 const editFilter = () => {
   const type = favorites.activeTab
   uni.showModal({
-    title: type === 'PHRASE' ? '筛选语块' : '筛选词汇',
+    title: type === FavoriteType.PHRASE ? '筛选语块' : '筛选词汇',
     editable: true,
     placeholderText: '留空显示全部收藏',
     content: favorites.tabState[type].filter,
@@ -72,10 +77,10 @@ const startReview = async () => {
   const review =
     previous && previous.cardIds.join(',') === ids.join(',')
       ? previous
-      : { cardIds: ids, index: 0, face: 'FRONT' as const }
+      : { cardIds: ids, index: 0, face: ReviewCardFace.FRONT }
   favorites.updateTabState(favorites.activeTab, { review })
   await navigate({
-    type: 'navigateTo',
+    type: NavigationType.NAVIGATE_TO,
     url: `/sub-packages/favorites/review-${review.face.toLocaleLowerCase()}?index=${review.index}&bank=${favorites.activeTab}`
   })
 }
@@ -98,10 +103,10 @@ onPageScroll((event) =>
 </script>
 <template>
   <PersonalPage
-    active="favorites"
+    :active="ProfileTabKey.FAVORITES"
     :title="title"
     :subtitle="
-      favorites.activeTab === 'PHRASE'
+      favorites.activeTab === FavoriteType.PHRASE
         ? '完整语块作为一条收藏保留'
         : '收藏的词汇会保留来源与复习进度'
     "
@@ -109,22 +114,22 @@ onPageScroll((event) =>
     <view class="bank-tabs">
       <button
         class="bank-tab"
-        :class="{ selected: favorites.activeTab === 'VOCABULARY' }"
-        @click="selectTab('VOCABULARY')"
+        :class="{ selected: favorites.activeTab === FavoriteType.VOCABULARY }"
+        @click="selectTab(FavoriteType.VOCABULARY)"
       >
         词汇银行
       </button>
       <button
         class="bank-tab"
-        :class="{ selected: favorites.activeTab === 'PHRASE' }"
-        @click="selectTab('PHRASE')"
+        :class="{ selected: favorites.activeTab === FavoriteType.PHRASE }"
+        @click="selectTab(FavoriteType.PHRASE)"
       >
         语块银行
       </button>
     </view>
     <view class="bank-heading"
       ><text class="section-title"
-        >我的{{ favorites.activeTab === 'PHRASE' ? '语块' : '词汇' }}</text
+        >我的{{ favorites.activeTab === FavoriteType.PHRASE ? '语块' : '词汇' }}</text
       ><button class="filter-action" @click="editFilter">
         筛选{{ favorites.tabState[favorites.activeTab].filter ? '中' : '' }}
       </button></view
@@ -137,7 +142,12 @@ onPageScroll((event) =>
       description="在场景中收藏的词汇和语块会保存在这里"
     />
     <text v-if="error" class="form-error">{{ error }}</text>
-    <AppButton v-if="error" label="重新加载" variant="secondary" @press="handleShow" />
+    <AppButton
+      v-if="error"
+      label="重新加载"
+      :variant="ButtonVariant.SECONDARY"
+      @press="handleShow"
+    />
     <template #actions
       ><AppButton v-if="favorites.visibleGroups.length" label="开始翻卡复习" @press="startReview"
     /></template>

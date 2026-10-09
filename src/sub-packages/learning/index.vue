@@ -9,6 +9,9 @@ import EntrySummary from '@/features/learning/components/entry-summary.vue'
 import LearningPageHeading from '@/features/learning/components/learning-page-heading.vue'
 import SceneListSection from '@/features/learning/components/scene-list-section.vue'
 import { useLearningPage } from '@/features/learning/use-learning-page'
+import { AccessLevel } from '@/shared/enums/entitlements'
+import { LearningCatalogStage } from '@/shared/enums/learning'
+import { TabKey } from '@/shared/enums/navigation'
 import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 const {
   cancel,
@@ -21,10 +24,10 @@ const {
   openReview,
   selectScene
 } = useLearningPage()
-const isNew = computed(() => learning.sections.stage === 'NEW')
+const isNew = computed(() => learning.sections.stage === LearningCatalogStage.NEW)
 const openTitles = computed(() =>
   learning.catalog.items
-    .filter((scene) => scene.access === 'OPEN')
+    .filter((scene) => scene.access === AccessLevel.OPEN)
     .map((scene) => scene.chinese_title)
     .join(' · ')
 )
@@ -41,7 +44,7 @@ const { pageStyle } = usePageScrollLock()
   <!-- #ifdef MP-WEIXIN -->
   <page-meta :page-style="pageStyle" />
   <!-- #endif -->
-  <EntryPageShell active="learning">
+  <EntryPageShell :active="TabKey.LEARNING">
     <LearningPageHeading
       eyebrow="从真实生活场景出发，轻松开口说英语。"
       title="场景学习"

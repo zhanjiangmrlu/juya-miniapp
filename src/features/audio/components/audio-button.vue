@@ -8,39 +8,47 @@ import playGreen from '@/features/audio/assets/play-green.svg'
 import playLarge from '@/features/audio/assets/play-large.svg'
 import playWhite from '@/features/audio/assets/play-white.svg'
 import { getAudioTargetKey } from '@/features/audio/audio-machine'
+import { AudioButtonVariant, AudioStatus } from '@/shared/enums/audio'
 
 import type { AudioButtonEmits, AudioButtonProps } from '@/shared/types/audio-components'
 
 const props = withDefaults(defineProps<AudioButtonProps>(), {
   currentKey: null,
   label: '播放',
-  variant: 'pill',
+  variant: AudioButtonVariant.PILL,
   selected: false
 })
 const emit = defineEmits<AudioButtonEmits>()
 const isCurrent = computed(() => props.currentKey === getAudioTargetKey(props.target))
-const playing = computed(() => isCurrent.value && props.status === 'PLAYING')
+const playing = computed(() => isCurrent.value && props.status === AudioStatus.PLAYING)
 const active = computed(
   () =>
-    props.selected || (isCurrent.value && (props.status === 'PLAYING' || props.status === 'PAUSED'))
+    props.selected ||
+    (isCurrent.value &&
+      (props.status === AudioStatus.PLAYING || props.status === AudioStatus.PAUSED))
 )
 const stateLabel = computed(() => {
   if (!isCurrent.value) return props.label
-  if (props.status === 'LOADING') return '加载中'
-  if (props.status === 'PLAYING') return '暂停'
-  if (props.status === 'PAUSED') return '继续'
-  if (props.status === 'FAILED') return '重试'
+  if (props.status === AudioStatus.LOADING) return '加载中'
+  if (props.status === AudioStatus.PLAYING) return '暂停'
+  if (props.status === AudioStatus.PAUSED) return '继续'
+  if (props.status === AudioStatus.FAILED) return '重试'
   return props.label
 })
 const playAsset = computed(() =>
-  props.variant === 'large'
+  props.variant === AudioButtonVariant.LARGE
     ? playLarge
-    : (active.value || props.variant === 'pill') && props.variant !== 'inline'
+    : (active.value || props.variant === AudioButtonVariant.PILL) &&
+        props.variant !== AudioButtonVariant.INLINE
       ? playWhite
       : playGreen
 )
 const pauseAsset = computed(() =>
-  props.variant === 'large' ? pauseLarge : props.variant === 'inline' ? pauseGreen : pauseWhite
+  props.variant === AudioButtonVariant.LARGE
+    ? pauseLarge
+    : props.variant === AudioButtonVariant.INLINE
+      ? pauseGreen
+      : pauseWhite
 )
 
 /** 将播放意图交给页面，全局控制器保持唯一播放器 */
@@ -52,7 +60,7 @@ const handlePlay = () => emit('play', props.target)
     class="audio-button"
     :class="[variant, { active, playing }]"
     :aria-label="stateLabel"
-    :disabled="isCurrent && status === 'LOADING'"
+    :disabled="isCurrent && status === AudioStatus.LOADING"
     @click.stop="handlePlay"
   >
     <view v-if="playing" class="pause-icon" aria-hidden="true">
@@ -61,10 +69,12 @@ const handlePlay = () => emit('play', props.target)
     </view>
     <image v-else class="play-icon" :src="playAsset" mode="aspectFit" aria-hidden="true" />
     <text
-      v-if="variant === 'pill' || variant === 'inline'"
+      v-if="variant === AudioButtonVariant.PILL || variant === AudioButtonVariant.INLINE"
       class="audio-label"
-      :class="{ wide: variant === 'inline' && playing }"
-      >{{ variant === 'inline' ? (playing ? '暂停原音' : '播放原音') : stateLabel }}</text
+      :class="{ wide: variant === AudioButtonVariant.INLINE && playing }"
+      >{{
+        variant === AudioButtonVariant.INLINE ? (playing ? '暂停原音' : '播放原音') : stateLabel
+      }}</text
     >
   </button>
 </template>

@@ -1,4 +1,5 @@
 import { isSameAudioTarget } from '@/features/audio/audio-machine'
+import { AudioEventType, AudioStatus } from '@/shared/enums/audio'
 
 import type { AudioTarget } from '@/shared/contracts/learning'
 import type { AudioControllerOptions, AudioSnapshot } from '@/shared/types/audio'
@@ -13,7 +14,7 @@ export class AudioController {
   private forbiddenRetried = false
   private generation = 0
   private unsubscribe?: () => void
-  private state: AudioSnapshot = { status: 'IDLE', target: null }
+  private state: AudioSnapshot = { status: AudioStatus.IDLE, target: null }
 
   /** options 为音频设备、签名服务和状态回调 */
   constructor(private readonly options: AudioControllerOptions) {}
@@ -25,32 +26,32 @@ export class AudioController {
   /** 播放或暂停目标，target 为固定版本资源和可选句子时间区间 */
   play = async (target: AudioTarget): Promise<void> => {
     if (isSameAudioTarget(this.state.target, target)) {
-      if (this.state.status === 'PLAYING') {
+      if (this.state.status === AudioStatus.PLAYING) {
         this.pause()
         return
       }
-      if (this.state.status === 'PAUSED') {
+      if (this.state.status === AudioStatus.PAUSED) {
         this.options.engine.play()
         return
       }
-      if (this.state.status === 'LOADING') return
+      if (this.state.status === AudioStatus.LOADING) return
     }
     this.cancel()
     this.forbiddenRetried = false
-    this.update({ status: 'LOADING', target, currentTimeMs: target.start_ms ?? 0 })
+    this.update({ status: AudioStatus.LOADING, target, currentTimeMs: target.start_ms ?? 0 })
     await this.resolve(target, this.generation)
   }
 
   /** 暂停当前资源，继续时沿用设备时间 */
   pause = (): void => {
-    if (this.state.status === 'PLAYING') this.options.engine.pause()
+    if (this.state.status === AudioStatus.PLAYING) this.options.engine.pause()
   }
 
   /** 取消请求和监听并停止资源，清空播放目标 */
   stop = (): void => {
     this.cancel()
     this.forbiddenRetried = false
-    this.update({ status: 'IDLE', target: null })
+    this.update({ status: AudioStatus.IDLE, target: null })
   }
 
   /** 处理设备错误，status 为设备返回的 HTTP 状态或错误码，403 只重签一次 */
@@ -59,11 +60,11 @@ export class AudioController {
     if (!target) return
     this.cancel()
     if (status !== 403 || this.forbiddenRetried) {
-      this.update({ ...this.state, status: 'FAILED' })
+      this.update({ ...this.state, status: AudioStatus.FAILED })
       return
     }
     this.forbiddenRetried = true
-    this.update({ ...this.state, status: 'LOADING' })
+    this.update({ ...this.state, status: AudioStatus.LOADING })
     await this.resolve(target, this.generation)
   }
 
@@ -89,20 +90,21 @@ export class AudioController {
       let ready = false
       this.unsubscribe = this.options.engine.subscribe((event) => {
         if (generation !== this.generation) return
-        if (event.type === 'canplay' && !ready) {
+        if (event.type === AudioEventType.CANPLAY && !ready) {
           ready = true
           this.options.engine.seek((this.state.currentTimeMs ?? target.start_ms ?? 0) / 1000)
           this.options.engine.play()
-        } else if (event.type === 'play') this.update({ ...this.state, status: 'PLAYING' })
-        else if (event.type === 'pause')
+        } else if (event.type === AudioEventType.PLAY)
+          this.update({ ...this.state, status: AudioStatus.PLAYING })
+        else if (event.type === AudioEventType.PAUSE)
           this.update({
             ...this.state,
-            status: 'PAUSED',
+            status: AudioStatus.PAUSED,
             currentTimeMs: event.currentTimeMs ?? this.state.currentTimeMs
           })
-        else if (event.type === 'ended') this.stop()
-        else if (event.type === 'error') void this.handleError(event.status ?? 0)
-        else if (event.type === 'timeupdate') {
+        else if (event.type === AudioEventType.ENDED) this.stop()
+        else if (event.type === AudioEventType.ERROR) void this.handleError(event.status ?? 0)
+        else if (event.type === AudioEventType.TIMEUPDATE) {
           const currentTimeMs = event.currentTimeMs ?? 0
           if (target.end_ms !== undefined && currentTimeMs >= target.end_ms) this.stop()
           else this.update({ ...this.state, currentTimeMs })
@@ -115,7 +117,7 @@ export class AudioController {
       if (status === 401 || status === 403 || status === 404 || status === 409 || status === 410) {
         this.stop()
         this.options.onAccessDenied?.()
-      } else this.update({ ...this.state, status: 'FAILED' })
+      } else this.update({ ...this.state, status: AudioStatus.FAILED })
     }
   }
 

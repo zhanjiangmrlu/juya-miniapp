@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 import AudioButton from '@/features/audio/components/audio-button.vue'
 import { createClickableSegments } from '@/features/scene/clickable-segments'
+import { AudioButtonVariant } from '@/shared/enums/audio'
 
 import type { ClickableSpan } from '@/shared/contracts/learning'
 import type { DialogueSentenceEmits, DialogueSentenceProps } from '@/shared/types/scene-components'
@@ -61,7 +62,7 @@ const inspect = (span?: ClickableSpan) => {
     </view>
     <AudioButton
       v-if="entry.audio && !hideAudio"
-      variant="compact"
+      :variant="AudioButtonVariant.COMPACT"
       :selected="audioSelectionVisible && (highlighted || selected)"
       :current-key="currentAudioKey"
       :status="status"

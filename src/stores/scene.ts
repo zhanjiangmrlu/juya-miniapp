@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 
 import { createSceneModel, createSceneViewState } from '@/features/scene/scene-model'
 import { openSheet } from '@/features/vocabulary-sheet/sheet-controller'
+import { SceneEntryType } from '@/shared/enums/learning'
+import { SceneModelKind } from '@/shared/enums/scene'
 
 import type { StablePosition } from '@/shared/contracts/common'
 import type { SceneEntry } from '@/shared/contracts/learning'
@@ -17,18 +19,18 @@ export const useSceneStore = defineStore('scene', () => {
   const viewState = ref(createSceneViewState())
   let generation = 0
   const dialogueEntries = computed(() =>
-    model.value?.kind === 'FULL'
-      ? model.value.entries.filter((entry) => entry.entry_type === 'DIALOGUE')
+    model.value?.kind === SceneModelKind.FULL
+      ? model.value.entries.filter((entry) => entry.entry_type === SceneEntryType.DIALOGUE)
       : []
   )
   const vocabularyEntries = computed(() =>
-    model.value?.kind === 'FULL'
-      ? model.value.entries.filter((entry) => entry.entry_type === 'VOCABULARY')
+    model.value?.kind === SceneModelKind.FULL
+      ? model.value.entries.filter((entry) => entry.entry_type === SceneEntryType.VOCABULARY)
       : []
   )
   const phraseEntries = computed(() =>
-    model.value?.kind === 'FULL'
-      ? model.value.entries.filter((entry) => entry.entry_type === 'PHRASE')
+    model.value?.kind === SceneModelKind.FULL
+      ? model.value.entries.filter((entry) => entry.entry_type === SceneEntryType.PHRASE)
       : []
   )
 

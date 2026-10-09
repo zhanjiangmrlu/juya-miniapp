@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { PageAppearance, PageTier } from '@/shared/enums/ui'
+
 import type { AppPageProps } from '@/shared/types/ui-components'
 
 withDefaults(defineProps<AppPageProps>(), {
   padded: true,
-  appearance: 'default',
-  tier: 'primary'
+  appearance: PageAppearance.DEFAULT,
+  tier: PageTier.PRIMARY
 })
 </script>
 
@@ -13,7 +15,7 @@ withDefaults(defineProps<AppPageProps>(), {
     class="app-page"
     :class="[
       `app-page--${tier}`,
-      { 'app-page--padded': padded, 'home-theme': appearance === 'home' }
+      { 'app-page--padded': padded, 'home-theme': appearance === PageAppearance.HOME }
     ]"
   >
     <slot />

@@ -5,24 +5,27 @@ import { useFavoriteGroup } from '@/features/favorites/use-favorite-group'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
+import { FavoriteType } from '@/shared/enums/favorites'
+import { NavigationType } from '@/shared/enums/navigation'
+import { ProfileTabKey } from '@/shared/enums/profile'
 import { navigate } from '@/shared/navigation/navigate'
 
 const { item, group, error } = useFavoriteGroup('来源加载失败，请返回收藏后重试')
 /** 进入原文稳定位置，url 为已校验权限的来源地址 */
-const open = (url: string) => navigate({ type: 'navigateTo', url })
+const open = (url: string) => navigate({ type: NavigationType.NAVIGATE_TO, url })
 /** 返回收藏银行 */
 const back = () =>
   navigate({
-    type: 'reLaunch',
+    type: NavigationType.RE_LAUNCH,
     url:
-      item.value?.entry_type === 'PHRASE'
+      item.value?.entry_type === FavoriteType.PHRASE
         ? '/sub-packages/favorites/phrases'
         : '/sub-packages/favorites/index'
   })
 </script>
 <template>
   <PersonalPage
-    active="favorites"
+    :active="ProfileTabKey.FAVORITES"
     navigation="来源场景"
     title="选择来源场景"
     subtitle="同一收藏可以来自多个场景"
@@ -40,7 +43,7 @@ const back = () =>
     /></view>
     <template #actions
       ><AppButton
-        :label="item?.entry_type === 'PHRASE' ? '返回语块银行' : '返回词汇银行'"
+        :label="item?.entry_type === FavoriteType.PHRASE ? '返回语块银行' : '返回词汇银行'"
         @press="back"
     /></template>
   </PersonalPage>

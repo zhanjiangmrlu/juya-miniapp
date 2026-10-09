@@ -1,3 +1,5 @@
+import { BootstrapStatus } from '@/shared/enums/app'
+
 import type { BootstrapDependencies, BootstrapResult } from '@/shared/types/app'
 export type { BootstrapDependencies } from '@/shared/types/app'
 export type { BootstrapResult } from '@/shared/types/app'
@@ -14,8 +16,8 @@ export async function bootstrapApp(dependencies: BootstrapDependencies): Promise
       : await dependencies.sessionService.loginWithWechat(await dependencies.wechatLogin())
     dependencies.storage.saveTokens(tokens)
     await Promise.all(dependencies.preload.map(async (load) => load()))
-    return { status: 'ready' }
+    return { status: BootstrapStatus.READY }
   } catch {
-    return { status: 'network-error' }
+    return { status: BootstrapStatus.NETWORK_ERROR }
   }
 }

@@ -1,4 +1,4 @@
-import type { Greeting } from '@/shared/enums/home'
+import { Greeting } from '@/shared/enums/home'
 
 export type { Greeting } from '@/shared/enums/home'
 
@@ -21,9 +21,9 @@ export function getBeijingGreeting(now: Date): Greeting {
   const hourPart = BEIJING_HOUR_FORMATTER.formatToParts(now).find((part) => part.type === 'hour')
   const hour = Number(hourPart?.value)
 
-  if (hour < 12) return '早上好'
-  if (hour < 18) return '下午好'
-  return '晚上好'
+  if (hour < 12) return Greeting.MORNING
+  if (hour < 18) return Greeting.AFTERNOON
+  return Greeting.EVENING
 }
 
 /** 将时间格式化为首页使用的北京时间日期文案。 */

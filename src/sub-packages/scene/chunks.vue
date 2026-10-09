@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import EntryPageView from '@/features/scene/components/entry-page-view.vue'
+import { SceneLookupEntryType } from '@/shared/enums/learning'
 </script>
 
 <template>
-  <EntryPageView entry-type="PHRASE" title="Useful Chunks" />
+  <EntryPageView :entry-type="SceneLookupEntryType.PHRASE" title="Useful Chunks" />
 </template>
