@@ -141,6 +141,22 @@ afterEach(() => {
 })
 
 describe('场景整段播放的句子激活展示', () => {
+  it('解码微信来源定位后高亮对应句子', async () => {
+    runtime.scene.open.mockResolvedValue(adaptSceneResponse(openedScene(true)))
+    wrapper = mount(Dialogue, {
+      global: {
+        stubs: {
+          ScenePageLayout: { template: '<div><slot /></div>' },
+          'scroll-view': { template: '<div><slot /></div>' },
+          'page-meta': true
+        }
+      }
+    })
+    await hooks.load?.({ sceneId: 'work', sourceLocator: 'sentence%3As2%3Aentry%3Aword' })
+    await flushPromises()
+    expect(highlightedRows()).toEqual(['s2'])
+  })
+
   it('第二句暂停后保留高亮，继续进入第三句时切换高亮', async () => {
     await openPage()
     playback.device.currentTime = 5

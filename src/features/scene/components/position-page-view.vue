@@ -8,6 +8,7 @@ import { useScenePage } from '@/features/scene/use-scene-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { AudioStatus } from '@/shared/enums/audio'
 import { NavigationType } from '@/shared/enums/navigation'
+import { decodePageQuery } from '@/shared/navigation/decode-page-query'
 import { navigate } from '@/shared/navigation/navigate'
 
 import type { SceneEntry } from '@/shared/contracts/learning'
@@ -49,7 +50,7 @@ const currentStatus = computed(() => {
 
 /** 保存路由来源并加载授权场景，query 为稳定场景、句子和词条参数 */
 const handleLoad = async (query?: Record<string, string>) => {
-  locator.value = query?.sourceLocator ?? ''
+  locator.value = decodePageQuery(query?.sourceLocator)
   await initialize(query?.sceneId)
   sourceLoading.value = false
   if (!locator.value && !props.source) {

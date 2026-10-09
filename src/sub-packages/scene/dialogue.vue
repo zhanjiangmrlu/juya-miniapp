@@ -14,6 +14,7 @@ import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { AUDIO_PLAYBACK_STATUSES } from '@/shared/constants/audio'
 import { AudioButtonVariant, AudioStatus } from '@/shared/enums/audio'
 import { NavigationType } from '@/shared/enums/navigation'
+import { decodePageQuery } from '@/shared/navigation/decode-page-query'
 import { navigate } from '@/shared/navigation/navigate'
 import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 
@@ -98,11 +99,12 @@ const sourceChinese = computed(() =>
 /** 加载场景并恢复稳定来源，query 为场景和来源定位参数 */
 const handleLoad = async (query?: Record<string, string>) => {
   await initialize(query?.sceneId)
-  if (query?.sourceLocator) {
+  const sourceLocator = decodePageQuery(query?.sourceLocator)
+  if (sourceLocator) {
     const entry = scene.dialogueEntries.find(
       (candidate) =>
-        candidate.source_locator === query.sourceLocator ||
-        query.sourceLocator?.includes(`sentence:${candidate.entry_id}:`)
+        candidate.source_locator === sourceLocator ||
+        sourceLocator.includes(`sentence:${candidate.entry_id}:`)
     )
     if (entry) {
       scrollTarget.value = entry.source_locator

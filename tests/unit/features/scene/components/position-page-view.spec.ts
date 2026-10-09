@@ -59,6 +59,27 @@ beforeEach(() => {
 })
 
 describe('场景恢复位置与来源展示', () => {
+  it('解码微信路由中的来源定位后再查询固定词条版本', async () => {
+    const wrapper = mount(PositionPageView, {
+      props: { source: true },
+      global: { stubs: { ScenePageLayout: { template: '<div><slot /></div>' } } }
+    })
+    await dependencies.load?.({
+      sceneId: 'scene-1',
+      sourceLocator: 'vocabulary%3Aword',
+      entryId: 'word',
+      revisionId: 'revision-1',
+      entryVersion: '1'
+    })
+    expect(dependencies.getEntry).toHaveBeenCalledWith('scene-1', 'word', {
+      revision_id: 'revision-1',
+      entry_version: 1,
+      source_locator: 'vocabulary:word'
+    })
+    expect(wrapper.get('.scene-subtitle').text()).toContain('hello')
+    wrapper.unmount()
+  })
+
   it('播放状态响应更新，播放按钮仍只播放当前句', async () => {
     const wrapper = mount(PositionPageView, {
       global: { stubs: { ScenePageLayout: { template: '<div><slot /></div>' } } }
