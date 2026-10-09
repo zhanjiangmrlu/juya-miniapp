@@ -7,6 +7,7 @@ import { validateContactForm } from '@/features/contact-profile/contact-form'
 import { composeCorrectionReason } from '@/features/contact-profile/correction-reason'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { ContactCorrectionField } from '@/shared/enums/contact-profile'
 import { NavigationType } from '@/shared/enums/navigation'
@@ -66,6 +67,7 @@ const submit = async () => {
 const back = () =>
   navigate({ type: NavigationType.REDIRECT_TO, url: '/sub-packages/profile/contact-manage' })
 onShow(load)
+useAnalyticsPage('sub-packages/profile/contact-correction')
 </script>
 <template>
   <PersonalPage title="申请更正" subtitle="已核对的微信号需要提交更正申请">

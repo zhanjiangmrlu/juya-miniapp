@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
+
+import { getAnalytics } from '@/services/analytics/runtime'
+import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
 
 import type { AccessNoticeEmits, AccessNoticeProps } from '@/shared/types/learning-components'
@@ -6,6 +10,9 @@ import type { AccessNoticeEmits, AccessNoticeProps } from '@/shared/types/learni
 useModalScrollLock()
 withDefaults(defineProps<AccessNoticeProps>(), { showProfileAction: false })
 const emit = defineEmits<AccessNoticeEmits>()
+onMounted(() =>
+  getAnalytics().track(AnalyticsEvent.ACCESS_NOTICE_VIEW, { entry_source: 'learning' })
+)
 /** 关闭提示，原页面和滚动位置保持不变 */
 const handleClose = () => emit('close')
 /** 进入服务端开关允许的联系资料流程 */

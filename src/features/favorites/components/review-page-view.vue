@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onLoad } from '@dcloudio/uni-app'
+import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
@@ -7,8 +7,10 @@ import AppState from '@/components/app-state/app-state.vue'
 import ReviewCard from '@/features/favorites/components/review-card.vue'
 import { createReviewSession } from '@/features/favorites/review-session'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
+import { getAnalytics } from '@/services/analytics/runtime'
 import { createRequestId } from '@/services/http/request-id'
 import { getRuntimeServices } from '@/services/runtime'
+import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { FavoriteType, ReviewCardFace } from '@/shared/enums/favorites'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ProfileTabKey } from '@/shared/enums/profile'
@@ -29,9 +31,16 @@ const busy = ref(false)
 let controller: ReturnType<typeof createReviewSession>
 let createKey = ''
 let apiSession: ReviewSession | undefined
+let generation = 0
+let suspended = false
+let lastQuery: Record<string, string> | undefined
 const nextLabel = computed(() => (index.value < cardIds.value.length - 1 ? '下一个' : '完成复习'))
 /** 从路由恢复队列并读取真实词卡，query 为卡片标识与当前位置 */
 const load = async (query?: Record<string, string>) => {
+  const request = ++generation
+  const token = getAnalytics().capture()
+  lastQuery = query
+  suspended = false
   bank.value = query?.bank === FavoriteType.PHRASE ? FavoriteType.PHRASE : FavoriteType.VOCABULARY
   cardIds.value =
     query?.cardIds?.split(',').filter(Boolean) ??
@@ -56,9 +65,25 @@ const load = async (query?: Record<string, string>) => {
   })
   try {
     const id = cardIds.value[index.value]
-    if (id) item.value = await getRuntimeServices().favorites.get(id)
+    if (id) {
+      const loaded = await getRuntimeServices().favorites.get(id)
+      if (request !== generation || suspended) return
+      const created = !apiSession
+      apiSession ??= await getRuntimeServices().favorites.createReview(cardIds.value, createKey)
+      if (request !== generation || suspended) return
+      favorites.updateTabState(bank.value, {
+        review: { ...favorites.tabState[bank.value].review!, session: apiSession }
+      })
+      item.value = loaded
+      if (created)
+        getAnalytics().track(
+          AnalyticsEvent.REVIEW_START_SUCCESS,
+          { entry_type: bank.value },
+          { token, once: createKey }
+        )
+    }
   } catch {
-    error.value = '卡片加载失败，请返回收藏重试'
+    if (request === generation && !suspended) error.value = '复习加载失败，请返回收藏重试'
   }
 }
 /** 导航到指定卡面，page 为正面或背面页，position 为队列中的位置 */
@@ -72,6 +97,8 @@ const flip = () =>
   go(props.face === ReviewCardFace.FRONT ? 'review-back' : 'review-front', index.value)
 /** 完成全部卡片后记录一次复习，失败重试复用已创建会话与固定幂等键 */
 const next = async () => {
+  const token = getAnalytics().capture()
+  const request = generation
   if (busy.value || !item.value) return
   if (index.value < cardIds.value.length - 1) {
     await go('review-front', index.value + 1)
@@ -85,6 +112,15 @@ const next = async () => {
       review: { ...favorites.tabState[bank.value].review!, session: apiSession }
     })
     await controller.complete((key) => service.completeReview(apiSession!.id, key))
+    if (request !== generation || suspended) return
+    getAnalytics().track(
+      AnalyticsEvent.REVIEW_COMPLETE_SUCCESS,
+      { entry_type: bank.value },
+      {
+        token,
+        once: favorites.tabState[bank.value].review!.completionKey
+      }
+    )
     favorites.updateTabState(bank.value, { review: null })
     await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/home/index' })
   } catch {
@@ -94,6 +130,18 @@ const next = async () => {
   }
 }
 onLoad(load)
+/** 隐藏复习页面时使旧加载或完成回调失效 */
+const hide = () => {
+  suspended = true
+  generation++
+}
+onHide(hide)
+onUnload(hide)
+onShow(() => {
+  if (!suspended) return
+  suspended = false
+  if (!item.value) void load(lastQuery)
+})
 </script>
 <template>
   <PersonalPage

@@ -8,11 +8,20 @@ import type { EntitlementsResponse, LimitedEntitlement } from '@/shared/contract
 
 const dependencies = vi.hoisted(() => ({
   show: undefined as (() => Promise<void>) | undefined,
+  hide: undefined as (() => void) | undefined,
   get: vi.fn(),
   catalog: vi.fn(),
   navigate: vi.fn()
 }))
+const analytics = vi.hoisted(() => ({ capture: () => 1, track: vi.fn() }))
+vi.mock('@/services/analytics/runtime', () => ({ getAnalytics: () => analytics }))
 vi.mock('@dcloudio/uni-app', () => ({
+  onHide: (hook: () => void) => {
+    dependencies.hide = hook
+  },
+  onUnload: (hook: () => void) => {
+    dependencies.hide = hook
+  },
   onLoad: (hook: (query: Record<string, string>) => void) => hook({ id: 'one' }),
   onShow: (hook: () => Promise<void>) => {
     dependencies.show = hook
@@ -154,6 +163,11 @@ describe('权益页面状态映射与导航', () => {
   })
   it('待开始页面点击主按钮进入场景，期限和天数随刷新更新', async () => {
     const wrapper = await render('PENDING')
+    expect(analytics.track).toHaveBeenCalledWith(
+      'entitlement_view',
+      { access_level: 'PENDING' },
+      { token: 1 }
+    )
     expect(wrapper.get('.summary-label').text()).toBe('启动截止')
     expect(wrapper.get('.page-subtitle').text()).toContain('3 天活动')
     expect(wrapper.text()).toContain('3 天活动场景之一')

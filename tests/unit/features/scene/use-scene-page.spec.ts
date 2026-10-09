@@ -16,6 +16,8 @@ const runtime = vi.hoisted(() => ({
 }))
 vi.mock('@/services/runtime', () => ({ getRuntimeServices: () => runtime }))
 const hooks = vi.hoisted(() => ({ show: undefined as (() => void) | undefined }))
+const analytics = vi.hoisted(() => ({ capture: vi.fn(() => 1), track: vi.fn() }))
+vi.mock('@/services/analytics/runtime', () => ({ getAnalytics: () => analytics }))
 vi.mock('@dcloudio/uni-app', () => ({
   onShow: (listener: () => void) => {
     hooks.show = listener
@@ -44,6 +46,31 @@ const full = {
 }
 
 describe('场景授权资源与词卡', () => {
+  it('场景实际打开成功上报一次，返回页面后台核验不重复计算', async () => {
+    const page = useScenePage()
+    await page.initialize('coffee')
+    page.disposeAudio()
+    hooks.show?.()
+    await vi.waitFor(() => expect(runtime.scene.open).toHaveBeenCalledTimes(2))
+    expect(
+      analytics.track.mock.calls.filter(([event]) => event === 'scene_open_success')
+    ).toHaveLength(1)
+  })
+  it('完成失败不记成功，重复成功回调使用同一完成去重键', async () => {
+    const page = useScenePage()
+    await page.initialize('coffee')
+    runtime.scene.complete.mockRejectedValueOnce(new Error('offline'))
+    expect(await page.complete()).toBe(false)
+    expect(
+      analytics.track.mock.calls.filter(([event]) => event === 'learn_complete_success')
+    ).toHaveLength(0)
+    expect(await page.complete()).toBe(true)
+    expect(analytics.track).toHaveBeenCalledWith(
+      'learn_complete_success',
+      expect.objectContaining({ content_scene_id: 'coffee' }),
+      expect.objectContaining({ token: 1, once: expect.any(String) })
+    )
+  })
   it('连续点词逆序返回时只保存最后点击的句子位置', async () => {
     const page = useScenePage()
     await page.initialize('coffee')

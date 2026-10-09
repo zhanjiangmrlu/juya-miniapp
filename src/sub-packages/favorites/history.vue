@@ -8,6 +8,7 @@ import { presentHistory } from '@/features/favorites/history-presenter'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ProfileTabKey } from '@/shared/enums/profile'
@@ -39,6 +40,7 @@ const open = (route: string | null) => {
 const back = () =>
   navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/favorites/index' })
 onShow(load)
+useAnalyticsPage('sub-packages/favorites/history')
 </script>
 <template>
   <PersonalPage

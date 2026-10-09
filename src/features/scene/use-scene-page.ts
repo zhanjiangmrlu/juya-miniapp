@@ -2,8 +2,11 @@ import { onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 
 import { createProgressQueue } from '@/features/learning-progress/progress-queue'
+import { getAnalytics } from '@/services/analytics/runtime'
+import { createRequestId } from '@/services/http/request-id'
 import { getRuntimeServices } from '@/services/runtime'
 import { PROGRESS_QUEUE_KEY } from '@/shared/constants/learning-progress'
+import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { AudioTargetType } from '@/shared/enums/audio'
 import { SceneEntryType } from '@/shared/enums/learning'
 import { ProgressCommandKind } from '@/shared/enums/learning-progress'
@@ -18,6 +21,9 @@ import type { ScenePageOptions } from '@/shared/types/scene'
 
 /** 编排场景与媒体，options.resume 决定返回页面时是否自动重新核验授权 */
 export const useScenePage = (options: ScenePageOptions = {}) => {
+  const analytics = getAnalytics()
+  const visitKey = createRequestId()
+  const opened = new Set<string>()
   const audio = useAudioStore()
   const runtime = getRuntimeServices()
   const scene = useSceneStore()
@@ -96,6 +102,7 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
 
   /** 使用路由标识加载场景，id 为授权场景 ID，缺失时不猜测场景 */
   const initialize = async (id?: string) => {
+    const token = analytics.capture()
     suspended = false
     const request = ++generation
     sheetRequest++
@@ -110,6 +117,18 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
     }
     await scene.load(runtime.scene, id)
     if (request !== generation) return
+    const model = fullModel.value
+    if (model && !opened.has(id)) {
+      opened.add(id)
+      analytics.track(
+        AnalyticsEvent.SCENE_OPEN_SUCCESS,
+        {
+          content_scene_id: id,
+          content_revision_id: model.revision_id
+        },
+        { token }
+      )
+    }
     await resolveImage(request)
     void progressQueue.flush()
   }
@@ -124,6 +143,7 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
 
   /** 从服务器获取词卡，entry 为列表引用，span 为点击位置绑定的版本和来源 */
   const inspectEntry = async (entry: SceneEntry, span?: ClickableSpan) => {
+    const token = analytics.capture()
     const model = fullModel.value
     if (!model?.revision_id) return
     const request = ++sheetRequest
@@ -161,6 +181,15 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
         },
         position
       )
+      analytics.track(
+        AnalyticsEvent.ENTRY_POPUP_VIEW,
+        {
+          content_scene_id: model.sceneId,
+          content_revision_id: model.revision_id,
+          entry_type: entry.entry_type
+        },
+        { token }
+      )
     } catch (error) {
       if (request === sheetRequest) handleFailure(error)
     } finally {
@@ -194,6 +223,7 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
 
   /** 收藏权威词卡，entry 为固定发布版本的词条快照 */
   const favorite = async (entry: SceneEntry) => {
+    const token = analytics.capture()
     const model = fullModel.value
     const request = generation
     if (entry.favorited || !model?.revision_id || suspended) return
@@ -210,6 +240,15 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
       })
       if (request !== generation || fullModel.value !== model) return
       entry.favorited = true
+      analytics.track(
+        AnalyticsEvent.FAVORITE_ADD_SUCCESS,
+        {
+          content_scene_id: model.sceneId,
+          content_revision_id: model.revision_id,
+          entry_type: entry.entry_type
+        },
+        { token, once: `${visitKey}:${model.sceneId}:${entry.entry_id}` }
+      )
       uni.showToast({ icon: 'success', title: '已收藏' })
     } catch (error) {
       if (request === generation && fullModel.value === model) handleFailure(error)
@@ -244,6 +283,7 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
 
   /** 完成学习，成功才返回完成标识，防止重复点击 */
   const complete = async (): Promise<boolean> => {
+    const token = analytics.capture()
     const model = fullModel.value
     const request = generation
     if (completing || !model || suspended) return false
@@ -252,6 +292,15 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
       await progressQueue.flush()
       if (request !== generation || fullModel.value !== model) return false
       await runtime.scene.complete(model.sceneId)
+      if (request === generation && fullModel.value === model)
+        analytics.track(
+          AnalyticsEvent.LEARN_COMPLETE_SUCCESS,
+          {
+            content_scene_id: model.sceneId,
+            content_revision_id: model.revision_id
+          },
+          { token, once: `${visitKey}:${model.sceneId}:${model.revision_id}` }
+        )
       return request === generation && fullModel.value === model
     } catch (error) {
       if (request === generation && fullModel.value === model) handleFailure(error)

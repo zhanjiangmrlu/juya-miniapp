@@ -7,6 +7,7 @@ import { useAccountDeletionStore } from '@/stores/account-deletion'
 import DeletionPending from '@/sub-packages/account/deletion-pending.vue'
 
 import type { UserProfile } from '@/shared/contracts/profile'
+vi.mock('@/services/analytics/use-analytics-page', () => ({ useAnalyticsPage: vi.fn() }))
 
 const dependencies = vi.hoisted(() => ({
   show: undefined as (() => Promise<void>) | undefined,

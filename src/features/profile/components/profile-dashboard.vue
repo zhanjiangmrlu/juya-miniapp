@@ -9,8 +9,10 @@ import { loadAllMessages } from '@/features/messages/load-messages'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import ProfileActionList from '@/features/profile/components/profile-action-list.vue'
 import ProfileIdentity from '@/features/profile/components/profile-identity.vue'
+import { getAnalytics } from '@/services/analytics/runtime'
 import { createRequestId } from '@/services/http/request-id'
 import { getRuntimeServices } from '@/services/runtime'
+import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { MessageRelatedType } from '@/shared/enums/messages'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ButtonVariant } from '@/shared/enums/ui'
@@ -30,13 +32,17 @@ let visible = false
 let generation = 0
 /** 跳转档案服务，url 为当前用户允许访问的站内地址 */
 const open = (url: string) => navigate({ type: NavigationType.NAVIGATE_TO, url })
-/** 主动完善时直接进入表单，已填写则进入管理页 */
-const openContact = () =>
-  open(
+/** 打开本人联系资料，source 为用户点击入口的固定来源标签 */
+const navigateContact = (source: string) => {
+  getAnalytics().track(AnalyticsEvent.CONTACT_ENTRY_CLICK, { entry_source: source })
+  return open(
     contact.value.wechatId
       ? '/sub-packages/profile/contact-manage'
       : '/sub-packages/profile/contact-edit'
   )
+}
+/** 主动完善时直接进入表单，已填写则进入管理页 */
+const openContact = () => navigateContact('profile')
 /** 关闭一次提示，实际曝光记录在显示时已经写入 */
 const dismiss = () => {
   promptVisible.value = false
@@ -44,10 +50,11 @@ const dismiss = () => {
 /** 从提示继续完善本人联系资料 */
 const continueForm = async () => {
   dismiss()
-  await openContact()
+  await navigateContact('profile_prompt')
 }
 /** 刷新本人完整资料、红点，并在实际渲染后记录一次提示曝光 */
 const load = async () => {
+  const token = getAnalytics().capture()
   const current = ++generation
   try {
     const runtime = getRuntimeServices()
@@ -81,6 +88,11 @@ const load = async () => {
       }
       exposure = { key: createRequestId(), recorded: false }
       uni.setStorageSync(storageKey, exposure)
+      getAnalytics().track(
+        AnalyticsEvent.CONTACT_PROMPT_VIEW,
+        { entry_source: 'profile_prompt' },
+        { token, once: exposure.key }
+      )
     }
     if (exposure && !exposure.recorded) {
       try {

@@ -9,6 +9,7 @@ import EntrySummary from '@/features/learning/components/entry-summary.vue'
 import LearningPageHeading from '@/features/learning/components/learning-page-heading.vue'
 import SceneListSection from '@/features/learning/components/scene-list-section.vue'
 import { useLearningPage } from '@/features/learning/use-learning-page'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { AccessLevel } from '@/shared/enums/entitlements'
 import { LearningCatalogStage } from '@/shared/enums/learning'
 import { TabKey } from '@/shared/enums/navigation'
@@ -39,6 +40,7 @@ onShow(handleShow)
 onHide(cancel)
 onUnload(cancel)
 const { pageStyle } = usePageScrollLock()
+useAnalyticsPage('sub-packages/learning/index')
 </script>
 <template>
   <!-- #ifdef MP-WEIXIN -->

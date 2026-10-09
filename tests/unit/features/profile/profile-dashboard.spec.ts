@@ -11,6 +11,8 @@ const dependencies = vi.hoisted(() => ({
   exposure: vi.fn(),
   storage: vi.fn()
 }))
+const analytics = vi.hoisted(() => ({ capture: () => 1, track: vi.fn() }))
+vi.mock('@/services/analytics/runtime', () => ({ getAnalytics: () => analytics }))
 vi.mock('@dcloudio/uni-app', () => ({
   onShow: (callback: () => Promise<void>) => {
     dependencies.show = callback
@@ -64,6 +66,7 @@ describe('联系提示真实曝光', () => {
       await flushPromises()
       expect(dependencies.storage).not.toHaveBeenCalled()
       expect(dependencies.exposure).not.toHaveBeenCalled()
+      expect(analytics.track).not.toHaveBeenCalled()
       expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
       wrapper.unmount()
     }
@@ -76,6 +79,11 @@ describe('联系提示真实曝光', () => {
     expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
     expect(dependencies.storage).toHaveBeenCalled()
     expect(dependencies.exposure).toHaveBeenCalledOnce()
+    expect(analytics.track).toHaveBeenCalledWith(
+      'contact_prompt_view',
+      { entry_source: 'profile_prompt' },
+      expect.objectContaining({ token: 1, once: expect.any(String) })
+    )
     wrapper.unmount()
   })
 })

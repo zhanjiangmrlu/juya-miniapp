@@ -7,6 +7,7 @@ import AppState from '@/components/app-state/app-state.vue'
 import FeedbackCard from '@/features/feedback/components/feedback-card.vue'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ButtonVariant } from '@/shared/enums/ui'
@@ -41,6 +42,7 @@ const createFeedback = async () => {
 }
 
 onShow(loadFeedback)
+useAnalyticsPage('sub-packages/feedback/index')
 </script>
 <template>
   <PersonalPage title="我的反馈" subtitle="所有回复和补充保存在同一条时间线">

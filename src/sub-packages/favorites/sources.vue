@@ -5,6 +5,7 @@ import { useFavoriteGroup } from '@/features/favorites/use-favorite-group'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { FavoriteType } from '@/shared/enums/favorites'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ProfileTabKey } from '@/shared/enums/profile'
@@ -22,6 +23,7 @@ const back = () =>
         ? '/sub-packages/favorites/phrases'
         : '/sub-packages/favorites/index'
   })
+useAnalyticsPage('sub-packages/favorites/sources')
 </script>
 <template>
   <PersonalPage

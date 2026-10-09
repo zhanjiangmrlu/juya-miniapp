@@ -6,6 +6,7 @@ import AppState from '@/components/app-state/app-state.vue'
 import SceneHero from '@/features/scene/components/scene-hero.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { SCENE_LEARNING_STEPS as steps } from '@/shared/constants/scene'
 import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
@@ -39,6 +40,7 @@ onLoad(handleLoad)
 onHide(disposeAudio)
 onUnload(disposeAudio)
 const { pageStyle } = usePageScrollLock()
+useAnalyticsPage('sub-packages/scene/detail')
 </script>
 <template>
   <!-- #ifdef MP-WEIXIN -->

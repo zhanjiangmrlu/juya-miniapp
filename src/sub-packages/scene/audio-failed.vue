@@ -6,6 +6,7 @@ import AppState from '@/components/app-state/app-state.vue'
 import DialogueList from '@/features/scene/components/dialogue-list.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { AudioStatus } from '@/shared/enums/audio'
 import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
@@ -35,6 +36,7 @@ const shadowing = async () => {
 onLoad(handleLoad)
 onHide(disposeAudio)
 onUnload(disposeAudio)
+useAnalyticsPage('sub-packages/scene/audio-failed')
 </script>
 <template>
   <ScenePageLayout :title="fullModel?.chineseTitle.replace(/^在/, '') ?? '场景对话'">

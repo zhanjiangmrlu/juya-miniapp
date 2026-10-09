@@ -12,6 +12,7 @@ import { presentEntitlements } from '@/features/entitlements/entitlement-present
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { AccessLevel } from '@/shared/enums/entitlements'
 import { NavigationType } from '@/shared/enums/navigation'
@@ -73,6 +74,7 @@ const requestDeletion = async () => {
   }
 }
 onShow(load)
+useAnalyticsPage('sub-packages/account/delete-confirm')
 </script>
 <template>
   <PersonalPage

@@ -1,6 +1,8 @@
 import { ref } from 'vue'
 
+import { getAnalytics } from '@/services/analytics/runtime'
 import { getRuntimeServices } from '@/services/runtime'
+import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
 import { useLearningStore } from '@/stores/learning'
@@ -23,7 +25,11 @@ export const useLearningPage = () => {
   const cancel = () => learning.cancel(owner)
 
   /** 有权限时进入场景，无权限时停留当前页打开统一提示。 */
-  async function selectScene(scene: SceneCardViewModel) {
+  const selectScene = async (scene: SceneCardViewModel) => {
+    getAnalytics().track(AnalyticsEvent.SCENE_CLICK, {
+      content_scene_id: scene.sceneId,
+      access_level: scene.canOpen ? 'allowed' : 'preview'
+    })
     if (!scene.entryUrl) {
       noticeVisible.value = true
       return
@@ -51,7 +57,8 @@ export const useLearningPage = () => {
   }
 
   /** 从服务端允许的次级入口前往联系资料，不承诺开通内容。 */
-  async function openProfile() {
+  const openProfile = async () => {
+    getAnalytics().track(AnalyticsEvent.CONTACT_ENTRY_CLICK, { entry_source: 'access_notice' })
     noticeVisible.value = false
     await navigate({
       type: NavigationType.NAVIGATE_TO,

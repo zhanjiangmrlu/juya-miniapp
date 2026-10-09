@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
+import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
@@ -8,7 +8,10 @@ import { presentContact } from '@/features/contact-profile/contact-form'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
+import { getAnalytics } from '@/services/analytics/runtime'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { getRuntimeServices } from '@/services/runtime'
+import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
@@ -16,6 +19,9 @@ const contact = ref(presentContact(null))
 const form = ref<InstanceType<typeof ContactForm>>()
 const loading = ref(false)
 const error = ref('')
+let generation = 0
+onHide(() => generation++)
+onUnload(() => generation++)
 /** 读取本人当前微信号与服务端受控修改能力 */
 const load = async () => {
   try {
@@ -33,10 +39,18 @@ const correct = () =>
   navigate({ type: NavigationType.NAVIGATE_TO, url: '/sub-packages/profile/contact-correction' })
 /** 自助修改本人微信号，value 为用户同意用途后校验的微信号 */
 const save = async (value: string) => {
+  const token = getAnalytics().capture()
+  const request = generation
   if (loading.value || !contact.value.canSelfEdit) return
   loading.value = true
   try {
     contact.value = presentContact(await getRuntimeServices().contact.save(value))
+    if (request === generation)
+      getAnalytics().track(
+        AnalyticsEvent.CONTACT_SAVE_SUCCESS,
+        { entry_source: 'contact_update' },
+        { token }
+      )
     uni.showToast({ icon: 'success', title: '已保存' })
   } catch {
     error.value = '无法修改，请重试或申请更正'
@@ -58,6 +72,7 @@ const remove = async () => {
   }
 }
 onShow(load)
+useAnalyticsPage('sub-packages/profile/contact-manage')
 </script>
 <template>
   <PersonalPage

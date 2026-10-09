@@ -19,6 +19,9 @@ importers:
       pinia:
         specifier: 2.1.7
         version: 2.1.7(typescript@5.9.3)(vue@3.4.21(typescript@5.9.3))
+      umtrack-wx:
+        specifier: 2.8.0
+        version: 2.8.0
       vue:
         specifier: 3.4.21
         version: 3.4.21(typescript@5.9.3)
@@ -7546,6 +7549,12 @@ packages:
         integrity: sha512-JFNbkD1Svwe0KvGi8GOeLcP4kAWQ609twvCdcHxq1oSL8svv39ZuSvajcD8B+5D0eL4+s1Is2D/O6KN3qcTeRA==
       }
 
+  umtrack-wx@2.8.0:
+    resolution:
+      {
+        integrity: sha512-F5ul+Q7bDJ6MDrn9ysPAyB9nyP1vCxLGUBkSJ4uvknt8rjmX4tqy1IUnJuWKj9ZH2BtkjRFpldQXJSlLDOYfhQ==
+      }
+
   unbox-primitive@1.1.0:
     resolution:
       {
@@ -13173,6 +13182,8 @@ snapshots:
   typescript@5.9.3: {}
 
   ufo@1.6.4: {}
+
+  umtrack-wx@2.8.0: {}
 
   unbox-primitive@1.1.0:
     dependencies:

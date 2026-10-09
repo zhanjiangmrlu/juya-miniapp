@@ -6,6 +6,7 @@ import FavoriteDetail from '@/sub-packages/favorites/detail.vue'
 import FavoriteSources from '@/sub-packages/favorites/sources.vue'
 
 import type { FavoriteItem } from '@/shared/contracts/favorites'
+vi.mock('@/services/analytics/use-analytics-page', () => ({ useAnalyticsPage: vi.fn() }))
 
 const dependencies = vi.hoisted(() => ({
   load: undefined as ((query: Record<string, string>) => unknown) | undefined,

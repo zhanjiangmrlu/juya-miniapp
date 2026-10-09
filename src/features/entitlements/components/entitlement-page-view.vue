@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onLoad, onShow } from '@dcloudio/uni-app'
-import { computed, ref } from 'vue'
+import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
+import { computed, nextTick, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
@@ -8,6 +8,7 @@ import { presentEntitlements } from '@/features/entitlements/entitlement-present
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
+import { getAnalytics } from '@/services/analytics/runtime'
 import { getRuntimeServices } from '@/services/runtime'
 import {
   CONTENT_ACCESS_LEVELS,
@@ -18,6 +19,7 @@ import {
   LIMITED_ENTITLEMENT_RESULT_STATES,
   LIMITED_ENTITLEMENT_ROW_COPY
 } from '@/shared/constants/entitlements'
+import { AnalyticsEvent } from '@/shared/enums/analytics'
 import {
   AccessLevel,
   EntitlementPageState,
@@ -44,6 +46,8 @@ const catalog = ref<SceneSummary[]>([])
 const selectedId = ref('')
 const result = computed(() => selected.value?.achievements)
 const error = ref('')
+let visible = false
+let generation = 0
 const selected = computed(() =>
   selectedId.value
     ? view.value.limited.find((item) => item.id === selectedId.value)
@@ -205,12 +209,15 @@ const preserved = computed(() => {
 })
 /** 读取最新权益与场景摘要，并保留服务器提供的激活与结束时刻 */
 const load = async () => {
+  const token = getAnalytics().capture()
+  const request = ++generation
   try {
     const runtime = getRuntimeServices()
     const [dto, directory] = await Promise.all([
       runtime.entitlements.get(),
       runtime.catalog.getCatalog()
     ])
+    if (!visible || request !== generation) return
     view.value = presentEntitlements(
       dto,
       createServerClock(dto.server_now ? new Date(dto.server_now) : undefined)
@@ -228,8 +235,15 @@ const load = async () => {
     }
     catalog.value = directory.items
     error.value = ''
+    await nextTick()
+    if (visible && request === generation)
+      getAnalytics().track(
+        AnalyticsEvent.ENTITLEMENT_VIEW,
+        { access_level: props.state },
+        { token }
+      )
   } catch {
-    error.value = '权益读取失败，请重试'
+    if (visible && request === generation) error.value = '权益读取失败，请重试'
   }
 }
 /** 按权益投影进入状态页，item 为选中限时权益 */
@@ -261,7 +275,19 @@ const openScene = (item: SceneSummary) => {
 onLoad((query) => {
   selectedId.value = query?.id || ''
 })
-onShow(load)
+/** 每次进入可见权益页刷新投影 */
+const show = async () => {
+  visible = true
+  await load()
+}
+/** 隐藏或销毁时失效旧加载，避免记录未显示的权益 */
+const hide = () => {
+  visible = false
+  generation++
+}
+onShow(show)
+onHide(hide)
+onUnload(hide)
 </script>
 <template>
   <PersonalPage

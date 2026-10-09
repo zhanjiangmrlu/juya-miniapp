@@ -3,6 +3,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import HomePageView from '@/features/home/components/home-page-view.vue'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 
 const networkError = ref(false)
@@ -14,6 +15,7 @@ function handleLoad(query?: Record<string, string>) {
 
 onLoad(handleLoad)
 const { pageStyle } = usePageScrollLock()
+useAnalyticsPage('pages/home/index')
 </script>
 
 <template>

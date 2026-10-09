@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 
 import Shadowing from '@/sub-packages/scene/shadowing.vue'
+vi.mock('@/services/analytics/use-analytics-page', () => ({ useAnalyticsPage: vi.fn() }))
 
 const dependencies = vi.hoisted(() => ({
   load: undefined as ((query?: Record<string, string>) => Promise<void>) | undefined,

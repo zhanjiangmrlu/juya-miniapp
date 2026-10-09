@@ -12,6 +12,7 @@ import { createRecordingSnapshot } from '@/features/recording/recording-machine'
 import DialogueSentence from '@/features/scene/components/dialogue-sentence.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
 
@@ -159,6 +160,7 @@ onLoad(handleLoad)
 onShow(handleShow)
 onHide(cleanup)
 onUnload(cleanup)
+useAnalyticsPage('sub-packages/scene/shadowing')
 </script>
 <template>
   <ScenePageLayout title="逐句跟读" centered>

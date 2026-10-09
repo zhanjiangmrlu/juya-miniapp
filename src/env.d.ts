@@ -6,6 +6,13 @@ interface ImportMetaEnv {
   readonly VITE_CLIENT_VERSION: string
   readonly VITE_USE_MOCK_API: 'false' | 'true'
   readonly VITE_LOCAL_DEV_MODE?: 'false' | 'true'
+  readonly VITE_ANALYTICS_ENABLED?: 'false' | 'true'
+  readonly VITE_UMENG_APP_KEY?: string
+}
+
+declare module 'virtual:juya-umeng-sdk' {
+  const factory: import('@/shared/types/analytics').UmengSdkFactory
+  export default factory
 }
 
 interface ImportMeta {

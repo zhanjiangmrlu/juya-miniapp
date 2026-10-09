@@ -8,6 +8,7 @@ import { useFeedbackDraftStore } from '@/stores/feedback-draft'
 import ClearConfirm from '@/sub-packages/account/clear-confirm.vue'
 
 const dependencies = vi.hoisted(() => ({ clear: vi.fn(), navigate: vi.fn() }))
+vi.mock('@/services/analytics/use-analytics-page', () => ({ useAnalyticsPage: vi.fn() }))
 vi.mock('@/services/runtime', () => ({
   getRuntimeServices: () => ({ account: { clearLearningData: dependencies.clear } })
 }))

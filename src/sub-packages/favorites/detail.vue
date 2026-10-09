@@ -8,6 +8,7 @@ import { useFavoriteGroup } from '@/features/favorites/use-favorite-group'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { FavoriteType } from '@/shared/enums/favorites'
 import { NavigationType } from '@/shared/enums/navigation'
@@ -47,6 +48,7 @@ const remove = async () => {
 }
 /** 独立播放发音，target 为当前收藏的音频引用 */
 const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().scene)
+useAnalyticsPage('sub-packages/favorites/detail')
 </script>
 <template>
   <PersonalPage

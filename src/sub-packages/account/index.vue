@@ -3,9 +3,11 @@ import { onShow } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
+import AnalyticsSettings from '@/features/account/components/analytics-settings.vue'
 import { shouldGateStartupForDeletion } from '@/features/account/deletion-presenter'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ProfileRowSize } from '@/shared/enums/profile'
@@ -44,10 +46,14 @@ const openDeletion = async () => {
 }
 
 onShow(loadAccountState)
+useAnalyticsPage('sub-packages/account/index')
 </script>
 <template>
   <PersonalPage title="数据与账号" subtitle="分开管理学习数据与账号"
-    ><text v-if="error" class="form-error">{{ error }}</text
+    ><!-- #ifdef MP-WEIXIN --><AnalyticsSettings /><!-- #endif --><text
+      v-if="error"
+      class="form-error"
+      >{{ error }}</text
     ><AppButton
       v-if="error"
       label="重新加载"

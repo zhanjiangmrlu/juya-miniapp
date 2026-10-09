@@ -9,6 +9,7 @@ import {
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ButtonVariant } from '@/shared/enums/ui'
@@ -38,6 +39,7 @@ const confirmClear = async () => {
     loading.value = false
   }
 }
+useAnalyticsPage('sub-packages/account/clear-confirm')
 </script>
 <template>
   <PersonalPage title="清空学习数据" subtitle="这项操作不可恢复"

@@ -2,6 +2,7 @@
 import { onLoad } from '@dcloudio/uni-app'
 
 import AppState from '@/components/app-state/app-state.vue'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { resolveLegacyRoute } from '@/shared/navigation/legacy-routes'
 import { navigate } from '@/shared/navigation/navigate'
 
@@ -15,6 +16,7 @@ onLoad((query) => {
     })
   )
 })
+useAnalyticsPage('sub-packages/compat/index')
 </script>
 
 <template>

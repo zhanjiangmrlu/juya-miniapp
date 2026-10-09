@@ -10,6 +10,7 @@ import SceneHeading from '@/features/scene/components/scene-heading.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
 import VocabularySheet from '@/features/vocabulary-sheet/components/vocabulary-sheet.vue'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { AUDIO_PLAYBACK_STATUSES } from '@/shared/constants/audio'
 import { AudioButtonVariant, AudioStatus } from '@/shared/enums/audio'
 import { NavigationType } from '@/shared/enums/navigation'
@@ -172,6 +173,7 @@ onPageScroll(handleScroll)
 onHide(cleanup)
 onUnload(cleanup)
 const { pageStyle, scrollLocked } = usePageScrollLock()
+useAnalyticsPage('sub-packages/scene/dialogue')
 </script>
 <template>
   <!-- #ifdef MP-WEIXIN -->

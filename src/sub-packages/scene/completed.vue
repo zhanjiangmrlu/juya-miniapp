@@ -7,6 +7,7 @@ import { presentLearningResult } from '@/features/learning-result/result-present
 import { getResultReviewRoute } from '@/features/learning-result/result-review'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { SCENE_COMPLETION_DETAILS as details } from '@/shared/constants/scene'
 import { NavigationType } from '@/shared/enums/navigation'
@@ -51,6 +52,7 @@ const review = async () => {
 onLoad(handleLoad)
 onHide(disposeAudio)
 onUnload(disposeAudio)
+useAnalyticsPage('sub-packages/scene/completed')
 </script>
 <template>
   <ScenePageLayout title="学习完成">

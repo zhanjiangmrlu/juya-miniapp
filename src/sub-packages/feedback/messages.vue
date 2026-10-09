@@ -9,6 +9,7 @@ import { loadAllMessages } from '@/features/messages/load-messages'
 import { openMessage } from '@/features/messages/message-router'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ButtonVariant } from '@/shared/enums/ui'
@@ -39,6 +40,7 @@ const handleOpen = async (item: MessageItem) => {
 }
 
 onShow(loadMessages)
+useAnalyticsPage('sub-packages/feedback/messages')
 </script>
 <template>
   <PersonalPage title="站内消息" subtitle="反馈回复与学习状态通知">

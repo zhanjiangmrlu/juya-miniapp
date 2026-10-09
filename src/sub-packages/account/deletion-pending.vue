@@ -9,6 +9,7 @@ import { presentDeletionState } from '@/features/account/deletion-presenter'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
+import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ButtonVariant } from '@/shared/enums/ui'
@@ -129,6 +130,7 @@ const leave = () => {
 }
 onHide(leave)
 onUnload(leave)
+useAnalyticsPage('sub-packages/account/deletion-pending')
 </script>
 <template>
   <PersonalPage navigation="账号状态" title="账号注销期" subtitle="7 天内可以撤回注销"

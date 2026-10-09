@@ -12,6 +12,8 @@ const dependencies = vi.hoisted(() => ({
   session: { profile: undefined as unknown }
 }))
 vi.mock('@dcloudio/uni-app', () => ({
+  onShow: vi.fn(),
+  onHide: vi.fn(),
   onLaunch: (callback: () => Promise<void>) => {
     dependencies.launch = callback
   }
