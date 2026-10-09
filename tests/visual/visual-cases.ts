@@ -9,8 +9,8 @@ export const VISUAL_CASES = [
   { design: 'M01S', nodeId: '2479:14', path: '/pages/home/index', state: 'S' },
   { design: 'M02', nodeId: '2479:70', path: '/sub-packages/home/first-visit', state: 'default' },
   { design: 'M03', nodeId: '2479:126', path: '/sub-packages/home/today-task', state: 'default' },
-  { design: 'M05', nodeId: '2479:182', path: '/sub-packages/learning/index', state: 'default' },
-  { design: 'M05S', nodeId: '2479:241', path: '/sub-packages/learning/index', state: 'S' },
+  { design: 'M05', nodeId: '2479:182', path: '/pages/learning/index', state: 'default' },
+  { design: 'M05S', nodeId: '2479:241', path: '/pages/learning/index', state: 'S' },
   { design: 'M06', nodeId: '2479:300', path: '/sub-packages/learning/explore', state: 'default' },
   { design: 'M07', nodeId: '2479:358', path: '/sub-packages/learning/no-access', state: 'default' },
   {
@@ -85,7 +85,7 @@ export const VISUAL_CASES = [
     path: '/sub-packages/scene/return-source?sceneId=scene-coffee-shop',
     state: 'default'
   },
-  { design: 'M19', nodeId: '2480:245', path: '/sub-packages/favorites/index', state: 'default' },
+  { design: 'M19', nodeId: '2480:245', path: '/pages/favorites/index', state: 'default' },
   { design: 'M20', nodeId: '2480:299', path: '/sub-packages/favorites/phrases', state: 'default' },
   {
     design: 'M21',
@@ -112,7 +112,7 @@ export const VISUAL_CASES = [
     state: 'default'
   },
   { design: 'M25', nodeId: '2480:569', path: '/sub-packages/favorites/history', state: 'default' },
-  { design: 'M27', nodeId: '2480:626', path: '/sub-packages/profile/index', state: 'default' },
+  { design: 'M27', nodeId: '2480:626', path: '/pages/profile/index', state: 'default' },
   {
     design: 'M28',
     nodeId: '2480:680',

@@ -58,7 +58,7 @@ const handleRetry = async () => {
 /** 将步骤目标转换为真实导航，kind 为对话、跟读或收藏步骤 */
 const openStep = async (kind: HomeEntryAction) => {
   if (kind === HomeEntryAction.FAVORITES) {
-    await navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/favorites/index' })
+    await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/favorites/index' })
     return
   }
   if (kind === HomeEntryAction.DIALOGUE) {

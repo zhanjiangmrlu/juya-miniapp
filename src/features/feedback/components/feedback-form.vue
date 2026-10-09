@@ -30,15 +30,15 @@ const sourceOptions = computed(() => [
   { label: '首页', source: { page_label: '首页', page_path: '/pages/home/index' } },
   {
     label: '场景学习',
-    source: { page_label: '场景学习', page_path: '/sub-packages/learning/index' }
+    source: { page_label: '场景学习', page_path: '/pages/learning/index' }
   },
   {
     label: '收藏银行',
-    source: { page_label: '收藏银行', page_path: '/sub-packages/favorites/index' }
+    source: { page_label: '收藏银行', page_path: '/pages/favorites/index' }
   },
   {
     label: '我的学习档案',
-    source: { page_label: '我的学习档案', page_path: '/sub-packages/profile/index' }
+    source: { page_label: '我的学习档案', page_path: '/pages/profile/index' }
   },
   ...sourceScenes.value.map((scene) => ({
     label: scene.chinese_title || scene.title,

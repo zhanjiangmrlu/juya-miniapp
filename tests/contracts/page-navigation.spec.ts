@@ -41,9 +41,9 @@ describe('一级导航及启动期跨包入口', () => {
     for (const button of wrapper.findAll('button')) await button.trigger('click')
     expect(destinations).toEqual([
       '/pages/home/index',
-      '/sub-packages/learning/index',
-      '/sub-packages/favorites/index',
-      '/sub-packages/profile/index'
+      '/pages/learning/index',
+      '/pages/favorites/index',
+      '/pages/profile/index'
     ])
   })
 

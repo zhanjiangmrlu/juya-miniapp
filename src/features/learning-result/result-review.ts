@@ -18,5 +18,5 @@ export const getResultReviewRoute = async (
   } while (cursor)
   return ids.size
     ? `/sub-packages/favorites/review-front?cardIds=${encodeURIComponent([...ids].join(','))}&index=0&bank=VOCABULARY`
-    : '/sub-packages/favorites/index?tab=vocabulary'
+    : '/pages/favorites/index?tab=vocabulary'
 }

@@ -169,7 +169,7 @@ const preserved = computed(() => {
       },
       {
         title: '词汇银行',
-        route: '/sub-packages/favorites/index',
+        route: '/pages/favorites/index',
         detail: '已收藏词汇继续保留',
         badge: '可查看'
       },
@@ -183,7 +183,7 @@ const preserved = computed(() => {
   return [
     {
       title: '收藏词汇',
-      route: '/sub-packages/favorites/index',
+      route: '/pages/favorites/index',
       detail:
         props.state === LimitedEntitlementState.ENDED && result.value
           ? `${result.value.favorite_vocabulary} 条 · 进入词汇银行`
@@ -260,7 +260,7 @@ const action = () => {
     return openScene(limitedScenes.value[0])
   if (LIMITED_ENTITLEMENT_RESULT_STATES.includes(props.state))
     return open('/sub-packages/favorites/history')
-  return navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/learning/index' })
+  return navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/learning/index' })
 }
 /** 打开服务器目录仍可学习的场景，item 为当前场景摘要 */
 const openScene = (item: SceneSummary) => {

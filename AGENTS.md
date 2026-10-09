@@ -32,7 +32,7 @@
    - **源码、测试、构建辅助代码和脚本的文件及文件夹统一使用 `kebab-case`（全小写，多词用短横线连接），例如 `app-button.vue`、`use-home-page.spec.ts`、`verify-mp-page-meta.mjs`。**
    - **保留框架和工具约定的名称，例如 `App.vue`、`env.d.ts`、`index.ts`、`pages.json`、`manifest.json`、`uni.scss`；图片资源允许沿用 `@3x` 后缀，例如 `coffee@3x.png`。**
    - **组件导入变量、显式声明的组件名称和 Vue 模板中的组件标签统一使用 `PascalCase`，例如 `AppButton`、`HomePageView`；文件名仍使用 `kebab-case`。**
-   - **主包仅保留首页 `src/pages/home/index.vue`；其余路由页面统一放在 `src/sub-packages/<业务目录>/`，在 `pages.json` 中按业务注册普通子包。保留现有 `index.vue`、`detail.vue`、`contact-edit.vue` 等名称；新增页面使用清晰的用途名称，不强制添加 `-page` 后缀。**
+   - **主包保留首页、学习、收藏、我的四个一级页面，路径为 `src/pages/{home,learning,favorites,profile}/index.vue`；二级页面统一放在 `src/sub-packages/<业务目录>/`，在 `pages.json` 中按业务注册普通子包。保留现有 `index.vue`、`detail.vue`、`contact-edit.vue` 等名称；新增页面使用清晰的用途名称，不强制添加 `-page` 后缀。**
    - **跨业务复用的公共组件放在 `src/components/`，沿用“同名目录 + 同名文件”的结构，例如 `app-button/app-button.vue`；业务专用组件放在 `src/features/<业务目录>/components/`，可复用布局放在 `src/layouts/`。**
    - **新增基础公共组件统一使用 `app-` 前缀，例如 `app-button.vue`；业务组件使用“业务名称 + 职责”命名，例如 `scene-card.vue`、`feedback-form.vue`，避免 `common.vue`、`item.vue` 等含义不明确的名称。**
    - **新增完整页面内容组件使用 `*-page-view.vue`，页面布局容器使用 `*-page-layout.vue`，局部展示组件使用 `*-card.vue`、`*-list.vue`、`*-form.vue` 等符合实际职责的名称；已有名称保持兼容，不为统一后缀批量改名。**

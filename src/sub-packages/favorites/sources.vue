@@ -21,7 +21,7 @@ const back = () =>
     url:
       item.value?.entry_type === FavoriteType.PHRASE
         ? '/sub-packages/favorites/phrases'
-        : '/sub-packages/favorites/index'
+        : '/pages/favorites/index'
   })
 useAnalyticsPage('sub-packages/favorites/sources')
 </script>

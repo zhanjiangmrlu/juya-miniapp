@@ -106,7 +106,7 @@ describe('权益页面状态映射与导航', () => {
     await wrapper.get('.page-actions button').trigger('click')
     expect(dependencies.navigate).toHaveBeenCalledWith({
       type: 'reLaunch',
-      url: '/sub-packages/learning/index'
+      url: '/pages/learning/index'
     })
     wrapper.unmount()
   })
@@ -188,7 +188,7 @@ describe('权益页面状态映射与导航', () => {
     await wrapper.get('.page-actions button').trigger('click')
     expect(dependencies.navigate).toHaveBeenCalledWith({
       type: 'reLaunch',
-      url: '/sub-packages/learning/index'
+      url: '/pages/learning/index'
     })
     wrapper.unmount()
   })

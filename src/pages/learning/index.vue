@@ -40,7 +40,7 @@ onShow(handleShow)
 onHide(cancel)
 onUnload(cancel)
 const { pageStyle } = usePageScrollLock()
-useAnalyticsPage('sub-packages/learning/index')
+useAnalyticsPage('pages/learning/index')
 </script>
 <template>
   <!-- #ifdef MP-WEIXIN -->

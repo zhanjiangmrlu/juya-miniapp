@@ -27,6 +27,6 @@ describe('学习成果复习入口', () => {
       await getResultReviewRoute({
         list: vi.fn(async () => ({ items: [], next_cursor: null, has_more: false }))
       })
-    ).toBe('/sub-packages/favorites/index?tab=vocabulary')
+    ).toBe('/pages/favorites/index?tab=vocabulary')
   })
 })

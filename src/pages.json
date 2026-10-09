@@ -5,6 +5,24 @@
       "style": {
         "navigationStyle": "custom"
       }
+    },
+    {
+      "path": "pages/learning/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/favorites/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
     }
   ],
   "subPackages": [
@@ -28,12 +46,6 @@
     {
       "root": "sub-packages/learning",
       "pages": [
-        {
-          "path": "index",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
         {
           "path": "explore",
           "style": {
@@ -111,12 +123,6 @@
       "root": "sub-packages/favorites",
       "pages": [
         {
-          "path": "index",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
           "path": "phrases",
           "style": {
             "navigationStyle": "custom"
@@ -157,12 +163,6 @@
     {
       "root": "sub-packages/profile",
       "pages": [
-        {
-          "path": "index",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
         {
           "path": "contact-prompt",
           "style": {

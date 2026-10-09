@@ -37,8 +37,7 @@ const open = (route: string | null) => {
   if (route) void navigate({ type: NavigationType.NAVIGATE_TO, url: route })
 }
 /** 返回收藏银行 */
-const back = () =>
-  navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/favorites/index' })
+const back = () => navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/favorites/index' })
 onShow(load)
 useAnalyticsPage('sub-packages/favorites/history')
 </script>

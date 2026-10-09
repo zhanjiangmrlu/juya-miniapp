@@ -7,7 +7,7 @@ import { normalizePageUrl } from '@/shared/navigation/page-url'
 
 const expectedPackages = {
   home: ['first-visit', 'today-task'],
-  learning: ['index', 'explore', 'no-access'],
+  learning: ['explore', 'no-access'],
   scene: [
     'detail',
     'dialogue',
@@ -19,8 +19,8 @@ const expectedPackages = {
     'shadowing',
     'completed'
   ],
-  favorites: ['index', 'phrases', 'detail', 'sources', 'review-front', 'review-back', 'history'],
-  profile: ['index', 'contact-prompt', 'contact-edit', 'contact-manage', 'contact-correction'],
+  favorites: ['phrases', 'detail', 'sources', 'review-front', 'review-back', 'history'],
+  profile: ['contact-prompt', 'contact-edit', 'contact-manage', 'contact-correction'],
   entitlement: ['index', 'pending', 'active', 'ending', 'ended', 'exception'],
   feedback: ['messages', 'index', 'create', 'detail', 'resolution', 'content-blocked'],
   account: ['index', 'clear-confirm', 'delete-confirm', 'deletion-pending'],
@@ -37,7 +37,7 @@ const config = JSON.parse(readFileSync(resolve('src/pages.json'), 'utf8')) as {
 }
 
 describe('页面分包配置', () => {
-  it('43 个旧地址完整映射至新路由，原始参数不会再次编码', () => {
+  it('40 个二级页面旧地址完整映射至子包，原始参数不会再次编码', () => {
     for (const [business, pages] of Object.entries(expectedPackages)) {
       for (const page of pages) {
         expect(normalizePageUrl(`/pages/${business}/${page}?id=a%2Fb&from=history`)).toBe(
@@ -46,8 +46,13 @@ describe('页面分包配置', () => {
       }
     }
   })
-  it('主包仅保留首页，43 个页面按业务完整注册到 9 个普通子包', () => {
-    expect(config.pages.map((page) => page.path)).toEqual(['pages/home/index'])
+  it('四个一级页面注册在主包，40 个二级页面完整注册到 9 个普通子包', () => {
+    expect(config.pages.map((page) => page.path)).toEqual([
+      'pages/home/index',
+      'pages/learning/index',
+      'pages/favorites/index',
+      'pages/profile/index'
+    ])
     expect(config.subPackages).toHaveLength(9)
     expect(config.preloadRule).toBeUndefined()
     for (const [business, names] of Object.entries(expectedPackages)) {
@@ -57,7 +62,7 @@ describe('页面分包配置', () => {
       expect(subpackage?.pages.map((page) => page.path)).toEqual(names)
       expect(subpackage?.independent).not.toBe(true)
     }
-    expect(config.subPackages?.flatMap((item) => item.pages)).toHaveLength(43)
+    expect(config.subPackages?.flatMap((item) => item.pages)).toHaveLength(40)
   })
 
   it('44 条路由唯一、源文件存在，页面样式与迁移前一致', () => {
@@ -76,6 +81,11 @@ describe('页面分包配置', () => {
     const mainFiles = readdirSync(resolve('src/pages'), { recursive: true })
       .filter((file) => String(file).endsWith('.vue'))
       .map((file) => String(file).replace(/\\/g, '/'))
-    expect(mainFiles).toEqual(['home/index.vue'])
+    expect(mainFiles.sort()).toEqual([
+      'favorites/index.vue',
+      'home/index.vue',
+      'learning/index.vue',
+      'profile/index.vue'
+    ])
   })
 })

@@ -64,7 +64,7 @@ const remove = async () => {
   loading.value = true
   try {
     await getRuntimeServices().contact.remove()
-    await navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/profile/index' })
+    await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/profile/index' })
   } catch {
     error.value = '撤回失败，请重试'
   } finally {
@@ -105,7 +105,7 @@ useAnalyticsPage('sub-packages/profile/contact-manage')
         @press="form?.submit()" /><AppButton
         v-else
         label="返回学习档案"
-        @press="navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/profile/index' })"
+        @press="navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/profile/index' })"
     /></template>
   </PersonalPage>
 </template>

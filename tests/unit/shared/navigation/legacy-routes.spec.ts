@@ -26,7 +26,7 @@ describe('resolveLegacyRoute', () => {
   it('M26 替换到唯一学习档案', () => {
     expect(resolveLegacyRoute({ pageId: 'M26' })).toEqual({
       type: 'reLaunch',
-      url: '/sub-packages/profile/index'
+      url: '/pages/profile/index'
     })
   })
 

@@ -43,7 +43,7 @@ const save = async (wechatId: string) => {
   }
 }
 /** 暂不填写并返回档案 */
-const skip = () => navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/profile/index' })
+const skip = () => navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/profile/index' })
 useAnalyticsPage('sub-packages/profile/contact-edit')
 </script>
 <template>

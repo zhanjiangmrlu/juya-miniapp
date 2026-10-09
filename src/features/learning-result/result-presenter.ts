@@ -17,12 +17,12 @@ export function presentLearningResult(dto: LearningResultDto | null): LearningRe
       },
       {
         label: LearningResultLabel.FAVORITE_VOCABULARY,
-        route: '/sub-packages/favorites/index?tab=vocabulary',
+        route: '/pages/favorites/index?tab=vocabulary',
         value: dto?.favorite_vocabulary ?? 0
       },
       {
         label: LearningResultLabel.FAVORITE_PHRASES,
-        route: '/sub-packages/favorites/index?tab=phrases',
+        route: '/pages/favorites/index?tab=phrases',
         value: dto?.favorite_phrases ?? 0
       }
     ],

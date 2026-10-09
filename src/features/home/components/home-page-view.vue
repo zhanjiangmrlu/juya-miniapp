@@ -58,7 +58,7 @@ const openMessages = async () => {
 
 /** 复习入口进入收藏银行，继续沿用一级页面导航 */
 const openReview = async () => {
-  await navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/favorites/index' })
+  await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/favorites/index' })
 }
 
 watch(() => props.networkError, handleNetworkErrorChange)

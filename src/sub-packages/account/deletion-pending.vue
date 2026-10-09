@@ -58,7 +58,7 @@ const loadDeletion = async () => {
       : undefined
     if (!profile.deletion) {
       deletion.clear()
-      await navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/profile/index' })
+      await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/profile/index' })
       return
     }
     deletion.save({
@@ -106,7 +106,7 @@ const revokeDeletion = async () => {
       () => favorites.load(runtime.favorites, true),
       () => runtime.entitlements.get()
     ])
-    await navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/profile/index' })
+    await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/profile/index' })
   } catch {
     error.value = revoked.value
       ? '注销已撤回，资料刷新失败，请重新加载'
