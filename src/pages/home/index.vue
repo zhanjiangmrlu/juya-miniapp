@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import HomePageView from '@/features/home/components/home-page-view.vue'
 import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
+import { ShareTarget } from '@/shared/enums/sharing'
 import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
+import { useWechatShare } from '@/shared/use-wechat-share'
 
 const networkError = ref(false)
 
@@ -16,6 +18,7 @@ function handleLoad(query?: Record<string, string>) {
 onLoad(handleLoad)
 const { pageStyle } = usePageScrollLock()
 useAnalyticsPage('pages/home/index')
+useWechatShare({ target: ShareTarget.HOME }, { onShareAppMessage, onShareTimeline })
 </script>
 
 <template>

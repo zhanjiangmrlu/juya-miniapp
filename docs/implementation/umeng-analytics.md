@@ -39,21 +39,23 @@ Vite 静态包装原 SDK 内容为实例工厂，向它注入独立微信端口�
 
 每个事件只允许表内属性及公共 `page_code`、`client_version`、`event_schema_version`。业务属性只传受控字符串；未知事件、额外属性、URL、正文、对象与无效值整条拒绝。可选属性未提供时省略，不填造值。
 
-| 事件 ID                 | 时机                                                   | 业务属性                                                        |
-| ----------------------- | ------------------------------------------------------ | --------------------------------------------------------------- |
-| scene_click             | 用户点击目录场景                                       | content_scene_id、access_level（allowed/preview）、entry_source |
-| access_notice_view      | 无权限提示组件实际挂载                                 | content_scene_id、access_level、entry_source                    |
-| scene_open_success      | 当前请求加载完整场景成功；同一页面后台重验不重复       | content_scene_id、content_revision_id、access_level             |
-| learn_complete_success  | 当前页面收到完成接口成功；本次访问和修订去重           | content_scene_id、content_revision_id                           |
-| audio_play_start        | 收到设备真实 play 回调；每次用户发起播放记一次         | content_scene_id、content_revision_id、entry_type               |
-| entry_popup_view        | 当前有效请求打开词汇/语块弹层                          | content_scene_id、content_revision_id、entry_type               |
-| favorite_add_success    | 当前有效收藏请求成功                                   | content_scene_id、content_revision_id、entry_type               |
-| review_start_success    | 首张有效卡片就绪、服务端复习队列创建成功；按创建键去重 | entry_type                                                      |
-| review_complete_success | 服务端复习完成成功；按原完成幂等键去重                 | entry_type                                                      |
-| entitlement_view        | 当前可见权益页成功加载并渲染                           | access_level（页面展示状态）                                    |
-| contact_prompt_view     | 档案提示实际渲染；复用本次曝光键，不补报历史曝光       | entry_source=profile_prompt                                     |
-| contact_entry_click     | 用户主动点击联系入口                                   | entry_source=profile/profile_prompt/access_notice               |
-| contact_save_success    | 当前页面保存请求成功                                   | entry_source=contact_fill/contact_update                        |
+| 事件 ID                 | 时机                                                    | 业务属性                                                                                           |
+| ----------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| scene_click             | 用户点击目录场景                                        | content_scene_id、access_level（allowed/preview）、entry_source                                    |
+| access_notice_view      | 无权限提示组件实际挂载                                  | content_scene_id、access_level、entry_source                                                       |
+| scene_open_success      | 当前请求加载完整场景成功；同一页面后台重验不重复        | content_scene_id、content_revision_id、access_level                                                |
+| learn_complete_success  | 当前页面收到完成接口成功；本次访问和修订去重            | content_scene_id、content_revision_id                                                              |
+| audio_play_start        | 收到设备真实 play 回调；每次用户发起播放记一次          | content_scene_id、content_revision_id、entry_type                                                  |
+| entry_popup_view        | 当前有效请求打开词汇/语块弹层                           | content_scene_id、content_revision_id、entry_type                                                  |
+| favorite_add_success    | 当前有效收藏请求成功                                    | content_scene_id、content_revision_id、entry_type                                                  |
+| review_start_success    | 首张有效卡片就绪、服务端复习队列创建成功；按创建键去重  | entry_type                                                                                         |
+| review_complete_success | 服务端复习完成成功；按原完成幂等键去重                  | entry_type                                                                                         |
+| entitlement_view        | 当前可见权益页成功加载并渲染                            | access_level（页面展示状态）                                                                       |
+| contact_prompt_view     | 档案提示实际渲染；复用本次曝光键，不补报历史曝光        | entry_source=profile_prompt                                                                        |
+| contact_entry_click     | 用户主动点击联系入口                                    | entry_source=profile/profile_prompt/access_notice                                                  |
+| contact_save_success    | 当前页面保存请求成功                                    | entry_source=contact_fill/contact_update                                                           |
+| share_initiate          | 微信调用用户发起的好友/朋友圈分享钩子，不表示发送成功   | share_channel=friend/timeline、share_target=home/scene、content_scene_id、entry_source=button/menu |
+| share_landing           | 带受控来源字段的首页/场景详情首次加载；进入时已同意统计 | share_channel=friend/timeline、share_target=home/scene、content_scene_id                           |
 
 内容 ID 不拼进事件 ID。请求开始时捕获授权代次，返回时必须仍在同一授权及可见页面；未授权发起的请求不能在随后同意时记为成功。
 
@@ -61,13 +63,30 @@ Ruling：复习原来只在完成时创建服务端会话。为了准确统计�
 
 ## 友盟后台配置
 
-在测试和正式应用分别登记上述 13 个事件及固定参数类型。设置三组漏斗：
+在测试和正式应用分别登记上述 15 个事件及固定参数类型。设置三组业务漏斗及分享分析：
 
 1. 学习入口页 → scene_click → scene_open_success → learn_complete_success。
 2. 收藏页 → review_start_success → review_complete_success。
 3. contact_prompt_view → contact_entry_click（profile_prompt）→ contact_save_success（contact_fill）。contact_update 单独统计。
+4. 分享分析：按 share_target 和 share_channel 查看 share_initiate 与 share_landing。两者是聚合行为数，没有分享者或接收者账号关联，不能直接算单次分享送达率，也不作为分享成功或独立用户数。
 
-访问来源、页面浏览/时长及随机标识留存使用 SDK 能力。来源只保留微信场景值、静态入口路径和来源小程序 AppID；不传任意 query。本期没有新增分享入口、分享完成事件、活动 query 归因或支付事件。正式权益开通量在原业务后台核对。
+访问来源、页面浏览/时长及随机标识留存使用 SDK 能力。SDK 来源只保留微信场景值、静态入口路径和来源小程序 AppID，不传任意 query。分享回流自定义事件只读取白名单来源字段，不关联分享者身份。没有支付或分享完成事件。正式权益开通量在原业务后台核对。
+
+## 微信分享统一封装
+
+`src/shared/use-wechat-share.ts` 中 `useWechatShare(options, hooks)` 统一负责好友/朋友圈参数、菜单生命周期、公开封面和两类分享埋点。首页传 `ShareTarget.HOME`；场景详情传 `ShareTarget.SCENE` 和返回 `{ sceneId, title }` 的响应式 getter。原生 `onShareAppMessage`、`onShareTimeline` 在路由页显式导入并传入 hooks，以便当前 uni-app 编译器生成分享运行时标记；页面不复制分享实现。
+
+首页右上角微信菜单提供好友及朋友圈分享。场景详情内容加载后，右上角菜单可分享，并提供「分享这个场景」好友按钮。加载中、无权限或页面隐藏时不记发起事件。学习子页、学习进度、个人档案、账号、联系资料和反馈页未启用分享；H5 不注册微信分享钩子，也不显示分享按钮。
+
+好友分享落地为首页或 `/sub-packages/scene/detail?sceneId=...`；朋友圈沿用当前页面，仅设置 query。链接只含 `share_channel`、`share_target`，场景链接额外含 `sceneId`，不携带账号、Token、签名素材地址或学习进度。封面固定为公开的 `/static/share/juya-share@3x.png`（1200×960，24,903 字节），禁止采用默认页面截图或场景原图。场景标题只取场景中文标题，不包含正文或用户资料。接收者沿用既有场景加载接口校验自己的访问权限。
+
+回流按落地页首次 `onLoad` 计数，前后台恢复或从分享面板返回不重复记；已存在页面仅恢复时不会增加回流。进入时未知/拒绝统计不保留来源，同意后不补报。进入时已同意但 SDK 尚未就绪，仅暂存本次白名单来源，离开该页面、退后台、初始化失败或撤回立即丢弃。分享功能不依赖统计开关，微信菜单或统计异常安静降级。
+
+平台依据：[uni-app 分享说明](https://uniapp.dcloud.io/api/plugins/share.html)、项目锁定版本的 `@dcloudio/types` 分享钩子定义及实际微信编译产物。小程序分享必须由用户主动触发；没有可靠发送完成结果，本项目不设置分享 success 回调来制造成功事件。
+
+真机验收需覆盖首页好友/朋友圈、场景好友按钮及菜单、接收方未登录/无权限/有权限、朋友圈单页模式、冷/热打开、取消分享、返回分享面板、拒绝/撤回统计后分享、低版本微信和封面展示。新事件仍需在友盟后台登记及核对接收，自动化与本地构建不替代体验版验收。
+
+分享扩展本地验收（2026-10-09）：`pnpm check`、全量 94 个文件/423 项测试及微信、H5 构建通过；微信产物仅首页和场景详情包含两种分享钩子（`__runtimeHooks=6`）。最终主包文件合计 486,737 字节（约 475 KiB）；公开封面源文件与微信构建产物 SHA-256 一致。H5 无统计请求域名、微信分享菜单参数或分享按钮文案，框架通用生命周期名称仍属于框架代码。只读审查未发现 P1/P2；指出的迟到朋友圈回调边界已通过失败后通过的测试修复：失效后保留合法路由场景 ID，采用固定公开标题、封面，仍不记发起事件。
 
 ## 验收记录和外部边界
 

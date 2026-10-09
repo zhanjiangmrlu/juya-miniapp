@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onHide, onLoad, onUnload } from '@dcloudio/uni-app'
+import { onHide, onLoad, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 
 import AppImageViewer from '@/components/app-image-viewer/app-image-viewer.vue'
 import AppState from '@/components/app-state/app-state.vue'
@@ -9,8 +9,10 @@ import { useScenePage } from '@/features/scene/use-scene-page'
 import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { SCENE_LEARNING_STEPS as steps } from '@/shared/constants/scene'
 import { NavigationType } from '@/shared/enums/navigation'
+import { ShareTarget } from '@/shared/enums/sharing'
 import { navigate } from '@/shared/navigation/navigate'
 import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
+import { useWechatShare } from '@/shared/use-wechat-share'
 
 const {
   disposeAudio,
@@ -41,6 +43,16 @@ onHide(disposeAudio)
 onUnload(disposeAudio)
 const { pageStyle } = usePageScrollLock()
 useAnalyticsPage('sub-packages/scene/detail')
+const { shareReady } = useWechatShare(
+  {
+    target: ShareTarget.SCENE,
+    scene: () =>
+      fullModel.value
+        ? { sceneId: fullModel.value.sceneId, title: fullModel.value.chineseTitle }
+        : undefined
+  },
+  { onShareAppMessage, onShareTimeline }
+)
 </script>
 <template>
   <!-- #ifdef MP-WEIXIN -->
@@ -57,6 +69,9 @@ useAnalyticsPage('sub-packages/scene/detail')
         @view-image="openImage"
         @image-error="handleImageError"
       />
+      <!-- #ifdef MP-WEIXIN -->
+      <button v-if="shareReady" class="scene-share" open-type="share">分享这个场景</button>
+      <!-- #endif -->
       <view class="detail-steps"
         ><button
           v-for="step in steps"
@@ -97,6 +112,15 @@ useAnalyticsPage('sub-packages/scene/detail')
 <style scoped lang="scss">
 @use '@/features/scene/scene-page.scss' as scene;
 @include scene.page;
+
+.scene-share {
+  margin: 12px 0 0;
+  border: 1px solid #d6dfc9;
+  border-radius: 12px;
+  background: #fffdf7;
+  color: #254733;
+  font-size: 13px;
+}
 
 .detail-steps {
   display: grid;

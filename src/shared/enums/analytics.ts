@@ -31,6 +31,10 @@ export const AnalyticsEvent = {
   /** 用户主动点击联系资料入口，通过来源属性区分点击位置 */
   CONTACT_ENTRY_CLICK: 'contact_entry_click',
   /** 服务端确认联系资料保存成功，通过来源属性区分填写与修改 */
-  CONTACT_SAVE_SUCCESS: 'contact_save_success'
+  CONTACT_SAVE_SUCCESS: 'contact_save_success',
+  /** 用户触发好友或朋友圈分享钩子，不表示发送成功 */
+  SHARE_INITIATE: 'share_initiate',
+  /** 已同意统计的用户通过带受控来源字段的首页或场景分享进入 */
+  SHARE_LANDING: 'share_landing'
 } as const
 export type AnalyticsEvent = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent] & string

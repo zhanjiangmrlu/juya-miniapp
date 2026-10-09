@@ -5,9 +5,14 @@ import {
   ANALYTICS_EVENT_FIELDS,
   ANALYTICS_SCHEMA_VERSION
 } from '@/shared/constants/analytics'
-import { AnalyticsConsent } from '@/shared/enums/analytics'
+import {
+  SHARE_HOME_ROUTE,
+  SHARE_SCENE_ID_PATTERN,
+  SHARE_SCENE_ROUTE
+} from '@/shared/constants/sharing'
+import { AnalyticsConsent, AnalyticsEvent } from '@/shared/enums/analytics'
+import { ShareChannel, ShareTarget } from '@/shared/enums/sharing'
 
-import type { AnalyticsEvent } from '@/shared/enums/analytics'
 import type {
   AnalyticsLaunch,
   AnalyticsParams,
@@ -24,6 +29,7 @@ export const createAnalyticsService = (options: AnalyticsServiceOptions) => {
   let visibleRoute = ''
   let activeRoute = ''
   let latestEntry: AnalyticsLaunch | undefined
+  let pendingLanding: AnalyticsParams<typeof AnalyticsEvent.SHARE_LANDING> | undefined
   const sent = new Set<string>()
   const listeners = new Set<() => void>()
   try {
@@ -64,8 +70,12 @@ export const createAnalyticsService = (options: AnalyticsServiceOptions) => {
       ready = true
       if (foreground) safely(() => options.driver.resume(latestEntry))
       startPage()
+      flushLanding()
     } catch {
-      if (current === epoch) safely(options.driver.stop)
+      if (current === epoch) {
+        pendingLanding = undefined
+        safely(options.driver.stop)
+      }
     }
   }
   /** 保存统计同意，granted 为用户本次明确选择 */
@@ -74,6 +84,7 @@ export const createAnalyticsService = (options: AnalyticsServiceOptions) => {
     ready = false
     activeRoute = ''
     sent.clear()
+    pendingLanding = undefined
     safely(options.driver.stop)
     consent = granted ? AnalyticsConsent.GRANTED : AnalyticsConsent.DENIED
     try {
@@ -98,6 +109,7 @@ export const createAnalyticsService = (options: AnalyticsServiceOptions) => {
   }
   /** 结束路由页面，route 为隐藏或销毁的页面，只结束一次 */
   const pageHide = (route: string) => {
+    if (pendingLanding?.page_code === route) pendingLanding = undefined
     if (activeRoute === route) {
       safely(() => options.driver.pageEnd(route))
       activeRoute = ''
@@ -132,12 +144,48 @@ export const createAnalyticsService = (options: AnalyticsServiceOptions) => {
       if (unique) sent.add(unique)
     })
   }
+  /** 读取分享链接中的受控来源，entry 为本次微信进入参数，其余 query 永不保留 */
+  const readLanding = (entry: AnalyticsLaunch) => {
+    const channel = entry.query?.share_channel
+    const target = entry.query?.share_target
+    if (channel !== ShareChannel.FRIEND && channel !== ShareChannel.TIMELINE) return
+    if (target === ShareTarget.HOME && entry.path === SHARE_HOME_ROUTE)
+      return { page_code: SHARE_HOME_ROUTE, share_channel: channel, share_target: target }
+    const id = entry.query?.sceneId
+    if (
+      target === ShareTarget.SCENE &&
+      entry.path === SHARE_SCENE_ROUTE &&
+      typeof id === 'string' &&
+      SHARE_SCENE_ID_PATTERN.test(id)
+    )
+      return {
+        page_code: SHARE_SCENE_ROUTE,
+        share_channel: channel,
+        share_target: target,
+        content_scene_id: id
+      }
+  }
+  /** 仅投递当前已授权进入来源，撤回或退后台即丢弃，不补报授权前的回流 */
+  const flushLanding = () => {
+    if (!ready || !foreground || !pendingLanding) return
+    const params = pendingLanding
+    pendingLanding = undefined
+    track(AnalyticsEvent.SHARE_LANDING, params)
+  }
   return {
     start,
     setConsent,
     pageShow,
     pageHide,
     track,
+    /** 路由首次加载时记录分享进入，entry 为公开路由及该次加载的 query，前后台恢复不调用 */
+    shareLanding: (entry: AnalyticsLaunch) => {
+      pendingLanding =
+        options.enabled && foreground && consent === AnalyticsConsent.GRANTED
+          ? readLanding(entry)
+          : undefined
+      flushLanding()
+    },
     capture: () => (ready && foreground ? epoch : undefined),
     needsPrompt: () => options.enabled && consent === AnalyticsConsent.UNKNOWN,
     getConsent: () => consent,
@@ -153,10 +201,12 @@ export const createAnalyticsService = (options: AnalyticsServiceOptions) => {
       if (entry) latestEntry = sanitizeLaunch(entry)
       if (ready) safely(() => options.driver.resume(latestEntry))
       startPage()
+      flushLanding()
     },
     /** 应用退到后台时结束页面与会话，不重复计算销毁 */
     appHide: () => {
       foreground = false
+      pendingLanding = undefined
       if (activeRoute) safely(() => options.driver.pageEnd(activeRoute))
       activeRoute = ''
       if (ready) safely(options.driver.pause)

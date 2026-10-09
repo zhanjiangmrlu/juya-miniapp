@@ -16,7 +16,9 @@ export const ANALYTICS_EVENT_FIELDS = {
   entitlement_view: ['access_level'],
   contact_prompt_view: ['entry_source'],
   contact_entry_click: ['entry_source'],
-  contact_save_success: ['entry_source']
+  contact_save_success: ['entry_source'],
+  share_initiate: ['share_channel', 'share_target', 'content_scene_id', 'entry_source'],
+  share_landing: ['share_channel', 'share_target', 'content_scene_id']
 } as const
 export const ANALYTICS_NOTICE =
   '我们希望通过友盟小程序统计了解访问来源、页面浏览和学习功能使用情况，以改进句芽。开启后会处理随机统计标识、设备与网络基础信息及使用行为，不上传微信号、昵称、头像或学习录音。你可以暂不开启，继续使用全部现有功能，也可在「我的学习档案 → 数据与账号」随时关闭。'
