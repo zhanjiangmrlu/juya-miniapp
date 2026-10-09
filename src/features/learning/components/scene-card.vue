@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import arrow from '@/features/learning/assets/arrow.svg'
 import book from '@/features/learning/assets/book.svg'
 import lock from '@/features/learning/assets/lock.svg'
@@ -9,6 +11,12 @@ const props = withDefaults(defineProps<SceneCardProps>(), {
   actionLabel: '开始学习'
 })
 const emit = defineEmits<SceneCardEmits>()
+/** 根据进度展示完成、学习中或已开通文案 */
+const progressLabel = computed(() => {
+  if (props.scene.progress >= 100) return '已完成 · 可复习'
+  if (props.scene.progress > 0) return `学习中 · ${props.scene.progress}%`
+  return '可学习 · 已开通'
+})
 /** 上抛当前卡片，让页面根据后台权限决定导航或提示 */
 const handleSelect = () => emit('select', props.scene)
 </script>
@@ -40,13 +48,7 @@ const handleSelect = () => emit('select', props.scene)
       <text class="card-subtitle">{{ scene.title }}{{ compact ? ` · ${scene.series}` : '' }}</text>
       <template v-if="!compact">
         <template v-if="scene.canOpen">
-          <text class="status">{{
-            scene.progress >= 100
-              ? '已完成 · 可复习'
-              : scene.progress > 0
-                ? `学习中 · ${scene.progress}%`
-                : '可学习 · 已开通'
-          }}</text>
+          <text class="status">{{ progressLabel }}</text>
           <view
             v-if="scene.progress > 0 && scene.progress < 100"
             class="progress"

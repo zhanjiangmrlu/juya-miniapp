@@ -1,3 +1,4 @@
+import { SCENE_ACCESS_LABELS } from '@/shared/constants/learning'
 import { AccessLevel } from '@/shared/enums/entitlements'
 import { LearningCatalogStage, LearningSceneStatus } from '@/shared/enums/learning'
 
@@ -27,14 +28,9 @@ const presentScene = (scene: SceneSummary): SceneCardViewModel => {
     scene.access === AccessLevel.OPEN ||
     scene.access === AccessLevel.FORMAL ||
     scene.access === AccessLevel.LIMITED
-  const accessLabel =
-    scene.access === AccessLevel.OPEN
-      ? '开放学习场景'
-      : scene.access === AccessLevel.FORMAL
-        ? '正式内容包'
-        : scene.access === AccessLevel.LIMITED
-          ? '限时学习权益'
-          : '只读预览'
+  const accessLabel = Object.prototype.hasOwnProperty.call(SCENE_ACCESS_LABELS, scene.access)
+    ? SCENE_ACCESS_LABELS[scene.access]
+    : '只读预览'
 
   return {
     accessLabel,

@@ -24,6 +24,19 @@ export const FEEDBACK_IMAGE_MIME_TYPES = [
 
 export const FEEDBACK_IMAGE_MAX_BYTES = 5 * 1024 * 1024
 
+/** 未提供文件 MIME 时根据扩展名推断，GIF 仍由允许列表拒绝 */
+export const FEEDBACK_IMAGE_EXTENSION_TYPES: Record<string, string> = {
+  png: FeedbackImageContentType.PNG,
+  webp: FeedbackImageContentType.WEBP,
+  gif: 'image/gif'
+}
+
+export const FEEDBACK_TIMELINE_TITLES = {
+  service: '管理员回复',
+  initial: '用户提交',
+  supplement: '补充说明'
+}
+
 export const FEEDBACK_CATEGORY_LABELS: Record<string, string> = {
   [FeedbackCategory.CONTENT]: '内容问题',
   [FeedbackCategory.PRONUNCIATION]: '发音问题',

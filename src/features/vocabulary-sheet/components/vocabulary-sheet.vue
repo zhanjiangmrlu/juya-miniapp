@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import AudioButton from '@/features/audio/components/audio-button.vue'
+import { ENTRY_FAVORITE_LABELS } from '@/shared/constants/scene'
 import { AudioButtonVariant } from '@/shared/enums/audio'
 import { SceneEntryType } from '@/shared/enums/learning'
 import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
@@ -9,12 +12,19 @@ import type {
   VocabularySheetProps
 } from '@/shared/types/vocabulary-sheet-components'
 
-withDefaults(defineProps<VocabularySheetProps>(), {
+const props = withDefaults(defineProps<VocabularySheetProps>(), {
   currentAudioKey: null,
   sceneTitle: '',
   sourceChinese: ''
 })
 const emit = defineEmits<VocabularySheetEmits>()
+/** 已收藏状态优先于词条类型，其他词条沿用收藏词汇文案 */
+const favoriteLabel = computed(() => {
+  if (props.entry.favorited) return '♡  已收藏'
+  if (Object.prototype.hasOwnProperty.call(ENTRY_FAVORITE_LABELS, props.entry.entry_type))
+    return ENTRY_FAVORITE_LABELS[props.entry.entry_type] ?? '♡  收藏词汇'
+  return '♡  收藏词汇'
+})
 
 useModalScrollLock()
 </script>
@@ -53,13 +63,7 @@ useModalScrollLock()
         ><text v-if="sourceChinese" class="source-chinese">{{ sourceChinese }}</text></view
       >
       <button class="sheet-favorite" :disabled="entry.favorited" @click="emit('favorite', entry)">
-        {{
-          entry.favorited
-            ? '♡  已收藏'
-            : entry.entry_type === SceneEntryType.PHRASE
-              ? '♡  收藏语块'
-              : '♡  收藏词汇'
-        }}
+        {{ favoriteLabel }}
       </button>
       <view class="sheet-safe-indicator" aria-hidden="true" />
     </view>

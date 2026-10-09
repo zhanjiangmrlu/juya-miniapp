@@ -1,13 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import pauseGreen from '@/features/audio/assets/pause-green.svg'
-import pauseLarge from '@/features/audio/assets/pause-large.svg'
-import pauseWhite from '@/features/audio/assets/pause-white.svg'
-import playGreen from '@/features/audio/assets/play-green.svg'
-import playLarge from '@/features/audio/assets/play-large.svg'
-import playWhite from '@/features/audio/assets/play-white.svg'
 import { getAudioTargetKey } from '@/features/audio/audio-machine'
+import { AUDIO_BUTTON_ASSETS, AUDIO_STATUS_LABELS } from '@/shared/constants/audio'
 import { AudioButtonVariant, AudioStatus } from '@/shared/enums/audio'
 
 import type { AudioButtonEmits, AudioButtonProps } from '@/shared/types/audio-components'
@@ -27,29 +22,28 @@ const active = computed(
     (isCurrent.value &&
       (props.status === AudioStatus.PLAYING || props.status === AudioStatus.PAUSED))
 )
+/** 当前资源使用播放状态文案，其他资源沿用调用方标签 */
 const stateLabel = computed(() => {
   if (!isCurrent.value) return props.label
-  if (props.status === AudioStatus.LOADING) return '加载中'
-  if (props.status === AudioStatus.PLAYING) return '暂停'
-  if (props.status === AudioStatus.PAUSED) return '继续'
-  if (props.status === AudioStatus.FAILED) return '重试'
+  if (Object.prototype.hasOwnProperty.call(AUDIO_STATUS_LABELS, props.status))
+    return AUDIO_STATUS_LABELS[props.status] ?? props.label
   return props.label
 })
-const playAsset = computed(() =>
-  props.variant === AudioButtonVariant.LARGE
-    ? playLarge
-    : (active.value || props.variant === AudioButtonVariant.PILL) &&
-        props.variant !== AudioButtonVariant.INLINE
-      ? playWhite
-      : playGreen
-)
-const pauseAsset = computed(() =>
-  props.variant === AudioButtonVariant.LARGE
-    ? pauseLarge
-    : props.variant === AudioButtonVariant.INLINE
-      ? pauseGreen
-      : pauseWhite
-)
+/** 未识别样式沿用紧凑按钮的图标规则 */
+const assets = computed(() => {
+  if (Object.prototype.hasOwnProperty.call(AUDIO_BUTTON_ASSETS, props.variant))
+    return AUDIO_BUTTON_ASSETS[props.variant]
+  return AUDIO_BUTTON_ASSETS[AudioButtonVariant.COMPACT]
+})
+/** 根据按钮样式与选中状态读取播放图标 */
+const playAsset = computed(() => assets.value[active.value ? 'activePlay' : 'play'])
+/** 暂停图标只取决于按钮展示样式 */
+const pauseAsset = computed(() => assets.value.pause)
+/** 行内按钮显示原音操作，其他样式显示资源状态 */
+const displayLabel = computed(() => {
+  if (props.variant === AudioButtonVariant.INLINE) return playing.value ? '暂停原音' : '播放原音'
+  return stateLabel.value
+})
 
 /** 将播放意图交给页面，全局控制器保持唯一播放器 */
 const handlePlay = () => emit('play', props.target)
@@ -72,9 +66,7 @@ const handlePlay = () => emit('play', props.target)
       v-if="variant === AudioButtonVariant.PILL || variant === AudioButtonVariant.INLINE"
       class="audio-label"
       :class="{ wide: variant === AudioButtonVariant.INLINE && playing }"
-      >{{
-        variant === AudioButtonVariant.INLINE ? (playing ? '暂停原音' : '播放原音') : stateLabel
-      }}</text
+      >{{ displayLabel }}</text
     >
   </button>
 </template>

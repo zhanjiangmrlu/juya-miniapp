@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import pauseReplayWhite from '@/features/audio/assets/pause-replay-white.svg'
 import playGreen from '@/features/audio/assets/play-green.svg'
 import playWhite from '@/features/audio/assets/play-white.svg'
@@ -11,7 +13,7 @@ import type {
   RecordingControlsProps
 } from '@/shared/types/recording-components'
 
-withDefaults(defineProps<RecordingControlsProps>(), {
+const props = withDefaults(defineProps<RecordingControlsProps>(), {
   sentence: undefined,
   currentAudioKey: null,
   index: 1,
@@ -19,6 +21,12 @@ withDefaults(defineProps<RecordingControlsProps>(), {
   audioStatus: AudioStatus.IDLE
 })
 const emit = defineEmits<RecordingControlsEmits>()
+/** 录音权限提示优先于失败状态，原音始终可用 */
+const recordingHint = computed(() => {
+  if (props.snapshot.recordingDisabled) return '录音权限未开启，仍可播放原音'
+  if (props.snapshot.status === RecordingStatus.FAILED) return '录音暂不可用，请重试'
+  return '录音仅保留本次回听，不评分'
+})
 </script>
 <template>
   <view v-if="sentence" class="recording-controls">
@@ -33,13 +41,7 @@ const emit = defineEmits<RecordingControlsEmits>()
         @play="emit('playOriginal')"
     /></view>
     <text class="recording-sentence">{{ sentence.text }}</text
-    ><text class="recording-hint">{{
-      snapshot.recordingDisabled
-        ? '录音权限未开启，仍可播放原音'
-        : snapshot.status === RecordingStatus.FAILED
-          ? '录音暂不可用，请重试'
-          : '录音仅保留本次回听，不评分'
-    }}</text>
+    ><text class="recording-hint">{{ recordingHint }}</text>
     <view class="recording-grid">
       <button
         class="recording-action primary"

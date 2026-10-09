@@ -8,15 +8,17 @@ import FeedbackImagePicker from '@/features/feedback/components/feedback-image-p
 import FeedbackResolutionActions from '@/features/feedback/components/feedback-resolution-actions.vue'
 import FeedbackTimeline from '@/features/feedback/components/feedback-timeline.vue'
 import { canSupplementFeedback, validateSupplement } from '@/features/feedback/feedback-form'
-import { getFeedbackStatusLabel } from '@/features/feedback/feedback-presenter'
+import {
+  getFeedbackStatusLabel,
+  getSupplementErrorMessage
+} from '@/features/feedback/feedback-presenter'
 import { submitSupplement } from '@/features/feedback/supplement-submit'
 import { loadAllMessages } from '@/features/messages/load-messages'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
-import { ApiError } from '@/services/http/errors'
 import { getRuntimeServices } from '@/services/runtime'
-import { FEEDBACK_CATEGORIES } from '@/shared/constants/feedback'
+import { FEEDBACK_CATEGORY_LABELS } from '@/shared/constants/feedback'
 import { FeedbackResolutionAction, FeedbackStatus } from '@/shared/enums/feedback'
 import { MessageRelatedType } from '@/shared/enums/messages'
 import { NavigationType } from '@/shared/enums/navigation'
@@ -27,7 +29,7 @@ import type { FeedbackItem, FeedbackResolutionRequest } from '@/shared/contracts
 import type { FeedbackScreenshotDraft } from '@/shared/types/feedback'
 import type { FeedbackDetailViewProps } from '@/shared/types/feedback-components'
 import type { InputValueEvent } from '@/shared/types/ui'
-withDefaults(defineProps<FeedbackDetailViewProps>(), { resultMode: false })
+const props = withDefaults(defineProps<FeedbackDetailViewProps>(), { resultMode: false })
 const feedbackId = ref('')
 const item = ref<FeedbackItem>()
 const supplement = ref('')
@@ -36,6 +38,23 @@ const screenshot = ref<FeedbackScreenshotDraft>()
 const busy = ref(false)
 const error = ref('')
 const canSupplement = computed(() => (item.value ? canSupplementFeedback(item.value) : false))
+/** 详情按分类展示，结果页按标题与处理状态展示 */
+const subtitle = computed(() => {
+  if (props.resultMode)
+    return `${item.value?.title || '问题反馈'} · ${getFeedbackStatusLabel(item.value?.status || '')}`
+  const category = item.value?.category
+  const label =
+    category && Object.prototype.hasOwnProperty.call(FEEDBACK_CATEGORY_LABELS, category)
+      ? FEEDBACK_CATEGORY_LABELS[category]
+      : '问题反馈'
+  return `${label || '问题反馈'} · ${feedbackId.value}`
+})
+/** 结果页提示优先于等待补充说明 */
+const summaryNote = computed(() => {
+  if (props.resultMode) return '谢谢你的反馈，本次结果已记录。'
+  if (canSupplement.value) return '等待你补充期间不计入处理时限'
+  return '所有回复与补充保留在同一条记录中'
+})
 /** 记录路由反馈标识，query 为有效反馈详情参数 */
 const capture = (query?: Record<string, string | undefined>) => {
   feedbackId.value = query?.id || ''
@@ -88,13 +107,7 @@ const submit = async () => {
     editing.value = false
     error.value = ''
   } catch (caught) {
-    error.value =
-      caught instanceof ApiError && caught.code === 'FEEDBACK_CONTENT_BLOCKED'
-        ? '内容未通过检查，请修改后重新提交'
-        : caught instanceof Error &&
-            (caught.message.includes('截图') || caught.message.includes('图片'))
-          ? caught.message
-          : '补充提交失败，草稿已保留，请重试'
+    error.value = getSupplementErrorMessage(caught)
   } finally {
     busy.value = false
   }
@@ -130,23 +143,13 @@ onShow(load)
   <PersonalPage
     :navigation="resultMode ? '反馈结果' : '反馈详情'"
     :title="resultMode ? '反馈处理结果' : '反馈详情'"
-    :subtitle="
-      resultMode
-        ? `${item?.title || '问题反馈'} · ${getFeedbackStatusLabel(item?.status || '')}`
-        : `${FEEDBACK_CATEGORIES.find((category) => category.value === item?.category)?.label || '问题反馈'} · ${feedbackId}`
-    "
+    :subtitle="subtitle"
   >
     <template v-if="item">
       <PersonalSummary
         :label="resultMode ? '处理结果' : '当前状态'"
         :value="getFeedbackStatusLabel(item.status)"
-        :note="
-          resultMode
-            ? '谢谢你的反馈，本次结果已记录。'
-            : canSupplement
-              ? '等待你补充期间不计入处理时限'
-              : '所有回复与补充保留在同一条记录中'
-        "
+        :note="summaryNote"
       />
       <text class="section-title">{{ resultMode ? '后续操作' : '处理时间线' }}</text>
       <view v-if="resultMode" class="row-list"

@@ -35,6 +35,17 @@ const index = computed(() =>
     ) + 1
   )
 )
+/** 来源模式展示词汇，恢复模式展示场景与阅读位置 */
+const subtitle = computed(() => {
+  if (props.source) return `从收藏词汇「${sourceEntry.value?.text ?? ''}」返回原文`
+  const positionLabel = locator.value ? '已恢复阅读位置' : '从第一句开始'
+  return `${fullModel.value?.chineseTitle} · ${positionLabel}`
+})
+/** 来源模式的当前句提示优先于播放器状态 */
+const currentStatus = computed(() => {
+  if (props.source) return '当前句'
+  return audio.snapshot.status === AudioStatus.PLAYING ? '播放中' : '可播放'
+})
 
 /** 保存路由来源并加载授权场景，query 为稳定场景、句子和词条参数 */
 const handleLoad = async (query?: Record<string, string>) => {
@@ -99,11 +110,7 @@ onUnload(disposeAudio)
   <ScenePageLayout :title="fullModel?.chineseTitle.replace(/^在/, '') ?? '场景学习'">
     <template v-if="fullModel && (!source || sourceEntry)">
       <text class="scene-title">{{ source ? '已定位来源句' : '继续上次学习' }}</text>
-      <text class="scene-subtitle">{{
-        source
-          ? `从收藏词汇「${sourceEntry?.text ?? ''}」返回原文`
-          : `${fullModel.chineseTitle} · ${locator ? '已恢复阅读位置' : '从第一句开始'}`
-      }}</text>
+      <text class="scene-subtitle">{{ subtitle }}</text>
       <view class="scene-highlight"
         ><text class="highlight-label">{{ source ? `第 ${index} 句` : '位置已恢复' }}</text
         ><text class="highlight-value" :class="{ 'source-value': source }">{{
@@ -128,13 +135,7 @@ onUnload(disposeAudio)
         <button class="position-card" @click="source ? continueReading() : playCurrent()">
           <view class="card-top"
             ><text>{{ source ? `来源词汇 ${sourceEntry?.text ?? ''}` : '播放当前句原音' }}</text
-            ><text class="card-status">{{
-              source
-                ? '当前句'
-                : audio.snapshot.status === AudioStatus.PLAYING
-                  ? '播放中'
-                  : '可播放'
-            }}</text></view
+            ><text class="card-status">{{ currentStatus }}</text></view
           ><text class="card-hint">{{
             source ? `${sourceEntry?.chinese ?? ''} · 已收藏` : `同一整段音频的第 ${index} 句`
           }}</text>

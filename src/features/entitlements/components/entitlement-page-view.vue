@@ -11,13 +11,16 @@ import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
 import {
   CONTENT_ACCESS_LEVELS,
+  ENTITLEMENT_DEADLINE_COPY,
+  ENTITLEMENT_EXCEPTION_LABELS,
+  ENTITLEMENT_NAVIGATION_LABELS,
   LIMITED_ENTITLEMENT_CONTENT_STATES,
-  LIMITED_ENTITLEMENT_RESULT_STATES
+  LIMITED_ENTITLEMENT_RESULT_STATES,
+  LIMITED_ENTITLEMENT_ROW_COPY
 } from '@/shared/constants/entitlements'
 import {
   AccessLevel,
   EntitlementPageState,
-  EntitlementStatus,
   LimitedEntitlementState
 } from '@/shared/enums/entitlements'
 import { NavigationType } from '@/shared/enums/navigation'
@@ -46,6 +49,23 @@ const selected = computed(() =>
     ? view.value.limited.find((item) => item.id === selectedId.value)
     : view.value.limited.find((item) => item.state === props.state)
 )
+/** 授权待确认优先于异常原因，未知服务端状态保持中性提示 */
+const exceptionLabel = computed(() => {
+  if (view.value.authorizationPending) return '待确认'
+  const status = selected.value?.status
+  if (status && Object.prototype.hasOwnProperty.call(ENTITLEMENT_EXCEPTION_LABELS, status))
+    return ENTITLEMENT_EXCEPTION_LABELS[status as keyof typeof ENTITLEMENT_EXCEPTION_LABELS]!
+  return '暂不可用'
+})
+/** 页面导航标题随权益展示状态更新 */
+const navigationLabel = computed(() => ENTITLEMENT_NAVIGATION_LABELS[props.state])
+/** 场景行说明，item 为当前权益覆盖的场景摘要 */
+const getSceneDetail = (item: SceneSummary) => {
+  if (props.state === LimitedEntitlementState.PENDING)
+    return `${selected.value?.durationDays} 天活动场景之一`
+  if (item.progress) return `学习中 · 进度 ${item.progress}%`
+  return '尚未开始'
+}
 const stateCopy = computed(
   () =>
     ({
@@ -99,6 +119,7 @@ const formatTime = (value?: string | null) =>
         timeZone: 'Asia/Shanghai'
       }).format(new Date(value))
     : '以服务端状态为准'
+/** 汇总当前状态的期限、成果或异常原因 */
 const summary = computed(() => {
   if (props.state === EntitlementPageState.ALL)
     return {
@@ -115,89 +136,73 @@ const summary = computed(() => {
   if (props.state === LimitedEntitlementState.EXCEPTION)
     return {
       label: '当前状态',
-      value: view.value.authorizationPending
-        ? '待确认'
-        : selected.value?.status === EntitlementStatus.PAUSED
-          ? '已暂停'
-          : selected.value?.status === EntitlementStatus.REVOKED
-            ? '已撤销'
-            : selected.value?.status === EntitlementStatus.START_EXPIRED
-              ? '已过启动截止'
-              : '暂不可用',
+      value: exceptionLabel.value,
       note: '收藏、进度和历史成果继续保留'
     }
+  const copy = ENTITLEMENT_DEADLINE_COPY[props.state]
   return {
-    label:
-      props.state === LimitedEntitlementState.PENDING
-        ? '启动截止'
-        : props.state === LimitedEntitlementState.ENDING
-          ? '学习权益将于'
-          : '结束时间',
+    label: copy?.label ?? '结束时间',
     value: formatTime(
       props.state === LimitedEntitlementState.PENDING
         ? selected.value?.startsBefore
         : selected.value?.expiresAt
     ),
-    note:
-      props.state === LimitedEntitlementState.PENDING
-        ? '请在截止前首次打开任一活动场景'
-        : props.state === LimitedEntitlementState.ACTIVE
-          ? '按服务端时间计算，进度和收藏会保留'
-          : '收藏和学习进度会继续保留。'
+    note: copy?.note ?? '收藏和学习进度会继续保留。'
   }
 })
 const limitedScenes = computed(() =>
   catalog.value.filter((item) => selected.value?.sceneIds.includes(item.scene_id))
 )
-const preserved = computed(() =>
-  props.state === LimitedEntitlementState.EXCEPTION
-    ? [
-        {
-          title: '学习历史',
-          route: '/sub-packages/favorites/history',
-          detail: '查看完成场景和历史进度',
-          badge: '仅摘要'
-        },
-        {
-          title: '词汇银行',
-          route: '/sub-packages/favorites/index',
-          detail: '已收藏词汇继续保留',
-          badge: '可查看'
-        },
-        {
-          title: '语块银行',
-          route: '/sub-packages/favorites/phrases',
-          detail: '已收藏语块继续保留',
-          badge: '可查看'
-        }
-      ]
-    : [
-        {
-          title: '收藏词汇',
-          route: '/sub-packages/favorites/index',
-          detail:
-            props.state === LimitedEntitlementState.ENDED && result.value
-              ? `${result.value.favorite_vocabulary} 条 · 进入词汇银行`
-              : '已收藏词汇继续保留',
-          badge: '›'
-        },
-        {
-          title: '收藏语块',
-          route: '/sub-packages/favorites/phrases',
-          detail:
-            props.state === LimitedEntitlementState.ENDED && result.value
-              ? `${result.value.favorite_phrases} 条 · 进入语块银行`
-              : '已收藏语块继续保留',
-          badge: '›'
-        },
-        {
-          title: '学习过的场景',
-          route: '/sub-packages/favorites/history',
-          detail: '查看完成场景和历史进度',
-          badge: '›'
-        }
-      ]
-)
+/** 异常权益保留只读入口，结束权益补充实际收藏数量 */
+const preserved = computed(() => {
+  if (props.state === LimitedEntitlementState.EXCEPTION)
+    return [
+      {
+        title: '学习历史',
+        route: '/sub-packages/favorites/history',
+        detail: '查看完成场景和历史进度',
+        badge: '仅摘要'
+      },
+      {
+        title: '词汇银行',
+        route: '/sub-packages/favorites/index',
+        detail: '已收藏词汇继续保留',
+        badge: '可查看'
+      },
+      {
+        title: '语块银行',
+        route: '/sub-packages/favorites/phrases',
+        detail: '已收藏语块继续保留',
+        badge: '可查看'
+      }
+    ]
+  return [
+    {
+      title: '收藏词汇',
+      route: '/sub-packages/favorites/index',
+      detail:
+        props.state === LimitedEntitlementState.ENDED && result.value
+          ? `${result.value.favorite_vocabulary} 条 · 进入词汇银行`
+          : '已收藏词汇继续保留',
+      badge: '›'
+    },
+    {
+      title: '收藏语块',
+      route: '/sub-packages/favorites/phrases',
+      detail:
+        props.state === LimitedEntitlementState.ENDED && result.value
+          ? `${result.value.favorite_phrases} 条 · 进入语块银行`
+          : '已收藏语块继续保留',
+      badge: '›'
+    },
+    {
+      title: '学习过的场景',
+      route: '/sub-packages/favorites/history',
+      detail: '查看完成场景和历史进度',
+      badge: '›'
+    }
+  ]
+})
 /** 读取最新权益与场景摘要，并保留服务器提供的激活与结束时刻 */
 const load = async () => {
   try {
@@ -236,12 +241,13 @@ const openItem = (item: LimitedEntitlementViewModel) =>
 /** 打开站内明细，url 为收藏或历史地址 */
 const open = (url: string) => navigate({ type: NavigationType.NAVIGATE_TO, url })
 /** 从状态页前往目录或只读历史，不在此页激活限时权益 */
-const action = () =>
-  props.state === LimitedEntitlementState.PENDING && limitedScenes.value[0]
-    ? openScene(limitedScenes.value[0])
-    : LIMITED_ENTITLEMENT_RESULT_STATES.includes(props.state)
-      ? open('/sub-packages/favorites/history')
-      : navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/learning/index' })
+const action = () => {
+  if (props.state === LimitedEntitlementState.PENDING && limitedScenes.value[0])
+    return openScene(limitedScenes.value[0])
+  if (LIMITED_ENTITLEMENT_RESULT_STATES.includes(props.state))
+    return open('/sub-packages/favorites/history')
+  return navigate({ type: NavigationType.RE_LAUNCH, url: '/sub-packages/learning/index' })
+}
 /** 打开服务器目录仍可学习的场景，item 为当前场景摘要 */
 const openScene = (item: SceneSummary) => {
   if (
@@ -260,13 +266,7 @@ onShow(load)
 <template>
   <PersonalPage
     :title="stateCopy[0] || title"
-    :navigation="
-      state === EntitlementPageState.ALL
-        ? '学习权益'
-        : state === LimitedEntitlementState.ENDED
-          ? '学习成果'
-          : '限时学习'
-    "
+    :navigation="navigationLabel"
     :subtitle="stateCopy[1] || ''"
   >
     <PersonalSummary
@@ -301,16 +301,8 @@ onShow(load)
           v-for="item in view.limited"
           :key="item.id"
           title="限时活动"
-          :detail="`${item.title} · ${item.state === LimitedEntitlementState.PENDING ? '待开始' : item.state === LimitedEntitlementState.ENDED ? '已结束' : '查看状态'} · ${formatTime(item.expiresAt || item.startsBefore)}`"
-          :badge="
-            item.state === LimitedEntitlementState.PENDING
-              ? '待开始'
-              : item.state === LimitedEntitlementState.ENDED
-                ? '已结束'
-                : item.state === LimitedEntitlementState.EXCEPTION
-                  ? '暂不可用'
-                  : '学习中'
-          "
+          :detail="`${item.title} · ${LIMITED_ENTITLEMENT_ROW_COPY[item.state].detail} · ${formatTime(item.expiresAt || item.startsBefore)}`"
+          :badge="LIMITED_ENTITLEMENT_ROW_COPY[item.state].badge"
           actionable
           @press="openItem(item)"
         />
@@ -348,13 +340,7 @@ onShow(load)
           v-for="item in limitedScenes"
           :key="item.scene_id"
           :title="item.chinese_title || item.title"
-          :detail="
-            state === LimitedEntitlementState.PENDING
-              ? `${selected?.durationDays} 天活动场景之一`
-              : item.progress
-                ? `学习中 · 进度 ${item.progress}%`
-                : '尚未开始'
-          "
+          :detail="getSceneDetail(item)"
           :badge="state === LimitedEntitlementState.PENDING ? '待开始' : '可学习'"
           actionable
           @press="openScene(item)" /><PersonalRow

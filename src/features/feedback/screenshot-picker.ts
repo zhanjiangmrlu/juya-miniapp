@@ -1,4 +1,8 @@
-import { FEEDBACK_IMAGE_MAX_BYTES, FEEDBACK_IMAGE_MIME_TYPES } from '@/shared/constants/feedback'
+import {
+  FEEDBACK_IMAGE_EXTENSION_TYPES,
+  FEEDBACK_IMAGE_MAX_BYTES,
+  FEEDBACK_IMAGE_MIME_TYPES
+} from '@/shared/constants/feedback'
 import { FeedbackImageContentType } from '@/shared/enums/feedback'
 
 import type { FeedbackScreenshotDraft, PickedFeedbackFile } from '@/shared/types/feedback'
@@ -16,13 +20,10 @@ export const chooseFeedbackScreenshot = (
       const extension = file.path.split('.').pop()?.toLocaleLowerCase()
       const mimeType =
         file.type ||
-        (extension === 'png'
-          ? FeedbackImageContentType.PNG
-          : extension === 'webp'
-            ? FeedbackImageContentType.WEBP
-            : extension === 'gif'
-              ? 'image/gif'
-              : FeedbackImageContentType.JPEG)
+        (extension &&
+        Object.prototype.hasOwnProperty.call(FEEDBACK_IMAGE_EXTENSION_TYPES, extension)
+          ? FEEDBACK_IMAGE_EXTENSION_TYPES[extension]
+          : FeedbackImageContentType.JPEG)
       if (!FEEDBACK_IMAGE_MIME_TYPES.includes(mimeType as never)) {
         fail('仅支持 JPG、PNG 或 WebP 图片')
         return

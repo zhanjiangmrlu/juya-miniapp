@@ -1,3 +1,10 @@
+import { SceneEntryType } from '@/shared/enums/learning'
+
+export const ENTRY_FAVORITE_LABELS: Partial<Record<SceneEntryType, string>> = {
+  [SceneEntryType.PHRASE]: '♡  收藏语块',
+  [SceneEntryType.VOCABULARY]: '♡  收藏词汇'
+}
+
 export const SCENE_COMPLETION_DETAILS = [
   { title: '完成场景明细', hint: '查看学习过的场景' },
   { title: '词汇银行', hint: '复习本次收藏词汇' },

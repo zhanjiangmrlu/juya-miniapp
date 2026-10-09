@@ -25,24 +25,24 @@ const openScenes = computed(() =>
   learning.catalog.items.filter((scene) => scene.access === AccessLevel.OPEN)
 )
 const learning = useLearningStore()
-const summaryValue = computed(() =>
-  props.mode === HomeEntryMode.FIRST
-    ? (sample.value?.text ?? '从真实场景开始练习')
-    : taskScene.value
-      ? `${taskScene.value.progress}%`
-      : (home.view.todayTask?.title ?? '今日任务暂不可用')
-)
-const summaryDescription = computed(() =>
-  props.mode === HomeEntryMode.FIRST
-    ? sample.value
-      ? `从「${sample.value.sceneTitle}」开始，让英语用在生活里。`
-      : '选择一个开放场景，开始生活英语练习。'
-    : taskScene.value
-      ? taskScene.value.progress >= 50
-        ? '已完成前半段对话'
-        : '接着上次的位置继续学习'
-      : (home.view.todayTask?.description ?? '重新连接后获取当前任务')
-)
+/** 首访展示试学句，今日任务展示场景进度或服务端标题 */
+const summaryValue = computed(() => {
+  if (props.mode === HomeEntryMode.FIRST) return sample.value?.text ?? '从真实场景开始练习'
+  if (taskScene.value) return `${taskScene.value.progress}%`
+  return home.view.todayTask?.title ?? '今日任务暂不可用'
+})
+/** 根据首访样本或今日任务进度生成练习说明 */
+const summaryDescription = computed(() => {
+  if (props.mode === HomeEntryMode.FIRST) {
+    if (sample.value) return `从「${sample.value.sceneTitle}」开始，让英语用在生活里。`
+    return '选择一个开放场景，开始生活英语练习。'
+  }
+  if (taskScene.value) {
+    if (taskScene.value.progress >= 50) return '已完成前半段对话'
+    return '接着上次的位置继续学习'
+  }
+  return home.view.todayTask?.description ?? '重新连接后获取当前任务'
+})
 /** 刷新只读目录试学摘要，forceWechat 表示用户主动重新连接 */
 const refresh = async (forceWechat = false) => {
   await load(forceWechat)
