@@ -56,7 +56,7 @@ describe('统计设置开关', () => {
     wrapper.unmount()
     dependencies.available = false
     const disabled = mount(AnalyticsSettings)
-    expect(disabled.text()).toContain('当前版本未启用统计')
+    expect(disabled.text()).toContain('未启用')
     expect(disabled.get('switch').attributes('disabled')).toBeDefined()
     disabled.unmount()
   })
