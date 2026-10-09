@@ -177,7 +177,9 @@ useModalScrollLock()
     border-radius: 12px;
     background: #f7f1e3;
 
-    text {
+    .source-label,
+    .source-english,
+    .source-chinese {
       display: block;
     }
   }

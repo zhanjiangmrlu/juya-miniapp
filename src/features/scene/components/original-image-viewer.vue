@@ -16,11 +16,12 @@ useModalScrollLock()
   >
     <button class="viewer-close" aria-label="关闭原图" @click="emit('close')">×</button>
     <view class="viewer-heading"
-      ><text>{{ chineseTitle }}</text
+      ><text class="viewer-chinese">{{ chineseTitle }}</text
       ><text class="viewer-english">{{ title }}</text></view
     >
     <view class="viewer-image"
-      ><image :src="imageUrl" mode="widthFix" @error="emit('error')" /><text
+      ><image class="original-image" :src="imageUrl" mode="widthFix" @error="emit('error')" /><text
+        class="viewer-caption"
         >完整学习原图 · 仅在已获权限场景中查看</text
       ></view
     >
@@ -60,7 +61,8 @@ useModalScrollLock()
     font-weight: 700;
     line-height: 37px;
 
-    text {
+    .viewer-chinese,
+    .viewer-english {
       display: block;
     }
   }
@@ -77,7 +79,7 @@ useModalScrollLock()
     max-width: 700px;
     margin: max(72px, calc(30.7vh - 159px)) auto 30px;
 
-    text {
+    .viewer-caption {
       display: block;
       margin: 16px 20px 0;
       color: #d7e1d7;
@@ -87,7 +89,7 @@ useModalScrollLock()
     }
   }
 
-  image {
+  .original-image {
     display: block;
     width: 100%;
     height: auto;

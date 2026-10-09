@@ -5,7 +5,12 @@ const emit = defineEmits<{ select: [route: string] }>()
 </script>
 <template>
   <view class="result-cards"
-    ><button v-for="card in cards" :key="card.label" @click="emit('select', card.route)">
+    ><button
+      v-for="card in cards"
+      :key="card.label"
+      class="result-card"
+      @click="emit('select', card.route)"
+    >
       <text class="result-value">{{ card.value }}</text
       ><text class="result-label">{{ card.label }}</text>
     </button></view
@@ -18,7 +23,7 @@ const emit = defineEmits<{ select: [route: string] }>()
   gap: 8px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 
-  button {
+  .result-card {
     min-height: 84px;
     margin: 0;
     padding: 6px;
@@ -29,7 +34,8 @@ const emit = defineEmits<{ select: [route: string] }>()
     text-align: center;
   }
 
-  text {
+  .result-value,
+  .result-label {
     display: block;
   }
 

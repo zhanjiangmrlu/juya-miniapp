@@ -199,6 +199,7 @@ onUnload(cleanup)
       <view class="scene-actions"
         ><button
           class="scene-action secondary"
+          :class="{ 'is-disabled': completingLearning }"
           :disabled="completingLearning"
           @click="completeLearning"
         >

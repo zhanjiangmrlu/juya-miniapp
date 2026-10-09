@@ -22,7 +22,10 @@ const choose = () =>
 <template>
   <view class="feedback-image-picker"
     ><view v-if="image" class="selected-image"
-      ><image :src="image.path" mode="aspectFit" /><button @click="emit('select', undefined)">
+      ><image class="screenshot-preview" :src="image.path" mode="aspectFit" /><button
+        class="screenshot-remove"
+        @click="emit('select', undefined)"
+      >
         删除截图
       </button></view
     ><button v-else class="form-field" @click="choose">可添加 1 张截图</button
@@ -50,12 +53,12 @@ const choose = () =>
     border-radius: 11px;
     background: #fffdf7;
 
-    image {
+    .screenshot-preview {
       width: 60px;
       height: 60px;
     }
 
-    button {
+    .screenshot-remove {
       margin: 0;
       padding: 0;
       background: transparent;

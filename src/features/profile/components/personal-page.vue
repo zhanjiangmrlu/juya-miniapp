@@ -74,16 +74,16 @@ withDefaults(
     line-height: 20px;
   }
 
-  :deep([class~='app-button--secondary']) {
+  :deep(.button-secondary) {
     border: 1px solid #7eaa6d;
     background: #fffdf7;
   }
 
-  :deep([class~='app-button--quiet']) {
+  :deep(.button-quiet) {
     background: transparent;
   }
 
-  :deep([class~='app-button--danger']) {
+  :deep(.button-danger) {
     background: #b74635;
   }
 }

@@ -80,7 +80,12 @@ onUnload(disposeAudio)
     >
     <view class="scene-actions"
       ><button class="scene-action secondary" @click="home">返回首页</button
-      ><button class="scene-action" :disabled="reviewing" @click="review">
+      ><button
+        class="scene-action"
+        :class="{ 'is-disabled': reviewing }"
+        :disabled="reviewing"
+        @click="review"
+      >
         开始翻卡复习
       </button></view
     >

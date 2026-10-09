@@ -229,15 +229,17 @@ onShow(load)
   >
     <PersonalSummary v-bind="summary" :compact="['PENDING', 'ACTIVE', 'ENDING'].includes(state)" />
     <view v-if="state === 'ENDED'" class="result-grid"
-      ><view
-        ><text>{{ result?.completed_scenes ?? '—' }}</text
-        ><text>完成场景</text></view
-      ><view
-        ><text>{{ result?.learning_days ?? '—' }}</text
-        ><text>实际学习天数</text></view
-      ><view
-        ><text>{{ result ? result.favorite_vocabulary + result.favorite_phrases : '—' }}</text
-        ><text>收藏内容</text></view
+      ><view class="result-card"
+        ><text class="result-value">{{ result?.completed_scenes ?? '—' }}</text
+        ><text class="result-label">完成场景</text></view
+      ><view class="result-card"
+        ><text class="result-value">{{ result?.learning_days ?? '—' }}</text
+        ><text class="result-label">实际学习天数</text></view
+      ><view class="result-card"
+        ><text class="result-value">{{
+          result ? result.favorite_vocabulary + result.favorite_phrases : '—'
+        }}</text
+        ><text class="result-label">收藏内容</text></view
       ></view
     >
     <text class="section-title">{{ stateCopy[2] }}</text>
@@ -338,7 +340,7 @@ onShow(load)
   gap: 8px;
   margin-top: 10px;
 
-  view {
+  .result-card {
     display: flex;
     min-height: 84px;
     flex-direction: column;
@@ -348,14 +350,14 @@ onShow(load)
     border-radius: 12px;
     background: #fffdf7;
 
-    text:first-child {
+    .result-value {
       color: #4e7f3b;
       font-size: 26px;
       font-weight: 700;
       line-height: 39px;
     }
 
-    text:last-child {
+    .result-label {
       margin-top: 2px;
       color: #5c715e;
       font-size: 11px;

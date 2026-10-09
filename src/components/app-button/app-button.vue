@@ -32,7 +32,11 @@ const handlePress = () => {
 <template>
   <button
     class="app-button"
-    :class="[`app-button--${variant}`, { 'app-button--block': block }]"
+    :class="[
+      `app-button--${variant}`,
+      `button-${variant}`,
+      { 'app-button--block': block, 'is-disabled': disabled || loading }
+    ]"
     :aria-disabled="disabled || loading"
     :disabled="disabled || loading"
     :loading="loading"
@@ -87,7 +91,7 @@ const handlePress = () => {
     @include mixins.focus-ring;
   }
 
-  &[disabled] {
+  &.is-disabled {
     opacity: 0.48;
   }
 

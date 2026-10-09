@@ -188,7 +188,7 @@ onUnload(hide)
     font-weight: 500;
   }
 
-  :deep([class~='app-button--secondary']) {
+  :deep(.button-secondary) {
     border: 1px solid #7eaa6d;
     background: #fffdf7;
   }

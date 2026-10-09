@@ -107,12 +107,17 @@ onPageScroll((event) =>
   >
     <view class="bank-tabs">
       <button
+        class="bank-tab"
         :class="{ selected: favorites.activeTab === 'VOCABULARY' }"
         @click="selectTab('VOCABULARY')"
       >
         词汇银行
       </button>
-      <button :class="{ selected: favorites.activeTab === 'PHRASE' }" @click="selectTab('PHRASE')">
+      <button
+        class="bank-tab"
+        :class="{ selected: favorites.activeTab === 'PHRASE' }"
+        @click="selectTab('PHRASE')"
+      >
         语块银行
       </button>
     </view>
@@ -176,7 +181,7 @@ onPageScroll((event) =>
   margin-top: 3px;
   margin-bottom: 15px;
 
-  button {
+  .bank-tab {
     height: 40px;
     margin: 0;
     padding: 0 8px;

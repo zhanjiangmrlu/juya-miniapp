@@ -6,7 +6,7 @@ import { resolveNavigationMetrics } from '@/services/navigation-metrics'
 let navigationOffset = 0
 let safeBottomExtra = 0
 try {
-  const info = uni.getSystemInfoSync()
+  const info = uni.getWindowInfo()
   const metrics = resolveNavigationMetrics(
     info.statusBarHeight,
     uni.getMenuButtonBoundingClientRect?.(),

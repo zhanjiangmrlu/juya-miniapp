@@ -114,7 +114,7 @@ onUnload(disposeAudio)
       >
       <view class="scene-section">{{ source ? '当前场景' : '接着练习' }}</view>
       <view class="position-cards">
-        <button @click="continueReading">
+        <button class="position-card" @click="continueReading">
           <view class="card-top"
             ><text>{{ source ? fullModel.chineseTitle : '继续场景对话' }}</text
             ><text class="card-status">{{ source ? '可学习' : '已定位' }}</text></view
@@ -122,7 +122,7 @@ onUnload(disposeAudio)
             source ? fullModel.title : `从第 ${index} 句继续阅读`
           }}</text>
         </button>
-        <button @click="source ? continueReading() : playCurrent()">
+        <button class="position-card" @click="source ? continueReading() : playCurrent()">
           <view class="card-top"
             ><text>{{ source ? `来源词汇 ${sourceEntry?.text ?? ''}` : '播放当前句原音' }}</text
             ><text class="card-status">{{
@@ -132,7 +132,7 @@ onUnload(disposeAudio)
             source ? `${sourceEntry?.chinese ?? ''} · 已收藏` : `同一整段音频的第 ${index} 句`
           }}</text>
         </button>
-        <button @click="source ? continueReading() : vocabulary()">
+        <button class="position-card" @click="source ? continueReading() : vocabulary()">
           <view class="card-top"
             ><text>{{ source ? '接着阅读' : '查看重点词汇' }}</text
             ><text class="card-status">{{ source ? '继续' : '下一步' }}</text></view
@@ -179,7 +179,7 @@ onUnload(disposeAudio)
   display: grid;
   gap: 10px;
 
-  button {
+  .position-card {
     width: 100%;
     min-height: 91px;
     margin: 0;

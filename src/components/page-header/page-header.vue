@@ -3,7 +3,7 @@ import { resolveNavigationMetrics } from '@/services/navigation-metrics'
 
 let metrics = resolveNavigationMetrics(undefined, undefined, 390)
 try {
-  const info = uni.getSystemInfoSync()
+  const info = uni.getWindowInfo()
   const capsule = uni.getMenuButtonBoundingClientRect?.()
   metrics = resolveNavigationMetrics(info.statusBarHeight, capsule, info.windowWidth)
 } catch {

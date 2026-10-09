@@ -44,6 +44,7 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
     <view class="recording-grid">
       <button
         class="recording-action primary"
+        :class="{ 'is-disabled': snapshot.recordingDisabled || snapshot.status === 'RECORDING' }"
         :disabled="snapshot.recordingDisabled || snapshot.status === 'RECORDING'"
         @click="emit('start')"
       >
@@ -51,7 +52,10 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
       </button>
       <button
         class="recording-action"
-        :class="{ primary: snapshot.status === 'RECORDING' }"
+        :class="{
+          primary: snapshot.status === 'RECORDING',
+          'is-disabled': snapshot.status !== 'RECORDING'
+        }"
         :disabled="snapshot.status !== 'RECORDING'"
         @click="emit('stop')"
       >
@@ -59,13 +63,16 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
       </button>
       <button
         class="recording-action"
-        :class="{ primary: snapshot.hasRecording }"
+        :class="{
+          primary: snapshot.hasRecording,
+          'is-disabled': !snapshot.hasRecording || snapshot.status === 'RECORDING'
+        }"
         :disabled="!snapshot.hasRecording || snapshot.status === 'RECORDING'"
         @click="emit('playback')"
       >
         <view v-if="snapshot.status === 'PLAYBACK'" class="recording-pause" aria-hidden="true">
-          <image :src="pauseReplayWhite" mode="aspectFit" />
-          <image :src="pauseReplayWhite" mode="aspectFit" />
+          <image class="pause-bar" :src="pauseReplayWhite" mode="aspectFit" />
+          <image class="pause-bar" :src="pauseReplayWhite" mode="aspectFit" />
         </view>
         <image
           v-else
@@ -79,6 +86,10 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
       </button>
       <button
         class="recording-action"
+        :class="{
+          'is-disabled':
+            !snapshot.hasRecording || snapshot.status === 'RECORDING' || snapshot.recordingDisabled
+        }"
         :disabled="
           !snapshot.hasRecording || snapshot.status === 'RECORDING' || snapshot.recordingDisabled
         "
@@ -159,7 +170,7 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
       color: #fff;
     }
 
-    &[disabled] {
+    &.is-disabled {
       border-color: #d6dfc9;
       background: #f3f4ed;
       color: #879584;
@@ -180,7 +191,7 @@ const emit = defineEmits<{ playback: []; playOriginal: []; rerecord: []; start: 
     display: flex;
     gap: 4px;
 
-    image {
+    .pause-bar {
       width: 3px;
       height: 12px;
     }

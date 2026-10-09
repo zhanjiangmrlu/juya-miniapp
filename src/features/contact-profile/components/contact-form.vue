@@ -49,7 +49,7 @@ defineExpose({ submit })
       management ? '修改时需再次确认联系用途。' : '用于必要的服务联系、内容体验回访和问题跟进。'
     }}</view>
     <checkbox-group class="consent" @change="consent"
-      ><label
+      ><label class="consent-label"
         ><checkbox
           class="consent-checkbox"
           value="confirmed"
@@ -95,7 +95,7 @@ defineExpose({ submit })
     font-size: 12px;
     line-height: 20px;
 
-    label {
+    .consent-label {
       display: flex;
       align-items: center;
     }

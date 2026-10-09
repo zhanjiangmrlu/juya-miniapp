@@ -7,7 +7,7 @@ import type { TabKey } from '@/components/app-tab-bar/app-tab-bar.vue'
 defineProps<{ active: TabKey }>()
 let headerReserve = 78
 try {
-  const info = uni.getSystemInfoSync()
+  const info = uni.getWindowInfo()
   const metrics = resolveNavigationMetrics(
     info.statusBarHeight,
     uni.getMenuButtonBoundingClientRect?.(),

@@ -61,7 +61,12 @@ onUnload(disposeAudio)
         :highlighted-id="audio.snapshot.target?.sentence_id ?? failedSentenceId"
       />
       <view class="scene-actions"
-        ><button class="scene-action" :disabled="retrying" @click="retry">
+        ><button
+          class="scene-action"
+          :class="{ 'is-disabled': retrying }"
+          :disabled="retrying"
+          @click="retry"
+        >
           ↻ {{ retrying ? '重新加载中' : '重新加载音频' }}</button
         ><button class="scene-action secondary" @click="shadowing">进入逐句跟读 ›</button></view
       >

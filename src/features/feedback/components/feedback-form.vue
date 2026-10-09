@@ -139,6 +139,7 @@ const submit = async () => {
       ><button
         v-for="category in FEEDBACK_CATEGORIES"
         :key="category.value"
+        class="category-tab"
         :class="{ selected: store.draft.category === category.value }"
         @click="selectCategory(category.value)"
       >
@@ -164,8 +165,13 @@ const submit = async () => {
     />
     <text class="form-label">截图</text>
     <view v-if="store.draft.screenshots[0]" class="screenshot"
-      ><image mode="aspectFit" :src="store.draft.screenshots[0].path" /><view
-        ><text>已附加 1 张截图</text><button @click="removeScreenshot">删除截图</button></view
+      ><image
+        class="screenshot-preview"
+        mode="aspectFit"
+        :src="store.draft.screenshots[0].path"
+      /><view
+        ><text>已附加 1 张截图</text
+        ><button class="screenshot-remove" @click="removeScreenshot">删除截图</button></view
       ></view
     >
     <button v-else class="form-field screenshot-add" @click="chooseScreenshot">
@@ -191,23 +197,23 @@ const submit = async () => {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
     margin-bottom: 0;
+  }
 
-    :where(button) {
-      height: 40px;
-      margin: 0;
-      padding: 0 4px;
-      border: 1px solid #d6dfc9;
-      border-radius: 11px;
-      background: #fffdf7;
-      color: #4e7f3b;
-      font-size: 11px;
-      line-height: 38px;
+  .category-tab {
+    height: 40px;
+    margin: 0;
+    padding: 0 4px;
+    border: 1px solid #d6dfc9;
+    border-radius: 11px;
+    background: #fffdf7;
+    color: #4e7f3b;
+    font-size: 11px;
+    line-height: 38px;
 
-      &.selected {
-        border-color: #4e7f3b;
-        background: #4e7f3b;
-        color: #fff;
-      }
+    &.selected {
+      border-color: #4e7f3b;
+      background: #4e7f3b;
+      color: #fff;
     }
   }
 
@@ -246,12 +252,12 @@ const submit = async () => {
     gap: 12px;
     font-size: 11px;
 
-    image {
+    .screenshot-preview {
       width: 60px;
       height: 60px;
     }
 
-    button {
+    .screenshot-remove {
       margin: 4px 0 0;
       padding: 0;
       background: transparent;
