@@ -40,9 +40,9 @@ export const createSessionBootstrap = (dependencies: SessionBootstrapDependencie
 
 let bootstrap: ReturnType<typeof createSessionBootstrap> | undefined
 
-/** 获取微信临时代码，H5 模拟登录仅在显式本地开发或mock模式启用 */
+/** 获取登录代码，H5 和微信开发包仅在显式本地开发或 mock 模式使用开发身份 */
 const wechatLogin = (): Promise<string> => {
-  // #ifdef H5
+  // #ifdef H5 || MP-WEIXIN
   if (
     import.meta.env.DEV &&
     (import.meta.env.VITE_LOCAL_DEV_MODE === 'true' || import.meta.env.VITE_USE_MOCK_API === 'true')
