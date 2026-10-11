@@ -13,6 +13,7 @@ const results = {
   scope: 'REAL_UI_HTTP_NO_MOCK',
   steps: [],
   requests: [],
+  viewports: [],
   network_failures: [],
   page_errors: 0
 }
@@ -119,6 +120,8 @@ try {
   let navigation = 0
   /** 打开真实页面，route为已注册路径，使用独立顶层导航避免重复命令与旧组件复用 */
   const open = async (route) => {
+    await expect.poll(() => inFlight.size, { timeout: 15000 }).toBe(0)
+    await Promise.allSettled([...pending])
     await page.goto(`${h5.href.replace(/\/$/, '')}/?qa_page=${++navigation}#${route}`)
   }
   /** 等待实际BFF响应，method/path指定当前UI动作对应的公共契约 */
@@ -452,6 +455,88 @@ try {
       name: 'short-reading-pure-read-complete',
       result: 'NOT_RUN_ENTITY_REQUIRED'
     })
+  if (entities.word_card_id && entities.short_reading_id) {
+    await step('responsive-real-content', async () => {
+      /** 检查当前正文及页面水平边界，selector为用户实际看到的内容容器，width为本轮视口 */
+      const assertWidth = async (selector, width) => {
+        const scrollWidth = await page.evaluate(
+          () => globalThis.document.documentElement.scrollWidth
+        )
+        expect(scrollWidth).toBeLessThanOrEqual(width)
+        const box = await page.locator(selector).boundingBox()
+        expect(box).not.toBeNull()
+        expect(box.x).toBeGreaterThanOrEqual(-1)
+        expect(box.x + box.width).toBeLessThanOrEqual(width + 1)
+      }
+      for (const width of [375, 390, 414, 768, 1024]) {
+        await page.setViewportSize({ width, height: 844 })
+        for (const [name, id] of [
+          ['scene', entities.scene_id],
+          ['word-card', entities.word_card_id]
+        ]) {
+          const opened = responseFor('POST', /\/scenes\/[^/]+\/open$/)
+          await open(`/sub-packages/scene/detail?sceneId=${encodeURIComponent(id)}`)
+          const response = await opened
+          expect(response.status()).toBe(200)
+          expect((await response.json()).scene.content_id).toBe(id)
+          await expect(page.locator('.scene-reading-view')).toBeVisible()
+          if (await page.locator('.translation-toggle').count()) {
+            await page.locator('.translation-toggle').click()
+            await expect(page.locator('.full-translation')).toBeVisible()
+          }
+          const last = page.locator('.scene-word-card').last()
+          await last.scrollIntoViewIfNeeded()
+          await expect(last).toBeVisible()
+          await assertWidth('.scene-reading-view', width)
+          const end = await last.boundingBox()
+          const action = await page.locator('.fixed-action').boundingBox()
+          expect(end.y + end.height).toBeLessThanOrEqual(action.y + 1)
+          await screenshot(`${name}-${width}-end`)
+          results.viewports.push({
+            width,
+            page: name,
+            end_visible: true,
+            horizontal_overflow: false
+          })
+        }
+        const opened = responseFor('POST', /\/short-readings\/[^/]+\/open$/)
+        await open(
+          `/sub-packages/short-reading/detail?contentId=${encodeURIComponent(entities.short_reading_id)}`
+        )
+        expect((await opened).status()).toBe(200)
+        await expect(page.locator('.short-reading-paragraph').first()).toBeVisible()
+        await page.locator('.translation-toggle').click()
+        await expect(page.locator('.full-translation')).toBeVisible()
+        await page.locator('.complete-button').scrollIntoViewIfNeeded()
+        await assertWidth('.reading-card', width)
+        const completed = await page.locator('.complete-button').boundingBox()
+        const navigation = await page
+          .locator(width < 700 ? '.mobile-navigation .tab-bar' : '.tablet-navigation')
+          .boundingBox()
+        expect(completed.y + completed.height).toBeLessThanOrEqual(navigation.y + 1)
+        await screenshot(`short-reading-${width}-end`)
+        results.viewports.push({
+          width,
+          page: 'short-reading',
+          end_visible: true,
+          horizontal_overflow: false
+        })
+        const history = responseFor('GET', /^\/api\/v1\/short-readings\/history$/)
+        await open('/sub-packages/short-reading/index')
+        expect((await history).status()).toBe(200)
+        await expect(page.locator('.reading-history-card').first()).toBeVisible()
+        await page.locator('.reading-history').scrollIntoViewIfNeeded()
+        await assertWidth('.reading-history', width)
+        await screenshot(`reading-history-${width}`)
+        results.viewports.push({
+          width,
+          page: 'reading-history',
+          end_visible: true,
+          horizontal_overflow: false
+        })
+      }
+    })
+  }
   await Promise.allSettled([...pending])
   expect(results.requests.length).toBeGreaterThan(0)
   expect(results.requests.every((request) => request.expected_origin)).toBe(true)

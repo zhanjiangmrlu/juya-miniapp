@@ -63,6 +63,9 @@ const published = {
 } as const
 
 describe('场景接口适配', () => {
+  it('旧缓存没有录音开关时保守禁录', () => {
+    expect(adaptSceneResponse(published).scene?.recording_enabled).toBe(false)
+  })
   it('保留同版本候选时间用于阅读定位，同时保持未确认句子不可单独播放', () => {
     const response = {
       ...published,

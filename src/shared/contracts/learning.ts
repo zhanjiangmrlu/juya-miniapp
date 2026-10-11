@@ -119,6 +119,7 @@ export interface PublishedEntry {
   audio_version_id?: string | null
 }
 export interface PublishedScene {
+  recording_enabled?: boolean
   scene_id: string
   revision_id: string
   content_version: number

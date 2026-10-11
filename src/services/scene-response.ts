@@ -255,6 +255,7 @@ export const adaptSceneResponse = (response: SceneOpenWireResponse): SceneOpenRe
     ...content.chunks.map((entry) => adaptEntry(scene, entry, SceneLookupEntryType.PHRASE))
   )
   const adapted: SceneContent = {
+    recording_enabled: scene.recording_enabled === true,
     scene_id: scene.scene_id,
     revision_id: scene.revision_id,
     content_version: scene.content_version,

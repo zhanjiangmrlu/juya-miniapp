@@ -2,7 +2,8 @@
 
 - 分支：`feature/v1.5-20261011`；起始 HEAD：`e5f8e2b`，起始工作区干净
 - 需求：20261011 开发交付整合确认版；方案：00、01、05、06、07、08
-- 状态：LOCAL_VERIFIED_WAITING_BFF_FINAL_CONTRACTS_AND_HTTP，尚未 READY_FOR_INTEGRATION
+- 状态：READY_FOR_REAL_HTTP_NOT_RUN，最终契约与本地门禁通过，真实页面HTTP尚未执行
+- 最终消费契约：BFF `b38294b`，`tests/fixtures/contracts/v15-b38294b/openapi.json`／`provider.d.ts`；固定Git原始JSON SHA256 `6c6105d3b3d0e201b3824ecef796e38a595bc30e574b7b87aa3c04f049c4e780`
 - 范围：只修改 juya-miniapp；不切分支、不推送、不部署、不重启共享服务
 
 ## 任务与所有权
@@ -101,3 +102,7 @@
 - 历史正式消费已提交 `2a10f76`：场景全部分页后筛选、短文独立安全history/计数/分页、下线404留页及身份/页面失效；11文件76范围测试。375/390/768/1024px实际Mock浏览器检查无横溢；截图亲验历史卡片及按钮在footer上方，390加载至3条且下线留页；场景历史实际显示第二页共2条。证据 `.v15-artifacts.local/history-visual/`，不是真实HTTP
 - 最终本地门禁快照（14:37—14:40）：135文件705测试通过；check exit0（临时浏览器证据脚本归档为txt后不参与源码lint）；H5/mp-weixin构建exit0、page-meta16页通过。最新脚本补独立短文完成后history GET和实际已读卡片回读、两Medium银行卡不同释义展示；语法/ESLint通过
 - 本轮复核Critical草稿隔离已由 `0cb57de` 修复；4项账号/反馈Important已由 `c114a24` RED→GREEN修复（最终范围76项）；学习权威stage=null/pending=false仍等待确认，新增回归RED→GREEN。schema1录音及次级资料配置等待正式BFF新增契约后继续核对
+- 最终BFF `b38294b` 已正式交付schema1外层recording_enabled及LearningCatalog.profile_completion_enabled。已按正式生成类型补消费者测试，旧版adapter严格透传外层字面bool、缺失默认禁录，3项录音缺口观察RED→GREEN；资料次级入口沿用严格bool及会话一次实际曝光，不再作为上游缺口
+- 真实脚本末尾新增375/390/414/768/1024视口的实际scene/word-card/纯短文/history读取、末尾滚动、水平边界、固定操作区避让及脱敏截图，结果逐项记viewports。每次导航前等上一页实际API结算；没有真实结果前不将Mock截图记为本轮HTTP证据
+- 最终冻结消费者门禁（14:46—14:47）：136文件710测试通过，`pnpm check`、H5/mp-weixin正式构建exit0，page-meta16页通过。新历史功能独立只读审查Critical0/Important0；此前复核问题均有RED→GREEN及正常成功分支回归
+- 最终fixture必须使用 `tests/fixtures/contracts/v15-b38294b/openapi.json`，与后端Git原始JSON的LF字节hash一致；b382之后进度/换行说明/容器忽略提交不改变公开契约。最终运行器必须核对实际mounted JSON与该fixture语义相等，不能再指向a9历史fixture
