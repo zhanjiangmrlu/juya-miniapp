@@ -209,6 +209,8 @@ try {
       expect(response.status()).toBe(201)
       const data = await response.json()
       expect(data.active).toBe(true)
+      expect(data.content_type).toBe(openedData.scene.content_type)
+      expect(data.content_id).toBe(entities.scene_id)
       favoriteIds.push(data.favorite_id)
       await expect(button).toHaveText('已收藏')
       await expect(page.locator('.full-translation')).toBeVisible()
@@ -303,6 +305,9 @@ try {
         dualMeanings.push((await cards.nth(index).locator('.word-meaning').textContent()).trim())
       const distinctIds = []
       for (let index = 0; index < 2; index++) {
+        // 不允许词卡详情把本轮其他内容的收藏ID回填为自身状态，再由验收取消
+        if (favoriteIds.includes(data.scene.words[index].favorite_id))
+          throw new Error('CROSS_CONTENT_FAVORITE_STATE_MISMATCH')
         const button = cards.nth(index).locator('.favorite-button')
         if ((await button.textContent()).includes('已收藏')) {
           const removed = responseFor('DELETE', /\/favorite-snapshots\/[^/]+$/)
@@ -316,11 +321,14 @@ try {
         expect(savedResponse.status()).toBe(201)
         const snapshot = await savedResponse.json()
         expect(snapshot.active).toBe(true)
+        expect(snapshot.content_type).toBe('word_card')
+        expect(snapshot.content_id).toBe(entities.word_card_id)
         distinctIds.push(snapshot.favorite_id)
         await expect(button).toHaveText('已收藏')
       }
       expect(new Set(distinctIds).size).toBe(2)
       favoriteIds.push(...distinctIds)
+      expect(new Set(favoriteIds).size).toBe(favoriteIds.length)
       await screenshot('word-card-distinct-senses')
     })
   } else
@@ -328,7 +336,12 @@ try {
   await step('banks-and-detail-source', async () => {
     const list = responseFor('GET', /^\/api\/v1\/favorite-snapshots$/)
     await open('/pages/favorites/index')
-    expect((await list).status()).toBe(200)
+    const listResponse = await list
+    expect(listResponse.status()).toBe(200)
+    const activeIds = (await listResponse.json()).items
+      .filter((item) => item.active === true)
+      .map((item) => item.favorite_id)
+    for (const id of favoriteIds) expect(activeIds).toContain(id)
     await expect(page.locator('.favorite-entry').first()).toBeVisible()
     await page.locator('.bank-tab').filter({ hasText: '语块银行' }).click()
     await expect(page.locator('.bank-tab.selected')).toHaveText('语块银行')

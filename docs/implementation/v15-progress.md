@@ -2,7 +2,7 @@
 
 - 分支：`feature/v1.5-20261011`；起始 HEAD：`e5f8e2b`，起始工作区干净
 - 需求：20261011 开发交付整合确认版；方案：00、01、05、06、07、08
-- 状态：REAL_HTTP_PARTIAL_H5_ACTION_FIX_READY_FOR_RERUN，真实禁录选句/原音取址/完成已通过，收藏来源操作与完成截图等待修复后真实复跑
+- 状态：REAL_HTTP_PARTIAL_BLOCKED_BY_CROSS_CONTENT_FAVORITE_STATE，真实前六步已通过，后端收藏状态回填缺内容命名空间导致复习422，等待权威修复后复跑
 - 最终消费契约：BFF `b38294b`，`tests/fixtures/contracts/v15-b38294b/openapi.json`／`provider.d.ts`；固定Git原始JSON SHA256 `6c6105d3b3d0e201b3824ecef796e38a595bc30e574b7b87aa3c04f049c4e780`
 - 范围：只修改 juya-miniapp；不切分支、不推送、不部署、不重启共享服务
 
@@ -123,3 +123,12 @@
 - 脚本改为点击按钮容器，同类翻卡下一张/完成、联系提示稍后再说、资料保存同步修正；不force点击、不改UI、不删除入口。翻卡逐张等待当前序号/卡片，完成后等待实际首页内容，避免路由过渡或点击旧卡片
 - 场景完成现在在点击前监听真实GET /scenes/{id}/result并断言200；截图前等待学习完成标题、本次学习已记录、3张成果卡及成果明细可见，不能只靠waitForURL。独占Mock截图completed-visible.png已亲验完整成果内容，此证据不是真实HTTP或云音频验收
 - 本地受影响复验：原文字点击5秒失败、按钮容器点击通过；翻卡两张/完成首页可见、资料保存按钮正常点击通过。提取实际responseFor进行延迟拒绝复验：未处理拒绝0次，原Promise仍拒绝；node --check及pnpm check全部通过。只有验收脚本与本进度说明变更，不重复全套711测试/双端构建或真实批量种子；独占15193已核对进程身份并停止，真实后续步骤仍待协调少量记录复跑
+
+## 第三次真实复习422定位
+
+- 实际运行 `36e4eac6df574822898d2a09e28dba2d` 前六步PASS，包括来源GET200/版本定位导航与成果GET200；review-full-snapshot POST /api/v1/reviews返回422 REVIEW_CARDS_INVALID，失败报告及截图可靠落盘，0 network failures/0 page_errors
+- 实际词卡步骤DELETE两个ID与先前对话收藏相同，随后重存词卡；四张复习队列仍保留已取消的对话两张。不是通过去重/过滤取消ID就可接受的结果，跨内容收藏必须独立
+- 前端已核对：src/stores/favorites.ts targetKey、src/stores/scene.ts seedState、useScenePage.referenceFor均包含content_type/content_id；favorite-service.createReview发送card_ids和snapshot_schema=2，未将分组ID当快照ID。失败截图显示第1张/4，路由逗号拆分无误
+- 后端只读根因：juya-miniapp-api/src/juya_miniapp_api/modules/learning/detail_aggregation.py attach_favorite_states仅以(entry_type,entry_id,sense_id,source_id)调用repository.states；favorites/snapshots_sql.py states查询及字典键同样缺content_type/content_id，所以共享稳定entry/sense/source的合法对话/词卡被回填同一个favorite_id。后端负责人需让协议、内存与SQL实现、调用和回填键全部携带内容命名空间；本对话不越界修改BFF
+- 前端补跨类型/跨内容ID状态隔离回归；脚本在词卡取消之前阻断CROSS_CONTENT_FAVORITE_STATE_MISMATCH，收藏POST核对返回content_type/content_id，最终全队列仍要求无重复且每个已保存ID仍在权威银行活跃集合。不删ID、不改seed词条身份、不降复习201/完成200断言，待后端正式修复后继续原四张真实队列
+- 本轮仅受影响门禁：favorite-snapshots/review-analytics/use-scene-page共3文件45项通过，node --check、pnpm check及git diff --check通过；无页面源码变更，不重复全套测试/双端构建，不启动或重启服务、不生成真实数据

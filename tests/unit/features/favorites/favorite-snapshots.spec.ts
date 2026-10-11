@@ -56,6 +56,17 @@ const snapshot = (id: string, meaning = '中杯'): FavoriteItem => ({
 beforeEach(() => setActivePinia(createPinia()))
 
 describe('V1.5 独立收藏快照', () => {
+  it('相同条目义项来源在不同内容类型或内容ID下保留独立收藏状态', () => {
+    const store = useFavoriteStore()
+    const wordCard = { ...reference, content_type: 'word_card' }
+    const otherContent = { ...wordCard, content_id: 'other-content' }
+    store.seedState(reference, { is_favorited: true, favorite_id: 'dialogue-favorite' })
+    store.seedState(wordCard, { is_favorited: false, favorite_id: null })
+    store.seedState(otherContent, { is_favorited: true, favorite_id: 'other-favorite' })
+    expect(store.stateFor(reference).favorite_id).toBe('dialogue-favorite')
+    expect(store.stateFor(wordCard)).toMatchObject({ is_favorited: false, favorite_id: null })
+    expect(store.stateFor(otherContent).favorite_id).toBe('other-favorite')
+  })
   it('取消响应之后旧GET快照不能复活银行，更高修订的重新收藏仍可同步', async () => {
     const store = useFavoriteStore()
     const old = snapshot('card')
