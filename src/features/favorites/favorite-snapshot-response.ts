@@ -27,12 +27,11 @@ export const adaptFavoriteSnapshot = (
   }
   const type =
     FAVORITE_SNAPSHOT_TYPE_MAP[snapshot.entry_type as keyof typeof FAVORITE_SNAPSHOT_TYPE_MAP]
-  const locator =
+  const rawLocator =
     typeof snapshot.source_locator === 'string'
       ? snapshot.source_locator
-      : snapshot.source_locator?.sentence_id ||
-        snapshot.source_locator?.paragraph_id ||
-        snapshot.source_id
+      : snapshot.source_locator?.sentence_id || snapshot.source_locator?.paragraph_id
+  const locator = typeof rawLocator === 'string' ? rawLocator : ''
   return {
     ...snapshot,
     id: snapshot.favorite_id,

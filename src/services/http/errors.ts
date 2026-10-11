@@ -16,7 +16,8 @@ export class ApiError extends Error {
     readonly code: string,
     message: string,
     readonly status: number,
-    readonly details?: Record<string, unknown>
+    readonly details?: Record<string, unknown>,
+    readonly requestId?: string
   ) {
     super(message)
     this.name = 'ApiError'

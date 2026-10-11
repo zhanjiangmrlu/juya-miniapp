@@ -4,6 +4,7 @@ export interface SessionAdapter {
   ensureAuthenticated?(): Promise<void>
   clear(): void
   getAccessToken(): string | undefined
+  getGeneration?(): number
   refresh(): Promise<string | undefined>
 }
 

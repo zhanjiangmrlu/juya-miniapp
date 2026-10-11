@@ -20,14 +20,16 @@ export type { HttpClientOptions } from '@/shared/types/http'
  */
 export const createHttpClient = (options: HttpClientOptions): HttpClient => {
   const idFactory = options.idFactory ?? createRequestId
-  let refreshPromise: Promise<string | undefined> | undefined
+  let refreshPending: { generation: number; promise: Promise<string | undefined> } | undefined
 
-  /** 复用进行中的刷新请求，避免多个 401 同时触发令牌刷新风暴 */
-  const refreshOnce = async () => {
-    refreshPromise ??= options.session.refresh().finally(() => {
-      refreshPromise = undefined
+  /** 仅复用同代次刷新，generation为命令绑定的账号及学习清理代次 */
+  const refreshOnce = (generation: number) => {
+    if (refreshPending?.generation === generation) return refreshPending.promise
+    const promise = options.session.refresh().finally(() => {
+      if (refreshPending?.promise === promise) refreshPending = undefined
     })
-    return refreshPromise
+    refreshPending = { generation, promise }
+    return promise
   }
 
   /** 发送请求，method为动作，path为接口路径，body为业务内容，requestOptions为身份与幂等设置 */
@@ -38,7 +40,14 @@ export const createHttpClient = (options: HttpClientOptions): HttpClient => {
     requestOptions: RequestOptions = {}
   ): Promise<T> => {
     const requiresAuth = requestOptions.auth !== false
+    const generation = options.session.getGeneration?.() ?? 0
+    /** 拒绝已清理账号的迟到响应与重试，避免旧命令进入新账号 */
+    const assertCurrentSession = () => {
+      if (requiresAuth && (options.session.getGeneration?.() ?? 0) !== generation)
+        throw new ApiError('SESSION_CHANGED', '账号状态已更新，请重新操作', 401)
+    }
     if (requiresAuth) await options.session.ensureAuthenticated?.()
+    assertCurrentSession()
     const requestId = idFactory()
     const idempotencyKey =
       method === HttpMethod.GET || requestOptions.idempotencyKey === false
@@ -47,6 +56,7 @@ export const createHttpClient = (options: HttpClientOptions): HttpClient => {
 
     /** 执行请求，networkAttempt为网络重试次数，canRefresh控制本次请求能否刷新令牌 */
     const execute = async (networkAttempt: number, canRefresh: boolean): Promise<T> => {
+      assertCurrentSession()
       const tokenUsed = requiresAuth ? options.session.getAccessToken() : undefined
       const headers: Record<string, string> = {
         'X-Client-Version': options.clientVersion,
@@ -66,18 +76,33 @@ export const createHttpClient = (options: HttpClientOptions): HttpClient => {
       }
       try {
         const response = await options.transport.request<T>(request)
+        assertCurrentSession()
         if (response.status === 401 && requiresAuth && canRefresh) {
           const currentToken = options.session.getAccessToken()
           const renewed =
-            currentToken && currentToken !== tokenUsed ? currentToken : await refreshOnce()
+            currentToken && currentToken !== tokenUsed
+              ? currentToken
+              : await refreshOnce(generation)
+          assertCurrentSession()
           if (!renewed) {
             options.session.clear()
             throw new ApiError('SESSION_EXPIRED', '登录状态已失效，正在重新连接', 401)
           }
           return execute(networkAttempt, false)
         }
+        if (
+          response.status === 401 &&
+          requiresAuth &&
+          !canRefresh &&
+          options.session.getAccessToken() === tokenUsed
+        )
+          options.session.clear()
         if (response.status < 200 || response.status >= 300)
-          throw mapApiError(response.status, response.data)
+          throw mapApiError(
+            response.status,
+            response.data,
+            response.headers['x-request-id'] ?? response.headers['X-Request-ID']
+          )
         return response.data
       } catch (error) {
         if (

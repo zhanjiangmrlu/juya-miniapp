@@ -45,7 +45,12 @@ const adaptSnapshot = (scene: SceneSnapshot, access: SceneContent['access']): Sc
     scene_id: scene.content_id,
     revision_id: scene.revision_id,
     image_asset_id: type === SceneLookupEntryType.VOCABULARY ? entry.image_asset_id : undefined,
-    pronunciation: entry.pronunciation,
+    pronunciation: entry.pronunciation
+      ? {
+          ...entry.pronunciation,
+          resource_version: entry.pronunciation.resource_version ?? undefined
+        }
+      : entry.pronunciation,
     favorited: entry.is_favorited,
     favorite_id: entry.favorite_id
   })

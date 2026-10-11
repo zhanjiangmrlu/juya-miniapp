@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import PronunciationButton from '@/features/audio/components/pronunciation-button.vue'
+import { getFavoriteMissingMessage } from '@/features/favorites/favorite-missing-message'
 import { getFavoritePronunciation } from '@/features/favorites/favorite-pronunciation'
 import { FavoriteType, ReviewCardFace } from '@/shared/enums/favorites'
 import { useAudioStore } from '@/stores/audio'
@@ -32,7 +33,10 @@ const pressWord = () => {
             @click.stop
           />
           <text class="card-word" @click.stop="pressWord">{{
-            item.english || item.normalized_key
+            item.english || item.normalized_key || '英文待补齐'
+          }}</text>
+          <text v-if="getFavoriteMissingMessage(item)" class="card-missing">{{
+            getFavoriteMissingMessage(item)
           }}</text>
           <template v-if="face === ReviewCardFace.BACK">
             <text v-if="item.phonetic" class="card-phonetic">{{ item.phonetic }}</text>
@@ -100,6 +104,15 @@ const pressWord = () => {
     color: #758874;
     font-size: 12px;
     line-height: 22px;
+  }
+
+  .card-missing {
+    width: 100%;
+    margin-top: 8px;
+    color: #80664c;
+    font-size: 12px;
+    line-height: 22px;
+    overflow-wrap: anywhere;
   }
 
   .card-phonetic {

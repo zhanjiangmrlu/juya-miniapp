@@ -7,33 +7,47 @@ import type { SessionBootstrapDependencies } from '@/shared/types/session'
 
 /** 为会话依赖创建单飞登录入口，参数明确存储与微信登录能力 */
 export const createSessionBootstrap = (dependencies: SessionBootstrapDependencies) => {
-  let pending: Promise<boolean> | undefined
+  let pending: { generation: number; promise: Promise<boolean> } | undefined
   /** 建立会话，forceWechat 表示首页重连必须重新获取微信临时代码 */
   const run = (forceWechat = false): Promise<boolean> => {
-    if (pending) return pending
+    let generation = dependencies.getGeneration?.() ?? 0
+    if (pending?.generation === generation) return pending.promise
     if (!forceWechat && dependencies.isAuthenticated()) return Promise.resolve(true)
-    pending = (async () => {
+    /** 只允许本次登录所属代次更新令牌，不恢复已退出身份 */
+    const isCurrent = () => (dependencies.getGeneration?.() ?? 0) === generation
+    const promise: Promise<boolean> = Promise.resolve().then(async () => {
       try {
+        if (!isCurrent()) return false
         const refreshToken = !forceWechat && dependencies.refreshToken()
         let tokens: SessionResponse | undefined
         if (refreshToken) {
           try {
             tokens = await dependencies.refresh(refreshToken)
           } catch {
+            if (!isCurrent()) return false
             dependencies.clear()
+            generation = dependencies.getGeneration?.() ?? 0
+            if (pending?.promise === promise) pending.generation = generation
           }
         }
-        tokens ??= await dependencies.login(await dependencies.wechatLogin())
+        if (!isCurrent()) return false
+        if (!tokens) {
+          const code = await dependencies.wechatLogin()
+          if (!isCurrent()) return false
+          tokens = await dependencies.login(code)
+        }
+        if (!isCurrent()) return false
         dependencies.saveTokens(tokens)
         return true
       } catch {
-        dependencies.clear()
+        if (isCurrent()) dependencies.clear()
         return false
       } finally {
-        pending = undefined
+        if (pending?.promise === promise) pending = undefined
       }
-    })()
-    return pending
+    })
+    pending = { generation, promise }
+    return promise
   }
   return run
 }
@@ -68,6 +82,7 @@ export const configureSessionBootstrap = (client: HttpClient): void => {
     const auth = createSessionService(client)
     bootstrap = createSessionBootstrap({
       isAuthenticated: () => session.isAuthenticated,
+      getGeneration: () => session.cleanupGeneration,
       refreshToken: () => session.refreshToken,
       saveTokens: session.saveTokens,
       clear: session.clear,

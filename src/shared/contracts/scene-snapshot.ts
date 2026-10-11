@@ -9,12 +9,12 @@ export interface ConfirmedSceneEntry {
   meaning_zh: string
   explanation: string
   source_sentence: string
-  source_locator: { sentence_id?: string } | null
+  source_locator?: { sentence_id?: string | null; paragraph_id?: string | null } | null
   image_asset_id?: string | null
   pronunciation?: {
     target_id: string
     can_prepare: boolean
-    resource_version?: string
+    resource_version?: string | null
     status?: string
   } | null
   is_favorited: boolean

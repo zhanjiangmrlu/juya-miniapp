@@ -13,7 +13,7 @@ import type { TransportRequest } from '@/shared/types/http'
 /** 复制隔离演示响应，value 为内存契约资料 */
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 /** 获取稳定来源身份键，reference 为确认内容引用 */
-const identity = (reference: FavoriteReference) =>
+const identity = (reference: Omit<FavoriteReference, 'content_version'>) =>
   JSON.stringify([
     reference.content_type,
     reference.content_id,
@@ -143,9 +143,29 @@ export const createFavoriteSnapshotMock = () => {
       'Could you let me know whether we can reschedule the meeting for next Friday afternoon, after everyone has had enough time to review the documents?',
     pronunciation: { target_id: 'chunk-long-phrase', can_prepare: true }
   }
-  for (const snapshot of [medium, receipt, rainCheck, longPhrase]) {
+  const legacy: FavoriteSnapshot = {
+    ...receipt,
+    favorite_id: 'mock-favorite-legacy-incomplete',
+    content_type: 'SCENE',
+    content_version: null,
+    saved_content_version: null,
+    revision_id: null,
+    entry_id: 'legacy-entry',
+    sense_id: 'legacy-sense',
+    source_id: 'legacy-source',
+    english: '',
+    phonetic: '',
+    meaning_zh: '',
+    explanation: '',
+    source_sentence: '',
+    source_locator: {},
+    source_title: '历史收藏',
+    legacy_incomplete: true,
+    missing_fields: ['english', 'meaning_zh', 'source_sentence', 'content_version', 'pronunciation']
+  }
+  for (const snapshot of [medium, receipt, rainCheck, longPhrase, legacy]) {
     records.set(snapshot.favorite_id, snapshot)
-    confirmed.set(identity(snapshot), copy(snapshot))
+    if (snapshot.content_version !== null) confirmed.set(identity(snapshot), copy(snapshot))
   }
   /** 执行隔离命令并按固定键重放，request 为预览请求，action 为内存状态更新 */
   const command = (request: TransportRequest, action: () => unknown) => {
@@ -229,7 +249,10 @@ export const createFavoriteSnapshotMock = () => {
         throw new ApiError('FAVORITE_NOT_FOUND', '演示收藏已取消', 404)
       if (request.method === HttpMethod.GET && match[2]) {
         const denied = id === receipt.favorite_id
-        const exact = snapshot.source_locator && snapshot.source_id !== medium.source_id
+        const exact =
+          !snapshot.legacy_incomplete &&
+          snapshot.source_locator &&
+          snapshot.source_id !== medium.source_id
         const result: FavoriteSourceResolution = {
           content_type: snapshot.content_type,
           content_id: snapshot.content_id,

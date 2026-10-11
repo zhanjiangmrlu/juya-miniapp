@@ -24,6 +24,113 @@ function createTransport(
 }
 
 describe('HTTP client', () => {
+  it('等待身份建立期间切账号不会把旧命令绑定到新账号', async () => {
+    let generation = 0
+    const request = vi.fn()
+    const client = createHttpClient({
+      baseUrl: 'https://api.example.test',
+      clientVersion: '1.5',
+      session: {
+        clear: vi.fn(),
+        refresh: vi.fn(),
+        getAccessToken: () => 'account-b',
+        getGeneration: () => generation,
+        ensureAuthenticated: async () => {
+          generation++
+        }
+      },
+      transport: { request }
+    })
+    await expect(
+      client.post('/favorite-snapshots', { favorite: 'a-command' })
+    ).rejects.toMatchObject({
+      code: 'SESSION_CHANGED'
+    })
+    expect(request).not.toHaveBeenCalled()
+  })
+  it('旧账号的迟到401不将写命令重放到新账号', async () => {
+    let generation = 0
+    let token = 'account-a'
+    const calls: string[] = []
+    const clear = vi.fn()
+    const refresh = vi.fn()
+    const client = createHttpClient({
+      baseUrl: 'https://api.example.test',
+      clientVersion: '1.5',
+      session: {
+        clear,
+        refresh,
+        getAccessToken: () => token,
+        getGeneration: () => generation
+      },
+      transport: createTransport(async (request) => {
+        calls.push(request.headers.Authorization)
+        if (calls.length === 1) {
+          generation++
+          token = 'account-b'
+          return { data: null, headers: {}, status: 401 }
+        }
+        return { data: 'created-for-b', headers: {}, status: 200 }
+      })
+    })
+    await expect(
+      client.post('/favorite-snapshots', { favorite: 'a-command' })
+    ).rejects.toMatchObject({
+      code: 'SESSION_CHANGED'
+    })
+    expect(calls).toEqual(['Bearer account-a'])
+    expect(clear).not.toHaveBeenCalled()
+    expect(refresh).not.toHaveBeenCalled()
+  })
+  it('刷新重试的迟到401不能清理后来建立的新会话', async () => {
+    let token = 'expired'
+    const clear = vi.fn()
+    const refresh = vi.fn(async () => {
+      token = 'renewed'
+      return token
+    })
+    const client = createHttpClient({
+      baseUrl: 'https://api.example.test',
+      clientVersion: '1.5',
+      session: { clear, refresh, getAccessToken: () => token },
+      transport: createTransport(async (_request, attempt) => {
+        if (attempt === 2) token = 'later-session'
+        return {
+          data: { code: 'ACCESS_TOKEN_INVALID', message: '登录失效' },
+          status: 401,
+          headers: { 'x-request-id': 'late-request' }
+        }
+      })
+    })
+    await expect(client.get('/private')).rejects.toMatchObject({ requestId: 'late-request' })
+    expect(refresh).toHaveBeenCalledOnce()
+    expect(clear).not.toHaveBeenCalled()
+    expect(token).toBe('later-session')
+  })
+  it('刷新后仍401则清会话，保存标准错误request_id且不循环刷新', async () => {
+    const clear = vi.fn()
+    let token = 'expired'
+    const refresh = vi.fn(async () => {
+      token = 'renewed'
+      return token
+    })
+    const client = createHttpClient({
+      baseUrl: 'https://api.example.test',
+      clientVersion: '1.5',
+      session: { clear, refresh, getAccessToken: () => token },
+      transport: createTransport(async () => ({
+        data: { code: 'ACCESS_TOKEN_INVALID', message: '登录失效', request_id: 'fixture-denied' },
+        status: 401,
+        headers: {}
+      }))
+    })
+    await expect(client.get('/private')).rejects.toMatchObject({
+      code: 'ACCESS_TOKEN_INVALID',
+      requestId: 'fixture-denied'
+    })
+    expect(refresh).toHaveBeenCalledOnce()
+    expect(clear).toHaveBeenCalledOnce()
+  })
   it('身份建立完成后读取令牌，再发送受保护请求', async () => {
     let token: string | undefined
     const transport = createTransport(async (request) => ({

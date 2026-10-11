@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import PronunciationButton from '@/features/audio/components/pronunciation-button.vue'
+import { getFavoriteMissingMessage } from '@/features/favorites/favorite-missing-message'
 import { getFavoritePronunciation } from '@/features/favorites/favorite-pronunciation'
 import { FavoriteType } from '@/shared/enums/favorites'
 import { useFavoriteStore } from '@/stores/favorites'
@@ -19,7 +20,9 @@ const favorites = useFavoriteStore()
     >
       <view class="entry-content">
         <view class="entry-heading">
-          <text class="entry-word">{{ group.items[0]?.english || group.displayKey }}</text>
+          <text class="entry-word">{{
+            group.items[0]?.english || group.displayKey || '英文待补齐'
+          }}</text>
           <PronunciationButton
             v-if="group.items[0] && getFavoritePronunciation(group.items[0])"
             class="entry-audio"
@@ -38,6 +41,11 @@ const favorites = useFavoriteStore()
             .filter(Boolean)
             .join(' · ')
         }}</text>
+        <text
+          v-if="group.items[0] && getFavoriteMissingMessage(group.items[0])"
+          class="entry-missing"
+          >{{ getFavoriteMissingMessage(group.items[0]) }}</text
+        >
       </view>
       <button
         class="favorite-state"
@@ -100,6 +108,14 @@ const favorites = useFavoriteStore()
     font-size: 11px;
     line-height: 18px;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .entry-missing {
+    display: block;
+    color: #80664c;
+    font-size: 11px;
+    line-height: 18px;
     overflow-wrap: anywhere;
   }
 

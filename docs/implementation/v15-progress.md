@@ -2,7 +2,7 @@
 
 - 分支：`feature/v1.5-20261011`；起始 HEAD：`e5f8e2b`，起始工作区干净
 - 需求：20261011 开发交付整合确认版；方案：00、01、05、06、07、08
-- 状态：LOCAL_VERIFIED_WAITING_BFF_CONTRACTS，尚未 READY_FOR_INTEGRATION
+- 状态：LOCAL_VERIFIED_WAITING_BFF_FINAL_CONTRACTS_AND_HTTP，尚未 READY_FOR_INTEGRATION
 - 范围：只修改 juya-miniapp；不切分支、不推送、不部署、不重启共享服务
 
 ## 任务与所有权
@@ -58,3 +58,17 @@
 - 实际微信 AppID 静默登录、昵称头像与麦克风授权
 - iPhone／安卓／平板听音、切片句首句尾、本地录音回听与生命周期
 - OSS 短签名、Range、版权／真人试听、生产审核
+
+## 已发布接口消费与联调准备（2026-10-11）
+
+- 本轮前端基线 `1e620d0`；只读消费协调交付的 BFF `3f9207a002cd0ae5cf02af0d44a87413e50fb30e`（56操作、58DTO、7示例），不根据后端未提交工作区猜新增字段
+- 固定契约证据：`tests/fixtures/contracts/v15-3f9207a/`，OpenAPI SHA256 `26b84eb97d0483ac66e5dd501524d74f62a62d638502b00aebdcc74b26f8b60c`；JSON逐字节保留，TS提取提供方components类型；消费者检查实际路径、method、query/body字段与必填项、Bearer和稳定幂等键
+- 修正历史收藏 nullable版本及revision、SCENE来源、空资料缺失提示；不虚构版本1、不将source_id当定位、不以旧audio覆盖明确pronunciation=null；取消及翻卡继续按favorite_id可用
+- 场景发音resource_version=null归一为未指定，避免轮询传字符串null；实际单句切片使用详情已提供的target/version
+- 标准错误保留request_id，外部错误码只查自有映射；刷新后仍401清当前失效会话；命令在身份等待前绑定清理代次，迟到响应及重试不进入新账号，旧登录／刷新不能保存或清理后来会话
+- 375／390／414／768／1024px浏览器实际验证历史收藏详情与翻卡缺失提示，完整刷新后复习1/1；证据为本地Mock，不是HTTP验收
+- 真实联调准备见 `docs/implementation/v15-http-checklist.md` 与 `scripts/probe-v15-http.mjs`；脚本要求明确BASE_URL，无默认端口，只读GET；拒绝HTML／错误JSON／缺方法契约，公开探测校验通过后才发送身份请求，不落盘token/正文/签名URL；缺少地址时exit2，不发送请求
+- 协调尚未提供可用真实BASE_URL及隔离账号/发布内容标识：真实HTTP全部 `NOT_RUN_ENVIRONMENT_UNAVAILABLE`；不重启服务、不猜端口、不以Mock或健康检查替代业务验收
+- 仍待最终JSON/TS：头像URL、微信兼容资料保存方法、录音审核开关、权威阶段、RUNNING/RECOVER公共映射、短文运营顺序及完成重放前重新鉴权；这些条件未满足前不标记READY
+- 本轮最终门禁（13:40—13:42）：`pnpm check` exit0；`pnpm test` 121文件577例通过；H5／mp-weixin构建exit0，page-meta16页通过；微信主包601122 bytes、总包717617 bytes，最大业务包scene24851 bytes
+- 审查两项Important（探测误报与跨账号重放）均已修复，独立只读复审Critical0／Important0；运行时刷新、登录启动、等待身份及迟到401均有内存复现实证，探测8例为内存fixture，不是后端HTTP

@@ -68,6 +68,8 @@ export const useFavoriteStore = defineStore('favorites', () => {
   }
   /** 从完整快照提取目标引用，item 为服务端固定资料 */
   const referenceFor = (item: FavoriteItem): FavoriteReference | undefined => {
+    const version = item.saved_content_version ?? item.content_version
+    if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) return undefined
     if (
       !item.content_type ||
       !item.content_id ||
@@ -79,7 +81,7 @@ export const useFavoriteStore = defineStore('favorites', () => {
     return {
       content_type: item.content_type,
       content_id: item.content_id,
-      content_version: item.saved_content_version || item.content_version || 1,
+      content_version: version,
       entry_id: item.entry_id,
       sense_id: item.sense_id,
       source_id: item.source_id

@@ -46,15 +46,20 @@ const createRuntimeClient = (): HttpClient => {
       },
       clear: session.clear,
       getAccessToken: () => session.accessToken,
+      getGeneration: () => session.cleanupGeneration,
       refresh: async () => {
         if (!session.refreshToken) return undefined
+        const generation = session.cleanupGeneration
+        const refreshToken = session.refreshToken
 
         try {
           const tokens = await client.post<SessionResponse>(
             '/api/v1/session/refresh',
-            { refresh_token: session.refreshToken },
+            { refresh_token: refreshToken },
             { auth: false }
           )
+          if (session.cleanupGeneration !== generation || session.refreshToken !== refreshToken)
+            return undefined
           session.saveTokens(tokens)
           return tokens.access_token
         } catch {

@@ -14,16 +14,18 @@ export interface FavoriteSource {
   source_locator: string
 }
 export interface FavoriteItem {
+  legacy_incomplete?: boolean
+  missing_fields?: string[]
   favorite_id?: string
   active?: boolean
   content_type?: string
   content_id?: string
-  content_version?: number
+  content_version?: number | null
   entry_id?: string
   sense_id?: string
   source_id?: string
   snapshot_version?: number
-  saved_content_version?: number
+  saved_content_version?: number | null
   pronunciation?: {
     target_id: string
     resource_version?: string
@@ -56,14 +58,17 @@ export interface FavoriteReference {
   source_id: string
 }
 /** schema2快照响应，旧FavoriteItem投影继续保留兼容 */
-export interface FavoriteSnapshot extends FavoriteReference {
+export interface FavoriteSnapshot extends Omit<FavoriteReference, 'content_version'> {
+  content_version: number | null
+  legacy_incomplete?: boolean
+  missing_fields?: string[]
   schema_version?: 2
-  revision_id?: string
+  revision_id?: string | null
   favorite_id: string
   active: boolean
   entry_type: string
   snapshot_version: number
-  saved_content_version: number
+  saved_content_version: number | null
   english: string
   phonetic?: string | null
   meaning_zh?: string
@@ -71,7 +76,7 @@ export interface FavoriteSnapshot extends FavoriteReference {
   explanation?: string | null
   source_sentence: string
   source_title: string
-  source_locator?: string | FavoriteSourceLocator | null
+  source_locator?: string | FavoriteSourceLocator | Record<string, string | number> | null
   image_asset_id?: string | null
   favorited_at: string
   last_reviewed_at: string | null
@@ -118,11 +123,11 @@ export interface FavoriteMutationState {
 export interface FavoriteSourceResolution {
   content_type: string
   content_id: string
-  saved_content_version: number
+  saved_content_version: number | null
   target_content_version: number | null
   status: FavoriteSourceStatus
-  locator: FavoriteSourceLocator | string | null
-  safe_summary: { title?: string; progress?: number }
+  locator?: FavoriteSourceLocator | string | null
+  safe_summary: { [key: string]: string | number | undefined }
 }
 export interface ReviewSession {
   card_count: number

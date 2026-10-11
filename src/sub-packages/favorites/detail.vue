@@ -5,6 +5,7 @@ import { ref } from 'vue'
 import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import PronunciationButton from '@/features/audio/components/pronunciation-button.vue'
+import { getFavoriteMissingMessage } from '@/features/favorites/favorite-missing-message'
 import { getFavoritePronunciation } from '@/features/favorites/favorite-pronunciation'
 import { presentSourceResolution } from '@/features/favorites/source-resolution'
 import { useFavoriteGroup } from '@/features/favorites/use-favorite-group'
@@ -75,10 +76,15 @@ useAnalyticsPage('sub-packages/favorites/detail')
     <template v-if="item">
       <view class="favorite-summary" :class="{ phrase: item.entry_type === FavoriteType.PHRASE }">
         <view class="summary-heading"
-          ><text class="summary-word">{{ item.english || item.normalized_key }}</text
+          ><text class="summary-word">{{
+            item.english || item.normalized_key || '英文待补齐'
+          }}</text
           ><text v-if="item.phonetic" class="summary-phonetic">{{ item.phonetic }}</text></view
         >
         <text class="summary-meaning">{{ item.chinese || '' }}</text>
+        <text v-if="getFavoriteMissingMessage(item)" class="summary-missing">{{
+          getFavoriteMissingMessage(item)
+        }}</text>
       </view>
       <text class="section-title"
         >{{ item.entry_type === FavoriteType.PHRASE ? '语块' : '词汇' }}与来源</text
@@ -87,8 +93,11 @@ useAnalyticsPage('sub-packages/favorites/detail')
         <PersonalRow title="简明解释" :detail="item.explanation || '暂无解释'" badge="解释" />
         <PersonalRow
           title="来源句"
-          :detail="group?.sources.map((source) => source.sentence_snapshot).join('\n') || ''"
-          badge="可查看"
+          :detail="
+            group?.sources.map((source) => source.sentence_snapshot).join('\n') ||
+            (item.legacy_incomplete ? '来源句待补齐' : '暂无来源句')
+          "
+          :badge="item.missing_fields?.includes('source_sentence') ? '待补齐' : '可查看'"
           actionable
           @press="returnSource"
         />
@@ -164,6 +173,13 @@ useAnalyticsPage('sub-packages/favorites/detail')
     font-weight: 500;
     line-height: 22px;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .summary-missing {
+    color: #80664c;
+    font-size: 12px;
+    line-height: 22px;
     overflow-wrap: anywhere;
   }
 

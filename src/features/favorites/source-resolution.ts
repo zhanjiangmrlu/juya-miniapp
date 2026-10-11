@@ -10,7 +10,7 @@ export const presentSourceResolution = (resolution: FavoriteSourceResolution) =>
     ) ||
     !Number.isInteger(resolution.target_content_version) ||
     (resolution.target_content_version || 0) < 1 ||
-    !['dialogue', 'word_card', 'short_reading'].includes(resolution.content_type)
+    !['dialogue', 'word_card', 'short_reading', 'SCENE'].includes(resolution.content_type)
   ) {
     return { route: null, message: '当前无原文访问权限，已保存的收藏仍可复习' }
   }

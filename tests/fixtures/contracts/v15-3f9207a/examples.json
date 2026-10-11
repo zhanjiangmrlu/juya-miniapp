@@ -1,0 +1,98 @@
+{
+  "收藏请求": {
+    "content_type": "dialogue",
+    "content_id": "example-scene",
+    "content_version": 2,
+    "entry_type": "word",
+    "entry_id": "example-entry",
+    "sense_id": "example-sense",
+    "source_id": "example-source"
+  },
+  "收藏响应": {
+    "schema_version": 2,
+    "favorite_id": "example-favorite",
+    "active": true,
+    "snapshot_version": 1,
+    "saved_content_version": 2,
+    "content_type": "dialogue",
+    "content_id": "example-scene",
+    "content_version": 2,
+    "revision_id": "example-revision",
+    "entry_type": "word",
+    "entry_id": "example-entry",
+    "sense_id": "example-sense",
+    "source_id": "example-source",
+    "english": "cup",
+    "phonetic": "/kʌp/",
+    "meaning_zh": "杯子",
+    "explanation": "",
+    "source_sentence": "I have a cup.",
+    "source_title": "示例情景",
+    "source_locator": { "sentence_id": "example-sentence" },
+    "image_asset_id": "example-image",
+    "pronunciation": {
+      "target_id": "example-word-audio",
+      "resource_version": "example-audio-version",
+      "can_prepare": true
+    },
+    "legacy_incomplete": false,
+    "missing_fields": [],
+    "favorited_at": "2026-10-11T04:00:00Z",
+    "last_reviewed_at": null
+  },
+  "来源无权限响应": {
+    "saved_content_version": 2,
+    "target_content_version": null,
+    "status": "NO_ACCESS",
+    "locator": null,
+    "safe_summary": { "title_zh": "示例情景" },
+    "content_type": "dialogue",
+    "content_id": "example-scene"
+  },
+  "发音收藏请求": { "favorite_id": "example-favorite" },
+  "发音准备响应": {
+    "status": "PREPARING",
+    "url": null,
+    "resource_version": null,
+    "task_id": "example-task",
+    "can_retry": false,
+    "code": null,
+    "expires_at": null
+  },
+  "短文正文响应": {
+    "content_id": "example-reading",
+    "content_type": "short_reading",
+    "title_en": "A New Day",
+    "title_zh": "新的一天",
+    "category": "生活",
+    "topic": "日常",
+    "level": "初级",
+    "introduction": "示例简介",
+    "cover_url": null,
+    "access": "TRIAL",
+    "content_version": 2,
+    "revision_id": "example-reading-revision",
+    "schema_version": 2,
+    "paragraphs_en": [
+      { "paragraph_id": "example-paragraph", "english": "It is a new day." }
+    ],
+    "translation_zh": "这是新的一天。",
+    "whole_audio": null,
+    "progress": {
+      "content_id": "example-reading",
+      "saved_content_version": 2,
+      "paragraph_id": null,
+      "offset": 0,
+      "client_sequence": 0,
+      "started_at": "2026-10-11T04:00:00Z",
+      "last_read_at": "2026-10-11T04:00:00Z",
+      "completed_at": null
+    }
+  },
+  "短文进度请求": {
+    "content_version": 2,
+    "paragraph_id": "example-paragraph",
+    "offset": 3,
+    "client_sequence": 1
+  }
+}

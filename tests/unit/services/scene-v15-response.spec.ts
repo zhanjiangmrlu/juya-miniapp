@@ -54,6 +54,21 @@ const response = {
 } as const
 
 describe('V1.5同版本授权详情', () => {
+  it('已确认但尚无资源版本的发音不将null传成轮询字符串版本', () => {
+    const actual = {
+      ...response,
+      scene: {
+        ...response.scene,
+        words: response.scene.words.map((entry) => ({
+          ...entry,
+          pronunciation: { ...entry.pronunciation, resource_version: null }
+        }))
+      }
+    }
+    expect(
+      adaptSceneResponse(actual).scene?.entries[1]?.pronunciation?.resource_version
+    ).toBeUndefined()
+  })
   it('消费实际BFF同版词卡DTO并保留学习原图与内容类型', () => {
     const actual = {
       ...response,

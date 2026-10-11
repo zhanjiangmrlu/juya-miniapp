@@ -7,6 +7,7 @@ export interface SessionService {
 
 export interface SessionBootstrapDependencies {
   isAuthenticated(): boolean
+  getGeneration?(): number
   refreshToken(): string | undefined
   saveTokens(tokens: SessionResponse): void
   clear(): void
