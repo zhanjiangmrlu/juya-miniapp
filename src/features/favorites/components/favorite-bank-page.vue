@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onHide, onLoad, onPageScroll, onShow, onUnload } from '@dcloudio/uni-app'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
@@ -13,6 +13,7 @@ import { ProfileTabKey } from '@/shared/enums/profile'
 import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 import { useFavoriteStore } from '@/stores/favorites'
+import { useSessionStore } from '@/stores/session'
 
 import type { FavoriteGroup } from '@/shared/types/favorites'
 import type { FavoriteBankPageProps } from '@/shared/types/favorites-components'
@@ -20,9 +21,19 @@ const props = withDefaults(defineProps<FavoriteBankPageProps>(), {
   initialTab: FavoriteType.VOCABULARY
 })
 const favorites = useFavoriteStore()
+const session = useSessionStore()
 const error = ref('')
 let visible = false
 let generation = 0
+/** 账号或学习数据清理后阻止旧读取、筛选和取消回调改变新页面 */
+watch(
+  () => session.cleanupGeneration,
+  () => {
+    generation++
+    error.value = ''
+  },
+  { flush: 'sync' }
+)
 const title = computed(() =>
   favorites.activeTab === FavoriteType.PHRASE ? '语块银行' : '词汇银行'
 )
@@ -57,23 +68,26 @@ const openGroup = async (group: FavoriteGroup) => {
 }
 /** 取消当前独立收藏并同步来源与翻卡队列，id 为选中银行条目ID */
 const removeFavorite = async (id: string) => {
+  const current = generation
   try {
     await favorites.remove(id, getRuntimeServices().favorites)
+    if (!visible || current !== generation) return
     error.value = ''
   } catch {
-    error.value = '取消收藏失败，请重试'
+    if (visible && current === generation) error.value = '取消收藏失败，请重试'
   }
 }
 /** 编辑当前银行筛选，确认后保留另一银行的筛选与滚动位置 */
 const editFilter = () => {
   const type = favorites.activeTab
+  const current = generation
   uni.showModal({
     title: type === FavoriteType.PHRASE ? '筛选语块' : '筛选词汇',
     editable: true,
     placeholderText: '留空显示全部收藏',
     content: favorites.tabState[type].filter,
     success: (result) => {
-      if (result.confirm)
+      if (visible && current === generation && result.confirm)
         favorites.updateTabState(type, { filter: result.content?.trim() || '', scrollTop: 0 })
     }
   })

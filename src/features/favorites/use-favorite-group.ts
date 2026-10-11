@@ -34,9 +34,12 @@ export const useFavoriteGroup = (message: string) => {
     try {
       const loaded = await loadFavoriteGroup(getRuntimeServices().favorites, id)
       if (!visible || current !== generation) return
+      if (!favorites.remember(loaded.item)) {
+        error.value = '收藏已取消或更新，请返回银行重新进入'
+        return
+      }
       item.value = loaded.item
       group.value = loaded.group
-      favorites.remember(loaded.item)
     } catch {
       if (visible && current === generation) error.value = message
     }

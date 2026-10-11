@@ -130,6 +130,9 @@ export interface FavoriteSourceResolution {
   safe_summary: { [key: string]: string | number | undefined }
 }
 export interface ReviewSession {
+  card_ids?: string[]
+  snapshot_versions?: number[]
+  snapshot_schema?: 2
   card_count: number
   id: string
   started_at: string

@@ -19,6 +19,7 @@ export const useFavoriteStore = defineStore('favorites', () => {
   const activeTab = ref<FavoriteType>(FavoriteType.VOCABULARY)
   const items = ref<FavoriteItem[]>([])
   const loading = ref(false)
+  let loadingRequest: Promise<void> | undefined
   let generation = 0
   let accountGeneration = 0
   let mutationSequence = 0
@@ -27,6 +28,7 @@ export const useFavoriteStore = defineStore('favorites', () => {
   const operations = new Map<string, Promise<unknown>>()
   const pendingIds = ref<string[]>([])
   const mutations = new Map<string, { sequence: number; item?: FavoriteItem }>()
+  const cancelledVersions = new Map<string, number | undefined>()
   /** 判断独立收藏是否正在取消，id 为银行或详情当前收藏ID */
   const isPending = (id: string) => pendingIds.value.includes(id)
   const tabState = reactive<Record<FavoriteType, FavoriteTabState>>({
@@ -106,17 +108,30 @@ export const useFavoriteStore = defineStore('favorites', () => {
   /** 合并可信快照并同步来源状态，item 为当前账号有效收藏 */
   const remember = (item: FavoriteItem) => {
     const existing = items.value.findIndex((value) => value.id === item.id)
+    const currentVersion = items.value[existing]?.snapshot_version
+    if (currentVersion && (!item.snapshot_version || currentVersion > item.snapshot_version))
+      return false
+    const cancelled = cancelledVersions.get(item.id)
+    if (
+      item.active !== false &&
+      cancelledVersions.has(item.id) &&
+      (!item.snapshot_version || !cancelled || item.snapshot_version <= cancelled)
+    )
+      return false
     if (item.active === false) {
+      cancelledVersions.set(item.id, item.snapshot_version)
       items.value = items.value.filter((value) => value.id !== item.id)
       pruneReview(item.id)
     } else if (existing >= 0) items.value[existing] = item
     else items.value.push(item)
+    if (item.active !== false) cancelledVersions.delete(item.id)
     const reference = referenceFor(item)
     if (reference)
       seedState(reference, {
         is_favorited: item.active !== false,
         favorite_id: item.active === false ? null : item.id
       })
+    return true
   }
   /** 引用创建收藏并固定重试键，reference 为确认目标，service 为当前账号收藏服务 */
   const create = async (reference: FavoriteReference, service: FavoriteService) => {
@@ -134,13 +149,13 @@ export const useFavoriteStore = defineStore('favorites', () => {
       try {
         const item = await service.create(reference, key)
         if (epoch !== accountGeneration) return item
+        if (!remember(item)) return item
         state.is_favorited = item.active !== false
         state.favorite_id = item.active === false ? null : item.id
         mutations.set(item.id, {
           sequence: ++mutationSequence,
           item: item.active === false ? undefined : item
         })
-        remember(item)
         retryKeys.delete(operation)
         return item
       } catch (error) {
@@ -178,6 +193,10 @@ export const useFavoriteStore = defineStore('favorites', () => {
         const result = await service.remove(id, key)
         if (epoch !== accountGeneration) return result
         if (result.favorite_id !== id || result.active) throw new Error('取消收藏状态未确认')
+        cancelledVersions.set(
+          id,
+          result.snapshot_version ?? items.value.find((item) => item.id === id)?.snapshot_version
+        )
         mutations.set(id, { sequence: ++mutationSequence })
         items.value = items.value.filter((item) => item.id !== id)
         pruneReview(id)
@@ -210,7 +229,7 @@ export const useFavoriteStore = defineStore('favorites', () => {
   }
   /** 加载全部游标页供不限量复习，service 为收藏接口，reset 为是否刷新完整列表 */
   const load = async (service: FavoriteService, reset = false) => {
-    if (loading.value) return
+    if (loading.value) return loadingRequest
     const current = ++generation
     const startedSequence = mutationSequence
     loading.value = true
@@ -220,44 +239,52 @@ export const useFavoriteStore = defineStore('favorites', () => {
     const collected = reset ? [] : [...items.value]
     const known = new Set(collected.map((item) => item.id))
     const visited = new Set<string>()
-    try {
-      do {
-        if (cursor && visited.has(cursor)) throw new Error('收藏分页游标重复，请重试')
-        if (cursor) visited.add(cursor)
-        const page = await service.list(cursor ?? undefined)
-        if (current !== generation) return
-        for (const item of page.items) {
-          if (!known.has(item.id)) {
-            collected.push(item)
-            known.add(item.id)
+    /** 合并所有分页及读取期间的写操作，调用方共用同一次读取结果 */
+    const read = async () => {
+      try {
+        do {
+          if (cursor && visited.has(cursor)) throw new Error('收藏分页游标重复，请重试')
+          if (cursor) visited.add(cursor)
+          const page = await service.list(cursor ?? undefined)
+          if (current !== generation) return
+          for (const item of page.items) {
+            if (!known.has(item.id)) {
+              collected.push(item)
+              known.add(item.id)
+            }
           }
+          cursor = page.has_more ? page.next_cursor : null
+          if (page.has_more && !cursor) throw new Error('收藏分页缺少游标，请重试')
+        } while (cursor)
+        const merged = new Map(
+          collected.filter((item) => item.active !== false).map((item) => [item.id, item])
+        )
+        for (const [id, mutation] of mutations) {
+          if (mutation.sequence <= startedSequence) continue
+          if (mutation.item) merged.set(id, mutation.item)
+          else merged.delete(id)
         }
-        cursor = page.has_more ? page.next_cursor : null
-        if (page.has_more && !cursor) throw new Error('收藏分页缺少游标，请重试')
-      } while (cursor)
-      const merged = new Map(
-        collected.filter((item) => item.active !== false).map((item) => [item.id, item])
-      )
-      for (const [id, mutation] of mutations) {
-        if (mutation.sequence <= startedSequence) continue
-        if (mutation.item) merged.set(id, mutation.item)
-        else merged.delete(id)
+        items.value = [...merged.values()]
+        for (const item of items.value) {
+          const reference = referenceFor(item)
+          if (reference) seedState(reference, { is_favorited: true, favorite_id: item.id })
+        }
+        for (const state of Object.values(states)) {
+          if (state.favorite_id && !merged.has(state.favorite_id) && !state.pending)
+            Object.assign(state, { is_favorited: false, favorite_id: null })
+        }
+        for (const state of Object.values(tabState))
+          for (const id of [...(state.review?.cardIds || [])]) if (!merged.has(id)) pruneReview(id)
+        state.cursor = cursor
+      } finally {
+        if (current === generation) {
+          loading.value = false
+          loadingRequest = undefined
+        }
       }
-      items.value = [...merged.values()]
-      for (const item of items.value) {
-        const reference = referenceFor(item)
-        if (reference) seedState(reference, { is_favorited: true, favorite_id: item.id })
-      }
-      for (const state of Object.values(states)) {
-        if (state.favorite_id && !merged.has(state.favorite_id) && !state.pending)
-          Object.assign(state, { is_favorited: false, favorite_id: null })
-      }
-      for (const state of Object.values(tabState))
-        for (const id of [...(state.review?.cardIds || [])]) if (!merged.has(id)) pruneReview(id)
-      state.cursor = cursor
-    } finally {
-      if (current === generation) loading.value = false
     }
+    loadingRequest = read()
+    return loadingRequest
   }
   /** 清空学习缓存时移除收藏与银行状态 */
   const clear = () => {
@@ -265,6 +292,7 @@ export const useFavoriteStore = defineStore('favorites', () => {
     accountGeneration++
     mutationSequence = 0
     mutations.clear()
+    cancelledVersions.clear()
     retryKeys.clear()
     operations.clear()
     pendingIds.value = []
@@ -272,6 +300,7 @@ export const useFavoriteStore = defineStore('favorites', () => {
     activeTab.value = FavoriteType.VOCABULARY
     items.value = []
     loading.value = false
+    loadingRequest = undefined
     delete tabState[FavoriteType.PHRASE].review
     delete tabState[FavoriteType.VOCABULARY].review
     Object.assign(tabState[FavoriteType.PHRASE], createTabState())

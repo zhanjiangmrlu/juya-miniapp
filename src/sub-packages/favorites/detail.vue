@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onHide, onUnload } from '@dcloudio/uni-app'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
@@ -18,19 +18,23 @@ import { NavigationType } from '@/shared/enums/navigation'
 import { ProfileTabKey } from '@/shared/enums/profile'
 import { navigate } from '@/shared/navigation/navigate'
 import { useFavoriteStore } from '@/stores/favorites'
+import { useSessionStore } from '@/stores/session'
 
 const { item, group, error } = useFavoriteGroup('收藏加载失败，请返回收藏后重试')
 const removing = ref(false)
 const resolving = ref(false)
 const favorites = useFavoriteStore()
+const session = useSessionStore()
 let sourceGeneration = 0
 /** 页面离开后忽略旧原文鉴权响应 */
 const leave = () => {
   sourceGeneration++
   resolving.value = false
+  removing.value = false
 }
 onHide(leave)
 onUnload(leave)
+watch(() => session.cleanupGeneration, leave, { flush: 'sync' })
 /** 重新鉴权后只进入当前原文，来源更新时保留快照并提示 */
 const returnSource = async () => {
   if (!item.value || resolving.value) return
@@ -54,14 +58,18 @@ const returnSource = async () => {
 /** 删除当前收藏并返回银行 */
 const remove = async () => {
   if (!item.value || removing.value) return
+  const id = item.value.id
+  const request = ++sourceGeneration
   removing.value = true
+  resolving.value = false
   try {
-    await favorites.remove(item.value.id, getRuntimeServices().favorites)
+    await favorites.remove(id, getRuntimeServices().favorites)
+    if (request !== sourceGeneration || item.value?.id !== id) return
     uni.navigateBack()
   } catch {
-    error.value = '取消收藏失败，请重试'
+    if (request === sourceGeneration && item.value?.id === id) error.value = '取消收藏失败，请重试'
   } finally {
-    removing.value = false
+    if (request === sourceGeneration) removing.value = false
   }
 }
 useAnalyticsPage('sub-packages/favorites/detail')

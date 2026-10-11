@@ -10,6 +10,10 @@ import PersonalPage from '@/features/profile/components/personal-page.vue'
 import { getAnalytics } from '@/services/analytics/runtime'
 import { createRequestId } from '@/services/http/request-id'
 import { getRuntimeServices } from '@/services/runtime'
+import {
+  FAVORITE_REVIEW_CHANGED_MESSAGE,
+  FAVORITE_REVIEW_REFRESH_CODES
+} from '@/shared/constants/favorites'
 import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { FavoriteType, ReviewCardFace } from '@/shared/enums/favorites'
 import { NavigationType } from '@/shared/enums/navigation'
@@ -30,6 +34,7 @@ const index = ref(0)
 const item = ref<FavoriteItem>()
 const error = ref('')
 const busy = ref(false)
+const refreshNeeded = ref(false)
 let controller: ReturnType<typeof createReviewSession>
 let createKey = ''
 let apiSession: ReviewSession | undefined
@@ -47,11 +52,40 @@ watch(
     apiSession = undefined
     busy.value = false
     error.value = ''
+    refreshNeeded.value = false
     lastQuery = undefined
   },
   { flush: 'sync' }
 )
 const nextLabel = computed(() => (index.value < cardIds.value.length - 1 ? '下一个' : '完成复习'))
+/** 校验会话仍对应当前快照，review 为服务端冻结的卡ID与快照修订 */
+const hasCurrentSnapshots = (review?: ReviewSession) =>
+  !review?.snapshot_versions ||
+  Boolean(
+    review.card_ids &&
+    review.card_ids.length === review.snapshot_versions.length &&
+    review.card_ids.every(
+      (id, position) =>
+        favorites.items.find((card) => card.id === id)?.snapshot_version ===
+        review.snapshot_versions?.[position]
+    )
+  )
+/** 过期或取消的队列只保留刷新入口，不让旧卡继续完成复习 */
+const requireRefresh = () => {
+  refreshNeeded.value = true
+  item.value = undefined
+  error.value = FAVORITE_REVIEW_CHANGED_MESSAGE
+}
+/** 检查在途操作仍属于当前队列，request为页面代次，key为队列创建键，ids为完整有效卡ID */
+const isCurrentReview = (request: number, key: string, ids: string[]) => {
+  const review = favorites.tabState[bank.value].review
+  return (
+    request === generation &&
+    !suspended &&
+    review?.createKey === key &&
+    review.cardIds.join(',') === ids.join(',')
+  )
+}
 /** 同步取消后的有效队列，review 为当前银行保存的复习进度 */
 watch(
   () => favorites.tabState[bank.value].review,
@@ -73,6 +107,7 @@ const load = async (query?: Record<string, string>) => {
   lastQuery = query
   suspended = false
   error.value = ''
+  refreshNeeded.value = false
   item.value = undefined
   bank.value = query?.bank === FavoriteType.PHRASE ? FavoriteType.PHRASE : FavoriteType.VOCABULARY
   cardIds.value =
@@ -80,7 +115,9 @@ const load = async (query?: Record<string, string>) => {
     (query?.id ? [query.id] : favorites.tabState[bank.value].review?.cardIds || [])
   index.value = Math.max(0, Math.min(Number(query?.index || 0) || 0, cardIds.value.length - 1))
   const previous = favorites.tabState[bank.value].review
-  const sameQueue = previous?.cardIds.join(',') === cardIds.value.join(',')
+  const sameQueue =
+    previous?.cardIds.join(',') === cardIds.value.join(',') &&
+    hasCurrentSnapshots(previous?.session)
   const completionKey =
     sameQueue && previous?.completionKey ? previous.completionKey : createRequestId()
   createKey = sameQueue && previous?.createKey ? previous.createKey : createRequestId()
@@ -119,15 +156,21 @@ const load = async (query?: Record<string, string>) => {
     }
     const id = cardIds.value[index.value]
     if (id) {
+      const requestedIds = [...cardIds.value]
+      const requestedKey = createKey
       const loaded =
         favorites.items.find((card) => card.id === id && card.active !== false) ??
         (await service.get(id))
-      if (request !== generation || suspended) return
+      if (!isCurrentReview(request, requestedKey, requestedIds)) return
       if (loaded.active === false) throw new Error('收藏已取消')
       favorites.remember(loaded)
       const created = !apiSession
-      const createdSession = apiSession ?? (await service.createReview(cardIds.value, createKey))
-      if (request !== generation || suspended) return
+      const createdSession = apiSession ?? (await service.createReview(requestedIds, requestedKey))
+      if (!isCurrentReview(request, requestedKey, requestedIds)) return
+      if (!hasCurrentSnapshots(createdSession)) {
+        requireRefresh()
+        return
+      }
       apiSession = createdSession
       favorites.updateTabState(bank.value, {
         review: { ...favorites.tabState[bank.value].review!, session: apiSession }
@@ -140,8 +183,12 @@ const load = async (query?: Record<string, string>) => {
           { token, once: createKey }
         )
     }
-  } catch {
-    if (request === generation && !suspended) error.value = '复习加载失败，请返回收藏重试'
+  } catch (failure) {
+    if (request === generation && !suspended) {
+      if (FAVORITE_REVIEW_REFRESH_CODES.includes((failure as { code?: string }).code || ''))
+        requireRefresh()
+      else error.value = '复习加载失败，请返回收藏重试'
+    }
   }
 }
 /** 导航到指定卡面，page 为正面或背面页，position 为队列中的位置 */
@@ -175,16 +222,17 @@ const next = async () => {
     if (!review?.cardIds.includes(item.value.id)) return
     createKey = review.createKey || createRequestId()
     const completionKey = review.completionKey || createRequestId()
+    const requestedIds = [...review.cardIds]
     controller = createReviewSession(cardIds.value, { idFactory: () => completionKey })
     favorites.updateTabState(bank.value, { review: { ...review, createKey, completionKey } })
     const createdSession = apiSession ?? (await service.createReview(cardIds.value, createKey))
-    if (request !== generation || suspended) return
+    if (!isCurrentReview(request, createKey, requestedIds)) return
     apiSession = createdSession
     favorites.updateTabState(bank.value, {
       review: { ...favorites.tabState[bank.value].review!, session: apiSession }
     })
     await controller.complete((key) => service.completeReview(apiSession!.id, key))
-    if (request !== generation || suspended) return
+    if (!isCurrentReview(request, createKey, requestedIds)) return
     getAnalytics().track(
       AnalyticsEvent.REVIEW_COMPLETE_SUCCESS,
       { entry_type: bank.value },
@@ -195,10 +243,43 @@ const next = async () => {
     )
     favorites.updateTabState(bank.value, { review: null })
     await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/home/index' })
-  } catch {
-    if (request === generation && !suspended) error.value = '复习记录提交失败，请重试'
+  } catch (failure) {
+    if (request === generation && !suspended) {
+      if (FAVORITE_REVIEW_REFRESH_CODES.includes((failure as { code?: string }).code || ''))
+        requireRefresh()
+      else error.value = '复习记录提交失败，请重试'
+    }
   } finally {
     if (request === generation) busy.value = false
+  }
+}
+/** 冲突后重新读取全部有效快照并建立新会话，网络失败仍保留同位刷新入口 */
+const refreshReview = async () => {
+  if (busy.value || !refreshNeeded.value) return
+  const request = generation
+  busy.value = true
+  try {
+    const review = favorites.tabState[bank.value].review
+    if (review)
+      favorites.updateTabState(bank.value, {
+        review: {
+          ...review,
+          session: undefined,
+          createKey: undefined,
+          completionKey: undefined
+        }
+      })
+    apiSession = undefined
+    await favorites.load(getRuntimeServices().favorites, true)
+    if (request !== generation || suspended) return
+    await load({
+      bank: bank.value,
+      index: String(favorites.tabState[bank.value].review?.index || 0)
+    })
+  } catch {
+    if (request === generation && !suspended) error.value = '复习刷新失败，请重试'
+  } finally {
+    if (!suspended) busy.value = false
   }
 }
 onLoad(load)
@@ -206,6 +287,7 @@ onLoad(load)
 const hide = () => {
   suspended = true
   generation++
+  busy.value = false
 }
 onHide(hide)
 onUnload(hide)
@@ -244,7 +326,11 @@ onShow(async () => {
         v-if="item"
         label="再看一次"
         :variant="ButtonVariant.SECONDARY"
-        @press="again" /><AppButton v-if="item" :label="nextLabel" :loading="busy" @press="next"
+        @press="again" /><AppButton
+        v-if="item || refreshNeeded"
+        :label="refreshNeeded ? '刷新复习' : nextLabel"
+        :loading="busy"
+        @press="refreshNeeded ? refreshReview() : next()"
     /></template>
   </PersonalPage>
 </template>

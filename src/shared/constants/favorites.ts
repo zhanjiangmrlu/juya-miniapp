@@ -1,5 +1,9 @@
 import { FavoriteType } from '@/shared/enums/favorites'
 
+/** 已冻结复习卡片不再有效时，需要读取最新快照重新建立会话 */
+export const FAVORITE_REVIEW_REFRESH_CODES = ['REVIEW_SNAPSHOT_CHANGED', 'REVIEW_CARDS_INVALID']
+export const FAVORITE_REVIEW_CHANGED_MESSAGE = '收藏已取消或更新，请刷新复习后重新查看'
+
 /** 新快照与旧收藏类型的显式兼容映射 */
 export const FAVORITE_SNAPSHOT_TYPE_MAP = {
   word: FavoriteType.VOCABULARY,

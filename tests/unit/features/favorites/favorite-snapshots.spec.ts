@@ -56,6 +56,44 @@ const snapshot = (id: string, meaning = '中杯'): FavoriteItem => ({
 beforeEach(() => setActivePinia(createPinia()))
 
 describe('V1.5 独立收藏快照', () => {
+  it('取消响应之后旧GET快照不能复活银行，更高修订的重新收藏仍可同步', async () => {
+    const store = useFavoriteStore()
+    const old = snapshot('card')
+    store.remember(old)
+    await store.remove('card', {
+      remove: async () => ({ favorite_id: 'card', active: false, snapshot_version: 1 })
+    } as unknown as FavoriteService)
+    store.remember(old)
+    expect(store.items).toEqual([])
+    store.remember({ ...old, snapshot_version: 2, chinese: '明确重新收藏的资料' })
+    expect(store.items[0]?.chinese).toBe('明确重新收藏的资料')
+    store.remember(old)
+    expect(store.items[0]?.snapshot_version).toBe(2)
+  })
+  it('同账号重复进入银行时等待当前分页读取完成，不把未完成列表当已加载', async () => {
+    const store = useFavoriteStore()
+    let finish!: (page: unknown) => void
+    const list = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    )
+    const service = { list } as unknown as FavoriteService
+    const first = store.load(service, true)
+    let secondFinished = false
+    const second = store.load(service, true).then(() => {
+      secondFinished = true
+    })
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(secondFinished).toBe(false)
+    finish({ items: [snapshot('card')], has_more: false, next_cursor: null })
+    await Promise.all([first, second])
+    expect(list).toHaveBeenCalledOnce()
+    expect(store.items).toHaveLength(1)
+  })
   it('真实BFF public_snapshot扁平DTO的对象来源位置和nullable发音版本可直接适配', () => {
     const raw: FavoriteSnapshot = {
       ...reference,
