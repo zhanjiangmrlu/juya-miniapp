@@ -1,7 +1,10 @@
 import type {
   FavoriteItem,
+  FavoriteMutationState,
   FavoritePage,
+  FavoriteReference,
   FavoriteSource,
+  FavoriteSourceResolution,
   ReviewSession
 } from '@/shared/contracts/favorites'
 import type { ReviewCardFace } from '@/shared/enums/favorites'
@@ -11,17 +14,27 @@ export interface FavoriteSourceViewModel extends FavoriteSource {
 }
 
 export interface FavoriteGroup {
+  id: string
   displayKey: string
   items: FavoriteItem[]
   sources: FavoriteSourceViewModel[]
 }
 
 export interface FavoriteService {
+  create(reference: FavoriteReference, idempotencyKey?: string): Promise<FavoriteItem>
   completeReview(reviewId: string, idempotencyKey: string): Promise<void>
   createReview(cardIds: string[], idempotencyKey?: string): Promise<ReviewSession>
   get(id: string): Promise<FavoriteItem>
   list(cursor?: string): Promise<FavoritePage>
-  remove(id: string): Promise<void>
+  remove(id: string, idempotencyKey?: string): Promise<FavoriteMutationState>
+  resolveSource(id: string): Promise<FavoriteSourceResolution>
+}
+
+export interface FavoriteTargetState {
+  is_favorited: boolean
+  favorite_id: string | null
+  pending: boolean
+  error: string
 }
 
 export interface HistoryItem {

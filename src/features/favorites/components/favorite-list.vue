@@ -1,25 +1,34 @@
 <script setup lang="ts">
-import AudioButton from '@/features/audio/components/audio-button.vue'
-import PersonalRow from '@/features/profile/components/personal-row.vue'
-import { getRuntimeServices } from '@/services/runtime'
+import PronunciationButton from '@/features/audio/components/pronunciation-button.vue'
+import { getFavoritePronunciation } from '@/features/favorites/favorite-pronunciation'
 import { FavoriteType } from '@/shared/enums/favorites'
-import { ProfileRowSize } from '@/shared/enums/profile'
-import { useAudioStore } from '@/stores/audio'
+import { useFavoriteStore } from '@/stores/favorites'
 
-import type { AudioTarget } from '@/shared/contracts/learning'
 import type { FavoriteListEmits, FavoriteListProps } from '@/shared/types/favorites-components'
 defineProps<FavoriteListProps>()
 const emit = defineEmits<FavoriteListEmits>()
-const audio = useAudioStore()
-/** 播放独立发音，target 为当前收藏的已校对音频目标 */
-const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().scene)
+const favorites = useFavoriteStore()
 </script>
 <template>
   <view class="favorite-list">
-    <view v-for="group in groups" :key="group.displayKey" class="favorite-entry">
-      <PersonalRow
-        :title="group.items[0]?.english || group.items[0]?.normalized_key || group.displayKey"
-        :detail="
+    <view
+      v-for="group in groups"
+      :key="group.id"
+      class="favorite-entry"
+      @click="emit('select', group)"
+    >
+      <view class="entry-content">
+        <view class="entry-heading">
+          <text class="entry-word">{{ group.items[0]?.english || group.displayKey }}</text>
+          <PronunciationButton
+            v-if="group.items[0] && getFavoritePronunciation(group.items[0])"
+            class="entry-audio"
+            :target="getFavoritePronunciation(group.items[0])"
+            :context="{ favorite_id: group.id }"
+            @click.stop
+          />
+        </view>
+        <text class="entry-meaning">{{
           [
             group.items[0]?.chinese,
             group.items[0]?.entry_type === FavoriteType.VOCABULARY
@@ -28,24 +37,16 @@ const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().sc
           ]
             .filter(Boolean)
             .join(' · ')
-        "
-        badge="已收藏"
-        :size="
-          group.items[0]?.entry_type === FavoriteType.PHRASE
-            ? ProfileRowSize.NORMAL
-            : ProfileRowSize.SHORT
-        "
-        actionable
-        @press="emit('select', group)"
-      />
-      <AudioButton
-        v-if="group.items[0]?.audio"
-        class="entry-audio"
-        :target="group.items[0].audio"
-        :current-key="audio.currentKey"
-        :status="audio.snapshot.status"
-        @play="play"
-      />
+        }}</text>
+      </view>
+      <button
+        class="favorite-state"
+        :disabled="favorites.isPending(group.id)"
+        :aria-busy="favorites.isPending(group.id)"
+        @click.stop="emit('remove', group.id)"
+      >
+        已收藏<text v-if="favorites.isPending(group.id)" class="pending-dot">·</text>
+      </button>
     </view>
   </view>
 </template>
@@ -55,13 +56,73 @@ const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().sc
   gap: 8px;
 
   .favorite-entry {
+    display: flex;
+    min-height: 80px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 10px 14px;
+    border: 1px solid #d6dfc9;
+    border-radius: 12px;
+    background: #fffdf7;
+  }
+
+  .entry-content {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .entry-heading {
     position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .entry-word {
+    padding: 0;
+    color: #254733;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 22px;
+    overflow-wrap: anywhere;
   }
 
   .entry-audio {
-    position: absolute;
-    right: 12px;
-    bottom: 8px;
+    flex: 0 0 44px;
+    margin: -11px -12px;
+  }
+
+  .entry-meaning {
+    display: block;
+    margin-top: 4px;
+    color: #6b7d6a;
+    font-size: 11px;
+    line-height: 18px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .favorite-state {
+    min-width: 60px;
+    min-height: 44px;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #4e7f3b;
+    font-size: 10px;
+    line-height: 44px;
+    text-align: right;
+
+    &::after {
+      border: 0;
+    }
+
+    &[disabled] {
+      opacity: 0.6;
+    }
   }
 }
 </style>

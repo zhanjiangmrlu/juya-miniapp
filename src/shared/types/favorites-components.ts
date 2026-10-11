@@ -9,7 +9,7 @@ export type FavoriteBankPageProps = { initialTab?: FavoriteType }
 export type FavoriteListProps = { groups: FavoriteGroup[] }
 
 /** FavoriteList 事件契约 */
-export type FavoriteListEmits = { select: [group: FavoriteGroup] }
+export type FavoriteListEmits = { select: [group: FavoriteGroup]; remove: [id: string] }
 
 /** ReviewCard 输入属性 */
 export type ReviewCardProps = { face: ReviewCardFace; item: FavoriteItem }

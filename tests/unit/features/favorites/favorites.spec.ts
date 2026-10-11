@@ -123,7 +123,7 @@ describe('favorite store', () => {
 })
 
 describe('presentFavorites', () => {
-  it('返回原文保留收藏的修订号与条目版本，避免跳到新版错误位置', () => {
+  it('快照保留修订资料但不生成旧版本原文入口', () => {
     const [group] = presentFavorites([
       favorite({
         id: 'fixed',
@@ -140,11 +140,10 @@ describe('presentFavorites', () => {
         ]
       })
     ])
-    expect(group.sources[0]?.returnUrl).toBe(
-      '/sub-packages/scene/return-source?sceneId=cafe&sourceLocator=sentence-2&revisionId=r-8&entryVersion=3&entryId=fixed'
-    )
+    expect(group.sources[0]?.returnUrl).toBeNull()
+    expect(group.sources[0]?.revision_id).toBe('r-8')
   })
-  it('大小写与多余空格仅用于展示合并，不合并不同词形', () => {
+  it('大小写与空格可作展示键但不同收藏不合并', () => {
     const groups = presentFavorites([
       favorite({ id: '1', normalized_key: ' Put   Together ' }),
       favorite({ id: '2', normalized_key: 'put together' }),
@@ -153,7 +152,8 @@ describe('presentFavorites', () => {
     ])
 
     expect(groups.map((group) => [group.displayKey, group.items.length])).toEqual([
-      ['put together', 2],
+      ['put together', 1],
+      ['put together', 1],
       ['evolves', 1],
       ['evolved', 1]
     ])
@@ -182,10 +182,7 @@ describe('presentFavorites', () => {
     ])
 
     expect(group.sources).toHaveLength(2)
-    expect(group.sources.map((source) => source.returnUrl)).toEqual([
-      '/sub-packages/scene/return-source?sceneId=one&sourceLocator=sentence-1',
-      null
-    ])
+    expect(group.sources.map((source) => source.returnUrl)).toEqual([null, null])
   })
 })
 

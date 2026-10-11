@@ -1,17 +1,33 @@
 <script setup lang="ts">
 import AppButton from '@/components/app-button/app-button.vue'
 import SourceList from '@/features/favorites/components/source-list.vue'
+import { presentSourceResolution } from '@/features/favorites/source-resolution'
 import { useFavoriteGroup } from '@/features/favorites/use-favorite-group'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
+import { getRuntimeServices } from '@/services/runtime'
 import { FavoriteType } from '@/shared/enums/favorites'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ProfileTabKey } from '@/shared/enums/profile'
 import { navigate } from '@/shared/navigation/navigate'
 
 const { item, group, error } = useFavoriteGroup('来源加载失败，请返回收藏后重试')
+/** 重新校验本人收藏来源，只进入当前有权版本 */
+const returnSource = async () => {
+  if (!item.value) return
+  const id = item.value.id
+  try {
+    const result = presentSourceResolution(await getRuntimeServices().favorites.resolveSource(id))
+    if (item.value?.id !== id) return
+    error.value = result.message
+    if (result.message) uni.showToast({ title: result.message, icon: 'none' })
+    if (result.route) await open(result.route)
+  } catch {
+    if (item.value?.id === id) error.value = '来源权限校验失败，请重试'
+  }
+}
 /** 进入原文稳定位置，url 为已校验权限的来源地址 */
 const open = (url: string) => navigate({ type: NavigationType.NAVIGATE_TO, url })
 /** 返回收藏银行 */
@@ -29,8 +45,8 @@ useAnalyticsPage('sub-packages/favorites/sources')
   <PersonalPage
     :active="ProfileTabKey.FAVORITES"
     navigation="来源场景"
-    title="选择来源场景"
-    subtitle="同一收藏可以来自多个场景"
+    title="收藏来源"
+    subtitle="保留收藏时资料，返回原文校验当前版本权限"
   >
     <PersonalSummary
       label="收藏词条"
@@ -38,13 +54,12 @@ useAnalyticsPage('sub-packages/favorites/sources')
       :note="`${item?.chinese || ''}；保留全部来源句`"
     />
     <text v-if="error" class="form-error">{{ error }}</text>
-    <text class="section-title">来源列表</text
-    ><SourceList :sources="group?.sources || []" @open="open" />
+    <text class="section-title">来源列表</text><SourceList :sources="group?.sources || []" />
     <view class="source-note"
       ><PersonalRow title="来源记录" detail="权限恢复后可重新进入原文" badge="保留"
     /></view>
     <template #actions
-      ><AppButton
+      ><AppButton v-if="item" label="返回原文" @press="returnSource" /><AppButton
         :label="item?.entry_type === FavoriteType.PHRASE ? '返回语块银行' : '返回词汇银行'"
         @press="back"
     /></template>

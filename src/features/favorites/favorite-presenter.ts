@@ -9,35 +9,26 @@ const normalizeDisplayKey = (value: string): string => {
   return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US')
 }
 
-/** 转换来源定位路由，source 为服务端来源快照，entryId 为该收藏的稳定词条标识 */
-const presentSource = (source: FavoriteSource, entryId: string): FavoriteSourceViewModel => {
+/** 保留保存来源并移除旧版本直达入口，source 为服务端固定来源快照 */
+const presentSource = (source: FavoriteSource): FavoriteSourceViewModel => {
   return {
     ...source,
-    returnUrl: source.original_link
-      ? `/sub-packages/scene/return-source?sceneId=${encodeURIComponent(source.scene_id)}&sourceLocator=${encodeURIComponent(source.source_locator)}${source.revision_id ? '&revisionId=' + encodeURIComponent(source.revision_id) : ''}${source.entry_version ? '&entryVersion=' + source.entry_version : ''}${source.revision_id && source.entry_version ? '&entryId=' + encodeURIComponent(entryId) : ''}`
-      : null
+    returnUrl: null
   }
 }
 
-/** 聚合展示键并保留全部来源，items 为当前同类型银行的收藏快照 */
+/** 按收藏ID独立展示，items 为当前同类型银行的有效快照 */
 export const presentFavorites = (items: FavoriteItem[]): FavoriteGroup[] => {
   const groups = new Map<string, FavoriteGroup>()
 
   for (const item of items) {
-    const displayKey = normalizeDisplayKey(item.normalized_key)
-    const existing = groups.get(displayKey)
-    if (existing) {
-      existing.items.push(item)
-      existing.sources.push(
-        ...item.sources.map((source) => presentSource(source, item.entry_stable_id))
-      )
-      continue
-    }
-
-    groups.set(displayKey, {
+    if (item.active === false || groups.has(item.id)) continue
+    const displayKey = normalizeDisplayKey(item.english || item.normalized_key)
+    groups.set(item.id, {
+      id: item.id,
       displayKey,
       items: [item],
-      sources: item.sources.map((source) => presentSource(source, item.entry_stable_id))
+      sources: item.sources.map(presentSource)
     })
   }
 

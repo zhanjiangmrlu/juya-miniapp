@@ -25,7 +25,7 @@ const favorite = (id: string): FavoriteItem => ({
   ]
 })
 describe('收藏详情完整来源', () => {
-  it('跨全部分页读取同展示键最新详情，同时保留各来源权限和稳定词条标识', async () => {
+  it('详情只读取选中独立收藏，不查询同英文的其他卡或旧版原文', async () => {
     const first = favorite('one'),
       second = favorite('two')
     const denied = {
@@ -41,11 +41,10 @@ describe('收藏详情完整来源', () => {
       next_cursor: cursor ? null : 'next'
     }))
     const result = await loadFavoriteGroup({ get, list } as unknown as FavoriteService, 'one')
-    expect(result.group?.items.map((item) => item.id)).toEqual(['one', 'two'])
-    expect(result.group?.sources).toHaveLength(2)
-    expect(result.group?.sources[0]?.returnUrl).toContain('entryId=one')
-    expect(result.group?.sources[1]?.returnUrl).toBeNull()
-    expect(get.mock.calls.flat()).toEqual(['one', 'two'])
-    expect(list).toHaveBeenCalledWith('next')
+    expect(result.group?.items.map((item) => item.id)).toEqual(['one'])
+    expect(result.group?.sources).toHaveLength(1)
+    expect(result.group?.sources[0]?.returnUrl).toBeNull()
+    expect(get.mock.calls.flat()).toEqual(['one'])
+    expect(list).not.toHaveBeenCalled()
   })
 })

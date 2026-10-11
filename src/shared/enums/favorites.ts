@@ -13,3 +13,12 @@ export const FavoriteType = {
 } as const
 
 export type FavoriteType = (typeof FavoriteType)[keyof typeof FavoriteType] & string
+
+/** 收藏来源在当前发布版本的可访问定位状态 */
+export const FavoriteSourceStatus = {
+  EXACT: 'EXACT',
+  UPDATED_OR_UNRESOLVED: 'UPDATED_OR_UNRESOLVED',
+  NO_ACCESS: 'NO_ACCESS'
+} as const
+export type FavoriteSourceStatus =
+  (typeof FavoriteSourceStatus)[keyof typeof FavoriteSourceStatus] & string

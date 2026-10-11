@@ -1,44 +1,61 @@
 <script setup lang="ts">
+import { onHide, onUnload } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
-import AudioButton from '@/features/audio/components/audio-button.vue'
+import PronunciationButton from '@/features/audio/components/pronunciation-button.vue'
+import { getFavoritePronunciation } from '@/features/favorites/favorite-pronunciation'
+import { presentSourceResolution } from '@/features/favorites/source-resolution'
 import { useFavoriteGroup } from '@/features/favorites/use-favorite-group'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
-import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { FavoriteType } from '@/shared/enums/favorites'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ProfileTabKey } from '@/shared/enums/profile'
 import { navigate } from '@/shared/navigation/navigate'
-import { useAudioStore } from '@/stores/audio'
+import { useFavoriteStore } from '@/stores/favorites'
 
-import type { AudioTarget } from '@/shared/contracts/learning'
 const { item, group, error } = useFavoriteGroup('收藏加载失败，请返回收藏后重试')
 const removing = ref(false)
-const audio = useAudioStore()
-/** 多来源时进入来源选择，单来源时进入稳定原文位置 */
+const resolving = ref(false)
+const favorites = useFavoriteStore()
+let sourceGeneration = 0
+/** 页面离开后忽略旧原文鉴权响应 */
+const leave = () => {
+  sourceGeneration++
+  resolving.value = false
+}
+onHide(leave)
+onUnload(leave)
+/** 重新鉴权后只进入当前原文，来源更新时保留快照并提示 */
 const returnSource = async () => {
-  if (!item.value || !group.value) return
-  const url =
-    group.value.sources.length === 1 && group.value.sources[0]?.returnUrl
-      ? group.value.sources[0].returnUrl
-      : `/sub-packages/favorites/sources?id=${encodeURIComponent(item.value.id)}`
-  await navigate({ type: NavigationType.NAVIGATE_TO, url })
+  if (!item.value || resolving.value) return
+  const id = item.value.id
+  const request = ++sourceGeneration
+  resolving.value = true
+  try {
+    const resolution = await getRuntimeServices().favorites.resolveSource(id)
+    if (item.value?.id !== id || request !== sourceGeneration) return
+    const result = presentSourceResolution(resolution)
+    error.value = result.message
+    if (result.message) uni.showToast({ title: result.message, icon: 'none' })
+    if (result.route) await navigate({ type: NavigationType.NAVIGATE_TO, url: result.route })
+  } catch {
+    if (item.value?.id === id && request === sourceGeneration)
+      error.value = '来源权限校验失败，请重试'
+  } finally {
+    if (request === sourceGeneration) resolving.value = false
+  }
 }
 /** 删除当前收藏并返回银行 */
 const remove = async () => {
   if (!item.value || removing.value) return
   removing.value = true
   try {
-    await Promise.all(
-      (group.value?.items || [item.value]).map((favorite) =>
-        getRuntimeServices().favorites.remove(favorite.id)
-      )
-    )
+    await favorites.remove(item.value.id, getRuntimeServices().favorites)
     uni.navigateBack()
   } catch {
     error.value = '取消收藏失败，请重试'
@@ -46,30 +63,28 @@ const remove = async () => {
     removing.value = false
   }
 }
-/** 独立播放发音，target 为当前收藏的音频引用 */
-const play = (target: AudioTarget) => audio.play(target, getRuntimeServices().scene)
 useAnalyticsPage('sub-packages/favorites/detail')
 </script>
 <template>
   <PersonalPage
     :active="ProfileTabKey.FAVORITES"
     navigation="收藏详情"
-    title="收藏条目详情"
+    :title="item?.entry_type === FavoriteType.PHRASE ? '收藏语块详情' : '收藏条目详情'"
     :subtitle="`${item?.entry_type === FavoriteType.PHRASE ? '语块银行' : '词汇银行'} · 来自「${group?.sources[0]?.scene_title || '来源场景'}」`"
   >
     <template v-if="item">
-      <PersonalSummary
-        :label="item.english || item.normalized_key"
-        :value="item.phonetic || item.english || item.normalized_key"
-        :note="item.chinese || ''"
-      />
-      <text class="section-title">词汇与来源</text>
+      <view class="favorite-summary" :class="{ phrase: item.entry_type === FavoriteType.PHRASE }">
+        <view class="summary-heading"
+          ><text class="summary-word">{{ item.english || item.normalized_key }}</text
+          ><text v-if="item.phonetic" class="summary-phonetic">{{ item.phonetic }}</text></view
+        >
+        <text class="summary-meaning">{{ item.chinese || '' }}</text>
+      </view>
+      <text class="section-title"
+        >{{ item.entry_type === FavoriteType.PHRASE ? '语块' : '词汇' }}与来源</text
+      >
       <view class="row-list">
-        <PersonalRow
-          title="简明解释"
-          :detail="item.explanation || item.chinese || '暂无解释'"
-          badge="解释"
-        />
+        <PersonalRow title="简明解释" :detail="item.explanation || '暂无解释'" badge="解释" />
         <PersonalRow
           title="来源句"
           :detail="group?.sources.map((source) => source.sentence_snapshot).join('\n') || ''"
@@ -80,18 +95,16 @@ useAnalyticsPage('sub-packages/favorites/detail')
         <PersonalRow
           title="收藏状态"
           :detail="`已加入${item.entry_type === FavoriteType.PHRASE ? '语块银行' : '词汇银行'}`"
-          :badge="removing ? '处理中' : '取消收藏'"
+          badge="已收藏"
           actionable
           @press="remove"
         />
       </view>
       <text v-if="error" class="form-error">{{ error }}</text>
-      <AudioButton
-        v-if="item.audio"
-        :target="item.audio"
-        :status="audio.snapshot.status"
-        :current-key="audio.currentKey"
-        @play="play"
+      <PronunciationButton
+        v-if="getFavoritePronunciation(item)"
+        :target="getFavoritePronunciation(item)"
+        :context="{ favorite_id: item.id }"
       />
     </template>
     <AppState
@@ -100,9 +113,83 @@ useAnalyticsPage('sub-packages/favorites/detail')
       title="未找到收藏"
       :description="error || '请从收藏银行进入有效记录'"
     />
-    <template #actions><AppButton v-if="item" label="返回原文" @press="returnSource" /></template>
+    <template #actions
+      ><AppButton v-if="item" label="返回原文" :loading="resolving" @press="returnSource"
+    /></template>
   </PersonalPage>
 </template>
 <style scoped lang="scss">
 @use '../../features/profile/personal';
+
+.favorite-summary {
+  display: flex;
+  min-height: 120px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e0e3d5;
+  border-radius: 15px;
+  background: #fffdf7;
+  box-sizing: border-box;
+
+  .summary-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .summary-word {
+    color: #254733;
+    font-family: Inter, sans-serif;
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 36px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .summary-phonetic {
+    color: #687561;
+    font-family: Inter, sans-serif;
+    font-size: 13px;
+    line-height: 20px;
+    overflow-wrap: anywhere;
+  }
+
+  .summary-meaning {
+    color: #96523a;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 22px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  &.phrase .summary-word {
+    width: 100%;
+    font-size: 17px;
+    line-height: 25px;
+  }
+}
+
+.row-list {
+  :deep(.personal-row) {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 10px 89px 10px 14px;
+
+    .row-badge {
+      position: absolute;
+      top: 50%;
+      right: 14px;
+      width: 75px;
+      text-align: right;
+      transform: translateY(-50%);
+    }
+  }
+}
 </style>

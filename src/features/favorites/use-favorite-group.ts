@@ -2,6 +2,7 @@ import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import { getRuntimeServices } from '@/services/runtime'
+import { useFavoriteStore } from '@/stores/favorites'
 
 import type { FavoriteItem } from '@/shared/contracts/favorites'
 import type { FavoriteGroup } from '@/shared/types/favorites'
@@ -13,6 +14,7 @@ export const useFavoriteGroup = (message: string) => {
   const item = ref<FavoriteItem>()
   const group = ref<FavoriteGroup>()
   const error = ref('')
+  const favorites = useFavoriteStore()
   let id = ''
   let visible = false
   let generation = 0
@@ -32,6 +34,7 @@ export const useFavoriteGroup = (message: string) => {
       if (!visible || current !== generation) return
       item.value = loaded.item
       group.value = loaded.group
+      favorites.remember(loaded.item)
     } catch {
       if (visible && current === generation) error.value = message
     }

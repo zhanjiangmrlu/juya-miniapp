@@ -8,7 +8,7 @@ import type { FavoriteItem } from '@/shared/contracts/favorites'
 
 const dependencies = vi.hoisted(() => ({ play: vi.fn() }))
 vi.mock('@/stores/audio', () => ({
-  useAudioStore: () => ({ play: dependencies.play, snapshot: { status: 'IDLE' } })
+  useAudioStore: () => ({ playPronunciation: dependencies.play, snapshot: { status: 'IDLE' } })
 }))
 vi.mock('@/services/runtime', () => ({ getRuntimeServices: () => ({ scene: {} }) }))
 const item: FavoriteItem = {
@@ -27,8 +27,8 @@ describe('翻卡答案英文发音', () => {
     const wrapper = mount(ReviewCard, { props: { face: 'BACK', item } })
     await wrapper.find('.card-word').trigger('click')
     expect(dependencies.play).toHaveBeenCalledWith(
-      { target_type: 'WORD', target_id: 'latte', version_id: 'r1' },
-      {}
+      { target_id: 'latte', resource_version: 'r1', can_prepare: false },
+      { favorite_id: 'one' }
     )
     expect(wrapper.emitted('flip')).toBeUndefined()
     wrapper.unmount()
@@ -42,11 +42,11 @@ describe('翻卡答案英文发音', () => {
     expect(wrapper.find('.card-audio').exists()).toBe(false)
     wrapper.unmount()
   })
-  it('正面点击英文仍然翻面', async () => {
+  it('正面点击英文与喇叭共享发音，不触发翻面', async () => {
     const wrapper = mount(ReviewCard, { props: { face: 'FRONT', item } })
     await wrapper.find('.card-word').trigger('click')
-    expect(wrapper.emitted('flip')).toHaveLength(1)
-    expect(dependencies.play).not.toHaveBeenCalled()
+    expect(wrapper.emitted('flip')).toBeUndefined()
+    expect(dependencies.play).toHaveBeenCalledOnce()
     wrapper.unmount()
   })
 })

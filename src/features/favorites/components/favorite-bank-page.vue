@@ -55,6 +55,15 @@ const openGroup = async (group: FavoriteGroup) => {
       url: `/sub-packages/favorites/detail?id=${encodeURIComponent(id)}`
     })
 }
+/** 取消当前独立收藏并同步来源与翻卡队列，id 为选中银行条目ID */
+const removeFavorite = async (id: string) => {
+  try {
+    await favorites.remove(id, getRuntimeServices().favorites)
+    error.value = ''
+  } catch {
+    error.value = '取消收藏失败，请重试'
+  }
+}
 /** 编辑当前银行筛选，确认后保留另一银行的筛选与滚动位置 */
 const editFilter = () => {
   const type = favorites.activeTab
@@ -134,7 +143,7 @@ onPageScroll((event) =>
         筛选{{ favorites.tabState[favorites.activeTab].filter ? '中' : '' }}
       </button></view
     >
-    <FavoriteList :groups="favorites.visibleGroups" @select="openGroup" />
+    <FavoriteList :groups="favorites.visibleGroups" @select="openGroup" @remove="removeFavorite" />
     <AppState
       v-if="!favorites.loading && !favorites.visibleGroups.length && !error"
       icon-label="状态"

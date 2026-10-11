@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import FavoriteDetail from '@/sub-packages/favorites/detail.vue'
@@ -11,9 +12,10 @@ vi.mock('@/services/analytics/use-analytics-page', () => ({ useAnalyticsPage: vi
 const dependencies = vi.hoisted(() => ({
   load: undefined as ((query: Record<string, string>) => unknown) | undefined,
   show: undefined as (() => unknown) | undefined,
-  hide: undefined as (() => unknown) | undefined,
-  unload: undefined as (() => unknown) | undefined,
+  hide: [] as (() => unknown)[],
+  unload: [] as (() => unknown)[],
   get: vi.fn(),
+  resolve: vi.fn(),
   navigate: vi.fn()
 }))
 vi.mock('@dcloudio/uni-app', () => ({
@@ -23,17 +25,18 @@ vi.mock('@dcloudio/uni-app', () => ({
   onShow: (callback: typeof dependencies.show) => {
     dependencies.show = callback
   },
-  onHide: (callback: typeof dependencies.hide) => {
-    dependencies.hide = callback
+  onHide: (callback: () => unknown) => {
+    dependencies.hide.push(callback)
   },
-  onUnload: (callback: typeof dependencies.unload) => {
-    dependencies.unload = callback
+  onUnload: (callback: () => unknown) => {
+    dependencies.unload.push(callback)
   }
 }))
 vi.mock('@/services/runtime', () => ({
   getRuntimeServices: () => ({
     favorites: {
       get: dependencies.get,
+      resolveSource: dependencies.resolve,
       list: async () => ({ items: [], has_more: false, next_cursor: null })
     }
   })
@@ -68,12 +71,13 @@ const options = {
   }
 }
 beforeEach(() => {
+  setActivePinia(createPinia())
   vi.resetAllMocks()
   dependencies.load = undefined
   dependencies.show = undefined
-  dependencies.hide = undefined
-  dependencies.unload = undefined
-  vi.stubGlobal('uni', {})
+  dependencies.hide = []
+  dependencies.unload = []
+  vi.stubGlobal('uni', { showToast: vi.fn() })
 })
 afterEach(() => vi.unstubAllGlobals())
 describe.each([
@@ -87,23 +91,30 @@ describe.each([
     await dependencies.show?.()
     await flushPromises()
     expect(wrapper.text()).toContain('Could I get a latte?')
-    dependencies.hide?.()
+    dependencies.hide.forEach((callback) => callback())
     dependencies.get.mockResolvedValue(favorite(false))
     await dependencies.show?.()
     await flushPromises()
-    if (component === FavoriteSources) expect(wrapper.text()).toContain('当前无权限')
-    else {
+    dependencies.resolve.mockResolvedValue({
+      content_type: 'dialogue',
+      content_id: 'cafe',
+      saved_content_version: 1,
+      target_content_version: null,
+      status: 'NO_ACCESS',
+      locator: null,
+      safe_summary: { title: '咖啡店' }
+    })
+    {
       await wrapper
         .findAll('button')
         .find((button) => button.text() === '返回原文')
         ?.trigger('click')
       await flushPromises()
-      expect(dependencies.navigate).toHaveBeenLastCalledWith({
-        type: 'navigateTo',
-        url: '/sub-packages/favorites/sources?id=one'
-      })
+      expect(dependencies.resolve).toHaveBeenCalledWith('one')
+      expect(dependencies.navigate).not.toHaveBeenCalled()
+      expect(wrapper.text()).toContain('当前无原文访问权限')
     }
-    dependencies.hide?.()
+    dependencies.hide.forEach((callback) => callback())
     dependencies.get.mockRejectedValue(new Error('offline'))
     await dependencies.show?.()
     await flushPromises()
@@ -121,7 +132,7 @@ describe.each([
     const wrapper = mount(component, options)
     const loading = dependencies.load?.({ id: 'one' })
     const showing = dependencies.show?.()
-    dependencies[leave]?.()
+    dependencies[leave].forEach((callback) => callback())
     finish(favorite(true))
     await loading
     await showing

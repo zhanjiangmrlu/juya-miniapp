@@ -4,6 +4,9 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import ReviewPageView from '@/features/favorites/components/review-page-view.vue'
+import { useFavoriteStore } from '@/stores/favorites'
+
+import type { FavoriteItem } from '@/shared/contracts/favorites'
 
 const dependencies = vi.hoisted(() => ({
   load: undefined as ((query: Record<string, string>) => Promise<void>) | undefined,
@@ -62,6 +65,32 @@ const render = () =>
     }
   })
 describe('复习开始与完成统计', () => {
+  it('完整快照已预取后切换正背面不再次请求任何卡片资料', async () => {
+    const store = useFavoriteStore()
+    store.items = [
+      {
+        id: 'card',
+        english: 'medium',
+        chinese: '中杯',
+        entry_type: 'VOCABULARY',
+        sources: []
+      } as unknown as FavoriteItem
+    ]
+    store.updateTabState('VOCABULARY', {
+      review: {
+        cardIds: ['card'],
+        index: 0,
+        face: 'FRONT',
+        session: { id: 'session', card_count: 1, started_at: '' }
+      }
+    })
+    const wrapper = render()
+    await dependencies.load?.({ index: '0', bank: 'VOCABULARY' })
+    expect(dependencies.get).not.toHaveBeenCalled()
+    expect(dependencies.create).not.toHaveBeenCalled()
+    expect(wrapper.findComponent({ name: 'ReviewCard' }).exists()).toBe(true)
+    wrapper.unmount()
+  })
   it('首张有效词卡就绪时创建队列并记开始，完成复用该会话及幂等键', async () => {
     const wrapper = render()
     await dependencies.load?.({ cardIds: 'card' })
