@@ -1,24 +1,5 @@
 import type { AudioTarget, ClickableSpan, SceneEntry } from '@/shared/contracts/learning'
 import type { AudioStatus } from '@/shared/enums/audio'
-import type { SceneLookupEntryType } from '@/shared/enums/learning'
-
-/** DialogueList 输入属性 */
-export type DialogueListProps = {
-  chineseVisible: boolean
-  currentAudioKey?: string | null
-  entries: SceneEntry[]
-  status: AudioStatus
-  catalog?: SceneEntry[]
-  highlightedId?: string
-  hideAudio?: boolean
-  audioSelectionVisible?: boolean
-}
-
-/** DialogueList 事件契约 */
-export type DialogueListEmits = {
-  inspect: [entry: SceneEntry, span: ClickableSpan]
-  play: [target: AudioTarget]
-}
 
 /** DialogueSentence 输入属性 */
 export type DialogueSentenceProps = {
@@ -41,20 +22,6 @@ export type DialogueSentenceEmits = {
   play: [target: AudioTarget]
   select: [entry: SceneEntry]
 }
-
-/** EntryList 输入属性 */
-export type EntryListProps = {
-  currentAudioKey?: string | null
-  entries: SceneEntry[]
-  status: AudioStatus
-  sentences?: SceneEntry[]
-}
-
-/** EntryList 事件契约 */
-export type EntryListEmits = { inspect: [entry: SceneEntry]; play: [target: AudioTarget] }
-
-/** EntryPageView 输入属性 */
-export type EntryPageViewProps = { entryType: SceneLookupEntryType; title: string }
 
 /** PositionPageView 输入属性 */
 export type PositionPageViewProps = { source?: boolean }
@@ -81,19 +48,6 @@ export type SceneHeroEmits = { viewImage: []; imageError: [] }
 
 /** ScenePageLayout 输入属性 */
 export type ScenePageLayoutProps = { title: string; centered?: boolean }
-
-/** SceneStatusPage 输入属性 */
-export type SceneStatusPageProps = {
-  actionLabel: string
-  description: string
-  iconLabel: string
-  title: string
-}
-
-/** SceneStatusPage 事件契约 */
-export type SceneStatusPageEmits = {
-  action: []
-}
 
 /** 场景统一阅读主体及当前本篇词卡 */
 export type SceneReadingViewProps = {
