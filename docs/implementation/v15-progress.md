@@ -2,7 +2,7 @@
 
 - 分支：`feature/v1.5-20261011`；起始 HEAD：`e5f8e2b`，起始工作区干净
 - 需求：20261011 开发交付整合确认版；方案：00、01、05、06、07、08
-- 状态：REAL_HTTP_PARTIAL_BLOCKED_BY_CROSS_CONTENT_FAVORITE_STATE，真实前六步已通过，后端收藏状态回填缺内容命名空间导致复习422，等待权威修复后复跑
+- 状态：REAL_HTTP_TEN_BUSINESS_STEPS_PASSED_EMPTY_DIALOGUE_UI_FIX_READY_FOR_RERUN，后端命名空间修复后前十项真实业务通过，无对话词卡375px失败已最小修复，待最终视口复跑
 - 最终消费契约：BFF `b38294b`，`tests/fixtures/contracts/v15-b38294b/openapi.json`／`provider.d.ts`；固定Git原始JSON SHA256 `6c6105d3b3d0e201b3824ecef796e38a595bc30e574b7b87aa3c04f049c4e780`
 - 范围：只修改 juya-miniapp；不切分支、不推送、不部署、不重启共享服务
 
@@ -132,3 +132,12 @@
 - 后端只读根因：juya-miniapp-api/src/juya_miniapp_api/modules/learning/detail_aggregation.py attach_favorite_states仅以(entry_type,entry_id,sense_id,source_id)调用repository.states；favorites/snapshots_sql.py states查询及字典键同样缺content_type/content_id，所以共享稳定entry/sense/source的合法对话/词卡被回填同一个favorite_id。后端负责人需让协议、内存与SQL实现、调用和回填键全部携带内容命名空间；本对话不越界修改BFF
 - 前端补跨类型/跨内容ID状态隔离回归；脚本在词卡取消之前阻断CROSS_CONTENT_FAVORITE_STATE_MISMATCH，收藏POST核对返回content_type/content_id，最终全队列仍要求无重复且每个已保存ID仍在权威银行活跃集合。不删ID、不改seed词条身份、不降复习201/完成200断言，待后端正式修复后继续原四张真实队列
 - 本轮仅受影响门禁：favorite-snapshots/review-analytics/use-scene-page共3文件45项通过，node --check、pnpm check及git diff --check通过；无页面源码变更，不重复全套测试/双端构建，不启动或重启服务、不生成真实数据
+
+## 最终无对话词卡视口修复
+
+- 正式运行 `200991ebcfa2459eb5476ee54591808b`：管理12项PASS，小程序前10项业务PASS（四张独立收藏复习、资料POST回读、短文完成及独立历史均成功），场景375px视口PASS；词卡375px误显示共0句/空译文，full-translation零高度导致断言失败，无HTTP/网络/运行错误。此前跨内容收藏状态阻塞已由BFF正式修复，非当前未完成项
+- 权威需求原词汇卡不强制对话和整段音频，words两条且dialogue/chunks为空合法。SceneReadingView按entries.length隐藏空对话标题、卡片、译文；SceneReadingPageView无句子时隐藏逐句跟读入口，词汇/语块的既有收藏与发音保持原逻辑，不发明词卡完成流程
+- 视口脚本依据实际DTO.dialogue长度断言：有句子必须有完整译文行数及固定跟读入口，无句子必须没有空对话/译文/跟读入口。末卡仍完整滚动可见，宽度仍严格检查；无fixed-action时与真实ScenePageLayout的.tab-bar上边界比较，375/390/414/768/1024全部保留，前10项业务强断言未更改
+- 两项空对话回归观察RED后修复GREEN，有对话原译文/跟读成功路径仍通过；受影响scene-reading-view/scene-reading-page-view/use-scene-page共3文件21项通过
+- 独占Mock H5 15193临时内存设为两词汇/无对话，编译页面五宽度实际复验：无空对话/译文/跟读，词卡2张，无横溢，末卡bottom499px均小于导航top（375:770.9、390:768、414:763.3、768:694.3、1024:770.9）；已亲验脱敏截图empty-dialogue-375/1024.png。仅本地UI证据，不计入真实HTTP或真机验收
+- 修复门禁：node --check及pnpm check通过，H5/mp-weixin正式构建exit0、page-meta16页通过；未重复全套测试/真实批量数据，独占15193已核对进程身份并停止。等待协调用冻结前端复跑最终视口

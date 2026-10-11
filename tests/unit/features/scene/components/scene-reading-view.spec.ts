@@ -16,6 +16,25 @@ const entries = [
   }
 ]
 describe('场景全文译文和直显资料', () => {
+  it('无对话词卡只显示主体词汇，不显示空对话与译文入口', () => {
+    const words = ['中杯', '中等的'].map((chinese, index) => ({
+      ...entries[0],
+      entry_id: `w${index}`,
+      entry_type: 'VOCABULARY' as const,
+      text: 'medium',
+      chinese
+    }))
+    const wrapper = mount(SceneReadingView, {
+      props: { entries: [], words, chunks: [], chineseVisible: true },
+      global: { stubs: { SceneWordGrid: true } }
+    })
+    expect(wrapper.text()).toContain('重点词汇')
+    expect(wrapper.findComponent(SceneWordGrid).props('entries')).toEqual(words)
+    expect(wrapper.text()).not.toContain('场景对话')
+    expect(wrapper.find('.dialogue-card').exists()).toBe(false)
+    expect(wrapper.find('.translation-toggle').exists()).toBe(false)
+    expect(wrapper.find('.full-translation').exists()).toBe(false)
+  })
   it('同条目同来源不同义项的收藏pending只禁用自己的卡', () => {
     const word = {
       ...entries[0],

@@ -8,11 +8,11 @@ const emit = defineEmits<SceneReadingViewEmits>()
 </script>
 <template>
   <view class="scene-reading-view">
-    <view class="section-heading"
+    <view v-if="entries.length" class="section-heading"
       ><text>场景对话</text
       ><text class="section-meta">共 {{ entries.length }} 句 · 完整对话</text></view
     >
-    <view class="dialogue-card">
+    <view v-if="entries.length" class="dialogue-card">
       <view
         v-for="entry in entries"
         :id="'sentence-' + entry.entry_id"

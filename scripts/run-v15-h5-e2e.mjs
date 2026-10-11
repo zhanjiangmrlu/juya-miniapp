@@ -529,19 +529,33 @@ try {
           await open(`/sub-packages/scene/detail?sceneId=${encodeURIComponent(id)}`)
           const response = await opened
           expect(response.status()).toBe(200)
-          expect((await response.json()).scene.content_id).toBe(id)
+          const snapshot = (await response.json()).scene
+          expect(snapshot.content_id).toBe(id)
           await expect(page.locator('.scene-reading-view')).toBeVisible()
-          if (await page.locator('.translation-toggle').count()) {
+          const hasDialogue = snapshot.dialogue.length > 0
+          if (hasDialogue) {
+            await expect(page.locator('.sentence-row')).toHaveCount(snapshot.dialogue.length)
+            await expect(page.locator('.translation-toggle')).toBeVisible()
             await page.locator('.translation-toggle').click()
             await expect(page.locator('.full-translation')).toBeVisible()
+            await expect(page.locator('.translation-row')).toHaveCount(snapshot.dialogue.length)
+            await expect(page.locator('.fixed-action')).toBeVisible()
+          } else {
+            await expect(
+              page.locator('.dialogue-card,.translation-toggle,.full-translation')
+            ).toHaveCount(0)
+            await expect(page.locator('.fixed-action')).toHaveCount(0)
           }
           const last = page.locator('.scene-word-card').last()
           await last.scrollIntoViewIfNeeded()
           await expect(last).toBeVisible()
           await assertWidth('.scene-reading-view', width)
           const end = await last.boundingBox()
-          const action = await page.locator('.fixed-action').boundingBox()
-          expect(end.y + end.height).toBeLessThanOrEqual(action.y + 1)
+          const boundary = await page
+            .locator(hasDialogue ? '.fixed-action' : '.tab-bar')
+            .boundingBox()
+          expect(boundary).not.toBeNull()
+          expect(end.y + end.height).toBeLessThanOrEqual(boundary.y + 1)
           await screenshot(`${name}-${width}-end`)
           results.viewports.push({
             width,

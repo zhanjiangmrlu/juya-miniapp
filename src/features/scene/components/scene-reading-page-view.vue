@@ -216,7 +216,9 @@ onUnload(cleanup)
         @favorite="toggleFavorite"
         @play-sentence="playSentence"
       />
-      <view class="fixed-action"><button @click="shadow">进入逐句跟读 ›</button></view>
+      <view v-if="scene.dialogueEntries.length" class="fixed-action"
+        ><button @click="shadow">进入逐句跟读 ›</button></view
+      >
     </view>
     <text v-else-if="scene.loading">正在加载场景…</text>
     <AppState
