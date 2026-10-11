@@ -570,7 +570,7 @@ try {
         )
         expect((await opened).status()).toBe(200)
         await expect(page.locator('.short-reading-paragraph').first()).toBeVisible()
-        await page.locator('.translation-toggle').click()
+        await page.locator(width < 700 ? '.translation-toggle' : '.tablet-translation').click()
         await expect(page.locator('.full-translation')).toBeVisible()
         await page.locator('.complete-button').scrollIntoViewIfNeeded()
         await assertWidth('.reading-card', width)

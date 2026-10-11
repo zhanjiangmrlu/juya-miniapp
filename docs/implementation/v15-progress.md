@@ -2,7 +2,7 @@
 
 - 分支：`feature/v1.5-20261011`；起始 HEAD：`e5f8e2b`，起始工作区干净
 - 需求：20261011 开发交付整合确认版；方案：00、01、05、06、07、08
-- 状态：REAL_HTTP_TEN_BUSINESS_STEPS_PASSED_EMPTY_DIALOGUE_UI_FIX_READY_FOR_RERUN，后端命名空间修复后前十项真实业务通过，无对话词卡375px失败已最小修复，待最终视口复跑
+- 状态：REAL_HTTP_TEN_BUSINESS_STEPS_AND_FOURTEEN_VIEWPORTS_PASSED_TABLET_SELECTOR_READY_FOR_RERUN，前十项真实业务与14视口通过，平板短文脚本选择器已修复，待最终完整视口复跑
 - 最终消费契约：BFF `b38294b`，`tests/fixtures/contracts/v15-b38294b/openapi.json`／`provider.d.ts`；固定Git原始JSON SHA256 `6c6105d3b3d0e201b3824ecef796e38a595bc30e574b7b87aa3c04f049c4e780`
 - 范围：只修改 juya-miniapp；不切分支、不推送、不部署、不重启共享服务
 
@@ -141,3 +141,10 @@
 - 两项空对话回归观察RED后修复GREEN，有对话原译文/跟读成功路径仍通过；受影响scene-reading-view/scene-reading-page-view/use-scene-page共3文件21项通过
 - 独占Mock H5 15193临时内存设为两词汇/无对话，编译页面五宽度实际复验：无空对话/译文/跟读，词卡2张，无横溢，末卡bottom499px均小于导航top（375:770.9、390:768、414:763.3、768:694.3、1024:770.9）；已亲验脱敏截图empty-dialogue-375/1024.png。仅本地UI证据，不计入真实HTTP或真机验收
 - 修复门禁：node --check及pnpm check通过，H5/mp-weixin正式构建exit0、page-meta16页通过；未重复全套测试/真实批量数据，独占15193已核对进程身份并停止。等待协调用冻结前端复跑最终视口
+
+## 最终平板短文按钮定位修复
+
+- 正式运行 `11c967d9c1914af18ea1aba0d5d74a86`：管理12项PASS，小程序前10项业务PASS；375/390/414四类页面全部PASS，768场景/词卡PASS，共14项视口通过。768短文脚本点击CSS正常隐藏的手机.translation-toggle超时，无HTTP/网络/运行错误，资源清理成功
+- 只修改scripts/run-v15-h5-e2e.mjs中响应式短文点击选择器：width<700使用.translation-toggle，其余.tablet-translation；与现有700px布局一致，不修改正确的CSS或产品逻辑。全文译文可见、完成按钮滚动、内容水平边界及导航遮挡断言全部保留
+- 独占Mock H5 15193实际768/1024复验：手机按钮隐藏，平板正常点击后完整译文可见且非空；内容无横溢，完成按钮bottom599px均小于平板导航top780px。截图tablet-translation-768/1024.png，属于本地按钮与布局证据，正式全流程仍待协调复跑
+- 本轮node --check、pnpm check及git diff --check通过；只有脚本和进度文档变更，不重复应用构建/全套测试/真实数据；独占15193已核对进程身份并停止
