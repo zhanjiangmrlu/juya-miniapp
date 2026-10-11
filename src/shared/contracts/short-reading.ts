@@ -23,6 +23,26 @@ export interface ShortReadingListResponse {
   next_cursor?: string | null
 }
 
+/** a9a97b8本人独立阅读历史安全摘要，不含正文、资源或精确位置 */
+export interface ShortReadingHistoryItem {
+  content_id: string
+  title_en: string
+  title_zh: string
+  saved_content_version: number
+  started_at: string
+  last_read_at: string
+  completed_at: string | null
+  can_open: boolean
+}
+
+export interface ShortReadingHistoryPage {
+  items: ShortReadingHistoryItem[]
+  started_count: number
+  completed_count: number
+  next_cursor: string | null
+  has_more: boolean
+}
+
 export interface ShortReadingParagraph {
   paragraph_id: string
   text: string

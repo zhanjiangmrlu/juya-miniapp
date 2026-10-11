@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppState from '@/components/app-state/app-state.vue'
 import ShortReadingPageLayout from '@/features/short-reading/components/short-reading-page-layout.vue'
+import { useShortReadingHistory } from '@/features/short-reading/use-short-reading-history'
 import { useShortReadingList } from '@/features/short-reading/use-short-reading-list'
 import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import {
@@ -13,6 +14,18 @@ import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 import type { ShortReadingSummary } from '@/shared/contracts/short-reading'
 
 const { appendFailed, items, load, loading, nextCursor, open, unavailable } = useShortReadingList()
+const {
+  items: historyItems,
+  startedCount,
+  completedCount,
+  nextCursor: historyCursor,
+  loading: historyLoading,
+  error: historyError,
+  notice: historyNotice,
+  openingId,
+  load: loadHistory,
+  open: openHistory
+} = useShortReadingHistory()
 const { pageStyle } = usePageScrollLock()
 useAnalyticsPage('sub-packages/short-reading/index')
 const readable: string[] = [
@@ -34,6 +47,19 @@ const reload = () => {
 /** 追加后台游标对应的下一页，不改变列表顺序 */
 const loadMore = () => {
   void load(true)
+}
+/** 展示安全摘要里的最近阅读时间，value为服务端时间，不暴露阅读锚点 */
+const historyTime = (value: string) => {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? '时间待更新'
+    : new Intl.DateTimeFormat('zh-CN', {
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Shanghai'
+      }).format(date)
 }
 </script>
 
@@ -78,6 +104,61 @@ const loadMore = () => {
         <button v-if="nextCursor && !loading" class="list-button" @click="loadMore">
           {{ appendFailed ? '加载失败，重试更多' : '加载更多' }}
         </button>
+        <view class="reading-history">
+          <text class="history-title">我的阅读记录</text>
+          <text
+            v-if="completedCount !== undefined && startedCount !== undefined"
+            class="history-counts"
+          >
+            已读完 {{ completedCount }} 篇 · 已开始 {{ startedCount }} 篇
+          </text>
+          <button
+            v-for="item in historyItems"
+            :key="item.content_id"
+            class="reading-list-card reading-history-card"
+            :disabled="openingId !== null"
+            @click="openHistory(item)"
+          >
+            <text class="access-label">{{ item.completed_at ? '已读完' : '阅读中' }}</text>
+            <text v-if="item.title_en" class="card-title">{{ item.title_en }}</text>
+            <text class="card-chinese">{{ item.title_zh || '短文阅读记录' }}</text>
+            <text class="card-meta">最近阅读 {{ historyTime(item.last_read_at) }}</text>
+            <text class="card-intro">{{
+              item.can_open
+                ? '可继续阅读'
+                : openingId === item.content_id
+                  ? '正在确认安全预览…'
+                  : '保留阅读记录 · 查看安全预览'
+            }}</text>
+          </button>
+          <text v-if="historyLoading" class="list-loading">正在加载阅读记录…</text>
+          <text v-if="historyError" class="history-error">{{ historyError }}</text>
+          <text v-if="historyNotice" class="history-error">{{ historyNotice }}</text>
+          <AppState
+            v-if="
+              !historyLoading && !historyError && startedCount !== undefined && !historyItems.length
+            "
+            title="还没有阅读记录"
+            description="开始阅读后，记录会保存在这里，与场景学习分别统计。"
+            icon-label="暂无记录"
+          />
+          <button
+            v-if="historyError && !historyCursor"
+            class="list-button"
+            :disabled="historyLoading"
+            @click="loadHistory()"
+          >
+            重新加载阅读记录
+          </button>
+          <button
+            v-if="historyCursor"
+            class="list-button"
+            :disabled="historyLoading"
+            @click="loadHistory(true)"
+          >
+            {{ historyError ? '加载失败，重试阅读记录' : '加载更多阅读记录' }}
+          </button>
+        </view>
       </view>
     </scroll-view>
   </ShortReadingPageLayout>
@@ -187,6 +268,32 @@ const loadMore = () => {
     color: #748271;
     font-size: 14px;
     line-height: 22px;
+  }
+
+  .reading-history {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 12px;
+
+    .history-title {
+      color: #254733;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 30px;
+    }
+
+    .history-counts {
+      color: #4e7f3b;
+      font-size: 14px;
+      line-height: 22px;
+    }
+
+    .history-error {
+      color: #96523a;
+      font-size: 14px;
+      line-height: 22px;
+    }
   }
 }
 </style>

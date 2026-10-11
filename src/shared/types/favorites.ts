@@ -89,4 +89,8 @@ export interface FavoriteTabState {
 
 export type FavoriteReviewOptions = { idFactory?: () => string }
 
-export type FavoriteHistoryResponse = { items: HistoryItem[] }
+export type FavoriteHistoryResponse = {
+  items: HistoryItem[]
+  has_more: boolean
+  next_cursor: string | null
+}

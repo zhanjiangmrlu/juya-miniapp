@@ -2,12 +2,33 @@ import { ShortReadingAccess, ShortReadingKind } from '@/shared/enums/short-readi
 
 import type {
   ShortReadingDetail,
+  ShortReadingHistoryPage,
   ShortReadingProgress,
   ShortReadingSummary,
   ShortReadingWireDetail,
   ShortReadingWirePreview,
   ShortReadingWireProgress
 } from '@/shared/contracts/short-reading'
+
+/** 只提取阅读历史许可摘要，value为本人分页数据，不传播正文、音频或段落锚点 */
+export const adaptShortReadingHistory = (
+  value: ShortReadingHistoryPage
+): ShortReadingHistoryPage => ({
+  started_count: value.started_count,
+  completed_count: value.completed_count,
+  next_cursor: value.next_cursor,
+  has_more: value.has_more,
+  items: value.items.map((item) => ({
+    content_id: item.content_id,
+    title_en: item.title_en,
+    title_zh: item.title_zh,
+    saved_content_version: item.saved_content_version,
+    started_at: item.started_at,
+    last_read_at: item.last_read_at,
+    completed_at: item.completed_at,
+    can_open: item.can_open === true
+  }))
+})
 
 /** 适配BFF安全预览白名单，value 为服务端元信息，不传播额外受限字段 */
 export const adaptShortReadingPreview = (value: ShortReadingWirePreview): ShortReadingSummary => ({

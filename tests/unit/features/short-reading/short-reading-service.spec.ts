@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { createShortReadingService } from '@/features/short-reading/short-reading-service'
 
+import type { components } from '../../../fixtures/contracts/v15-a9a97b8/provider'
+
 /** 提供方案05的纯阅读详情 fixture，不引入场景词条或讲解 */
 const detailFixture = () => ({
   content_type: 'short_reading',
@@ -33,6 +35,70 @@ const detailFixture = () => ({
 })
 
 describe('短文方案05契约', () => {
+  it.each([null, 'https://cdn.example.test/covers/reading.jpg'])(
+    '消费正式ReadingPreview可空封面%s，不拼接资源地址',
+    async (cover_url) => {
+      const fixture = {
+        ...detailFixture(),
+        content_type: 'short_reading' as const,
+        access: 'TRIAL' as const,
+        cover_url
+      } satisfies components['schemas']['ReadingPreview']
+      const client = {
+        get: vi.fn().mockResolvedValue(fixture),
+        post: vi.fn(),
+        put: vi.fn(),
+        delete: vi.fn(),
+        patch: vi.fn()
+      }
+      const result = await createShortReadingService(client).preview('reading/1')
+      expect(result.cover_url).toBe(cover_url)
+      expect(result).not.toHaveProperty('paragraphs_en')
+    }
+  )
+  it('消费a9a97b8独立阅读历史与全量已读数，仅保留安全白名单', async () => {
+    const history = {
+      items: [
+        {
+          content_id: 'reading/1',
+          title_en: 'A Small Favor',
+          title_zh: '一个小忙',
+          saved_content_version: 1,
+          started_at: '2026-10-11T00:00:00Z',
+          last_read_at: '2026-10-11T01:00:00Z',
+          completed_at: null,
+          can_open: false
+        }
+      ],
+      started_count: 42,
+      completed_count: 28,
+      has_more: true,
+      next_cursor: 'history+page'
+    } satisfies components['schemas']['ReadingHistoryPage']
+    const client = {
+      get: vi.fn().mockResolvedValue({
+        ...history,
+        items: [
+          {
+            ...history.items[0],
+            paragraphs_en: ['private'],
+            paragraph_id: 'private',
+            translation_zh: 'private',
+            whole_audio: { url: 'private' }
+          }
+        ]
+      }),
+      post: vi.fn(),
+      put: vi.fn(),
+      delete: vi.fn(),
+      patch: vi.fn()
+    }
+    const result = await createShortReadingService(client).history('start+cursor')
+    expect(client.get).toHaveBeenCalledWith('/api/v1/short-readings/history?cursor=start%2Bcursor')
+    expect(result).toEqual(history)
+    expect(result.items[0]).not.toHaveProperty('paragraph_id')
+    expect(result.items[0]).not.toHaveProperty('paragraphs_en')
+  })
   it('schema不兼容或进度属于其他短文时不接收混合详情', async () => {
     const client = {
       get: vi.fn(),

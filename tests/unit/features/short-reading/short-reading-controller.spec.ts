@@ -42,6 +42,7 @@ const detail = (id = 'reading'): ShortReadingDetail => ({
 /** 提供受控服务和全局播放器端口 */
 const setup = () => {
   const service = {
+    history: vi.fn(),
     open: vi.fn().mockResolvedValue(detail()),
     preview: vi.fn().mockResolvedValue({ ...detail(), intro: 'safe' }),
     savePosition: vi.fn().mockResolvedValue({}),

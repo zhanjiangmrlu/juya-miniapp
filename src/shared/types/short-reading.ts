@@ -2,6 +2,7 @@ import type { AudioTarget, SignedMediaResponse } from '@/shared/contracts/learni
 import type {
   ShortReadingCompletionResponse,
   ShortReadingDetail,
+  ShortReadingHistoryPage,
   ShortReadingListResponse,
   ShortReadingPositionRequest,
   ShortReadingProgress,
@@ -9,6 +10,7 @@ import type {
 } from '@/shared/contracts/short-reading'
 
 export interface ShortReadingService {
+  history(cursor?: string): Promise<ShortReadingHistoryPage>
   list(cursor?: string): Promise<ShortReadingListResponse>
   preview(contentId: string): Promise<ShortReadingSummary>
   open(contentId: string): Promise<ShortReadingDetail>

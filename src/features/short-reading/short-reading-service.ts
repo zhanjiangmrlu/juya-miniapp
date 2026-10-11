@@ -1,5 +1,6 @@
 import {
   adaptShortReadingDetail,
+  adaptShortReadingHistory,
   adaptShortReadingPreview,
   adaptShortReadingProgress
 } from '@/features/short-reading/short-reading-response'
@@ -9,6 +10,7 @@ import { ShortReadingAccess, ShortReadingKind } from '@/shared/enums/short-readi
 import type { SignedResourceResponse } from '@/shared/contracts/learning'
 import type {
   ShortReadingAudioTarget,
+  ShortReadingHistoryPage,
   ShortReadingListResponse,
   ShortReadingSummary,
   ShortReadingWireCompletion,
@@ -39,6 +41,13 @@ export const toShortReadingSummary = (value: ShortReadingSummary): ShortReadingS
 
 /** 创建独立短文服务，client 为统一登录、刷新、错误与幂等请求端口 */
 export const createShortReadingService = (client: HttpClient): ShortReadingService => ({
+  /** 分页读取本人历史及独立总数，cursor为历史接口的上一页游标 */
+  history: async (cursor) =>
+    adaptShortReadingHistory(
+      await client.get<ShortReadingHistoryPage>(
+        `/api/v1/short-readings/history${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`
+      )
+    ),
   /** 分页保留后台顺序，cursor 为上一页返回的游标 */
   list: async (cursor) => {
     const response = await client.get<

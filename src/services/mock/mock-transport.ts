@@ -1,9 +1,11 @@
+import { ApiError } from '@/services/http/errors'
 import { MOCK_FEEDBACK, MOCK_ROUTES as ROUTES } from '@/services/mock/mock-data'
 import { AccessLevel } from '@/shared/enums/entitlements'
 import { FeedbackResolutionAction, FeedbackStatus } from '@/shared/enums/feedback'
 import { HttpMethod } from '@/shared/enums/http'
 import { SceneEntryType } from '@/shared/enums/learning'
 
+import type { ShortReadingHistoryPage } from '@/shared/contracts/short-reading'
 import type { HttpTransport, TransportRequest, TransportResponse } from '@/shared/types/http'
 import type { MockActionRequest, MockItemsResponse, MockTextRequest } from '@/shared/types/mock'
 
@@ -27,6 +29,71 @@ export class MockTransport implements HttpTransport {
     let fixture: unknown
     fixture = this.snapshots.handle(request)
     fixture ??= handleShortReadingMock(request)
+    if (routeKey === 'GET /api/v1/short-readings/history') {
+      const cursor = url.searchParams.get('cursor')
+      if (cursor && cursor !== 'mock-reading-history-page2')
+        throw new ApiError('CURSOR_INVALID', '阅读记录分页位置已失效', 422)
+      const base = {
+        saved_content_version: 1,
+        started_at: '2026-10-10T00:00:00Z',
+        last_read_at: '2026-10-11T01:00:00Z'
+      }
+      fixture = {
+        items: cursor
+          ? [
+              {
+                ...base,
+                content_id: 'reading-offline',
+                title_en: '',
+                title_zh: '短文已下线',
+                completed_at: '2026-10-11T01:00:00Z',
+                can_open: false
+              }
+            ]
+          : [
+              {
+                ...base,
+                content_id: 'reading-small-favor',
+                title_en: 'A Small Favor',
+                title_zh: '一个小忙',
+                completed_at: '2026-10-11T01:00:00Z',
+                can_open: true
+              },
+              {
+                ...base,
+                content_id: 'reading-urban-gardens',
+                title_en: 'Urban Gardens',
+                title_zh: '城市花园',
+                completed_at: null,
+                can_open: false
+              }
+            ],
+        started_count: 3,
+        completed_count: 2,
+        has_more: !cursor,
+        next_cursor: cursor ? null : 'mock-reading-history-page2'
+      } satisfies ShortReadingHistoryPage
+    }
+    if (routeKey === 'GET /api/v1/history/scenes') {
+      const cursor = url.searchParams.get('cursor')
+      if (cursor && cursor !== 'mock-scene-history-page2')
+        throw new ApiError('CURSOR_INVALID', '历史分页位置已失效', 422)
+      fixture = {
+        items: [
+          {
+            scene_id: cursor ? 'scene-weekend-trip' : 'scene-coffee-shop',
+            source_type: cursor ? 'SCENE' : 'OPEN',
+            position: { entry_id: 'sentence-1', offset: 0 },
+            client_sequence: 1,
+            started_at: '2026-10-10T00:00:00Z',
+            completed_at: cursor ? null : '2026-10-11T01:00:00Z',
+            last_learned_at: '2026-10-11T01:00:00Z'
+          }
+        ],
+        has_more: !cursor,
+        next_cursor: cursor ? null : 'mock-scene-history-page2'
+      }
+    }
     if (routeKey === 'POST /api/v1/scenes/scene-coffee-shop/open')
       fixture = createSceneSnapshotFixture((entryId) => {
         const result = this.snapshots.handle({
