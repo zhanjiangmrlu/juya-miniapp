@@ -7,7 +7,22 @@ import AppButton from '@/components/app-button/app-button.vue'
 import FeedbackForm from '@/features/feedback/components/feedback-form.vue'
 import { ApiError } from '@/services/http/errors'
 import { useFeedbackDraftStore } from '@/stores/feedback-draft'
-const dependencies = vi.hoisted(() => ({ create: vi.fn(), credential: vi.fn(), navigate: vi.fn() }))
+import { useSessionStore } from '@/stores/session'
+
+import type { UserProfile } from '@/shared/contracts/profile'
+const dependencies = vi.hoisted(() => ({
+  create: vi.fn(),
+  credential: vi.fn(),
+  navigate: vi.fn(),
+  hide: undefined as (() => void) | undefined
+}))
+vi.mock('@dcloudio/uni-app', () => ({
+  onShow: vi.fn(),
+  onHide: (hook: () => void) => {
+    dependencies.hide = hook
+  },
+  onUnload: vi.fn()
+}))
 vi.mock('@/services/runtime', () => ({
   getRuntimeServices: () => ({
     feedback: { create: dependencies.create, getUploadCredential: dependencies.credential }
@@ -16,11 +31,66 @@ vi.mock('@/services/runtime', () => ({
 vi.mock('@/shared/navigation/navigate', () => ({ navigate: dependencies.navigate }))
 beforeEach(() => {
   setActivePinia(createPinia())
-  vi.clearAllMocks()
+  vi.resetAllMocks()
   vi.stubGlobal('uni', { uploadFile: vi.fn() })
 })
 afterEach(() => vi.unstubAllGlobals())
 describe('反馈草稿提交', () => {
+  it('上传凭证迟到且页面已隐藏时不再传图或创建反馈', async () => {
+    const store = useFeedbackDraftStore()
+    store.update({
+      category: 'CONTENT',
+      description: '显示问题说明',
+      source: { page_label: '首页' },
+      screenshots: [{ path: '/one.png', mimeType: 'image/png', size: 2 }]
+    })
+    let finish!: (value: unknown) => void
+    dependencies.credential.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          finish = done
+        })
+    )
+    const wrapper = mount(FeedbackForm, {
+      global: { stubs: { picker: { template: '<div><slot /></div>' } } }
+    })
+    wrapper.findComponent(AppButton).vm.$emit('press')
+    dependencies.hide?.()
+    finish({
+      content_type: 'image/png',
+      host: 'https://upload.test',
+      fields: {},
+      key: 'old-key',
+      max_bytes: 100
+    })
+    await flushPromises()
+    expect(uni.uploadFile).not.toHaveBeenCalled()
+    expect(dependencies.create).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('创建成功迟到不能清空新账号草稿或跳转旧详情', async () => {
+    const store = useFeedbackDraftStore()
+    store.update({ category: 'CONTENT', description: '原账号描述', source: { page_label: '首页' } })
+    let finish!: (value: unknown) => void
+    dependencies.create.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          finish = done
+        })
+    )
+    const wrapper = mount(FeedbackForm, {
+      global: { stubs: { picker: { template: '<div><slot /></div>' } } }
+    })
+    wrapper.findComponent(AppButton).vm.$emit('press')
+    useSessionStore().profile = { juya_id: 'new-account' } as UserProfile
+    store.update({ description: '新账号草稿' })
+    finish({ id: 'old-feedback' })
+    await flushPromises()
+    expect(store.draft.description).toBe('新账号草稿')
+    expect(dependencies.navigate).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
   it('默认选中内容问题与画板一致', () => {
     const wrapper = mount(FeedbackForm, {
       global: { stubs: { picker: { template: '<div><slot /></div>' } } }

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
+import { useFeedbackRequestLifecycle } from '@/features/feedback/components/use-feedback-request-lifecycle'
 import {
   preserveDraftAfterUploadFailure,
   validateFeedbackDraft
@@ -26,6 +27,12 @@ const store = useFeedbackDraftStore()
 const error = ref('')
 const loading = ref(false)
 const sourceScenes = ref<Array<FeedbackSourceScene>>([])
+const lifecycle = useFeedbackRequestLifecycle((identityChanged) => {
+  sourceScenes.value = []
+  loading.value = false
+  error.value = ''
+  if (identityChanged) store.clear()
+})
 const sourceOptions = computed(() => [
   { label: '首页', source: { page_label: '首页', page_path: '/pages/home/index' } },
   {
@@ -52,8 +59,10 @@ const sourceOptions = computed(() => [
 ])
 /** 读取可选来源摘要，页面选择仍可在目录请求失败时使用 */
 const loadSources = async () => {
+  const request = lifecycle.capture()
   try {
-    sourceScenes.value = (await getRuntimeServices().catalog.getCatalog()).items
+    const response = await getRuntimeServices().catalog.getCatalog()
+    if (lifecycle.isCurrent(request)) sourceScenes.value = response.items
   } catch {
     /* 自动携带来源及页面选择仍然可用 */
   }
@@ -78,16 +87,20 @@ const handleDescriptionInput = (event: unknown) => {
 const selectCategory = (value: string) => store.update({ category: value })
 
 /** 选择单张压缩图片，提交成功前保留本机引用 */
-const chooseScreenshot = () =>
-  chooseFeedbackScreenshot(
+const chooseScreenshot = () => {
+  const request = lifecycle.capture()
+  return chooseFeedbackScreenshot(
     (file) => {
+      if (!lifecycle.isCurrent(request)) return
       store.update({ screenshots: [file] })
       error.value = ''
     },
     (message) => {
+      if (!lifecycle.isCurrent(request)) return
       error.value = message
     }
   )
+}
 
 /** 删除草稿中的本地截图引用并保留其他表单字段 */
 const removeScreenshot = () => {
@@ -96,7 +109,7 @@ const removeScreenshot = () => {
 
 /** 校验、上传可选截图并提交反馈；安全拦截仅保留本地草稿供用户编辑 */
 const submit = async () => {
-  if (loading.value) return
+  if (loading.value || !lifecycle.isCurrent(lifecycle.capture())) return
   if (!store.draft.source?.scene_id && !store.draft.source?.page_label) {
     error.value = '请选择相关页面或内容'
     return
@@ -108,30 +121,40 @@ const submit = async () => {
   }
 
   loading.value = true
+  const request = lifecycle.begin()
   let screenshotKey: string | undefined
   try {
     const screenshot = validation.normalized.screenshots[0]
     if (screenshot) {
       try {
-        screenshotKey = await uploadFeedbackImage(getRuntimeServices().feedback, screenshot)
+        screenshotKey = await uploadFeedbackImage(
+          getRuntimeServices().feedback,
+          screenshot,
+          undefined,
+          () => lifecycle.isCurrent(request)
+        )
       } catch {
+        if (!lifecycle.isCurrent(request)) return
         store.update(preserveDraftAfterUploadFailure(store.draft))
         error.value = '截图上传失败，草稿已保留，可重试或删除截图后提交'
         return
       }
     }
+    if (!lifecycle.isCurrent(request)) return
     const created = await getRuntimeServices().feedback.create({
       category: validation.normalized.category,
       description: validation.normalized.description,
       screenshots: screenshotKey ? [screenshotKey] : [],
       source: validation.normalized.source
     })
+    if (!lifecycle.isCurrent(request)) return
     store.clear()
     await navigate({
       type: NavigationType.REDIRECT_TO,
       url: `/sub-packages/feedback/detail?id=${created.id}`
     })
   } catch (caught) {
+    if (!lifecycle.isCurrent(request)) return
     if (caught instanceof ApiError && caught.code === 'FEEDBACK_CONTENT_BLOCKED') {
       await navigate({
         type: NavigationType.REDIRECT_TO,
@@ -141,7 +164,7 @@ const submit = async () => {
     }
     error.value = '暂时无法提交，请稍后重试'
   } finally {
-    loading.value = false
+    if (lifecycle.isCurrent(request)) loading.value = false
   }
 }
 </script>

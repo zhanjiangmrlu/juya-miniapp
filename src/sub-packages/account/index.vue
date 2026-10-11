@@ -13,39 +13,52 @@ import { NavigationType } from '@/shared/enums/navigation'
 import { ProfileRowSize } from '@/shared/enums/profile'
 import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
+import { useAccountRequestLifecycle } from '@/sub-packages/account/use-account-request-lifecycle'
 
 const loading = ref(true)
 const error = ref('')
+const lifecycle = useAccountRequestLifecycle(() => {
+  loading.value = true
+  error.value = ''
+})
 
 /** 读取本人注销状态；处于冷静期时优先进入撤回页面 */
 const loadAccountState = async () => {
+  const request = lifecycle.begin()
   loading.value = true
   try {
     const profile = await getRuntimeServices().profile.get()
+    if (!lifecycle.isCurrent(request)) return
     if (shouldGateStartupForDeletion(profile.deletion))
       await navigate({
         type: NavigationType.REDIRECT_TO,
         url: '/sub-packages/account/deletion-pending'
       })
-    error.value = ''
+    if (lifecycle.isCurrent(request)) error.value = ''
   } catch {
+    if (!lifecycle.isCurrent(request)) return
     error.value = '账号状态读取失败，请重试'
   } finally {
-    loading.value = false
+    if (lifecycle.isCurrent(request)) loading.value = false
   }
 }
 
 /** 打开清空学习数据影响确认页 */
 const openClearData = async () => {
+  if (loading.value || error.value || !lifecycle.isCurrent(lifecycle.capture())) return
   await navigate({ type: NavigationType.NAVIGATE_TO, url: '/sub-packages/account/clear-confirm' })
 }
 
 /** 打开注销挽留与二次确认页 */
 const openDeletion = async () => {
+  if (loading.value || error.value || !lifecycle.isCurrent(lifecycle.capture())) return
   await navigate({ type: NavigationType.NAVIGATE_TO, url: '/sub-packages/account/delete-confirm' })
 }
 
-onShow(loadAccountState)
+onShow(async () => {
+  lifecycle.activate()
+  await loadAccountState()
+})
 useAnalyticsPage('sub-packages/account/index')
 </script>
 <template>

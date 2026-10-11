@@ -7,6 +7,7 @@ import AppState from '@/components/app-state/app-state.vue'
 import FeedbackImagePicker from '@/features/feedback/components/feedback-image-picker.vue'
 import FeedbackResolutionActions from '@/features/feedback/components/feedback-resolution-actions.vue'
 import FeedbackTimeline from '@/features/feedback/components/feedback-timeline.vue'
+import { useFeedbackRequestLifecycle } from '@/features/feedback/components/use-feedback-request-lifecycle'
 import { canSupplementFeedback, validateSupplement } from '@/features/feedback/feedback-form'
 import {
   getFeedbackStatusLabel,
@@ -37,6 +38,14 @@ const editing = ref(false)
 const screenshot = ref<FeedbackScreenshotDraft>()
 const busy = ref(false)
 const error = ref('')
+const lifecycle = useFeedbackRequestLifecycle(() => {
+  item.value = undefined
+  supplement.value = ''
+  editing.value = false
+  screenshot.value = undefined
+  busy.value = false
+  error.value = ''
+})
 const canSupplement = computed(() => (item.value ? canSupplementFeedback(item.value) : false))
 /** 详情按分类展示，结果页按标题与处理状态展示 */
 const subtitle = computed(() => {
@@ -62,22 +71,35 @@ const capture = (query?: Record<string, string | undefined>) => {
 /** 加载最新时间线并在本人打开记录后清除关联未读消息 */
 const load = async () => {
   if (!feedbackId.value) return
+  const request = lifecycle.begin()
+  const id = feedbackId.value
   try {
     const runtime = getRuntimeServices()
-    item.value = await runtime.feedback.get(feedbackId.value)
-    const messages = await loadAllMessages(runtime.messages)
+    const response = await runtime.feedback.get(id)
+    if (!lifecycle.isCurrent(request)) return
+    item.value = response
+    const messages = await loadAllMessages({
+      ...runtime.messages,
+      /** 关联消息每页读取前核对会话，cursor 为上一页服务端游标 */
+      list: (cursor) =>
+        lifecycle.isCurrent(request)
+          ? runtime.messages.list(cursor)
+          : Promise.reject(new Error('FEEDBACK_REQUEST_CANCELLED'))
+    })
+    if (!lifecycle.isCurrent(request)) return
     await Promise.all(
       messages
         .filter(
           (message) =>
             !message.read_at &&
             message.related_type === MessageRelatedType.FEEDBACK &&
-            message.related_id === feedbackId.value
+            message.related_id === id
         )
         .map((message) => runtime.messages.markRead(message.id))
     )
-    error.value = ''
+    if (lifecycle.isCurrent(request)) error.value = ''
   } catch {
+    if (!lifecycle.isCurrent(request)) return
     error.value = '反馈读取失败，请重试'
   }
 }
@@ -88,6 +110,7 @@ const input = (event: unknown) => {
 /** 提交补充说明，失败保留草稿供修改或重试 */
 const submit = async () => {
   if (busy.value || !canSupplement.value) return
+  const request = lifecycle.begin()
   const validation = validateSupplement(supplement.value)
   if (!validation.valid || !validation.normalized) {
     editing.value = true
@@ -96,20 +119,24 @@ const submit = async () => {
   }
   busy.value = true
   try {
-    item.value = await submitSupplement(
+    const response = await submitSupplement(
       getRuntimeServices().feedback,
       item.value!,
       validation.normalized,
-      screenshot.value
+      screenshot.value,
+      () => lifecycle.isCurrent(request)
     )
+    if (!lifecycle.isCurrent(request)) return
+    item.value = response
     supplement.value = ''
     screenshot.value = undefined
     editing.value = false
     error.value = ''
   } catch (caught) {
+    if (!lifecycle.isCurrent(request)) return
     error.value = getSupplementErrorMessage(caught)
   } finally {
-    busy.value = false
+    if (lifecycle.isCurrent(request)) busy.value = false
   }
 }
 /** 在详情和结果页面间跳转，result 为是否打开结果页面 */
@@ -120,24 +147,32 @@ const open = (result: boolean) =>
   })
 /** 发送用户解决状态，payload 为已解决或含原因的重开命令 */
 const resolve = async (payload: FeedbackResolutionRequest) => {
-  if (busy.value) return
+  if (busy.value || !item.value) return
+  const request = lifecycle.begin()
+  const id = feedbackId.value
   busy.value = true
   try {
-    item.value = await getRuntimeServices().feedback.resolve(feedbackId.value, payload)
+    const response = await getRuntimeServices().feedback.resolve(id, payload)
+    if (!lifecycle.isCurrent(request)) return
+    item.value = response
     error.value = ''
     if (payload.action === FeedbackResolutionAction.REOPEN)
       await navigate({
         type: NavigationType.REDIRECT_TO,
-        url: `/sub-packages/feedback/detail?id=${encodeURIComponent(feedbackId.value)}`
+        url: `/sub-packages/feedback/detail?id=${encodeURIComponent(id)}`
       })
   } catch {
+    if (!lifecycle.isCurrent(request)) return
     error.value = '结果提交失败，请重试'
   } finally {
-    busy.value = false
+    if (lifecycle.isCurrent(request)) busy.value = false
   }
 }
 onLoad(capture)
-onShow(load)
+onShow(async () => {
+  lifecycle.activate()
+  await load()
+})
 </script>
 <template>
   <PersonalPage

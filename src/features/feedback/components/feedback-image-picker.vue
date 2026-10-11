@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+import { useFeedbackRequestLifecycle } from '@/features/feedback/components/use-feedback-request-lifecycle'
 import { chooseFeedbackScreenshot } from '@/features/feedback/screenshot-picker'
 
 import type {
@@ -10,17 +11,24 @@ import type {
 defineProps<FeedbackImagePickerProps>()
 const emit = defineEmits<FeedbackImagePickerEmits>()
 const error = ref('')
+const lifecycle = useFeedbackRequestLifecycle(() => {
+  error.value = ''
+})
 /** 选择单张压缩图片并校验格式和体积 */
-const choose = () =>
-  chooseFeedbackScreenshot(
+const choose = () => {
+  const request = lifecycle.capture()
+  return chooseFeedbackScreenshot(
     (file) => {
+      if (!lifecycle.isCurrent(request)) return
       error.value = ''
       emit('select', file)
     },
     (message) => {
+      if (!lifecycle.isCurrent(request)) return
       error.value = message
     }
   )
+}
 </script>
 <template>
   <view class="feedback-image-picker"

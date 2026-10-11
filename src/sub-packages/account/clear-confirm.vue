@@ -14,9 +14,14 @@ import { getRuntimeServices } from '@/services/runtime'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
+import { useAccountRequestLifecycle } from '@/sub-packages/account/use-account-request-lifecycle'
 
 const loading = ref(false)
 const error = ref('')
+const lifecycle = useAccountRequestLifecycle(() => {
+  loading.value = false
+  error.value = ''
+})
 
 /** 取消危险操作并返回数据与账号页 */
 const cancel = () => {
@@ -25,18 +30,22 @@ const cancel = () => {
 
 /** 等待服务端确认清理成功后，再清空对应本地学习缓存 */
 const confirmClear = async () => {
-  if (loading.value) return
+  if (loading.value || !lifecycle.isCurrent(lifecycle.capture())) return
+  const request = lifecycle.begin()
   loading.value = true
   error.value = ''
   try {
     await getRuntimeServices().account.clearLearningData()
+    if (!lifecycle.isCurrent(request)) return
+    // 当前请求已核对身份；本次同步清理会主动递增cleanupGeneration，仍完成本次授权的成功导航
     clearLocalLearningData(createUniLocalDataScope())
     uni.showToast({ icon: 'success', title: '学习数据已清空' })
     await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/profile/index' })
   } catch {
+    if (!lifecycle.isCurrent(request)) return
     error.value = '暂时无法清空，请稍后重试'
   } finally {
-    loading.value = false
+    if (lifecycle.isCurrent(request)) loading.value = false
   }
 }
 useAnalyticsPage('sub-packages/account/clear-confirm')

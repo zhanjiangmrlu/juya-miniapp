@@ -21,6 +21,7 @@ import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 import { createServerClock } from '@/shared/utils/server-clock'
 import { useAccountDeletionStore } from '@/stores/account-deletion'
+import { useAccountRequestLifecycle } from '@/sub-packages/account/use-account-request-lifecycle'
 
 import type { EntitlementsViewModel } from '@/shared/types/entitlements'
 const deletion = useAccountDeletionStore()
@@ -30,8 +31,17 @@ const loaded = ref(false)
 const openCount = ref(0)
 const metrics = ref({ totalDays: 0, currentStreak: 0, favoriteCount: 0, completedScenes: 0 })
 const rights = ref<EntitlementsViewModel>({ authorizationPending: false, formal: [], limited: [] })
+const lifecycle = useAccountRequestLifecycle(() => {
+  error.value = ''
+  loading.value = false
+  loaded.value = false
+  openCount.value = 0
+  metrics.value = { totalDays: 0, currentStreak: 0, favoriteCount: 0, completedScenes: 0 }
+  rights.value = { authorizationPending: false, formal: [], limited: [] }
+})
 /** 读取本人完整收藏、已完成场景、当前打卡与最新权益 */
 const load = async () => {
+  const request = lifecycle.begin()
   loaded.value = false
   try {
     const runtime = getRuntimeServices()
@@ -40,6 +50,7 @@ const load = async () => {
       runtime.entitlements.get(),
       runtime.catalog.getCatalog()
     ])
+    if (!lifecycle.isCurrent(request)) return
     openCount.value = directory.items.filter((item) => item.access === AccessLevel.OPEN).length
     metrics.value = stats
     rights.value = presentEntitlements(
@@ -49,6 +60,7 @@ const load = async () => {
     loaded.value = true
     error.value = ''
   } catch {
+    if (!lifecycle.isCurrent(request)) return
     error.value = '学习数据读取失败，请重试后再申请注销'
   }
 }
@@ -56,24 +68,31 @@ const load = async () => {
 const keepAccount = () => navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/home/index' })
 /** 经当前确认页再次确认后申请注销，受理成功才清除敏感本地草稿 */
 const requestDeletion = async () => {
-  if (loading.value || !loaded.value) return
+  if (loading.value || !loaded.value || !lifecycle.isCurrent(lifecycle.capture())) return
+  const request = lifecycle.begin()
   loading.value = true
   error.value = ''
   try {
     const accepted = await getRuntimeServices().account.requestDeletion()
+    if (!lifecycle.isCurrent(request)) return
     deletion.save(accepted)
+    // 只清理刚核对过归属的受理请求；自身cleanupGeneration变更不撤销该成功导航
     clearLocalDeletionDrafts(createUniLocalDataScope())
     await navigate({
       type: NavigationType.REDIRECT_TO,
       url: '/sub-packages/account/deletion-pending'
     })
   } catch {
+    if (!lifecycle.isCurrent(request)) return
     error.value = '暂时无法申请注销，请稍后重试'
   } finally {
-    loading.value = false
+    if (lifecycle.isCurrent(request)) loading.value = false
   }
 }
-onShow(load)
+onShow(async () => {
+  lifecycle.activate()
+  await load()
+})
 useAnalyticsPage('sub-packages/account/delete-confirm')
 </script>
 <template>

@@ -31,14 +31,18 @@ export function uploadWithUni(
   })
 }
 
-/** 先校验服务端凭证大小，再上传并只返回可提交的对象键。 */
-export async function uploadFeedbackImage(
+/** 校验凭证后上传，service 为反馈接口，file 为截图，uploader 为直传端口，isCurrent 核对原会话仍可传图 */
+export const uploadFeedbackImage = async (
   service: FeedbackService,
   file: FeedbackScreenshotDraft,
-  uploader: FeedbackUploader = uploadWithUni
-): Promise<string> {
+  uploader: FeedbackUploader = uploadWithUni,
+  isCurrent: () => boolean = () => true
+): Promise<string> => {
+  if (!isCurrent()) throw new Error('FEEDBACK_REQUEST_CANCELLED')
   const credential = await service.getUploadCredential(file.mimeType)
+  if (!isCurrent()) throw new Error('FEEDBACK_REQUEST_CANCELLED')
   if (file.size > credential.max_bytes) throw new Error('FEEDBACK_SCREENSHOT_TOO_LARGE')
   await uploader(file, credential)
+  if (!isCurrent()) throw new Error('FEEDBACK_REQUEST_CANCELLED')
   return credential.key
 }

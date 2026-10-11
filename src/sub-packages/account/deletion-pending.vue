@@ -20,6 +20,7 @@ import { useFavoriteStore } from '@/stores/favorites'
 import { useHomeStore } from '@/stores/home'
 import { useLearningStore } from '@/stores/learning'
 import { useSessionStore } from '@/stores/session'
+import { useAccountRequestLifecycle } from '@/sub-packages/account/use-account-request-lifecycle'
 
 import type { DeletionRequest } from '@/shared/contracts/account'
 import type { ServerClock } from '@/shared/types/time'
@@ -33,9 +34,23 @@ const clock = ref<ServerClock>()
 let timer: ReturnType<typeof globalThis.setInterval> | undefined
 let visible = false
 let generation = 0
+const confirmed = ref(false)
+const recoveryOwner = Symbol('account-deletion-recovery')
+const lifecycle = useAccountRequestLifecycle(() => {
+  visible = false
+  generation++
+  confirmed.value = false
+  clock.value = undefined
+  loading.value = false
+  error.value = ''
+  if (timer) globalThis.clearInterval(timer)
+  timer = undefined
+  useHomeStore().cancel(recoveryOwner)
+  useLearningStore().cancel(recoveryOwner)
+})
 const view = computed(() => {
   void tick.value
-  return deletion.request
+  return confirmed.value && deletion.request
     ? presentDeletionState(deletion.request, clock.value || createServerClock())
     : undefined
 })
@@ -43,16 +58,21 @@ const view = computed(() => {
 /** 恢复最近注销响应；缺失时从本人档案补足当前服务端状态 */
 const loadDeletion = async () => {
   const current = ++generation
+  const owner = lifecycle.capture()
   if (timer) globalThis.clearInterval(timer)
   timer = undefined
-  deletion.restore()
   try {
     const runtime = getRuntimeServices()
     const [profile, entitlements] = await Promise.all([
       runtime.profile.get(),
       runtime.entitlements.get().catch(() => undefined)
     ])
-    if (!visible || current !== generation) return
+    if (!visible || current !== generation || !lifecycle.isCurrent(owner)) return
+    if (profile.juya_id !== useSessionStore().profile?.juya_id) {
+      confirmed.value = false
+      error.value = '账号身份已变化，请重新进入账号页面'
+      return
+    }
     clock.value = entitlements?.server_now
       ? createServerClock(new Date(entitlements.server_now))
       : undefined
@@ -69,9 +89,10 @@ const loadDeletion = async () => {
       revoked_at: null,
       status: profile.deletion.status as DeletionRequest['status']
     })
+    confirmed.value = true
     error.value = ''
   } catch {
-    if (!visible || current !== generation) return
+    if (!visible || current !== generation || !lifecycle.isCurrent(owner)) return
     error.value = '账号状态刷新失败，请重试'
   }
   if (timer) globalThis.clearInterval(timer)
@@ -83,14 +104,17 @@ const loadDeletion = async () => {
 /** 撤回注销后重新加载首页、目录、收藏、权益和本人状态 */
 const revokeDeletion = async () => {
   if (loading.value || !view.value?.canRevoke) return
+  const owner = lifecycle.capture()
+  const current = ++generation
   loading.value = true
   error.value = ''
   try {
     await getRuntimeServices().account.revokeDeletion()
-    generation++
+    if (!visible || current !== generation || !lifecycle.isCurrent(owner)) return
     if (timer) globalThis.clearInterval(timer)
     timer = undefined
     deletion.clear()
+    confirmed.value = false
     revoked.value = true
     const runtime = getRuntimeServices()
     const session = useSessionStore()
@@ -99,25 +123,43 @@ const revokeDeletion = async () => {
     const learning = useLearningStore()
     await reloadAfterDeletionRevoke([
       async () => {
-        session.profile = await runtime.profile.get()
+        const profile = await runtime.profile.get()
+        if (visible && current === generation && lifecycle.isCurrent(owner))
+          session.profile = profile
       },
-      () => home.load(runtime.home),
-      () => learning.load(runtime.catalog),
-      () => favorites.load(runtime.favorites, true),
+      () => home.load(runtime.home, recoveryOwner),
+      () => learning.load(runtime.catalog, recoveryOwner),
+      () =>
+        favorites.load(
+          {
+            ...runtime.favorites,
+            /** 每页收藏只属于当前撤回会话，cursor 为已确认本人列表的服务端游标 */
+            list: async (cursor) => {
+              if (!lifecycle.isCurrent(owner)) throw new Error('ACCOUNT_REQUEST_CANCELLED')
+              const page = await runtime.favorites.list(cursor)
+              if (!lifecycle.isCurrent(owner)) throw new Error('ACCOUNT_REQUEST_CANCELLED')
+              return page
+            }
+          },
+          true
+        ),
       () => runtime.entitlements.get()
     ])
+    if (!visible || current !== generation || !lifecycle.isCurrent(owner)) return
     await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/profile/index' })
   } catch {
+    if (!visible || current !== generation || !lifecycle.isCurrent(owner)) return
     error.value = revoked.value
       ? '注销已撤回，资料刷新失败，请重新加载'
       : '撤回失败，请重新加载确认服务端状态'
   } finally {
-    loading.value = false
+    if (lifecycle.isCurrent(owner)) loading.value = false
   }
 }
 
 /** 当前页重新显示时刷新服务端注销状态 */
 onShow(async () => {
+  lifecycle.activate()
   visible = true
   await loadDeletion()
 })
@@ -127,6 +169,9 @@ const leave = () => {
   generation++
   if (timer) globalThis.clearInterval(timer)
   timer = undefined
+  confirmed.value = false
+  useHomeStore().cancel(recoveryOwner)
+  useLearningStore().cancel(recoveryOwner)
 }
 onHide(leave)
 onUnload(leave)

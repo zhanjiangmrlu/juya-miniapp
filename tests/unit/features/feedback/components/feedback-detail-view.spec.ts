@@ -1,26 +1,46 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 
 import FeedbackDetailView from '@/features/feedback/components/feedback-detail-view.vue'
+import FeedbackResolutionActions from '@/features/feedback/components/feedback-resolution-actions.vue'
 
 import type { FeedbackItem } from '@/shared/contracts/feedback'
 
 const dependencies = vi.hoisted(() => ({
   show: undefined as (() => Promise<void>) | undefined,
+  hide: undefined as (() => void) | undefined,
+  unload: undefined as (() => void) | undefined,
   get: vi.fn(),
-  list: vi.fn()
+  list: vi.fn(),
+  markRead: vi.fn(),
+  resolve: vi.fn(),
+  navigate: vi.fn()
 }))
+let session = reactive({
+  isAuthenticated: true,
+  cleanupGeneration: 0,
+  profile: { juya_id: 'owner' }
+})
+vi.mock('@/stores/session', () => ({ useSessionStore: () => session }))
+vi.mock('@/shared/navigation/navigate', () => ({ navigate: dependencies.navigate }))
 vi.mock('@dcloudio/uni-app', () => ({
   onLoad: (hook: (query: Record<string, string>) => void) => hook({ id: 'one' }),
   onShow: (hook: () => Promise<void>) => {
     dependencies.show = hook
+  },
+  onHide: (hook: () => void) => {
+    dependencies.hide = hook
+  },
+  onUnload: (hook: () => void) => {
+    dependencies.unload = hook
   }
 }))
 vi.mock('@/services/runtime', () => ({
   getRuntimeServices: () => ({
-    feedback: { get: dependencies.get },
-    messages: { list: dependencies.list }
+    feedback: { get: dependencies.get, resolve: dependencies.resolve },
+    messages: { list: dependencies.list, markRead: dependencies.markRead }
   })
 }))
 const item: FeedbackItem = {
@@ -34,11 +54,78 @@ const item: FeedbackItem = {
   title: ''
 }
 beforeEach(() => {
+  vi.resetAllMocks()
+  session = reactive({ isAuthenticated: true, cleanupGeneration: 0, profile: { juya_id: 'owner' } })
   dependencies.get.mockResolvedValue(item)
   dependencies.list.mockResolvedValue({ items: [], has_more: false })
 })
 
 describe('反馈页面展示分支', () => {
+  it.each(['hide', 'unload'] as const)('%s后迟到详情不填正文也不读取关联消息', async (leave) => {
+    let finish!: (value: FeedbackItem) => void
+    dependencies.get.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          finish = done
+        })
+    )
+    const wrapper = mount(FeedbackDetailView, { global: { stubs: { PageHeader: true } } })
+    const request = dependencies.show?.()
+    dependencies[leave]?.()
+    finish(item)
+    await request
+    expect(wrapper.text()).not.toContain('问题描述')
+    expect(dependencies.list).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('消息分页迟到后不把旧记录标为当前账号已读', async () => {
+    let finish!: (value: unknown) => void
+    dependencies.list.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          finish = done
+        })
+    )
+    const wrapper = mount(FeedbackDetailView, { global: { stubs: { PageHeader: true } } })
+    const request = dependencies.show?.()
+    await flushPromises()
+    session.cleanupGeneration++
+    finish({
+      items: [{ id: 'message', related_type: 'FEEDBACK', related_id: 'one', read_at: null }],
+      has_more: true,
+      next_cursor: 'next-old-page'
+    })
+    await request
+    expect(dependencies.markRead).not.toHaveBeenCalled()
+    expect(dependencies.list).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).not.toContain('问题描述')
+    wrapper.unmount()
+  })
+
+  it('重开结果迟到且已切换账号时不填旧记录或跳转', async () => {
+    let finish!: (value: FeedbackItem) => void
+    dependencies.resolve.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          finish = done
+        })
+    )
+    const wrapper = mount(FeedbackDetailView, {
+      props: { resultMode: true },
+      global: { stubs: { PageHeader: true } }
+    })
+    await dependencies.show?.()
+    wrapper
+      .findComponent(FeedbackResolutionActions)
+      .vm.$emit('resolve', { action: 'REOPEN', reason: '还有问题' })
+    session.profile.juya_id = 'other'
+    finish(item)
+    await flushPromises()
+    expect(dependencies.navigate).not.toHaveBeenCalled()
+    expect(wrapper.text()).not.toContain('问题描述')
+    wrapper.unmount()
+  })
   it('处理结果提示优先于可补充状态，切换页面模式时同步更新', async () => {
     const wrapper = mount(FeedbackDetailView, {
       props: { resultMode: true },

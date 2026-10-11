@@ -6,6 +6,11 @@ export interface AccountService {
   revokeDeletion(): Promise<DeletionRequest>
 }
 
+export interface AccountDeletionCache {
+  juya_id: string
+  request: DeletionRequest
+}
+
 export interface DeletionViewModel {
   canRevoke: boolean
   effectiveAt: string

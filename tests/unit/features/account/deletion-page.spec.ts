@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAccountDeletionStore } from '@/stores/account-deletion'
+import { useSessionStore } from '@/stores/session'
 import DeletionPending from '@/sub-packages/account/deletion-pending.vue'
 
 import type { UserProfile } from '@/shared/contracts/profile'
@@ -59,12 +60,52 @@ beforeEach(() => {
     setStorageSync: (key: string, value: unknown) => storage.set(key, value),
     removeStorageSync: (key: string) => storage.delete(key)
   })
+  useSessionStore().accessToken = 'test-session'
+  useSessionStore().profile = { juya_id: 'one' } as UserProfile
 })
 afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()
 })
 describe('注销等待页请求生命周期', () => {
+  it('本人档案与已确认会话身份不一致时不保存或展示注销投影', async () => {
+    dependencies.profile.mockResolvedValue({ ...pending, juya_id: 'other-account' })
+    const wrapper = mount(DeletionPending, options)
+    await dependencies.show?.()
+    expect(useAccountDeletionStore().request).toBeUndefined()
+    expect(wrapper.text()).not.toContain('注销期还剩')
+    wrapper.unmount()
+  })
+  it('旧账号撤回受理迟到不清新账号投影或导航', async () => {
+    dependencies.profile.mockResolvedValue(pending)
+    const wrapper = mount(DeletionPending, options)
+    await dependencies.show?.()
+    let finish!: (value: unknown) => void
+    dependencies.revoke.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          finish = done
+        })
+    )
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '撤回注销')!
+      .trigger('click')
+    useSessionStore().profile = { juya_id: 'new-account' } as UserProfile
+    useAccountDeletionStore().save({
+      status: 'PENDING',
+      id: 'new-delete',
+      effective_at: '2099-01-01',
+      requested_at: '',
+      completed_at: null,
+      revoked_at: null
+    })
+    finish({ status: 'REVOKED' })
+    await flushPromises()
+    expect(useAccountDeletionStore().request?.id).toBe('new-delete')
+    expect(dependencies.navigate).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
   it('撤回成功后，先前刷新响应不得恢复待注销缓存', async () => {
     const wrapper = mount(DeletionPending, options)
     dependencies.profile.mockResolvedValue(pending)

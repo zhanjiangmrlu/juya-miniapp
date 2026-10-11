@@ -9,6 +9,28 @@ const item = { id: 'one', screenshots: [] } as unknown as FeedbackItem
 const image = { path: '/one.png', mimeType: 'image/png', size: 50 }
 beforeEach(() => vi.resetAllMocks())
 describe('补充截图提交', () => {
+  it('截图上传期间原会话失效，迟到对象键不得形成补充写入', async () => {
+    let finish!: (key: string) => void
+    let current = true
+    upload.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          finish = done
+        })
+    )
+    const supplement = vi.fn()
+    const pending = submitSupplement(
+      { supplement } as never,
+      item,
+      '第三句无法播放',
+      image,
+      () => current
+    )
+    current = false
+    finish('feedback/old.png')
+    await expect(pending).rejects.toThrow('FEEDBACK_REQUEST_CANCELLED')
+    expect(supplement).not.toHaveBeenCalled()
+  })
   it('成功上传后携带对象键提交，不发送本地图片路径', async () => {
     upload.mockResolvedValue('feedback/one.png')
     const supplement = vi.fn().mockResolvedValue(item)
