@@ -96,6 +96,25 @@ handleLoad 的 GET 失败一律 `presentLearningResult(null)`，与初始化尚�
 
 注意 `probe-more-results.json` playing数组中 playing均false，不能据此声称真实Playing浏览器状态已复现。当前结论基于协调设计读图与本轮源代码映射；后续需真实进入PLAYING后核图、点击暂停及恢复，不能只改CSS透明度。最小方案是消费当前正式Playing资产，保留现有audio所有权、点击隔离、loading/error与无目标隐藏规则，分别回归idle/loading/playing/paused/error及44px点击区。本轮不修改图标或样式。
 
+### P2：成果通用复习入口遗漏语块收藏
+
+最新8.3第397行规定首页/银行/成果入口复习“全部符合当前入口筛选的有效收藏”；8.4要求成果下一步操作。成果footer `completed.vue:39—48/92` 只有“开始翻卡复习”，不提供或展示词汇筛选，调用getResultReviewRoute时也没有筛选参数。协调已读 Figma `2665:1138` 标题为“翻卡复习 · 全部收藏”。本轮核对最新完整需求与实际调用，没有找到成果通用入口只能复习词汇的明确依据。
+
+`src/features/learning-result/result-review.ts` 遍历所有分页，却硬编码只收 `FavoriteType.VOCABULARY`，路由固定bank=VOCABULARY；找不到词汇时固定回词汇银行。`result-review.spec.ts` 的混合输入期望只取词汇，仅固化既有实现，不是产品需求。它的空集合测试也未覆盖“仅语块但收藏非空”。
+
+本轮直接转译并调用当前真实TypeScript函数（注入内存list，无网络/数据库操作）得到：
+
+| 输入有效收藏                                     | 实际分页调用       | 实际结果                                                     | 与通用入口要求的差异                         |
+| ------------------------------------------------ | ------------------ | ------------------------------------------------------------ | -------------------------------------------- |
+| page1: word-1 + chunk-1；page2: word-2 + chunk-2 | undefined → page-2 | review-front?cardIds=word-1%2Cword-2&index=0&bank=VOCABULARY | 两个语块被丢弃，没有进入完整混合队列         |
+| 仅chunk-1 + chunk-2                              | undefined          | /pages/favorites/index?tab=vocabulary                        | 合法语块收藏非空，却不进入复习并落到词汇标签 |
+
+可复现脚本/结构化结果在忽略目录 `.v15-artifacts.local/audit-result-review.cjs.txt` / `result-review-audit.json`。这是函数消费者现状证据，不是浏览器/真实BFF复习已失败的声明。
+
+最小方案：成果无显式筛选时使用全部有效词汇/语块，明确有筛选的银行入口继续使用当前tab/filter；不能把无词汇等同无收藏。保留全部分页、去重、完整快照、冲突刷新和固定幂等键。混合通用队列应与银行的各自筛选/复习进度分清，不能只删除一行filter后继续把通用进度冒充词汇银行进度；无需新增后端DTO或接口。两银行各自专用复习不受此问题结论影响，首页也未调用这个helper，未把全部复习入口笼统判为词汇-only。
+
+测试建议：混合收藏分页队列含所有有效ID、仅语块直接可复习、确实空集合才回收藏入口、银行词汇/语块筛选分别保留、通用队列不覆盖银行进度、取消/版本冲突仍刷新。本轮未修改业务或现有单测期望。
+
 ## 验收基线过时（交协调替换）
 
 `tests/visual/visual-cases.ts` 仍以旧2478/2479/2480节点和69状态为清单，M05/M09/M14/M16/M19/M21/M24/M27等改版状态仍指向旧节点；responsive-contract.spec.ts 固定69状态及平板768视口。这类结构测试通过不证明与最新 `2660:3` 的40手机状态一致。协调生成当前映射后，应成组替换清单/数量/手机视口及对应证据，本轮不猜节点、不批量删除视觉测试。
