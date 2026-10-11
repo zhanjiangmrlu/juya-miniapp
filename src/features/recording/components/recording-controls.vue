@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 
 import pauseReplayWhite from '@/features/audio/assets/pause-replay-white.svg'
 import playGreen from '@/features/audio/assets/play-green.svg'
@@ -21,9 +21,41 @@ const props = withDefaults(defineProps<RecordingControlsProps>(), {
   audioStatus: AudioStatus.IDLE
 })
 const emit = defineEmits<RecordingControlsEmits>()
+const elapsedSeconds = ref(0)
+let clock: ReturnType<typeof globalThis.setInterval> | undefined
+/** 设备确认录音或回听后开始本次状态计时，status 为实际端口反馈状态 */
+const syncClock = (status: string) => {
+  if (clock) globalThis.clearInterval(clock)
+  elapsedSeconds.value = 0
+  if (status === RecordingStatus.RECORDING || status === RecordingStatus.PLAYBACK)
+    clock = globalThis.setInterval(() => {
+      elapsedSeconds.value++
+    }, 1000)
+}
+watch(() => props.snapshot.status, syncClock, { immediate: true })
+onUnmounted(() => {
+  if (clock) globalThis.clearInterval(clock)
+})
+const elapsed = computed(
+  () =>
+    `${String(Math.floor(elapsedSeconds.value / 60)).padStart(2, '0')}:${String(elapsedSeconds.value % 60).padStart(2, '0')}`
+)
+const startDisabled = computed(
+  () =>
+    props.snapshot.recordingDisabled ||
+    props.snapshot.processing ||
+    props.snapshot.status === RecordingStatus.RECORDING
+)
 /** 录音权限提示优先于失败状态，原音始终可用 */
 const recordingHint = computed(() => {
+  if (props.snapshot.disabledByConfiguration) return '录音暂未开放，仍可阅读和播放原音'
   if (props.snapshot.recordingDisabled) return '录音权限未开启，仍可播放原音'
+  if (props.snapshot.processing) return '正在准备录音…'
+  if (props.snapshot.status === RecordingStatus.RECORDING)
+    return `录音中 · ${elapsed.value} · 仅保留当次回听`
+  if (props.snapshot.status === RecordingStatus.PLAYBACK)
+    return `正在回听当次录音 · ${elapsed.value}`
+  if (props.snapshot.status === RecordingStatus.PAUSED) return '当次回听已暂停'
   if (props.snapshot.status === RecordingStatus.FAILED) return '录音暂不可用，请重试'
   return '录音仅保留本次回听，不评分'
 })
@@ -46,12 +78,12 @@ const recordingHint = computed(() => {
       <button
         class="recording-action primary"
         :class="{
-          'is-disabled': snapshot.recordingDisabled || snapshot.status === RecordingStatus.RECORDING
+          'is-disabled': startDisabled
         }"
-        :disabled="snapshot.recordingDisabled || snapshot.status === RecordingStatus.RECORDING"
+        :disabled="Boolean(startDisabled)"
         @click="emit('start')"
       >
-        ● 开始录音
+        ● {{ snapshot.status === RecordingStatus.RECORDING ? '录音中' : '开始录音' }}
       </button>
       <button
         class="recording-action"
@@ -68,9 +100,16 @@ const recordingHint = computed(() => {
         class="recording-action"
         :class="{
           primary: snapshot.hasRecording,
-          'is-disabled': !snapshot.hasRecording || snapshot.status === RecordingStatus.RECORDING
+          'is-disabled':
+            !snapshot.hasRecording ||
+            snapshot.processing ||
+            snapshot.status === RecordingStatus.RECORDING
         }"
-        :disabled="!snapshot.hasRecording || snapshot.status === RecordingStatus.RECORDING"
+        :disabled="
+          !snapshot.hasRecording ||
+          Boolean(snapshot.processing) ||
+          snapshot.status === RecordingStatus.RECORDING
+        "
         @click="emit('playback')"
       >
         <view
@@ -102,11 +141,13 @@ const recordingHint = computed(() => {
         :class="{
           'is-disabled':
             !snapshot.hasRecording ||
+            snapshot.processing ||
             snapshot.status === RecordingStatus.RECORDING ||
             snapshot.recordingDisabled
         }"
         :disabled="
           !snapshot.hasRecording ||
+          Boolean(snapshot.processing) ||
           snapshot.status === RecordingStatus.RECORDING ||
           snapshot.recordingDisabled
         "

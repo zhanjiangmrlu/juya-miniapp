@@ -41,6 +41,21 @@ const createEngine = (auto = true) => {
 }
 
 describe('真实音频事件与区间', () => {
+  it('实际单句切片使用本地文件时间，不再按整段边界截时', async () => {
+    const { engine, emit } = createEngine(false)
+    const controller = new AudioController({
+      engine: engine as never,
+      resolveUrl: async () => 'sentence-slice'
+    })
+    await controller.play({ ...target, target_type: 'sentence' })
+    emit({ type: 'canplay' })
+    expect(engine.seek).toHaveBeenCalledWith(0)
+    emit({ type: 'timeupdate', currentTimeMs: 5000 })
+    expect(controller.snapshot.target).not.toBeNull()
+    emit({ type: 'ended' })
+    expect(controller.snapshot.target).toBeNull()
+    controller.dispose()
+  })
   it('整段与同资源不同句子拥有独立播放键', () => {
     expect(getAudioTargetKey(target)).not.toBe(
       getAudioTargetKey({ ...target, sentence_id: 's3', start_ms: 5000, end_ms: 7000 })

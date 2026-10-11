@@ -48,6 +48,7 @@ const prepareRecording = () => {
     if (controller === nextController) recording.value = snapshot
   })
   controller = nextController
+  controller.setEnabled(fullModel.value?.recording_enabled === true)
   const first = scene.dialogueEntries[0]
   if (first) void controller.selectSentence(first.entry_id)
 }
@@ -76,7 +77,7 @@ const selectSentence = async (entry: SceneEntry) => {
   audio.stop()
   await controller?.selectSentence(entry.entry_id)
 }
-/** 播放句子原音，target 为同一整段音频的句子区间 */
+/** 播放句子原音，target 为当前发布版本的实际单句切片 */
 const playSentence = async (target: AudioTarget) => {
   const currentController = controller
   if (!active || !currentController || completingLearning.value) return
@@ -151,6 +152,7 @@ const cleanup = () => {
   releaseRecording()
 }
 watch(fullModel, (model) => {
+  controller?.setEnabled(model?.recording_enabled === true)
   if (!model && controller) {
     interaction++
     releaseRecording()
@@ -245,7 +247,13 @@ useAnalyticsPage('sub-packages/scene/shadowing')
 
 .shadowing-sentences {
   display: grid;
+  max-height: 324px;
+  overflow-y: auto;
   gap: 6px;
+
+  :deep(.dialogue-sentence.selected) {
+    outline: 1px solid #a8c995;
+  }
 }
 
 .scene-actions {

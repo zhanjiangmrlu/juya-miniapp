@@ -44,6 +44,19 @@ beforeEach(() => {
   dependencies.token = 1
 })
 describe('真实播放回调统计', () => {
+  it('切换场景与短文各自使用本次传入的签名服务', async () => {
+    const first = { getSignedUrl: vi.fn(async () => ({ url: 'scene' })) }
+    const second = { getSignedUrl: vi.fn(async () => ({ url: 'short-reading' })) }
+    const audio = useAudioStore()
+    await audio.play(target, first as never)
+    await audio.play(
+      { ...target, target_id: 'short-reading', target_type: 'short_reading' },
+      second as never
+    )
+    expect(first.getSignedUrl).toHaveBeenCalledTimes(1)
+    expect(second.getSignedUrl).toHaveBeenCalledTimes(1)
+    audio.dispose()
+  })
   it('签名成功和准备事件不计播放，重复播放回调只计一次，用户恢复播放再计一次', async () => {
     const audio = useAudioStore()
     await audio.play(target, service)

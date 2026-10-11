@@ -14,7 +14,17 @@ export const getAudioTargetKey = (target: AudioTarget): string => {
     target.resource_id ?? '',
     target.sentence_id ?? '',
     target.start_ms ?? '',
-    target.end_ms ?? ''
+    target.end_ms ?? '',
+    target.purpose ?? '',
+    target.resource_version ?? '',
+    target.local_url ?? '',
+    target.context?.favorite_id ?? '',
+    target.context?.content_type ?? '',
+    target.context?.content_id ?? '',
+    target.context?.content_version ?? '',
+    target.context?.entry_id ?? '',
+    target.context?.sense_id ?? '',
+    target.context?.source_id ?? ''
   ].join(':')
 }
 

@@ -53,7 +53,7 @@ vi.mock('@/features/scene/use-scene-page', () => ({
     audio: { stop: vi.fn(), snapshot: { status: 'IDLE' }, currentKey: null },
     complete: dependencies.complete,
     disposeAudio: vi.fn(),
-    fullModel: ref({ chineseTitle: '场景' }),
+    fullModel: ref({ chineseTitle: '场景', recording_enabled: true }),
     initialize: dependencies.initialize,
     play: dependencies.play,
     scene: { dialogueEntries: entries },

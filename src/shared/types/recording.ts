@@ -14,6 +14,8 @@ export interface RecordingPort {
 }
 
 export interface RecordingSnapshot {
+  processing?: boolean
+  disabledByConfiguration?: boolean
   hasRecording?: boolean
   recordingDisabled: boolean
   selectedSentenceId: string | null

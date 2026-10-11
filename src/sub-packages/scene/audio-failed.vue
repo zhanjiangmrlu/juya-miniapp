@@ -3,7 +3,6 @@ import { onHide, onLoad, onUnload } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import AppState from '@/components/app-state/app-state.vue'
-import DialogueList from '@/features/scene/components/dialogue-list.vue'
 import ScenePageLayout from '@/features/scene/components/scene-page-layout.vue'
 import { useScenePage } from '@/features/scene/use-scene-page'
 import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
@@ -13,10 +12,8 @@ import { navigate } from '@/shared/navigation/navigate'
 
 const { audio, disposeAudio, fullModel, initialize, play, scene, sceneId } = useScenePage()
 const retrying = ref(false)
-const failedSentenceId = ref('')
 /** 加载可阅读正文，query 为场景参数 */
 const handleLoad = (query?: Record<string, string>) => {
-  failedSentenceId.value = query?.sentenceId ?? ''
   void initialize(query?.sceneId)
 }
 /** 重新签名当前整段音频并播放，失败时正文保持可读 */
@@ -56,14 +53,12 @@ useAnalyticsPage('sub-packages/scene/audio-failed')
         ><text>正文可继续阅读</text
         ><text class="section-meta">共 {{ scene.dialogueEntries.length }} 句</text></view
       >
-      <DialogueList
-        :chinese-visible="false"
-        :current-audio-key="audio.currentKey"
-        :entries="scene.dialogueEntries"
-        :status="audio.snapshot.status"
-        hide-audio
-        :highlighted-id="audio.snapshot.target?.sentence_id ?? failedSentenceId"
-      />
+      <view class="failure-dialogue">
+        <view v-for="entry in scene.dialogueEntries" :key="entry.entry_id" class="sentence-row">
+          <text v-if="entry.speaker" class="sentence-speaker">{{ entry.speaker }}:</text>
+          <text>{{ entry.text }}</text>
+        </view>
+      </view>
       <view class="scene-actions"
         ><button
           class="scene-action"
@@ -138,12 +133,29 @@ useAnalyticsPage('sub-packages/scene/audio-failed')
   margin-bottom: 7px;
 }
 
-:deep(.dialogue-sentence) {
-  min-height: 57px;
-}
+.failure-dialogue {
+  padding: 16px;
+  border: 1px solid #d9e4d2;
+  border-radius: 12px;
+  background: #fffdf7;
 
-:deep(.dialogue-list) {
-  gap: 6px;
+  .sentence-row {
+    margin-bottom: 6px;
+    color: #254733;
+    font-size: 13px;
+    line-height: 26px;
+    overflow-wrap: anywhere;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .sentence-speaker {
+    margin-right: 4px;
+    color: #96523a;
+    font-weight: 700;
+  }
 }
 
 .scene-actions {

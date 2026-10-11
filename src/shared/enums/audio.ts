@@ -21,6 +21,16 @@ export const AudioStatus = {
 
 export type AudioStatus = (typeof AudioStatus)[keyof typeof AudioStatus] & string
 
+/** 服务端受控发音准备状态 */
+export const PronunciationStatus = {
+  READY: 'READY',
+  PREPARING: 'PREPARING',
+  FAILED: 'FAILED',
+  UNAVAILABLE: 'UNAVAILABLE'
+} as const
+export type PronunciationStatus = (typeof PronunciationStatus)[keyof typeof PronunciationStatus] &
+  string
+
 /** 音频按钮展示样式 */
 export const AudioButtonVariant = {
   COMPACT: 'compact',

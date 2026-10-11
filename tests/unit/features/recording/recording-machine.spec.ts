@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { RecordingController } from '@/features/recording/recording-controller'
+import {
+  disposeLocalRecordings,
+  RecordingController
+} from '@/features/recording/recording-controller'
 
 import type { RecordingPlaybackEventType } from '@/shared/enums/recording'
 import type { RecordingPort } from '@/shared/types/recording'
@@ -18,6 +21,33 @@ const createPort = (permission = true): RecordingPort => {
 }
 
 describe('RecordingController', () => {
+  it('审核配置关闭只禁用录音，不请求麦克风且允许选句', async () => {
+    const port = createPort()
+    const controller = new RecordingController(port)
+    controller.setEnabled(false)
+    await controller.selectSentence('s3')
+    await controller.start()
+    expect(port.requestPermission).not.toHaveBeenCalled()
+    expect(controller.snapshot).toMatchObject({
+      selectedSentenceId: 's3',
+      recordingDisabled: true,
+      disabledByConfiguration: true
+    })
+    controller.setEnabled(true)
+    await controller.start()
+    expect(port.start).toHaveBeenCalledWith('s3')
+    await controller.dispose()
+  })
+  it('账号清理会销毁所有会话录音，包括不再占有播放器的旧文件', async () => {
+    const port = createPort()
+    const controller = new RecordingController(port)
+    await controller.selectSentence('s1')
+    await controller.start()
+    await controller.stop()
+    await disposeLocalRecordings()
+    expect(port.deleteFile).toHaveBeenCalledWith('recording.aac')
+    expect(controller.snapshot.selectedSentenceId).toBeNull()
+  })
   it('再次录音等待设备启动时不会并发回听旧录音', async () => {
     const port = createPort()
     const controller = new RecordingController(port)

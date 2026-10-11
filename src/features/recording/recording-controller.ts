@@ -1,3 +1,5 @@
+import { claimPlayback, releasePlayback } from '@/features/audio/playback-ownership'
+import { RECORDING_MAX_DURATION_MS } from '@/shared/constants/recording'
 import { RecordingPlaybackEventType, RecordingStatus } from '@/shared/enums/recording'
 
 import type { RecordingPort, RecordingSnapshot } from '@/shared/types/recording'
@@ -6,6 +8,13 @@ import { createBrowserRecordingPort } from './browser-recording-port'
 import { createRecordingSnapshot } from './recording-machine'
 
 export type { RecordingPort } from '@/shared/types/recording'
+
+const localControllers = new Set<RecordingController>()
+
+/** 账号退出或注销时清理所有会话的本地临时录音，不产生上传请求 */
+export const disposeLocalRecordings = async (): Promise<void> => {
+  await Promise.all([...localControllers].map((controller) => controller.dispose()))
+}
 
 /** 管理逐句录音权限、临时文件与回听生命周期 */
 export class RecordingController {
@@ -26,6 +35,7 @@ export class RecordingController {
     private readonly port: RecordingPort,
     private readonly onChange?: (snapshot: RecordingSnapshot) => void
   ) {
+    localControllers.add(this)
     this.unsubscribe = port.subscribePlayback?.((type) => {
       if (this.disposed || !this.playbackRequested) return
       if (type === RecordingPlaybackEventType.PLAY)
@@ -54,6 +64,19 @@ export class RecordingController {
     return this.state
   }
 
+  /** 配置录音审核降级，enabled 为服务端允许本次会话录音的开关 */
+  setEnabled = (enabled: boolean): void => {
+    if (!enabled) {
+      this.stopPlayback()
+      void this.stop()
+    }
+    this.update({
+      ...this.state,
+      disabledByConfiguration: !enabled,
+      recordingDisabled: !enabled || this.permission === false
+    })
+  }
+
   /** 选择句子，id 为稳定句子标识，旧录音停止后仍归属于旧句 */
   selectSentence = async (id: string): Promise<void> => {
     this.stopPlayback()
@@ -79,7 +102,9 @@ export class RecordingController {
       this.state.status === RecordingStatus.RECORDING
     )
       return
+    claimPlayback(this, this.cancelPlayback)
     const generation = ++this.generation
+    this.update({ ...this.state, processing: true })
     await this.pendingStop
     if (generation !== this.generation || this.disposed) return
     if (this.permission === undefined) {
@@ -88,7 +113,12 @@ export class RecordingController {
     }
     if (generation !== this.generation || this.disposed) return
     if (!this.permission) {
-      this.update({ ...this.state, recordingDisabled: true, status: RecordingStatus.DENIED })
+      this.update({
+        ...this.state,
+        processing: false,
+        recordingDisabled: true,
+        status: RecordingStatus.DENIED
+      })
       return
     }
     this.stopPlayback()
@@ -107,10 +137,10 @@ export class RecordingController {
         await this.port.deleteFile(path)
         return
       }
-      this.update({ ...this.state, status: RecordingStatus.RECORDING })
+      this.update({ ...this.state, processing: false, status: RecordingStatus.RECORDING })
     } catch {
       if (generation === this.generation && !this.disposed)
-        this.update({ ...this.state, status: RecordingStatus.FAILED })
+        this.update({ ...this.state, processing: false, status: RecordingStatus.FAILED })
     }
   }
 
@@ -118,6 +148,7 @@ export class RecordingController {
   stop = (): Promise<void> => {
     // 即使设备尚未启动，也取消等待授权或启动回调中的录音意图
     this.generation++
+    if (this.state.processing) this.update({ ...this.state, processing: false })
     if (this.pendingStart) return this.pendingStart
     if (this.pendingStop) return this.pendingStop
     const sentenceId = this.state.selectedSentenceId
@@ -159,6 +190,7 @@ export class RecordingController {
     const sentenceId = this.state.selectedSentenceId
     const path = sentenceId ? this.recordings.get(sentenceId) : undefined
     if (!path || this.disposed || this.state.status === RecordingStatus.RECORDING) return
+    claimPlayback(this, this.cancelPlayback)
     const generation = this.generation
     this.playbackRequested = true
     try {
@@ -181,6 +213,12 @@ export class RecordingController {
       this.state.status === RecordingStatus.PAUSED
     )
       this.update({ ...this.state, status: RecordingStatus.RECORDED })
+  }
+
+  /** 新全局播放开始时取消本次录音意图和本地回听 */
+  private cancelPlayback = (): void => {
+    this.stopPlayback()
+    void this.stop()
   }
 
   /** 删除当前句旧文件后立即开始重录 */
@@ -206,6 +244,8 @@ export class RecordingController {
   dispose = async (): Promise<void> => {
     if (this.disposed) return
     this.disposed = true
+    localControllers.delete(this)
+    releasePlayback(this)
     this.playbackRequested = false
     this.generation++
     this.port.stopPlayback()
@@ -320,4 +360,3 @@ export const createUniRecordingPort = (): RecordingPort => {
   }
   // #endif
 }
-import { RECORDING_MAX_DURATION_MS } from '@/shared/constants/recording'

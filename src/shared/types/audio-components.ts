@@ -13,3 +13,9 @@ export type AudioButtonProps = {
 
 /** AudioButton 事件契约 */
 export type AudioButtonEmits = { play: [target: AudioTarget] }
+
+/** 独立发音按钮的受控目标和原文或收藏上下文 */
+export type PronunciationButtonProps = {
+  target?: import('@/shared/contracts/audio').PronunciationTarget
+  context: import('@/shared/contracts/audio').PronunciationContext
+}

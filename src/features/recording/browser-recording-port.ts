@@ -1,3 +1,4 @@
+import { RECORDING_MAX_DURATION_MS } from '@/shared/constants/recording'
 import { RecordingPlaybackEventType } from '@/shared/enums/recording'
 
 import type { RecordingPort } from '@/shared/types/recording'
@@ -74,7 +75,7 @@ export const createBrowserRecordingPort = (): RecordingPort => {
           (path) => recordingListener?.(path),
           () => recordingListener?.()
         )
-      }, 60_000)
+      }, RECORDING_MAX_DURATION_MS)
     },
     stop,
     /** 回听本次录音，path 为页面创建的临时对象 URL */
