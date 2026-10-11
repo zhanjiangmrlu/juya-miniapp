@@ -3,7 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createShortReadingController } from '@/features/short-reading/short-reading-controller'
 
 import type { ShortReadingDetail } from '@/shared/contracts/short-reading'
-import type { ShortReadingService } from '@/shared/types/short-reading'
+import type {
+  ShortReadingControllerOptions,
+  ShortReadingService
+} from '@/shared/types/short-reading'
 
 /** 创建合法纯阅读资料，id 为稳定短文标识 */
 const detail = (id = 'reading'): ShortReadingDetail => ({
@@ -48,13 +51,79 @@ const setup = () => {
     getSignedUrl: vi.fn(),
     list: vi.fn()
   } satisfies ShortReadingService
-  const audio = { play: vi.fn(), dispose: vi.fn() }
+  const audio = { play: vi.fn<ShortReadingControllerOptions['audio']['play']>(), dispose: vi.fn() }
   return { service, audio, page: createShortReadingController({ service, audio }) }
 }
 
 afterEach(() => vi.useRealTimers())
 
 describe('短文纯阅读状态', () => {
+  it('同版完成重试保持键，发布版本变化必须使用新命令键', async () => {
+    const { page, service } = setup()
+    service.complete.mockRejectedValue(new Error('offline'))
+    await page.initialize('reading')
+    await page.complete()
+    await page.complete()
+    expect(service.complete.mock.calls[0][2]).toBe(service.complete.mock.calls[1][2])
+    service.open.mockResolvedValueOnce({
+      ...detail(),
+      content_version: 3,
+      revision_id: 'r3',
+      progress: { ...detail().progress, content_version: 3 }
+    })
+    await page.initialize('reading')
+    await page.complete()
+    expect(service.complete.mock.calls[2][1]).toBe(3)
+    expect(service.complete.mock.calls[2][2]).not.toBe(service.complete.mock.calls[0][2])
+    page.dispose()
+  })
+
+  it('同版重新授权先恢复待保存新位置，失败队列不被旧server位置覆盖', async () => {
+    vi.useFakeTimers()
+    const { page, service } = setup()
+    service.savePosition.mockRejectedValue(new Error('offline'))
+    await page.initialize('reading')
+    page.savePosition({ paragraph_id: 'p1', offset: 42 })
+    await vi.advanceTimersByTimeAsync(1000)
+    page.suspend()
+    await page.initialize('reading')
+    expect(page.position.value).toEqual({ paragraph_id: 'p1', offset: 0 })
+    expect(page.initialPosition.value).toEqual({ paragraph_id: 'p1', offset: 0 })
+    page.dispose()
+  })
+
+  it('仅全文资源缺失不清正文、译文、标签或阻断读完，真正失权仍清理', async () => {
+    const { page, service, audio } = setup()
+    service.open.mockResolvedValue({
+      ...detail(),
+      whole_audio: {
+        content_id: 'reading',
+        content_type: 'short_reading',
+        content_version: 2,
+        revision_id: 'r2',
+        target_type: 'short_reading_whole',
+        target_id: 'whole',
+        resource_id: 'whole',
+        version_id: 'a1'
+      }
+    })
+    audio.play.mockImplementation(async (target, signer) => {
+      await signer.getSignedUrl(target)
+    })
+    service.getSignedUrl.mockRejectedValueOnce({ status: 404, code: 'RESOURCE_NOT_FOUND' })
+    await page.initialize('reading')
+    page.toggleTag('level')
+    page.toggleTranslation()
+    await expect(page.play()).rejects.toMatchObject({ status: 503 })
+    expect(page.detail.value?.content_id).toBe('reading')
+    expect(page.levelSelected.value).toBe(true)
+    expect(page.translationVisible.value).toBe(true)
+    expect(await page.complete()).toBe(true)
+    service.getSignedUrl.mockRejectedValueOnce({ status: 403, code: 'CONTENT_ACCESS_DENIED' })
+    await expect(page.play()).rejects.toMatchObject({ status: 403 })
+    expect(page.detail.value).toBeUndefined()
+    page.dispose()
+  })
   it('同版本收藏来源以精确段落覆盖阅读位置，其他来源入口从顶部进入', async () => {
     const { page } = setup()
     await page.initialize('reading', false, { contentVersion: 2, sourceLocator: 'p1' })

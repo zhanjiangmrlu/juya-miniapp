@@ -1,7 +1,7 @@
 import type { AudioTarget } from '@/shared/contracts/learning'
 import type { ShortReadingKind } from '@/shared/enums/short-reading'
 
-/** 方案05的新增目标契约；实际BFF尚未提供短文端点，模块保持关闭 */
+/** 独立短文页面模型，由已提交BFF纯阅读契约显式适配 */
 export interface ShortReadingSummary {
   content_id: string
   content_type: typeof ShortReadingKind.CONTENT

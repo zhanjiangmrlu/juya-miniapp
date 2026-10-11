@@ -2,6 +2,7 @@ import { ref } from 'vue'
 
 import { createShortReadingProgressQueue } from '@/features/short-reading/short-reading-progress'
 import { toShortReadingSummary } from '@/features/short-reading/short-reading-service'
+import { ApiError } from '@/services/http/errors'
 import { createRequestId } from '@/services/http/request-id'
 import { SHORT_READING_DENIED_STATUSES } from '@/shared/constants/short-reading'
 import { ShortReadingPageStatus } from '@/shared/enums/short-reading'
@@ -38,6 +39,7 @@ export const createShortReadingController = (options: ShortReadingControllerOpti
   let generation = 0
   let suspended = false
   let completionKey: string | undefined
+  let completionVersion: number | undefined
 
   /** 清除局部展示状态，重新进入不沿用标签选色和全文译文 */
   const resetView = () => {
@@ -137,12 +139,18 @@ export const createShortReadingController = (options: ShortReadingControllerOpti
       detail.value = result
       summary.value = toShortReadingSummary(result)
       queue.seed(result.progress.client_sequence)
-      const saved = result.progress.position
+      const pending = queue.snapshot[0]
+      const retry =
+        pending?.contentVersion === result.content_version &&
+        pending.position.client_sequence > result.progress.client_sequence
+          ? pending.position
+          : undefined
+      const saved = retry ?? result.progress.position
       initialPosition.value =
         saved &&
-        result.progress.content_version === result.content_version &&
+        (retry || result.progress.content_version === result.content_version) &&
         result.paragraphs_en.some((item) => item.paragraph_id === saved.paragraph_id)
-          ? { ...saved }
+          ? { paragraph_id: saved.paragraph_id, offset: saved.offset }
           : undefined
       if (entry.contentVersion !== undefined || entry.sourceLocator !== undefined) {
         const exact =
@@ -218,6 +226,13 @@ export const createShortReadingController = (options: ShortReadingControllerOpti
         try {
           return await options.service.getSignedUrl(target)
         } catch (error) {
+          // 已提交BFF的RESOURCE_NOT_FOUND仅表示全文资源缺失，映射为可重试播放失败而不撤销正文
+          if (
+            (error as ApiError)?.status === 404 &&
+            (error as ApiError)?.code === 'RESOURCE_NOT_FOUND'
+          ) {
+            throw new ApiError('SHORT_READING_AUDIO_UNAVAILABLE', '全文音频暂不可用，请重试', 503)
+          }
           if (request === generation && isShortReadingDenied(error)) revoke()
           throw error
         }
@@ -232,6 +247,10 @@ export const createShortReadingController = (options: ShortReadingControllerOpti
     if (!current || suspended || completing.value) return false
     if (current.progress.completed_at) return true
     const request = generation
+    if (completionVersion !== current.content_version) {
+      completionKey = undefined
+      completionVersion = current.content_version
+    }
     completionKey ??= createRequestId()
     completing.value = true
     errorMessage.value = ''

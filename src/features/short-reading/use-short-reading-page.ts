@@ -1,6 +1,7 @@
 import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, onBeforeUnmount, watch } from 'vue'
 
+import { isSameAudioTarget } from '@/features/audio/audio-machine'
 import { createShortReadingController } from '@/features/short-reading/short-reading-controller'
 import { getRuntimeServices } from '@/services/runtime'
 import { AudioStatus } from '@/shared/enums/audio'
@@ -17,7 +18,8 @@ export const useShortReadingPage = (previewOnly = false) => {
   const session = useSessionStore()
   const page = createShortReadingController({ service: runtime.shortReading, audio })
   const audioStatus = computed(() =>
-    audio.snapshot.target?.target_id === page.detail.value?.whole_audio?.target_id
+    page.detail.value?.whole_audio &&
+    isSameAudioTarget(audio.snapshot.target, page.detail.value.whole_audio)
       ? audio.snapshot.status
       : AudioStatus.IDLE
   )

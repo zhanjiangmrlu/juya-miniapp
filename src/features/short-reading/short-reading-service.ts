@@ -68,6 +68,8 @@ export const createShortReadingService = (client: HttpClient): ShortReadingServi
     if (
       response.content_type !== ShortReadingKind.CONTENT ||
       response.content_id !== contentId ||
+      response.schema_version !== 2 ||
+      (response.progress !== null && response.progress?.content_id !== contentId) ||
       !Number.isInteger(response.content_version) ||
       response.content_version < 1 ||
       !response.paragraphs_en?.length ||
@@ -120,6 +122,7 @@ export const createShortReadingService = (client: HttpClient): ShortReadingServi
       !readingTarget.content_id ||
       !readingTarget.revision_id ||
       !readingTarget.resource_id ||
+      readingTarget.target_type !== ShortReadingKind.WHOLE_AUDIO ||
       target.scene_id
     ) {
       throw new ApiError('SHORT_READING_AUDIO_TARGET_INVALID', '短文音频暂不可用', 409)
@@ -127,6 +130,9 @@ export const createShortReadingService = (client: HttpClient): ShortReadingServi
     const result = await client.get<SignedResourceResponse>(
       `/api/v1/short-readings/${encodeURIComponent(readingTarget.content_id)}/resources/${encodeURIComponent(readingTarget.resource_id)}/signed-url?revision_id=${encodeURIComponent(readingTarget.revision_id)}`
     )
+    if (result.resource_id !== readingTarget.resource_id) {
+      throw new ApiError('SHORT_READING_AUDIO_RESOURCE_INVALID', '全文音频资源不一致，请重试', 503)
+    }
     return { ...result, target_id: target.target_id }
   }
 })

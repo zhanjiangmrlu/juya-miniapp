@@ -9,6 +9,8 @@ import { useShortReadingList } from '@/features/short-reading/use-short-reading-
 import { useShortReadingPage } from '@/features/short-reading/use-short-reading-page'
 import { decodePageQuery } from '@/shared/navigation/decode-page-query'
 
+import type { AudioSnapshot } from '@/shared/types/audio'
+
 const runtime = vi.hoisted(() => ({
   catalog: { getModules: vi.fn() },
   shortReading: {
@@ -23,7 +25,7 @@ const runtime = vi.hoisted(() => ({
 const audio = vi.hoisted(() => ({
   dispose: vi.fn(),
   play: vi.fn(),
-  snapshot: { target: null, status: 'IDLE' }
+  snapshot: { target: null, status: 'IDLE' } as AudioSnapshot
 }))
 const hooks = vi.hoisted(() => ({
   show: undefined as (() => void) | undefined,
@@ -60,7 +62,8 @@ const setup = (previewOnly = false) => {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks()
+  vi.resetAllMocks()
+  audio.snapshot = { target: null, status: 'IDLE' }
   session = reactive({
     cleanupGeneration: 0,
     isAuthenticated: true,
@@ -85,6 +88,62 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe('短文直接路由与账号边界', () => {
+  it('播放按钮不能沿用其他内容或其他资源版本的同ID播放状态', async () => {
+    const target = {
+      target_id: 'shared',
+      target_type: 'short_reading_whole',
+      version_id: 'a1',
+      revision_id: 'r2',
+      resource_id: 'shared',
+      content_id: 'reading',
+      content_type: 'short_reading',
+      content_version: 2,
+      context: { content_type: 'short_reading', content_id: 'reading', content_version: 2 }
+    }
+    const detail = await runtime.shortReading.open()
+    runtime.shortReading.open.mockResolvedValueOnce({ ...detail, whole_audio: target })
+    audio.snapshot = {
+      target: {
+        ...target,
+        context: { content_type: 'short_reading', content_id: 'other', content_version: 2 }
+      },
+      status: 'PLAYING'
+    }
+    const { wrapper, page } = setup()
+    await page.initialize('reading')
+    expect(page.audioStatus.value).toBe('IDLE')
+    wrapper.unmount()
+  })
+
+  it('分页网络失败保留已加载顺序与游标，重试原页追加而非从头重置', async () => {
+    runtime.shortReading.list
+      .mockResolvedValueOnce({
+        items: [{ content_id: 'first' }],
+        has_more: true,
+        next_cursor: 'server-cursor'
+      })
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({
+        items: [{ content_id: 'second' }],
+        has_more: false,
+        next_cursor: null
+      })
+    let list!: ReturnType<typeof useShortReadingList>
+    const wrapper = mount({
+      setup: () => {
+        list = useShortReadingList()
+        return () => null
+      }
+    })
+    await list.load()
+    await list.load(true)
+    expect(list.items.value.map((item) => item.content_id)).toEqual(['first'])
+    expect(list.nextCursor.value).toBe('server-cursor')
+    await list.load(true)
+    expect(list.items.value.map((item) => item.content_id)).toEqual(['first', 'second'])
+    expect(runtime.shortReading.list.mock.calls[2]).toEqual(['server-cursor'])
+    wrapper.unmount()
+  })
   it('收藏来源实际短文路由读取contentId及版本，UPDATED忽略旧阅读位置', async () => {
     const { wrapper, page } = setup()
     runtime.shortReading.open.mockResolvedValue({

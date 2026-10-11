@@ -12,7 +12,7 @@ import { usePageScrollLock } from '@/shared/use-page-scroll-lock'
 
 import type { ShortReadingSummary } from '@/shared/contracts/short-reading'
 
-const { items, load, loading, nextCursor, open, unavailable } = useShortReadingList()
+const { appendFailed, items, load, loading, nextCursor, open, unavailable } = useShortReadingList()
 const { pageStyle } = usePageScrollLock()
 useAnalyticsPage('sub-packages/short-reading/index')
 const readable: string[] = [
@@ -76,7 +76,7 @@ const loadMore = () => {
         />
         <button v-if="unavailable" class="list-button" @click="reload">重新加载</button>
         <button v-if="nextCursor && !loading" class="list-button" @click="loadMore">
-          加载更多
+          {{ appendFailed ? '加载失败，重试更多' : '加载更多' }}
         </button>
       </view>
     </scroll-view>

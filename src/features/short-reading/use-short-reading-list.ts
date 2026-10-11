@@ -1,6 +1,7 @@
 import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
 import { onBeforeUnmount, ref, watch } from 'vue'
 
+import { isShortReadingDenied } from '@/features/short-reading/short-reading-controller'
 import { getRuntimeServices } from '@/services/runtime'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ShortReadingAccess, ShortReadingKind } from '@/shared/enums/short-reading'
@@ -8,6 +9,7 @@ import { navigate } from '@/shared/navigation/navigate'
 import { useSessionStore } from '@/stores/session'
 
 import type { ShortReadingSummary } from '@/shared/contracts/short-reading'
+import type { HttpStatusCarrier } from '@/shared/types/http'
 
 /** 读取已开放模块的安全短文列表，后台顺序与分页游标均原样保留 */
 export const useShortReadingList = () => {
@@ -17,6 +19,7 @@ export const useShortReadingList = () => {
   const loading = ref(false)
   const unavailable = ref(false)
   const nextCursor = ref<string | null>()
+  const appendFailed = ref(false)
   let request = 0
 
   /** 页面离开时取消迟到列表并清空账号相关摘要 */
@@ -25,6 +28,7 @@ export const useShortReadingList = () => {
     items.value = []
     nextCursor.value = null
     loading.value = false
+    appendFailed.value = false
   }
   /** 每页读取前检查模块，append 表示使用服务端游标追加下一页 */
   const load = async (append = false) => {
@@ -33,6 +37,7 @@ export const useShortReadingList = () => {
     const cursor = append ? (nextCursor.value ?? undefined) : undefined
     loading.value = true
     unavailable.value = false
+    appendFailed.value = false
     if (!append) {
       items.value = []
       nextCursor.value = null
@@ -50,8 +55,12 @@ export const useShortReadingList = () => {
       if (current !== request) return
       items.value = append ? [...items.value, ...result.items] : result.items
       nextCursor.value = result.has_more ? result.next_cursor : null
-    } catch {
+    } catch (error) {
       if (current !== request) return
+      if (append && !isShortReadingDenied(error) && (error as HttpStatusCarrier)?.status !== 422) {
+        appendFailed.value = true
+        return
+      }
       items.value = []
       nextCursor.value = null
       unavailable.value = true
@@ -95,5 +104,5 @@ export const useShortReadingList = () => {
   onHide(clear)
   onUnload(clear)
   onBeforeUnmount(clear)
-  return { items, load, loading, nextCursor, open, unavailable }
+  return { appendFailed, items, load, loading, nextCursor, open, unavailable }
 }

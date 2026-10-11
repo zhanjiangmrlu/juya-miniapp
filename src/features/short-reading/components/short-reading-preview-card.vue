@@ -1,10 +1,19 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import previewLock from '@/features/short-reading/assets/preview-lock.svg'
+import { ShortReadingAccess } from '@/shared/enums/short-reading'
 
 import type { ShortReadingPreviewProps } from '@/shared/types/short-reading-components'
 
-defineProps<ShortReadingPreviewProps>()
+const props = defineProps<ShortReadingPreviewProps>()
 const emit = defineEmits<{ returnToList: [] }>()
+/** 仅用重新鉴权后的访问状态提示当前权限，安全预览不自动请求或显示全文 */
+const readable = computed(() =>
+  (
+    [ShortReadingAccess.TRIAL, ShortReadingAccess.FORMAL, ShortReadingAccess.LIMITED] as string[]
+  ).includes(props.summary.access)
+)
 </script>
 
 <template>
@@ -34,8 +43,12 @@ const emit = defineEmits<{ returnToList: [] }>()
         <text v-if="summary.progress_summary?.completed_at" class="preview-progress">已读完</text>
       </view>
       <view class="preview-notice"
-        ><text class="notice-title">当前账号暂未开通此内容</text
-        ><text>你仍可阅读已开放的短文。</text></view
+        ><text class="notice-title">{{
+          readable ? '此短文现已开放阅读' : '当前账号暂未开通此内容'
+        }}</text
+        ><text>{{
+          readable ? '返回短文列表即可打开完整正文。' : '你仍可阅读已开放的短文。'
+        }}</text></view
       >
       <button class="return-button" @click="emit('returnToList')">返回短文列表</button>
     </view>

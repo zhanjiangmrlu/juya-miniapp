@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 
 import ShortReadingPageView from '@/features/short-reading/components/short-reading-page-view.vue'
+import ShortReadingPreviewCard from '@/features/short-reading/components/short-reading-preview-card.vue'
 
 import type { ShortReadingDetail } from '@/shared/contracts/short-reading'
 
@@ -38,6 +39,37 @@ const reading: ShortReadingDetail = {
 }
 
 describe('短文纯阅读展示', () => {
+  it('安全预览重验已获得访问权时不再声称未开通，仍仅展示安全字段', () => {
+    const wrapper = mount(ShortReadingPreviewCard, {
+      global: { stubs: { 'scroll-view': { template: '<div><slot /></div>' } } },
+      props: { summary: { ...reading, access: 'TRIAL' } }
+    })
+    expect(wrapper.text()).toContain('此短文现已开放阅读')
+    expect(wrapper.text()).not.toContain('暂未开通')
+    expect(wrapper.text()).not.toContain('First complete paragraph.')
+    expect(wrapper.text()).not.toContain('完整中文译文')
+    wrapper.unmount()
+  })
+  it('渲染尚未结束就离页，不留下临时高亮定时器', async () => {
+    vi.useFakeTimers()
+    const timerSpy = vi.spyOn(globalThis, 'setTimeout')
+    const wrapper = mount(ShortReadingPageView, {
+      global: { stubs: { 'scroll-view': { template: '<div><slot /></div>' } } },
+      props: {
+        reading,
+        translationVisible: false,
+        categorySelected: false,
+        levelSelected: false,
+        completing: false,
+        sourceParagraphId: 'p2'
+      }
+    })
+    wrapper.unmount()
+    await nextTick()
+    expect(timerSpy.mock.calls.some(([, delay]) => delay === 2500)).toBe(false)
+    timerSpy.mockRestore()
+    vi.useRealTimers()
+  })
   it('精确来源只临时突出已确认段落，结束后恢复普通正文', async () => {
     vi.useFakeTimers()
     const wrapper = mount(ShortReadingPageView, {

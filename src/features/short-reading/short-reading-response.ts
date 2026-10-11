@@ -64,7 +64,12 @@ export const adaptShortReadingDetail = (value: ShortReadingWireDetail): ShortRea
         target_id: value.whole_audio.target_id,
         target_type: ShortReadingKind.WHOLE_AUDIO,
         version_id: value.whole_audio.resource_version,
-        duration_ms: value.whole_audio.duration_ms
+        duration_ms: value.whole_audio.duration_ms,
+        context: {
+          content_type: ShortReadingKind.CONTENT,
+          content_id: value.content_id,
+          content_version: value.content_version
+        }
       }
     : null,
   progress: adaptShortReadingProgress(value.progress, value.content_id, value.content_version)

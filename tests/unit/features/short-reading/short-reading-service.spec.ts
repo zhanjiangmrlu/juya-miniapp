@@ -33,6 +33,62 @@ const detailFixture = () => ({
 })
 
 describe('短文方案05契约', () => {
+  it('schema不兼容或进度属于其他短文时不接收混合详情', async () => {
+    const client = {
+      get: vi.fn(),
+      post: vi
+        .fn()
+        .mockResolvedValueOnce({ ...detailFixture(), schema_version: 3 })
+        .mockResolvedValueOnce({
+          ...detailFixture(),
+          progress: { ...detailFixture().progress, content_id: 'other' }
+        }),
+      put: vi.fn(),
+      delete: vi.fn(),
+      patch: vi.fn()
+    }
+    const service = createShortReadingService(client)
+    await expect(service.open('reading/1')).rejects.toMatchObject({ status: 409 })
+    await expect(service.open('reading/1')).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('全文资源绑定短文和修订签名，错配资源不能进入播放', async () => {
+    const client = {
+      get: vi.fn().mockResolvedValue({
+        resource_id: 'other-target',
+        url: 'https://audio.test/file',
+        expires_at: '2099-01-01T00:00:00Z'
+      }),
+      post: vi.fn(),
+      put: vi.fn(),
+      delete: vi.fn(),
+      patch: vi.fn()
+    }
+    const service = createShortReadingService(client)
+    const target = {
+      content_type: 'short_reading' as const,
+      content_id: 'reading/1',
+      content_version: 2,
+      revision_id: 'revision/2',
+      target_type: 'short_reading_whole',
+      target_id: 'whole/1',
+      resource_id: 'whole/1',
+      version_id: 'audio2'
+    }
+    await expect(service.getSignedUrl(target)).rejects.toMatchObject({ status: 503 })
+    expect(client.get).toHaveBeenCalledWith(
+      '/api/v1/short-readings/reading%2F1/resources/whole%2F1/signed-url?revision_id=revision%2F2'
+    )
+    client.get.mockResolvedValueOnce({
+      resource_id: 'whole/1',
+      url: 'https://audio.test/file',
+      expires_at: '2099-01-01T00:00:00Z'
+    })
+    expect(await service.getSignedUrl(target)).toMatchObject({
+      target_id: 'whole/1',
+      resource_id: 'whole/1'
+    })
+  })
   it('即便open错误地带全文，PREVIEW访问等级仍不能进入正文', async () => {
     const client = {
       get: vi.fn(),

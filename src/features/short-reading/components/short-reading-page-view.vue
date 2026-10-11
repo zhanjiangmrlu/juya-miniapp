@@ -116,6 +116,7 @@ watch(
     actualScrollTop = 0
     scrollTop.value = 0
     await nextTick()
+    if (disposed) return
     restorePosition(props.initialPosition)
     sourceHighlight.value = props.sourceParagraphId
     if (highlightTimer) globalThis.clearTimeout(highlightTimer)
