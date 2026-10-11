@@ -519,6 +519,36 @@ try {
         expect(box.x).toBeGreaterThanOrEqual(-1)
         expect(box.x + box.width).toBeLessThanOrEqual(width + 1)
       }
+      /** 主动滚动并等待末卡避开固定栏，last为末卡定位器，boundarySelector为实际遮挡栏 */
+      const scrollEndAbove = async (last, boundarySelector) => {
+        await last.scrollIntoViewIfNeeded()
+        let previous = ''
+        let stable = 0
+        await expect
+          .poll(
+            async () => {
+              const end = await last.boundingBox()
+              const boundary = await page.locator(boundarySelector).boundingBox()
+              if (!end || !boundary) return false
+              const position = JSON.stringify([end.y, end.height, boundary.y])
+              stable = position === previous ? stable + 1 : 0
+              previous = position
+              const overlap = end.y + end.height - boundary.y
+              if (overlap > 1) {
+                stable = 0
+                await page.mouse.move(
+                  page.viewportSize().width / 2,
+                  Math.max(1, Math.min(end.y + end.height / 2, boundary.y - 24))
+                )
+                await page.mouse.wheel(0, Math.ceil(overlap + 16))
+                return false
+              }
+              return stable >= 2
+            },
+            { timeout: 15000, intervals: [100, 250, 500] }
+          )
+          .toBe(true)
+      }
       for (const width of [375, 390, 414, 768, 1024]) {
         await page.setViewportSize({ width, height: 844 })
         for (const [name, id] of [
@@ -547,15 +577,24 @@ try {
             await expect(page.locator('.fixed-action')).toHaveCount(0)
           }
           const last = page.locator('.scene-word-card').last()
-          await last.scrollIntoViewIfNeeded()
+          const boundarySelector = hasDialogue ? '.fixed-action' : '.tab-bar'
+          await scrollEndAbove(last, boundarySelector)
           await expect(last).toBeVisible()
           await assertWidth('.scene-reading-view', width)
           const end = await last.boundingBox()
-          const boundary = await page
-            .locator(hasDialogue ? '.fixed-action' : '.tab-bar')
-            .boundingBox()
+          const boundary = await page.locator(boundarySelector).boundingBox()
           expect(boundary).not.toBeNull()
           expect(end.y + end.height).toBeLessThanOrEqual(boundary.y + 1)
+          if (hasDialogue) {
+            const navigation = await page.locator('.tab-bar').boundingBox()
+            const button = page.locator('.fixed-action > uni-button')
+            const buttonBox = await button.boundingBox()
+            expect(navigation).not.toBeNull()
+            expect(buttonBox).not.toBeNull()
+            expect(boundary.y + boundary.height).toBeLessThanOrEqual(navigation.y + 1)
+            expect(buttonBox.y + buttonBox.height).toBeLessThanOrEqual(navigation.y + 1)
+            await button.click({ trial: true })
+          }
           await screenshot(`${name}-${width}-end`)
           results.viewports.push({
             width,

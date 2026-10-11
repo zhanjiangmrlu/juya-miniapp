@@ -230,6 +230,8 @@ onUnload(cleanup)
   </ScenePageLayout>
 </template>
 <style scoped lang="scss">
+@use '@/styles/tokens.scss' as tokens;
+
 .scene-reading-page {
   width: 100%;
   max-width: 720px;
@@ -287,7 +289,9 @@ onUnload(cleanup)
 
 @media (width >= 700px) {
   .scene-reading-page .fixed-action {
-    bottom: calc(86px + env(safe-area-inset-bottom));
+    bottom: calc(
+      max(76px, tokens.home-size(76)) + env(safe-area-inset-bottom) + var(--safe-bottom-extra, 0px)
+    );
   }
 }
 </style>

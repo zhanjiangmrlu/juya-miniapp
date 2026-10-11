@@ -2,7 +2,7 @@
 
 - 分支：`feature/v1.5-20261011`；起始 HEAD：`e5f8e2b`，起始工作区干净
 - 需求：20261011 开发交付整合确认版；方案：00、01、05、06、07、08
-- 状态：REAL_HTTP_TEN_BUSINESS_STEPS_AND_FOURTEEN_VIEWPORTS_PASSED_TABLET_SELECTOR_READY_FOR_RERUN，前十项真实业务与14视口通过，平板短文脚本选择器已修复，待最终完整视口复跑
+- 状态：REAL_HTTP_TEN_BUSINESS_STEPS_PASSED_TABLET_CTA_AND_SCROLL_FIX_READY_FOR_RERUN，前十项真实业务通过，768px跟读按钮遮挡与末卡主动滚动已修复，待冻结后最终视口复跑
 - 最终消费契约：BFF `b38294b`，`tests/fixtures/contracts/v15-b38294b/openapi.json`／`provider.d.ts`；固定Git原始JSON SHA256 `6c6105d3b3d0e201b3824ecef796e38a595bc30e574b7b87aa3c04f049c4e780`
 - 范围：只修改 juya-miniapp；不切分支、不推送、不部署、不重启共享服务
 
@@ -148,3 +148,12 @@
 - 只修改scripts/run-v15-h5-e2e.mjs中响应式短文点击选择器：width<700使用.translation-toggle，其余.tablet-translation；与现有700px布局一致，不修改正确的CSS或产品逻辑。全文译文可见、完成按钮滚动、内容水平边界及导航遮挡断言全部保留
 - 独占Mock H5 15193实际768/1024复验：手机按钮隐藏，平板正常点击后完整译文可见且非空；内容无横溢，完成按钮bottom599px均小于平板导航top780px。截图tablet-translation-768/1024.png，属于本地按钮与布局证据，正式全流程仍待协调复跑
 - 本轮node --check、pnpm check及git diff --check通过；只有脚本和进度文档变更，不重复应用构建/全套测试/真实数据；独占15193已核对进程身份并停止
+
+## 平板跟读遮挡与末卡滚动修复
+
+- 正式运行 `8897f50957e643c1b790c58137266e0b`：管理12项PASS、mini前10项业务PASS，375/390/414四类共12视口PASS；768场景末卡bottom<=fixed-action.y失败，无HTTP/网络/运行错误。scrollIntoViewIfNeeded只检查视口，不认固定栏遮挡；业务恢复位置不由脚本覆盖
+- 另确认真实768px布局问题：导航top694.34px，原跟读按钮bottom746px、操作栏bottom758px，平板固定86px偏移低于实际按rpx缩放的149.66px导航。仅平板操作栏bottom改为与导航相同tokens.home-size(76)换算并保留76px下限、安全区与safe-bottom-extra；手机母版及所有业务/滚动恢复函数未改
+- 脚本新增scrollEndAbove：末卡进入视口后按实际cardBottom-boundaryTop加16px滚轮滚动，连续几何稳定后重新读取；没有空间或仍遮挡会超时失败。末卡bottom<=栏top+1及宽度原断言保留，没有扩大容差。新增整操作栏/按钮bottom<=导航top+1与真实按钮trial点击检查，不能把正文通过当作CTA可点击
+- 独占Mock H515193五宽度各从0/250/600滚动位置复验共15次，全部末卡在固定栏上方且无横溢，跟读按钮trial正常可点击；768修复后按钮bottom682.34px、导航top694.34px，375/390/414原尺寸不变，1024按钮bottom756px、导航top770.91px
+- 768实际复现旧方法误判：末卡bottom672px已在844px视口内，scrollIntoViewIfNeeded保持不动，边界622.34px，实际仍有74px可滚空间；提取当前脚本真实scrollEndAbove后末卡bottom606px，严格边界通过。截图scene-scroll-768/1024.png为本地证据，不替代协调最终真实全流程
+- 本轮受影响3文件21测试、node --check、pnpm check通过；H5/mp-weixin正式构建exit0，page-meta16页通过，git diff --check通过；独占15193已核对进程身份并停止，未重跑全套测试或写真实种子。等待协调最终真实门禁复跑
