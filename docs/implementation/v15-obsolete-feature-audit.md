@@ -119,7 +119,7 @@ handleLoad 的 GET 失败一律 `presentLearningResult(null)`，与初始化尚�
 
 ## 验收基线过时（交协调替换）
 
-`tests/visual/visual-cases.ts` 仍以旧2478/2479/2480节点和69状态为清单，M05/M09/M14/M16/M19/M21/M24/M27等改版状态仍指向旧节点；responsive-contract.spec.ts 固定69状态及平板768视口。这类结构测试通过不证明与最新 `2660:3` 的40手机状态一致。协调已生成根审计目录phone-design-matrix.json，phone-only且逐项区分CURRENT_H5_UI_CAPTURE和仅源码映射；后续应据它成组替换清单/数量/手机视口及对应证据。本轮不改视觉测试，不把40项映射等同40项视觉通过。
+`tests/visual/visual-cases.ts` 仍以旧2478/2479/2480节点和69状态为清单，M05/M09/M14/M16/M19/M21/M24/M27等改版状态仍指向旧节点；responsive-contract.spec.ts 固定69状态及平板768视口。这类结构测试通过不证明与最新 `2660:3` 的39手机画板一致。协调按XML严格筛选name以M开头、width390/height844的frame，校正为39个；初始40误计了遮罩layer，完整内容展示稿2765:1164为772×1480设计说明，也不计入手机viewport。协调已生成根审计目录phone-design-matrix.json，phone-only且逐项区分CURRENT_H5_UI_CAPTURE和仅源码映射；后续应据它成组替换清单/数量/手机视口及对应证据。本轮不改视觉测试，不把39项映射等同39项视觉通过。
 
 旧 route 到当前阅读页的兼容条目不是新Figma的额外功能；应区分“当前手机设计状态”和“旧入口兼容回归”。协调已修正页面截图使用独立顶层查询强制 onLoad，以及正确 rain-check 语块 ID；本轮未将旧页缓存/错误夹具当成新增业务缺陷。
 
