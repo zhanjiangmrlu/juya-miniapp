@@ -6,7 +6,7 @@ export class UniTransport implements HttpTransport {
   /** 将 uni.request 回调接口适配为请求层使用的 Promise 传输协议。 */
   request<T>(request: TransportRequest): Promise<TransportResponse<T>> {
     return new Promise((resolve, reject) => {
-      // 微信官方method清单不含PATCH，等待BFF提供实际可用的POST/PUT兼容端点
+      // 微信官方method清单不含PATCH，本人资料统一使用已发布POST端点
       if (
         request.method === HttpMethod.PATCH &&
         uni.getSystemInfoSync().uniPlatform === 'mp-weixin'

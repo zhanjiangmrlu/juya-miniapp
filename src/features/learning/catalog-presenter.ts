@@ -60,14 +60,15 @@ export const presentCatalog = (input: CatalogPresentationInput): CatalogSections
   )
   const hasEntitlement =
     input.catalog.user_stage === LearningCatalogStage.ENTITLED ||
-    entitled.length > 0 ||
-    visible.some(
-      (scene) =>
-        scene.access !== AccessLevel.OPEN &&
-        ((scene.progress ?? 0) > 0 ||
-          scene.status === LearningSceneStatus.IN_PROGRESS ||
-          hasCompleted(scene))
-    )
+    (input.catalog.user_stage === undefined &&
+      (entitled.length > 0 ||
+        visible.some(
+          (scene) =>
+            scene.access !== AccessLevel.OPEN &&
+            ((scene.progress ?? 0) > 0 ||
+              scene.status === LearningSceneStatus.IN_PROGRESS ||
+              hasCompleted(scene))
+        )))
   const accessibleIds = new Set([...open, ...entitled].map((scene) => scene.scene_id))
   const preview = visible.filter(
     (scene) => scene.access === AccessLevel.PREVIEW && !accessibleIds.has(scene.scene_id)

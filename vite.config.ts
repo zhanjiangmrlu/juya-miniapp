@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     server: {
-      proxy: createDevApiProxy(environment.VITE_API_BASE_URL)
+      proxy: createDevApiProxy(environment.VITE_API_BASE_URL, process.env.VITE_API_BASE_URL)
     }
   }
 })

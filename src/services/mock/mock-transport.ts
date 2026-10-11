@@ -46,7 +46,7 @@ export class MockTransport implements HttpTransport {
         resource_version: 'fixture-v1',
         url: '/static/fixtures/silence.wav'
       }
-    if (routeKey === 'PATCH /api/v1/me/profile') {
+    if (routeKey === 'POST /api/v1/me/profile' || routeKey === 'PATCH /api/v1/me/profile') {
       const body = request.body as { nickname: string | null; avatar_object_key: string | null }
       fixture = { ...MOCK_FIXTURES.user, ...body }
     }

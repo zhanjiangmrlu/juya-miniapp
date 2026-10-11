@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import { getAnalytics } from '@/services/analytics/runtime'
 import { getRuntimeServices } from '@/services/runtime'
@@ -19,11 +19,29 @@ export const useLearningPage = () => {
   const runtime = getRuntimeServices()
   const owner = Symbol('learning-page')
   const profileActionShown = ref(session.contactGuideShown)
+  /** 清理账号或学习数据时立即关闭旧提示，下一次展示重新读取会话资格 */
+  watch(
+    () => session.cleanupGeneration,
+    () => {
+      noticeVisible.value = false
+      profileActionShown.value = false
+    },
+    { flush: 'sync' }
+  )
+  /** 仅实际弹出且允许资料入口时消耗本会话一次展示机会 */
+  watch(
+    [noticeVisible, () => learning.sections.showProfileAction],
+    ([visible, allowed]) => {
+      if (!visible || !allowed) return
+      profileActionShown.value = session.contactGuideShown
+      if (!profileActionShown.value) session.contactGuideShown = true
+    },
+    { flush: 'sync' }
+  )
 
   /** 从服务端并行刷新模块入口和个性化目录 */
   const load = async () => {
     await learning.load(runtime.catalog, owner)
-    if (learning.sections.showProfileAction) session.contactGuideShown = true
   }
 
   /** 页面离开时取消本页目录请求，保留其他页面的刷新 */

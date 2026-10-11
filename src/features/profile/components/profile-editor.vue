@@ -45,6 +45,7 @@ const uploadAvatar = async (file: FeedbackScreenshotDraft) => {
   loading.value = true
   try {
     const credential = await getRuntimeServices().profile.getAvatarCredential(file.mimeType)
+    if (request !== generation) return
     if (file.size > credential.max_bytes) throw new Error('头像图片过大')
     await uploadWithUni(file, credential)
     if (request !== generation) return
@@ -80,7 +81,7 @@ const wechatAvatar = (event: unknown) => {
         void uploadAvatar({ path, size: info.size, mimeType: 'image/jpeg' })
     },
     fail: () => {
-      error.value = '无法读取头像，请重新选择'
+      if (request === generation) error.value = '无法读取头像，请重新选择'
     }
   })
 }
@@ -102,6 +103,7 @@ const save = async () => {
     if (request !== generation) return
     nickname.value = profile.nickname ?? ''
     avatarKey.value = profile.avatar_object_key ?? null
+    preview.value = profile.avatar_url ?? ''
     error.value = ''
     uni.showToast({ icon: 'success', title: '资料已保存' })
   } catch {
@@ -114,6 +116,9 @@ const save = async () => {
 const cleanup = () => {
   generation++
   preview.value = ''
+  nickname.value = ''
+  avatarKey.value = null
+  error.value = ''
   ready.value = false
   loading.value = false
 }

@@ -4,7 +4,7 @@ import { createProfileService } from '@/features/profile/profile-service'
 import { createHttpClient } from '@/services/http/client'
 
 describe('本人昵称头像写入', () => {
-  it('通过认证PATCH保存昵称且保留本人头像对象键', async () => {
+  it('通过已发布微信兼容POST保存昵称且保留本人头像对象键', async () => {
     const request = vi.fn().mockResolvedValue({
       status: 200,
       headers: {},
@@ -26,7 +26,7 @@ describe('本人昵称头像写入', () => {
       avatar_object_key: 'avatar/u1/p.png'
     })
     expect(request.mock.calls[0][0]).toMatchObject({
-      method: 'PATCH',
+      method: 'POST',
       url: 'https://example.test/api/v1/me/profile',
       body: { nickname: '小芽', avatar_object_key: 'avatar/u1/p.png' }
     })

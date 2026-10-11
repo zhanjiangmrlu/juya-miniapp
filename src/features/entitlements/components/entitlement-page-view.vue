@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
@@ -30,6 +30,7 @@ import { ProfileRowSize } from '@/shared/enums/profile'
 import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 import { createServerClock } from '@/shared/utils/server-clock'
+import { useSessionStore } from '@/stores/session'
 
 import type { SceneSummary } from '@/shared/contracts/learning'
 import type {
@@ -284,7 +285,11 @@ const show = async () => {
 const hide = () => {
   visible = false
   generation++
+  view.value = { authorizationPending: true, formal: [], limited: [] }
+  catalog.value = []
+  error.value = ''
 }
+watch(() => useSessionStore().cleanupGeneration, hide, { flush: 'sync' })
 onShow(show)
 onHide(hide)
 onUnload(hide)

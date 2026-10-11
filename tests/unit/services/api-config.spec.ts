@@ -3,6 +3,11 @@ import { describe, expect, it } from 'vitest'
 import { createDevApiProxy, resolveApiBaseUrl } from '@/services/api-config'
 
 describe('用户端开发 API 配置', () => {
+  it('专用H5联调进程覆盖本地8001配置且保留/api/v1前缀', () => {
+    expect(createDevApiProxy('http://127.0.0.1:8001', 'http://127.0.0.1:18011')).toEqual({
+      '/api/v1': { changeOrigin: true, target: 'http://127.0.0.1:18011' }
+    })
+  })
   it('默认连接小程序 API 的 8001 端口，不连接管理端 8000', () => {
     expect(resolveApiBaseUrl(undefined)).toBe('http://127.0.0.1:8001')
     expect(createDevApiProxy(undefined)['/api/v1'].target).toBe('http://127.0.0.1:8001')

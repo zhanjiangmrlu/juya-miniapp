@@ -1,7 +1,7 @@
 import type { StablePosition } from './common'
 import type { SceneSnapshot } from './scene-snapshot'
 import type { AccessLevel } from '@/shared/enums/entitlements'
-import type { SceneEntryType } from '@/shared/enums/learning'
+import type { LearningCatalogStage, SceneEntryType } from '@/shared/enums/learning'
 
 export interface LearningModule {
   enabled: boolean
@@ -29,7 +29,7 @@ export interface SceneSummary {
 }
 export interface LearningCatalogResponse {
   config_version?: number | string
-  user_stage?: string
+  user_stage?: LearningCatalogStage | null
   authorization_pending: boolean
   items: SceneSummary[]
   profile_completion_enabled?: boolean

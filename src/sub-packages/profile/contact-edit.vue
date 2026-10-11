@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onHide, onUnload } from '@dcloudio/uni-app'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import ContactForm from '@/features/contact-profile/components/contact-form.vue'
@@ -12,12 +12,21 @@ import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
+import { useSessionStore } from '@/stores/session'
 const form = ref<InstanceType<typeof ContactForm>>()
 const loading = ref(false)
 const error = ref('')
 let generation = 0
-onHide(() => generation++)
-onUnload(() => generation++)
+/** 离页或账号清理时删除本机微信号草稿并使迟到保存失效 */
+const cleanup = () => {
+  generation++
+  form.value?.reset?.()
+  loading.value = false
+  error.value = ''
+}
+onHide(cleanup)
+onUnload(cleanup)
+watch(() => useSessionStore().cleanupGeneration, cleanup, { flush: 'sync' })
 /** 保存经用户同意的微信号，wechatId 为表单规范化后的本人微信号 */
 const save = async (wechatId: string) => {
   const token = getAnalytics().capture()
@@ -26,20 +35,20 @@ const save = async (wechatId: string) => {
   loading.value = true
   try {
     await getRuntimeServices().contact.save(wechatId)
-    if (request === generation)
-      getAnalytics().track(
-        AnalyticsEvent.CONTACT_SAVE_SUCCESS,
-        { entry_source: 'contact_fill' },
-        { token }
-      )
+    if (request !== generation) return
+    getAnalytics().track(
+      AnalyticsEvent.CONTACT_SAVE_SUCCESS,
+      { entry_source: 'contact_fill' },
+      { token }
+    )
     await navigate({
       type: NavigationType.REDIRECT_TO,
       url: '/sub-packages/profile/contact-manage'
     })
   } catch {
-    error.value = '保存失败，请重试'
+    if (request === generation) error.value = '保存失败，请重试'
   } finally {
-    loading.value = false
+    if (request === generation) loading.value = false
   }
 }
 /** 暂不填写并返回档案 */

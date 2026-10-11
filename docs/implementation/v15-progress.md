@@ -72,3 +72,22 @@
 - 仍待最终JSON/TS：头像URL、微信兼容资料保存方法、录音审核开关、权威阶段、RUNNING/RECOVER公共映射、短文运营顺序及完成重放前重新鉴权；这些条件未满足前不标记READY
 - 本轮最终门禁（13:40—13:42）：`pnpm check` exit0；`pnpm test` 121文件577例通过；H5／mp-weixin构建exit0，page-meta16页通过；微信主包601122 bytes、总包717617 bytes，最大业务包scene24851 bytes
 - 审查两项Important（探测误报与跨账号重放）均已修复，独立只读复审Critical0／Important0；运行时刷新、登录启动、等待身份及迟到401均有内存复现实证，探测8例为内存fixture，不是后端HTTP
+
+## 剩余项全量收口（新授权，进行中）
+
+- 当前前端基线 `50e453a`；上游消费改为已提交BFF `19f28ef`／`6c86134`，已保存独立 `v15-19f28ef` OpenAPI/TS，不覆盖3f历史；新固定JSON为62路径、71操作、61schema，SHA256 `f498f24dfc926519aae5fd424ffcba0755ccae590044b0bbadd996ebf7b07ee5`
+- 已接POST本人资料，沿用受控avatar_url，不猜对象URL；权威阶段NEW/ENTITLED/null优先于客户端旧进度，null为等待鉴权；具体代码门禁完成后回填
+- 并行责任继续限定：音频/录音、收藏/复习、短文及随后反馈/账号；主执行者负责本人资料/联系管理/学习分区/真实浏览器脚本/最终门禁
+- 真实无Mock页面脚本：`scripts/run-v15-h5-e2e.mjs`；使用相邻juya-admin已安装Playwright，只操作实际页面与监听真实HTTP，不用page.route，不替换BFF鉴权
+- 协调可统一启动专用H5：仓库本机进程 `VITE_API_BASE_URL=http://127.0.0.1:18011`、`VITE_USE_MOCK_API=false`、`VITE_LOCAL_DEV_MODE=false`，运行 `pnpm exec uni -p h5 --port 15189 --host 127.0.0.1`；不写.env、不重启共享进程
+- 脚本进程环境：`JUYA_QA_BASE_URL`、`JUYA_QA_H5_URL=http://127.0.0.1:15189`、`JUYA_QA_ACCESS_TOKEN`、`JUYA_QA_REFRESH_TOKEN`、`JUYA_QA_ENTITIES` JSON（scene_id；完整验收还需word_card_id、short_reading_id；允许附带user_id/series_id/revision_id）、`JUYA_QA_OUTPUT_DIR`；运行 `node scripts/run-v15-h5-e2e.mjs`
+- 凭据仅进入新浏览器临时存储，不保存storageState/HAR；截图遮挡本人编号/微信号/昵称/头像/输入框，HTTP只记录method/path/status/request_id/字段名。缺实体明确NOT_RUN并非零退出，不以局部通过标全部完成
+- 上游新增审计项：固定6c86134 ReadingPreview未产progress_summary，列表/到期安全阅读进度摘要缺权威输入；现有cover_url虽声明，但authority未装配安全封面解析。前端不补造这两项，待协调BFF补齐后继续消费
+- 录音权威开关和短文运营顺序继续等待本轮正式提交；实际私有环境由协调负责，当前脚本准备状态不代表真实HTTP已验收
+- 剩余需求逐项审计见 `docs/implementation/v15-gap-audit.md`；旧资料POST/头像/阶段/准备映射/短文重放请求已由19f28ef/6c86134交付，不再列为未开发；短文摘要/安全封面及最终录音/排序契约继续单列代码依赖
+- 本轮范围提交：短文 `86b537f`（39项），收藏 `3dc4d60`（77项），音频 `a342df3`（112项），反馈/账号 `cd994bd`（65项）；范围结果不能替代最终全仓门禁
+- 主执行者已补资料/联系/权益离页及账号清理保护、真实POST消费者、头像回读、资料入口曝光和退出提示清理；新增学习退出提示测试已观察RED→GREEN
+- 真实脚本已阻断所有API非2xx和requestfailed，无默认容错例外；权威stage=null及短文已完成不能误报通过。脚本语法/ESLint与4项19f消费者检查通过，真实HTTP仍未运行
+- 本轮门禁（14:17—14:20）：129文件659测试通过；修正单个测试import排序后 `pnpm check` exit0；H5和mp-weixin正式构建exit0，page-meta16页通过。缺BASE的真实脚本预检非零退出、0请求、0网络失败；这不是服务联调通过
+- 脚本复核修正：关闭浏览器后再次汇总迟到网络失败并判失败；录音关闭场景实际选第二句、原音取址200并核对切片resource_id；本人资料联系提示通过真实“稍后再说”处理
+- 反馈草稿离开表单后的跨账号清理正在补全局store保护；此项复核结束及最终BFF契约消费前不标READY

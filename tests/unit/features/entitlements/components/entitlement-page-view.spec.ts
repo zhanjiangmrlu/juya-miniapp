@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import EntitlementPageView from '@/features/entitlements/components/entitlement-page-view.vue'
+import { useSessionStore } from '@/stores/session'
 
 import type { EntitlementsResponse, LimitedEntitlement } from '@/shared/contracts/entitlements'
 
@@ -69,6 +71,7 @@ const render = async (state: 'ALL' | 'PENDING' | 'ACTIVE' | 'ENDING' | 'ENDED' |
   return wrapper
 }
 beforeEach(() => {
+  setActivePinia(createPinia())
   vi.clearAllMocks()
   dependencies.catalog.mockResolvedValue({
     authorization_pending: false,
@@ -89,6 +92,14 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks())
 
 describe('权益页面状态映射与导航', () => {
+  it('账号清理立即移除上一账号权益与场景，不留明细缓存', async () => {
+    const wrapper = await render('ALL')
+    expect(wrapper.text()).toContain('限时活动')
+    useSessionStore().invalidateLearningData()
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('限时活动')
+    wrapper.unmount()
+  })
   it.each([
     ['ACTIVE', '2026-10-12T08:00:00Z', '结束时间', '按服务端时间计算，进度和收藏会保留'],
     ['ENDING', '2026-10-09T20:00:00Z', '学习权益将于', '收藏和学习进度会继续保留。']

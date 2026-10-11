@@ -11,12 +11,12 @@ export function resolveApiBaseUrl(
   return configured || DEFAULT_API_BASE_URL
 }
 
-/** 保留用户端路由前缀，由 Vite 转发到实际的小程序 API 服务。 */
-export function createDevApiProxy(configured: string | undefined) {
+/** 建立同源代理，configured为环境文件地址，processOverride为本次联调进程优先配置 */
+export const createDevApiProxy = (configured: string | undefined, processOverride?: string) => {
   return {
     '/api/v1': {
       changeOrigin: true,
-      target: configured || DEFAULT_API_BASE_URL
+      target: processOverride ?? (configured || DEFAULT_API_BASE_URL)
     }
   }
 }

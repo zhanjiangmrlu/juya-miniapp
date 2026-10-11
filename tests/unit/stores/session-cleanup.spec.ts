@@ -43,6 +43,7 @@ describe('会话失效清理受限资料', () => {
     expect(favorites.items).toEqual([])
     expect(scene.model).toBeUndefined()
     expect(uni.removeStorageSync).toHaveBeenCalledWith('juya.progress-queue')
+    expect(uni.removeStorageSync).toHaveBeenCalledWith('juya.deletion-state')
     expect(uni.removeStorageSync).toHaveBeenCalledWith('juya.scene-position.private')
     expect(uni.removeStorageSync).not.toHaveBeenCalledWith('unrelated')
   })

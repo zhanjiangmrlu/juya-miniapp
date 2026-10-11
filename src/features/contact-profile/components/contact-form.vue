@@ -34,7 +34,13 @@ const submit = () => {
   error.value = ''
   emit('submit', result.normalizedWechatId)
 }
-defineExpose({ submit })
+/** 清除本机微信号草稿和用途勾选，离页或账号变化时不保留明文 */
+const reset = () => {
+  wechatId.value = ''
+  consentConfirmed.value = false
+  error.value = ''
+}
+defineExpose({ submit, reset })
 </script>
 <template>
   <view class="contact-form">
@@ -58,6 +64,7 @@ defineExpose({ submit })
           value="confirmed"
           color="#4e7f3b"
           :disabled="disabled"
+          :checked="consentConfirmed"
         /><text>{{
           management ? '我同意按说明使用本次提交的微信号' : '我已阅读并同意上述用途说明'
         }}</text></label

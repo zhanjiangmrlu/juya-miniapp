@@ -3,6 +3,28 @@ import { describe, expect, it } from 'vitest'
 import { presentCatalog } from '@/features/learning/catalog-presenter'
 
 describe('V1.5学习模块和阶段', () => {
+  it.each(['NEW', null] as const)('权威阶段%s不被客户端旧进度提升为ENTITLED', (user_stage) => {
+    const result = presentCatalog({
+      modules: [],
+      catalog: {
+        user_stage,
+        authorization_pending: user_stage === null,
+        items: [
+          {
+            scene_id: 'old',
+            access: 'PREVIEW',
+            progress: 100,
+            chinese_title: '旧',
+            title: 'Old',
+            series: '',
+            tags: []
+          }
+        ]
+      }
+    })
+    expect(result.stage).toBe('NEW')
+    expect(result.authorizationPending).toBe(user_stage === null)
+  })
   it('保持服务端模块顺序及名称，不限制场景白名单', () => {
     const modules = ['short_reading', 'scene_learning', 'grammar', 'long_sentence'].map((key) => ({
       key,

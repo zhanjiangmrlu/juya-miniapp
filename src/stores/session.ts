@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 
 import { clearProgressQueues } from '@/features/learning-progress/progress-queue'
 import { disposeLocalRecordings } from '@/features/recording/recording-controller'
-import { LEARNING_STORAGE_KEYS } from '@/shared/constants/account'
+import { DELETION_STATE_KEY, LEARNING_STORAGE_KEYS } from '@/shared/constants/account'
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/shared/constants/session'
 
 import type { UserProfile } from '@/shared/contracts/profile'
@@ -46,6 +46,7 @@ export const useSessionStore = defineStore('session', () => {
     profile.value = undefined
     uni.removeStorageSync(ACCESS_TOKEN_KEY)
     uni.removeStorageSync(REFRESH_TOKEN_KEY)
+    uni.removeStorageSync(DELETION_STATE_KEY)
     for (const key of LEARNING_STORAGE_KEYS) uni.removeStorageSync(key)
     for (const key of uni.getStorageInfoSync?.().keys ?? []) {
       if (key.startsWith('juya.scene-position.')) uni.removeStorageSync(key)

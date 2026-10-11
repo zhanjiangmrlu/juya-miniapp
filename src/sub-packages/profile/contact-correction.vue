@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
-import { ref } from 'vue'
+import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
+import { ref, watch } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import { validateContactForm } from '@/features/contact-profile/contact-form'
@@ -13,6 +13,7 @@ import { ContactCorrectionField } from '@/shared/enums/contact-profile'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
+import { useSessionStore } from '@/stores/session'
 
 import type { InputValueEvent } from '@/shared/types/ui'
 const current = ref('')
@@ -20,12 +21,27 @@ const wechatId = ref('')
 const reason = ref('')
 const error = ref('')
 const loading = ref(false)
+let generation = 0
+/** 清除本人原微信号和更正草稿，阻止旧页更新或跳转 */
+const cleanup = () => {
+  generation++
+  current.value = ''
+  wechatId.value = ''
+  reason.value = ''
+  error.value = ''
+  loading.value = false
+}
+onHide(cleanup)
+onUnload(cleanup)
+watch(() => useSessionStore().cleanupGeneration, cleanup, { flush: 'sync' })
 /** 读取本人当前微信号用于更正对照 */
 const load = async () => {
+  const request = ++generation
   try {
-    current.value = (await getRuntimeServices().contact.get())?.wechat_id || ''
+    const contact = await getRuntimeServices().contact.get()
+    if (request === generation) current.value = contact?.wechat_id || ''
   } catch {
-    error.value = '联系资料读取失败，请重试'
+    if (request === generation) error.value = '联系资料读取失败，请重试'
   }
 }
 /** 更新更正表单，event 为输入事件，field 为需更新的微信号或原因 */
@@ -51,16 +67,18 @@ const submit = async () => {
     return
   }
   loading.value = true
+  const request = generation
   try {
     await getRuntimeServices().contact.correct(cause.normalizedReason)
+    if (request !== generation) return
     await navigate({
       type: NavigationType.REDIRECT_TO,
       url: '/sub-packages/profile/contact-manage'
     })
   } catch {
-    error.value = '更正申请提交失败，请重试'
+    if (request === generation) error.value = '更正申请提交失败，请重试'
   } finally {
-    loading.value = false
+    if (request === generation) loading.value = false
   }
 }
 /** 返回联系资料管理页 */

@@ -11,8 +11,16 @@ import { TabKey } from '@/shared/enums/navigation'
 
 import type { ExplorePageViewProps } from '@/shared/types/learning-components'
 const props = withDefaults(defineProps<ExplorePageViewProps>(), { initialNotice: false })
-const { cancel, closeNotice, learning, load, noticeVisible, openProfile, selectScene } =
-  useLearningPage()
+const {
+  cancel,
+  closeNotice,
+  learning,
+  load,
+  noticeVisible,
+  openProfile,
+  selectScene,
+  profileActionShown
+} = useLearningPage()
 noticeVisible.value = props.initialNotice
 /** 进入探索页时刷新安全封面与简介目录 */
 const handleShow = () => {
@@ -42,7 +50,7 @@ onUnload(cancel)
     >
     <AccessNotice
       v-if="noticeVisible"
-      :show-profile-action="learning.sections.showProfileAction"
+      :show-profile-action="learning.sections.showProfileAction && !profileActionShown"
       @close="closeNotice"
       @profile="openProfile"
     />

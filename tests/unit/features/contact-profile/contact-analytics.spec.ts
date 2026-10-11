@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import ContactEdit from '@/sub-packages/profile/contact-edit.vue'
@@ -51,6 +52,7 @@ const options = {
   }
 }
 beforeEach(() => {
+  setActivePinia(createPinia())
   vi.clearAllMocks()
   vi.stubGlobal('uni', { showToast: vi.fn() })
   dependencies.save.mockResolvedValue({

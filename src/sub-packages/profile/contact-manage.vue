@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import ContactForm from '@/features/contact-profile/components/contact-form.vue'
@@ -15,19 +15,33 @@ import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
+import { useSessionStore } from '@/stores/session'
 const contact = ref(presentContact(null))
 const form = ref<InstanceType<typeof ContactForm>>()
 const loading = ref(false)
 const error = ref('')
 let generation = 0
-onHide(() => generation++)
-onUnload(() => generation++)
+/** 离页或清理账号时清除本人明文、草稿并失效在途请求 */
+const cleanup = () => {
+  generation++
+  contact.value = presentContact(null)
+  form.value?.reset?.()
+  loading.value = false
+  error.value = ''
+}
+onHide(cleanup)
+onUnload(cleanup)
+watch(() => useSessionStore().cleanupGeneration, cleanup, { flush: 'sync' })
 /** 读取本人当前微信号与服务端受控修改能力 */
 const load = async () => {
+  const request = ++generation
   try {
-    contact.value = presentContact(await getRuntimeServices().contact.get())
+    const result = await getRuntimeServices().contact.get()
+    if (request !== generation) return
+    contact.value = presentContact(result)
+    error.value = ''
   } catch {
-    error.value = '联系资料读取失败，请重试'
+    if (request === generation) error.value = '联系资料读取失败，请重试'
   }
 }
 /** 复制本人完整微信号 */
@@ -44,31 +58,36 @@ const save = async (value: string) => {
   if (loading.value || !contact.value.canSelfEdit) return
   loading.value = true
   try {
-    contact.value = presentContact(await getRuntimeServices().contact.save(value))
-    if (request === generation)
-      getAnalytics().track(
-        AnalyticsEvent.CONTACT_SAVE_SUCCESS,
-        { entry_source: 'contact_update' },
-        { token }
-      )
+    const result = await getRuntimeServices().contact.save(value)
+    if (request !== generation) return
+    contact.value = presentContact(result)
+    getAnalytics().track(
+      AnalyticsEvent.CONTACT_SAVE_SUCCESS,
+      { entry_source: 'contact_update' },
+      { token }
+    )
     uni.showToast({ icon: 'success', title: '已保存' })
   } catch {
-    error.value = '无法修改，请重试或申请更正'
+    if (request === generation) error.value = '无法修改，请重试或申请更正'
   } finally {
-    loading.value = false
+    if (request === generation) loading.value = false
   }
 }
 /** 撤回本人联系资料并回到档案页 */
 const remove = async () => {
   if (loading.value) return
+  const request = generation
   loading.value = true
   try {
     await getRuntimeServices().contact.remove()
+    if (request !== generation) return
+    contact.value = presentContact(null)
+    form.value?.reset?.()
     await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/profile/index' })
   } catch {
-    error.value = '撤回失败，请重试'
+    if (request === generation) error.value = '撤回失败，请重试'
   } finally {
-    loading.value = false
+    if (request === generation) loading.value = false
   }
 }
 onShow(load)
