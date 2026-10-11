@@ -2,6 +2,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 
 import ReviewPageView from '@/features/favorites/components/review-page-view.vue'
 import { useFavoriteStore } from '@/stores/favorites'
@@ -14,8 +15,10 @@ const dependencies = vi.hoisted(() => ({
   create: vi.fn(),
   complete: vi.fn(),
   track: vi.fn(),
-  navigate: vi.fn()
+  navigate: vi.fn(),
+  session: { cleanupGeneration: 0 }
 }))
+vi.mock('@/stores/session', () => ({ useSessionStore: () => dependencies.session }))
 vi.mock('@dcloudio/uni-app', () => ({
   onLoad: (hook: typeof dependencies.load) => {
     dependencies.load = hook
@@ -40,6 +43,7 @@ vi.mock('@/shared/navigation/navigate', () => ({ navigate: dependencies.navigate
 beforeEach(() => {
   vi.clearAllMocks()
   setActivePinia(createPinia())
+  dependencies.session = reactive({ cleanupGeneration: 0 })
   dependencies.get.mockResolvedValue({
     id: 'card',
     entry_type: 'VOCABULARY',
@@ -65,6 +69,37 @@ const render = () =>
     }
   })
 describe('复习开始与完成统计', () => {
+  it.each(['get', 'create'] as const)('清空后迟到%s不能恢复词卡或复习会话', async (operation) => {
+    let finish!: (value: unknown) => void
+    dependencies[operation].mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    )
+    const wrapper = render()
+    const loading = dependencies.load?.({ cardIds: 'card' })
+    await flushPromises()
+    dependencies.session.cleanupGeneration++
+    useFavoriteStore().clear()
+    finish(
+      operation === 'get'
+        ? {
+            id: 'card',
+            entry_type: 'VOCABULARY',
+            english: 'coffee',
+            sources: []
+          }
+        : { id: 'late-session', card_count: 1 }
+    )
+    await loading
+    await flushPromises()
+    expect(useFavoriteStore().items).toEqual([])
+    expect(useFavoriteStore().tabState.VOCABULARY.review).toBeUndefined()
+    expect(wrapper.findComponent({ name: 'ReviewCard' }).exists()).toBe(false)
+    expect(dependencies.track).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
   it('完整快照已预取后切换正背面不再次请求任何卡片资料', async () => {
     const store = useFavoriteStore()
     store.items = [

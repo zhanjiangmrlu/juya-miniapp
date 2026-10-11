@@ -329,6 +329,18 @@ describe('当前版本来源解析', () => {
     )
     expect(result.message).toBe('')
   })
+  it('短文使用实际contentId入口并仅传当前版本的段落定位', () => {
+    const result = presentSourceResolution({
+      ...base,
+      content_type: 'short_reading',
+      content_id: 'reading/one',
+      status: 'EXACT',
+      locator: { paragraph_id: 'paragraph-2', sentence_id: null }
+    })
+    expect(result.route).toBe(
+      '/sub-packages/short-reading/detail?contentId=reading%2Fone&sourceLocator=paragraph-2&contentVersion=3'
+    )
+  })
   it('真实SourceLocator对象只提取当前句ID，不把对象序列化为无效位置', () => {
     const result = presentSourceResolution({
       ...base,

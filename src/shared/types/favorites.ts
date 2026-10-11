@@ -38,12 +38,18 @@ export interface FavoriteTargetState {
 }
 
 export interface HistoryItem {
+  source_type?: string
   completed_at: string | null
   last_learned_at: string
   scene_id: string
   scene_title?: string
   progress?: number
   favorite_count?: number
+}
+
+export interface HistoryPresentationOptions {
+  openOnly?: boolean
+  authorizationPending?: boolean
 }
 
 export interface HistoryRow {

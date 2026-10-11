@@ -2,7 +2,9 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 
+import { useFavoriteStore } from '@/stores/favorites'
 import FavoriteDetail from '@/sub-packages/favorites/detail.vue'
 import FavoriteSources from '@/sub-packages/favorites/sources.vue'
 
@@ -16,8 +18,10 @@ const dependencies = vi.hoisted(() => ({
   unload: [] as (() => unknown)[],
   get: vi.fn(),
   resolve: vi.fn(),
-  navigate: vi.fn()
+  navigate: vi.fn(),
+  session: { cleanupGeneration: 0 }
 }))
+vi.mock('@/stores/session', () => ({ useSessionStore: () => dependencies.session }))
 vi.mock('@dcloudio/uni-app', () => ({
   onLoad: (callback: typeof dependencies.load) => {
     dependencies.load = callback
@@ -77,6 +81,7 @@ beforeEach(() => {
   dependencies.show = undefined
   dependencies.hide = []
   dependencies.unload = []
+  dependencies.session = reactive({ cleanupGeneration: 0 })
   vi.stubGlobal('uni', { showToast: vi.fn() })
 })
 afterEach(() => vi.unstubAllGlobals())
@@ -84,6 +89,26 @@ describe.each([
   { name: '详情', component: FavoriteDetail },
   { name: '来源', component: FavoriteSources }
 ])('收藏$name页最新权限', ({ component }) => {
+  it('清空期间迟到详情不能恢复页面或重新灌入收藏store', async () => {
+    let finish!: (item: FavoriteItem) => void
+    dependencies.get.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    )
+    const wrapper = mount(component, options)
+    await dependencies.load?.({ id: 'one' })
+    const showing = dependencies.show?.()
+    dependencies.session.cleanupGeneration++
+    useFavoriteStore().clear()
+    finish(favorite(true))
+    await showing
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('Could I get a latte?')
+    expect(useFavoriteStore().items).toEqual([])
+    wrapper.unmount()
+  })
   it('返回页面后重新读取权限，刷新失败也不能沿用旧正文入口', async () => {
     dependencies.get.mockResolvedValue(favorite(true))
     const wrapper = mount(component, options)

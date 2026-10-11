@@ -17,11 +17,13 @@ import { ProfileTabKey } from '@/shared/enums/profile'
 import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 import { useFavoriteStore } from '@/stores/favorites'
+import { useSessionStore } from '@/stores/session'
 
 import type { FavoriteItem, ReviewSession } from '@/shared/contracts/favorites'
 import type { ReviewPageViewProps } from '@/shared/types/favorites-components'
 const props = defineProps<ReviewPageViewProps>()
 const favorites = useFavoriteStore()
+const session = useSessionStore()
 const bank = ref<FavoriteType>(FavoriteType.VOCABULARY)
 const cardIds = ref<string[]>([])
 const index = ref(0)
@@ -34,6 +36,21 @@ let apiSession: ReviewSession | undefined
 let generation = 0
 let suspended = false
 let lastQuery: Record<string, string> | undefined
+/** 账号或学习数据清理时失效请求并移除当前卡片和会话 */
+watch(
+  () => session.cleanupGeneration,
+  () => {
+    generation++
+    suspended = true
+    item.value = undefined
+    cardIds.value = []
+    apiSession = undefined
+    busy.value = false
+    error.value = ''
+    lastQuery = undefined
+  },
+  { flush: 'sync' }
+)
 const nextLabel = computed(() => (index.value < cardIds.value.length - 1 ? '下一个' : '完成复习'))
 /** 同步取消后的有效队列，review 为当前银行保存的复习进度 */
 watch(
@@ -109,8 +126,9 @@ const load = async (query?: Record<string, string>) => {
       if (loaded.active === false) throw new Error('收藏已取消')
       favorites.remember(loaded)
       const created = !apiSession
-      apiSession ??= await service.createReview(cardIds.value, createKey)
+      const createdSession = apiSession ?? (await service.createReview(cardIds.value, createKey))
       if (request !== generation || suspended) return
+      apiSession = createdSession
       favorites.updateTabState(bank.value, {
         review: { ...favorites.tabState[bank.value].review!, session: apiSession }
       })
@@ -159,8 +177,9 @@ const next = async () => {
     const completionKey = review.completionKey || createRequestId()
     controller = createReviewSession(cardIds.value, { idFactory: () => completionKey })
     favorites.updateTabState(bank.value, { review: { ...review, createKey, completionKey } })
-    apiSession ??= await service.createReview(cardIds.value, createKey)
+    const createdSession = apiSession ?? (await service.createReview(cardIds.value, createKey))
     if (request !== generation || suspended) return
+    apiSession = createdSession
     favorites.updateTabState(bank.value, {
       review: { ...favorites.tabState[bank.value].review!, session: apiSession }
     })
@@ -177,9 +196,9 @@ const next = async () => {
     favorites.updateTabState(bank.value, { review: null })
     await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/home/index' })
   } catch {
-    error.value = '复习记录提交失败，请重试'
+    if (request === generation && !suspended) error.value = '复习记录提交失败，请重试'
   } finally {
-    busy.value = false
+    if (request === generation) busy.value = false
   }
 }
 onLoad(load)
@@ -192,13 +211,15 @@ onHide(hide)
 onUnload(hide)
 onShow(async () => {
   if (!suspended) return
+  const request = generation
   suspended = false
   try {
     await favorites.load(getRuntimeServices().favorites, true)
-    if (suspended) return
+    if (suspended || request !== generation) return
     const review = favorites.tabState[bank.value].review
     await load({ ...lastQuery, index: String(review?.index || 0) })
   } catch {
+    if (suspended || request !== generation) return
     item.value = undefined
     error.value = '复习状态校验失败，请重试'
   }

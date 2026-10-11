@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
-import { ref } from 'vue'
+import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
+import { ref, watch } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
@@ -14,22 +14,42 @@ import { NavigationType } from '@/shared/enums/navigation'
 import { ProfileTabKey } from '@/shared/enums/profile'
 import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
+import { useSessionStore } from '@/stores/session'
 
 import type { FavoriteHistoryResponse, HistoryRow } from '@/shared/types/favorites'
 const rows = ref<HistoryRow[]>([])
 const error = ref('')
+const openOnly = ref(false)
+const session = useSessionStore()
+let generation = 0
+let visible = false
+/** 失效旧请求并立即移除历史摘要及正文入口 */
+const invalidate = () => {
+  generation++
+  rows.value = []
+  error.value = ''
+}
+watch(() => session.cleanupGeneration, invalidate, { flush: 'sync' })
 /** 读取完整历史和当前目录，授权未确认时仅保留摘要 */
 const load = async () => {
+  invalidate()
+  const request = generation
+  const account = session.cleanupGeneration
   try {
     const runtime = getRuntimeServices()
     const [history, catalog] = await Promise.all([
       runtime.client.get<FavoriteHistoryResponse>('/api/v1/history/scenes'),
       runtime.catalog.getCatalog()
     ])
-    rows.value = presentHistory(history.items, catalog.authorization_pending ? [] : catalog.items)
+    if (!visible || request !== generation || account !== session.cleanupGeneration) return
+    rows.value = presentHistory(history.items, catalog.items, {
+      openOnly: openOnly.value,
+      authorizationPending: catalog.authorization_pending
+    })
     error.value = ''
   } catch {
-    error.value = '学习记录加载失败，请重试'
+    if (visible && request === generation && account === session.cleanupGeneration)
+      error.value = '学习记录加载失败，请重试'
   }
 }
 /** 打开历史场景，route 为权限校验后的正文地址 */
@@ -38,14 +58,28 @@ const open = (route: string | null) => {
 }
 /** 返回收藏银行 */
 const back = () => navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/favorites/index' })
-onShow(load)
+/** 读取学习分区筛选参数，query 为历史入口路由 */
+onLoad((query) => {
+  openOnly.value = query?.filter === 'open'
+})
+onShow(() => {
+  visible = true
+  return load()
+})
+/** 离页后历史响应不得恢复页面状态 */
+const leave = () => {
+  visible = false
+  invalidate()
+}
+onHide(leave)
+onUnload(leave)
 useAnalyticsPage('sub-packages/favorites/history')
 </script>
 <template>
   <PersonalPage
     :active="ProfileTabKey.FAVORITES"
     navigation="学习记录"
-    title="学习过的场景"
+    :title="openOnly ? '开放复习历史' : '学习过的场景'"
     subtitle="历史记录和收藏会持续保留"
     ><PersonalSummary
       label="学习记录"

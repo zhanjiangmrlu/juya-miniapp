@@ -15,7 +15,7 @@ export const presentSourceResolution = (resolution: FavoriteSourceResolution) =>
     return { route: null, message: '当前无原文访问权限，已保存的收藏仍可复习' }
   }
   const page = resolution.content_type === 'short_reading' ? 'short-reading' : 'scene'
-  const parameter = page === 'scene' ? 'sceneId' : 'id'
+  const parameter = page === 'scene' ? 'sceneId' : 'contentId'
   const base = `/sub-packages/${page}/detail?${parameter}=${encodeURIComponent(resolution.content_id)}`
   const resolvedLocator =
     typeof resolution.locator === 'string'

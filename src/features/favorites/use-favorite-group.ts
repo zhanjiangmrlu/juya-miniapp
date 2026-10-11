@@ -1,20 +1,22 @@
 import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import { getRuntimeServices } from '@/services/runtime'
 import { useFavoriteStore } from '@/stores/favorites'
+import { useSessionStore } from '@/stores/session'
 
 import type { FavoriteItem } from '@/shared/contracts/favorites'
 import type { FavoriteGroup } from '@/shared/types/favorites'
 
 import { loadFavoriteGroup } from './load-favorite-group'
 
-/** 页面显示时读取最新聚合收藏，message 为读取失败时的页面提示 */
+/** 页面显示时读取独立收藏快照，message 为读取失败时的页面提示 */
 export const useFavoriteGroup = (message: string) => {
   const item = ref<FavoriteItem>()
   const group = ref<FavoriteGroup>()
   const error = ref('')
   const favorites = useFavoriteStore()
+  const session = useSessionStore()
   let id = ''
   let visible = false
   let generation = 0
@@ -45,6 +47,16 @@ export const useFavoriteGroup = (message: string) => {
     generation++
     reset()
   }
+  /** 登出或清空学习数据后立即失效读取，避免旧快照重新写入收藏 */
+  watch(
+    () => session.cleanupGeneration,
+    () => {
+      generation++
+      reset()
+      error.value = ''
+    },
+    { flush: 'sync' }
+  )
   /** 捕获当前收藏路由标识，query 为页面入口参数 */
   onLoad((query) => {
     id = query?.id || ''
