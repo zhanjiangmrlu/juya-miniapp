@@ -75,7 +75,7 @@ export const presentCatalog = (input: CatalogPresentationInput): CatalogSections
   )
 
   return {
-    authorizationPending: input.catalog.authorization_pending,
+    authorizationPending: input.catalog.authorization_pending || input.catalog.user_stage === null,
     currentLearning: hasEntitlement
       ? entitled.filter(hasStarted).map(presentScene)
       : open.filter(hasStarted).map(presentScene),

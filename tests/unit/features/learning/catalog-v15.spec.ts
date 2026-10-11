@@ -3,6 +3,13 @@ import { describe, expect, it } from 'vitest'
 import { presentCatalog } from '@/features/learning/catalog-presenter'
 
 describe('V1.5学习模块和阶段', () => {
+  it('权威阶段明确为空时等待确认，不被旧pending默认false覆盖', () => {
+    const result = presentCatalog({
+      modules: [],
+      catalog: { user_stage: null, authorization_pending: false, items: [] }
+    })
+    expect(result.authorizationPending).toBe(true)
+  })
   it.each(['NEW', null] as const)('权威阶段%s不被客户端旧进度提升为ENTITLED', (user_stage) => {
     const result = presentCatalog({
       modules: [],

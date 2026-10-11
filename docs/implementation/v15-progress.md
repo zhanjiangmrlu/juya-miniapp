@@ -96,3 +96,8 @@
 - 已发布录音严格布尔、运营稳定排序及短文独立安全历史；前端正在补场景历史分页、短文独立已读数/历史摘要和生成类型消费。安全封面及预览进度摘要仍待后续正式契约
 - 真实脚本种子前提：scene_id 为 recording_enabled=false、至少2句且第2句有真实 slice_target_id/slice_version 的dialogue；word_card_id 为同英文2词卡、中文释义不同且义项/来源稳定独立；short_reading_id 为未完成纯文本篇且包含标签。脚本已实际验证双义项分别收藏并加入同轮完整复习；缺条件明确失败，不能以跳过通过
 - 协调现纯文本种子不足以验原音；最小同版SQL/素材绑定与独占loopback字节端口规则见 `docs/implementation/v15-local-audio-seed.md`。保留原SQLResourceSigner/Authorizer，只替换隔离存储端口，实际HEAD/hash/短时HMAC校验，不能恒定返回200；本地资源证据不等于OSS云或真人听音
+- 新增权威配置审计项：需求6.3无权提示的“可配置次级资料入口”前端目前消费可选profile_completion_enabled，但正式LearningCatalog extra=forbid仅items/user_stage/authorization_pending，admin源码无该配置（仅local_dev/Mock有true）。这不是当前HTTP已启用能力，需上游确认并正式交付bool或明确可消费配置端口；前端不把contact_prompt_eligible偷换成无权入口开关
+- 上游 `c9e2f14` 已提交安全cover_url取址（公开JSON不变），前端已有nullable直显消费；新独立ReadingHistoryPage提供30.4需要的安全进度和独立计数，采用阅读记录区，取代早前因缺progress_summary而无权威数据的阻塞。仍不从本地伪造列表/预览徽标，不要求重复发明字段
+- 历史正式消费已提交 `2a10f76`：场景全部分页后筛选、短文独立安全history/计数/分页、下线404留页及身份/页面失效；11文件76范围测试。375/390/768/1024px实际Mock浏览器检查无横溢；截图亲验历史卡片及按钮在footer上方，390加载至3条且下线留页；场景历史实际显示第二页共2条。证据 `.v15-artifacts.local/history-visual/`，不是真实HTTP
+- 最终本地门禁快照（14:37—14:40）：135文件705测试通过；check exit0（临时浏览器证据脚本归档为txt后不参与源码lint）；H5/mp-weixin构建exit0、page-meta16页通过。最新脚本补独立短文完成后history GET和实际已读卡片回读、两Medium银行卡不同释义展示；语法/ESLint通过
+- 本轮复核Critical草稿隔离已由 `0cb57de` 修复；4项账号/反馈Important已由 `c114a24` RED→GREEN修复（最终范围76项）；学习权威stage=null/pending=false仍等待确认，新增回归RED→GREEN。schema1录音及次级资料配置等待正式BFF新增契约后继续核对

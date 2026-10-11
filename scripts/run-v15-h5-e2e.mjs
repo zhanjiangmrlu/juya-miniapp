@@ -170,6 +170,8 @@ try {
     await screenshot('learning-stage')
   })
   const favoriteIds = []
+  let dualWord = ''
+  const dualMeanings = []
   await step('scene-translation-and-favorites', async () => {
     const opened = responseFor('POST', /\/scenes\/[^/]+\/open$/)
     await open(`/sub-packages/scene/detail?sceneId=${encodeURIComponent(entities.scene_id)}`)
@@ -281,6 +283,9 @@ try {
       expect(await cards.nth(0).locator('.word-meaning').textContent()).not.toBe(
         await cards.nth(1).locator('.word-meaning').textContent()
       )
+      dualWord = (await cards.nth(0).locator('.word-english').textContent()).trim()
+      for (let index = 0; index < 2; index++)
+        dualMeanings.push((await cards.nth(index).locator('.word-meaning').textContent()).trim())
       const distinctIds = []
       for (let index = 0; index < 2; index++) {
         const button = cards.nth(index).locator('.favorite-button')
@@ -314,6 +319,14 @@ try {
     await expect(page.locator('.bank-tab.selected')).toHaveText('语块银行')
     await page.locator('.bank-tab').filter({ hasText: '词汇银行' }).click()
     await expect(page.locator('.bank-tab.selected')).toHaveText('词汇银行')
+    if (dualWord) {
+      const entries = page.locator('.favorite-entry').filter({
+        has: page.locator('.entry-word').filter({ hasText: dualWord })
+      })
+      expect(await entries.count()).toBeGreaterThanOrEqual(2)
+      for (const meaning of dualMeanings)
+        await expect(entries.filter({ hasText: meaning }).first()).toBeVisible()
+    }
     await screenshot('favorite-banks')
     const detail = responseFor('GET', /\/favorite-snapshots\/[^/]+$/)
     await open(`/sub-packages/favorites/detail?id=${encodeURIComponent(favoriteIds[0])}`)
@@ -413,6 +426,26 @@ try {
       await page.reload()
       await expect(page.locator('.complete-button')).toHaveText('已读完')
       await expect(page.locator('.full-translation')).toHaveCount(0)
+    })
+    await step('short-reading-independent-history', async () => {
+      const history = responseFor('GET', /^\/api\/v1\/short-readings\/history$/)
+      await open('/sub-packages/short-reading/index')
+      const response = await history
+      expect(response.status()).toBe(200)
+      const data = await response.json()
+      const index = data.items.findIndex((item) => item.content_id === entities.short_reading_id)
+      expect(index).toBeGreaterThanOrEqual(0)
+      expect(data.items[index].completed_at).toBeTruthy()
+      expect(data.completed_count).toBeGreaterThanOrEqual(1)
+      expect(data.started_count).toBeGreaterThanOrEqual(data.completed_count)
+      await expect(page.locator('.history-counts')).toContainText(
+        `已读完 ${data.completed_count} 篇`
+      )
+      const row = page.locator('.reading-history-card').nth(index)
+      await expect(row).toContainText(data.items[index].title_en)
+      await expect(row).toContainText('已读完')
+      await row.scrollIntoViewIfNeeded()
+      await screenshot('short-reading-history')
     })
   } else
     results.steps.push({
