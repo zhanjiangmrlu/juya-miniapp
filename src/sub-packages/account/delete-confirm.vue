@@ -31,14 +31,17 @@ const loaded = ref(false)
 const openCount = ref(0)
 const metrics = ref({ totalDays: 0, currentStreak: 0, favoriteCount: 0, completedScenes: 0 })
 const rights = ref<EntitlementsViewModel>({ authorizationPending: false, formal: [], limited: [] })
-const lifecycle = useAccountRequestLifecycle(() => {
-  error.value = ''
-  loading.value = false
-  loaded.value = false
-  openCount.value = 0
-  metrics.value = { totalDays: 0, currentStreak: 0, favoriteCount: 0, completedScenes: 0 }
-  rights.value = { authorizationPending: false, formal: [], limited: [] }
-})
+const lifecycle = useAccountRequestLifecycle(
+  () => {
+    error.value = ''
+    loading.value = false
+    loaded.value = false
+    openCount.value = 0
+    metrics.value = { totalDays: 0, currentStreak: 0, favoriteCount: 0, completedScenes: 0 }
+    rights.value = { authorizationPending: false, formal: [], limited: [] }
+  },
+  () => load()
+)
 /** 读取本人完整收藏、已完成场景、当前打卡与最新权益 */
 const load = async () => {
   const request = lifecycle.begin()

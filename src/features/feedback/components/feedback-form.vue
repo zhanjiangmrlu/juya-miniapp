@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onShow } from '@dcloudio/uni-app'
 import { computed, onMounted, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
@@ -27,12 +28,15 @@ const store = useFeedbackDraftStore()
 const error = ref('')
 const loading = ref(false)
 const sourceScenes = ref<Array<FeedbackSourceScene>>([])
-const lifecycle = useFeedbackRequestLifecycle((identityChanged) => {
-  sourceScenes.value = []
-  loading.value = false
-  error.value = ''
-  if (identityChanged) store.clear()
-})
+const lifecycle = useFeedbackRequestLifecycle(
+  (identityChanged) => {
+    sourceScenes.value = []
+    loading.value = false
+    error.value = ''
+    if (identityChanged) store.clear()
+  },
+  () => loadSources()
+)
 const sourceOptions = computed(() => [
   { label: '首页', source: { page_label: '首页', page_path: '/pages/home/index' } },
   {
@@ -76,6 +80,10 @@ const selectSource = (event: unknown) => {
   }
 }
 onMounted(loadSources)
+onShow(async () => {
+  lifecycle.activate()
+  await loadSources()
+})
 if (!store.draft.category) store.update({ category: FeedbackCategory.CONTENT })
 
 /** 从输入事件同步反馈正文，不把敏感原文写入日志 */

@@ -17,10 +17,13 @@ import { useAccountRequestLifecycle } from '@/sub-packages/account/use-account-r
 
 const loading = ref(true)
 const error = ref('')
-const lifecycle = useAccountRequestLifecycle(() => {
-  loading.value = true
-  error.value = ''
-})
+const lifecycle = useAccountRequestLifecycle(
+  () => {
+    loading.value = true
+    error.value = ''
+  },
+  () => loadAccountState()
+)
 
 /** 读取本人注销状态；处于冷静期时优先进入撤回页面 */
 const loadAccountState = async () => {

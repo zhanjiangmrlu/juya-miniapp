@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive } from 'vue'
 
+import AppButton from '@/components/app-button/app-button.vue'
 import FeedbackDetailView from '@/features/feedback/components/feedback-detail-view.vue'
 import FeedbackResolutionActions from '@/features/feedback/components/feedback-resolution-actions.vue'
 
@@ -15,6 +16,7 @@ const dependencies = vi.hoisted(() => ({
   get: vi.fn(),
   list: vi.fn(),
   markRead: vi.fn(),
+  supplement: vi.fn(),
   resolve: vi.fn(),
   navigate: vi.fn()
 }))
@@ -39,7 +41,11 @@ vi.mock('@dcloudio/uni-app', () => ({
 }))
 vi.mock('@/services/runtime', () => ({
   getRuntimeServices: () => ({
-    feedback: { get: dependencies.get, resolve: dependencies.resolve },
+    feedback: {
+      get: dependencies.get,
+      resolve: dependencies.resolve,
+      supplement: dependencies.supplement
+    },
     messages: { list: dependencies.list, markRead: dependencies.markRead }
   })
 }))
@@ -61,6 +67,90 @@ beforeEach(() => {
 })
 
 describe('反馈页面展示分支', () => {
+  it('正常补充成功不取消在途消息已读且保留最新时间线', async () => {
+    let finish!: (value: unknown) => void
+    dependencies.list.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          finish = done
+        })
+    )
+    dependencies.supplement.mockResolvedValue({
+      ...item,
+      status: 'SUPPLEMENTED',
+      description: '补充后的记录'
+    })
+    const wrapper = mount(FeedbackDetailView, { global: { stubs: { PageHeader: true } } })
+    const pendingLoad = dependencies.show?.()
+    await flushPromises()
+    wrapper.findComponent(AppButton).vm.$emit('press')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('textarea').trigger('input', { detail: { value: '补充说明' } })
+    wrapper.findComponent(AppButton).vm.$emit('press')
+    await flushPromises()
+    expect(dependencies.supplement).toHaveBeenCalled()
+    finish({
+      items: [{ id: 'message', related_type: 'FEEDBACK', related_id: 'one', read_at: null }],
+      has_more: false
+    })
+    await pendingLoad
+    expect(dependencies.markRead).toHaveBeenCalledExactlyOnceWith('message')
+    expect(wrapper.text()).toContain('补充后的记录')
+    wrapper.unmount()
+  })
+  it('正常重开结果可导航并完成并行消息已读', async () => {
+    let finish!: (value: unknown) => void
+    dependencies.list.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          finish = done
+        })
+    )
+    dependencies.resolve.mockResolvedValue(item)
+    const wrapper = mount(FeedbackDetailView, {
+      props: { resultMode: true },
+      global: { stubs: { PageHeader: true } }
+    })
+    const pendingLoad = dependencies.show?.()
+    await flushPromises()
+    wrapper
+      .findComponent(FeedbackResolutionActions)
+      .vm.$emit('resolve', { action: 'REOPEN', reason: '还有问题' })
+    await flushPromises()
+    expect(dependencies.navigate).toHaveBeenCalledWith({
+      type: 'redirectTo',
+      url: '/sub-packages/feedback/detail?id=one'
+    })
+    finish({
+      items: [{ id: 'message', related_type: 'FEEDBACK', related_id: 'one', read_at: null }],
+      has_more: false
+    })
+    await pendingLoad
+    expect(dependencies.markRead).toHaveBeenCalledExactlyOnceWith('message')
+    wrapper.unmount()
+  })
+  it('空补充校验不取消在途关联消息已读', async () => {
+    let finish!: (value: unknown) => void
+    dependencies.list.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          finish = done
+        })
+    )
+    const wrapper = mount(FeedbackDetailView, { global: { stubs: { PageHeader: true } } })
+    const pendingLoad = dependencies.show?.()
+    await flushPromises()
+    wrapper.findComponent(AppButton).vm.$emit('press')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toContain('补充说明需为 1 至 300 字')
+    finish({
+      items: [{ id: 'message', related_type: 'FEEDBACK', related_id: 'one', read_at: null }],
+      has_more: false
+    })
+    await pendingLoad
+    expect(dependencies.markRead).toHaveBeenCalledExactlyOnceWith('message')
+    wrapper.unmount()
+  })
   it.each(['hide', 'unload'] as const)('%s后迟到详情不填正文也不读取关联消息', async (leave) => {
     let finish!: (value: FeedbackItem) => void
     dependencies.get.mockImplementationOnce(

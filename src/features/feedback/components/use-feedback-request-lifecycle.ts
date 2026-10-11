@@ -3,8 +3,11 @@ import { onBeforeUnmount, watch } from 'vue'
 
 import { useSessionStore } from '@/stores/session'
 
-/** 隔离本页反馈请求与本次账号，clear 为离页或身份清理后的局部状态清除端口 */
-export const useFeedbackRequestLifecycle = (clear: (identityChanged: boolean) => void) => {
+/** 隔离反馈请求；clear 清除旧投影，refresh 在可见页确认新身份后重读摘要 */
+export const useFeedbackRequestLifecycle = (
+  clear: (identityChanged: boolean) => void,
+  refresh?: () => Promise<void>
+) => {
   const session = useSessionStore()
   let generation = 0
   let visible = true
@@ -24,7 +27,10 @@ export const useFeedbackRequestLifecycle = (clear: (identityChanged: boolean) =>
     () => [session.isAuthenticated, session.profile?.juya_id, session.cleanupGeneration] as const,
     (next, previous) => {
       const identityChanged = next[0] !== previous[0] || next[1] !== previous[1]
-      if (identityChanged || next[2] !== previous[2]) invalidate(identityChanged)
+      if (!identityChanged && next[2] === previous[2]) return
+      generation++
+      clear(identityChanged)
+      if (visible && identityChanged && next[0] && next[1]) void refresh?.()
     },
     { flush: 'sync' }
   )

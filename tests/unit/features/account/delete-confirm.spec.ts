@@ -51,6 +51,29 @@ beforeEach(() => {
   })
 })
 describe('注销确认请求归属', () => {
+  it('可见页身份确认后重新读取，学习清理后用户可重试恢复确认', async () => {
+    const session = useSessionStore()
+    session.profile = undefined
+    const wrapper = mount(DeleteConfirm, options)
+    await dependencies.show?.()
+    session.profile = { juya_id: 'one' } as UserProfile
+    await flushPromises()
+    session.invalidateLearningData()
+    await wrapper.vm.$nextTick()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '重新读取学习数据')!
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('5 天')
+    expect(
+      wrapper
+        .findAll('button')
+        .find((button) => button.text() === '继续注销')!
+        .attributes('disabled')
+    ).toBeUndefined()
+    wrapper.unmount()
+  })
   it('本人受理成功清理学习草稿，保留绑定的注销申请并进入七天等待页', async () => {
     dependencies.request.mockResolvedValueOnce({
       status: 'PENDING',

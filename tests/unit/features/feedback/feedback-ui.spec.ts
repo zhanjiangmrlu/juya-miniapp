@@ -12,12 +12,16 @@ import { useSessionStore } from '@/stores/session'
 import type { UserProfile } from '@/shared/contracts/profile'
 const dependencies = vi.hoisted(() => ({
   create: vi.fn(),
+  catalog: vi.fn(),
+  show: undefined as (() => Promise<void>) | undefined,
   credential: vi.fn(),
   navigate: vi.fn(),
   hide: undefined as (() => void) | undefined
 }))
 vi.mock('@dcloudio/uni-app', () => ({
-  onShow: vi.fn(),
+  onShow: (hook: () => Promise<void>) => {
+    dependencies.show = hook
+  },
   onHide: (hook: () => void) => {
     dependencies.hide = hook
   },
@@ -25,6 +29,7 @@ vi.mock('@dcloudio/uni-app', () => ({
 }))
 vi.mock('@/services/runtime', () => ({
   getRuntimeServices: () => ({
+    catalog: { getCatalog: dependencies.catalog },
     feedback: { create: dependencies.create, getUploadCredential: dependencies.credential }
   })
 }))
@@ -36,6 +41,42 @@ beforeEach(() => {
 })
 afterEach(() => vi.unstubAllGlobals())
 describe('反馈草稿提交', () => {
+  it('返回同一表单重新读取内容系列且正常提交成功', async () => {
+    dependencies.catalog.mockResolvedValue({
+      items: [{ scene_id: 'one', title: 'Series One', series: 'one' }]
+    })
+    const wrapper = mount(FeedbackForm, {
+      global: {
+        stubs: {
+          picker: {
+            props: ['range'],
+            template: '<div class="source-picker">{{ JSON.stringify(range) }}<slot /></div>'
+          }
+        }
+      }
+    })
+    await flushPromises()
+    expect(wrapper.find('.source-picker').text()).toContain('Series One')
+    dependencies.hide?.()
+    await wrapper.vm.$nextTick()
+    await dependencies.show?.()
+    await flushPromises()
+    expect(wrapper.find('.source-picker').text()).toContain('Series One')
+    useFeedbackDraftStore().update({
+      category: 'CONTENT',
+      description: '返回后的说明',
+      source: { scene_id: 'one' }
+    })
+    dependencies.create.mockResolvedValue({ id: 'new-feedback' })
+    wrapper.findComponent(AppButton).vm.$emit('press')
+    await flushPromises()
+    expect(dependencies.navigate).toHaveBeenCalledWith({
+      type: 'redirectTo',
+      url: '/sub-packages/feedback/detail?id=new-feedback'
+    })
+    expect(useFeedbackDraftStore().draft.description).toBe('')
+    wrapper.unmount()
+  })
   it('上传凭证迟到且页面已隐藏时不再传图或创建反馈', async () => {
     const store = useFeedbackDraftStore()
     store.update({

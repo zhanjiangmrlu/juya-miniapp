@@ -110,13 +110,13 @@ const input = (event: unknown) => {
 /** 提交补充说明，失败保留草稿供修改或重试 */
 const submit = async () => {
   if (busy.value || !canSupplement.value) return
-  const request = lifecycle.begin()
   const validation = validateSupplement(supplement.value)
   if (!validation.valid || !validation.normalized) {
     editing.value = true
     error.value = '补充说明需为 1 至 300 字'
     return
   }
+  const request = lifecycle.capture()
   busy.value = true
   try {
     const response = await submitSupplement(
@@ -148,7 +148,7 @@ const open = (result: boolean) =>
 /** 发送用户解决状态，payload 为已解决或含原因的重开命令 */
 const resolve = async (payload: FeedbackResolutionRequest) => {
   if (busy.value || !item.value) return
-  const request = lifecycle.begin()
+  const request = lifecycle.capture()
   const id = feedbackId.value
   busy.value = true
   try {

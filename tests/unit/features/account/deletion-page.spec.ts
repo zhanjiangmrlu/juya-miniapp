@@ -68,6 +68,32 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 describe('注销等待页请求生命周期', () => {
+  it('A撤回后恢复失败，B新撤回失败只能提示本次撤回失败', async () => {
+    dependencies.profile
+      .mockResolvedValueOnce(pending)
+      .mockRejectedValueOnce(new Error('restore failed'))
+    dependencies.revoke.mockResolvedValueOnce({ status: 'REVOKED' })
+    const wrapper = mount(DeletionPending, options)
+    await dependencies.show?.()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '撤回注销')!
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('注销已撤回')
+    dependencies.profile.mockResolvedValue({ ...pending, juya_id: 'two' })
+    useSessionStore().profile = { juya_id: 'two' } as UserProfile
+    await dependencies.show?.()
+    dependencies.revoke.mockRejectedValueOnce(new Error('revoke failed'))
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '撤回注销')!
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('撤回失败，请重新加载确认服务端状态')
+    expect(wrapper.text()).not.toContain('注销已撤回')
+    wrapper.unmount()
+  })
   it('本人档案与已确认会话身份不一致时不保存或展示注销投影', async () => {
     dependencies.profile.mockResolvedValue({ ...pending, juya_id: 'other-account' })
     const wrapper = mount(DeletionPending, options)
@@ -126,6 +152,10 @@ describe('注销等待页请求生命周期', () => {
       .trigger('click')
     await flushPromises()
     expect(useAccountDeletionStore().request).toBeUndefined()
+    expect(dependencies.navigate).toHaveBeenCalledExactlyOnceWith({
+      type: 'reLaunch',
+      url: '/pages/profile/index'
+    })
     finish(pending)
     await oldRefresh
     expect(useAccountDeletionStore().request).toBeUndefined()

@@ -36,18 +36,21 @@ let visible = false
 let generation = 0
 const confirmed = ref(false)
 const recoveryOwner = Symbol('account-deletion-recovery')
-const lifecycle = useAccountRequestLifecycle(() => {
-  visible = false
-  generation++
-  confirmed.value = false
-  clock.value = undefined
-  loading.value = false
-  error.value = ''
-  if (timer) globalThis.clearInterval(timer)
-  timer = undefined
-  useHomeStore().cancel(recoveryOwner)
-  useLearningStore().cancel(recoveryOwner)
-})
+const lifecycle = useAccountRequestLifecycle(
+  () => {
+    generation++
+    revoked.value = false
+    confirmed.value = false
+    clock.value = undefined
+    loading.value = false
+    error.value = ''
+    if (timer) globalThis.clearInterval(timer)
+    timer = undefined
+    useHomeStore().cancel(recoveryOwner)
+    useLearningStore().cancel(recoveryOwner)
+  },
+  () => loadDeletion()
+)
 const view = computed(() => {
   void tick.value
   return confirmed.value && deletion.request
@@ -57,6 +60,7 @@ const view = computed(() => {
 
 /** 恢复最近注销响应；缺失时从本人档案补足当前服务端状态 */
 const loadDeletion = async () => {
+  revoked.value = false
   const current = ++generation
   const owner = lifecycle.capture()
   if (timer) globalThis.clearInterval(timer)
@@ -104,6 +108,7 @@ const loadDeletion = async () => {
 /** 撤回注销后重新加载首页、目录、收藏、权益和本人状态 */
 const revokeDeletion = async () => {
   if (loading.value || !view.value?.canRevoke) return
+  revoked.value = false
   const owner = lifecycle.capture()
   const current = ++generation
   loading.value = true
@@ -165,6 +170,7 @@ onShow(async () => {
 })
 /** 隐藏或销毁注销页时使旧响应失效并停止倒计时 */
 const leave = () => {
+  revoked.value = false
   visible = false
   generation++
   if (timer) globalThis.clearInterval(timer)
