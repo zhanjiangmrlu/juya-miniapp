@@ -2,7 +2,7 @@
 
 - 分支：`feature/v1.5-20261011`；起始 HEAD：`e5f8e2b`，起始工作区干净
 - 需求：20261011 开发交付整合确认版；方案：00、01、05、06、07、08
-- 状态：REAL_HTTP_PARTIAL_RECORDING_CONTROL_FIX_READY_FOR_RERUN，真实页面前三步通过，修复本地门禁已通过待真实复跑
+- 状态：REAL_HTTP_PARTIAL_H5_ACTION_FIX_READY_FOR_RERUN，真实禁录选句/原音取址/完成已通过，收藏来源操作与完成截图等待修复后真实复跑
 - 最终消费契约：BFF `b38294b`，`tests/fixtures/contracts/v15-b38294b/openapi.json`／`provider.d.ts`；固定Git原始JSON SHA256 `6c6105d3b3d0e201b3824ecef796e38a595bc30e574b7b87aa3c04f049c4e780`
 - 范围：只修改 juya-miniapp；不切分支、不推送、不部署、不重启共享服务
 
@@ -114,3 +114,12 @@
 - 修复保留业务disabled条件及原验收断言，为4个录音控制增加role=button和相同条件的aria-disabled；新增配置关闭/恢复语义回归RED→GREEN。实际H5复验禁用按钮aria-disabled=true且isDisabled=true，可用按钮false，未触发麦克风或改种子
 - 真实脚本失败报告新增仅本脚本数字行号script_line，避免泛化错误失去定位，同时不输出Playwright完整错误/正文/凭证。真实禁录、任意选句、原音授权和完成全部仍要求实际通过；共享环境不由本对话重启
 - 修复门禁（15:10—15:12）：136文件711测试通过；修正新增fixture必需source_locator后check exit0，定向7项复验通过；H5/mp-weixin正式构建exit0、page-meta16页通过。仅新建的独占Mock预览15193已核对进程身份并停止，不触及协调私有服务
+
+## 第二次真实页面脚本失败修复
+
+- 协调运行 `b848dbaa6ca7498fa2bdb7084760ed5a` 已确认禁录、实际第二句选中、切片原音取址与完成PASS，且已有词卡双义及银行截图；完成截图为空背景，不能把该截图算作成果页可见证据
+- 本次未生成browser-results.json；只读日志定位source-resolution待响应Promise超时未处理，Node直接退出。responseFor现在提前观察拒绝并返回原Promise，原await仍报错；catch尝试保存脱敏failure.png后照常报告FAILED/非零退出，不弱化真实GET或状态码断言
+- 独占Mock H5 15193复现实际DOM：返回原文文本仅1个，点击内部SPAN反复被其UNI-BUTTON拦截，并非重复文本或预取；点击.page-actions下实际.app-button后正常导航并带sourceLocator/contentVersion。源码来源GET仅在returnSource点击后发生，没有详情自动预取
+- 脚本改为点击按钮容器，同类翻卡下一张/完成、联系提示稍后再说、资料保存同步修正；不force点击、不改UI、不删除入口。翻卡逐张等待当前序号/卡片，完成后等待实际首页内容，避免路由过渡或点击旧卡片
+- 场景完成现在在点击前监听真实GET /scenes/{id}/result并断言200；截图前等待学习完成标题、本次学习已记录、3张成果卡及成果明细可见，不能只靠waitForURL。独占Mock截图completed-visible.png已亲验完整成果内容，此证据不是真实HTTP或云音频验收
+- 本地受影响复验：原文字点击5秒失败、按钮容器点击通过；翻卡两张/完成首页可见、资料保存按钮正常点击通过。提取实际responseFor进行延迟拒绝复验：未处理拒绝0次，原Promise仍拒绝；node --check及pnpm check全部通过。只有验收脚本与本进度说明变更，不重复全套711测试/双端构建或真实批量种子；独占15193已核对进程身份并停止，真实后续步骤仍待协调少量记录复跑

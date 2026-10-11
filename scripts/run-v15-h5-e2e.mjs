@@ -18,6 +18,7 @@ const results = {
   page_errors: 0
 }
 let browser
+let captureFailure
 const pending = new Set()
 let currentStep = 'environment'
 /** 环境校验失败仅输出字段名，避免异常携带凭证 */
@@ -125,12 +126,16 @@ try {
     await page.goto(`${h5.href.replace(/\/$/, '')}/?qa_page=${++navigation}#${route}`)
   }
   /** 等待实际BFF响应，method/path指定当前UI动作对应的公共契约 */
-  const responseFor = (method, pattern) =>
-    page.waitForResponse(
+  const responseFor = (method, pattern) => {
+    const response = page.waitForResponse(
       (response) =>
         response.request().method() === method && pattern.test(new URL(response.url()).pathname),
       { timeout: 15000 }
     )
+    // UI动作可能先失败，提前观察拒绝仍将原Promise留给await，避免Node跳过报告直接终止
+    void response.catch(() => undefined)
+    return response
+  }
   /** 记录页面断言，name为非个人步骤标签，action执行真实交互 */
   const step = async (name, action) => {
     currentStep = name
@@ -155,6 +160,7 @@ try {
         )
       ]
     })
+  captureFailure = () => screenshot('failure')
   await step('learning-stage', async () => {
     const catalog = responseFor('GET', /^\/api\/v1\/learning\/catalog$/)
     await open('/pages/learning/index')
@@ -264,9 +270,15 @@ try {
     expect((await signedResponse.json()).resource_id).toBe(selected.slice_target_id)
     // 真实取址证明原音入口与授权资源关联，人工听音和设备播放另列验收
     const completed = responseFor('POST', /\/scenes\/[^/]+\/complete$/)
+    const result = responseFor('GET', /\/scenes\/[^/]+\/result$/)
     await page.locator('.scene-actions .scene-action.secondary').click()
     expect((await completed).status()).toBe(200)
     await page.waitForURL((url) => url.hash.includes('/scene/completed'))
+    expect((await result).status()).toBe(200)
+    await expect(page.locator('.scene-title')).toHaveText('学习完成')
+    await expect(page.locator('.scene-highlight')).toContainText('本次学习已记录')
+    await expect(page.locator('.result-card')).toHaveCount(3)
+    await expect(page.locator('.result-details')).toBeVisible()
     await screenshot('recording-disabled-completed')
   })
   if (entities.word_card_id) {
@@ -334,8 +346,13 @@ try {
     const detail = responseFor('GET', /\/favorite-snapshots\/[^/]+$/)
     await open(`/sub-packages/favorites/detail?id=${encodeURIComponent(favoriteIds[0])}`)
     expect((await detail).status()).toBe(200)
+    await expect(page.locator('.favorite-summary')).toBeVisible()
     const source = responseFor('GET', /\/favorite-snapshots\/[^/]+\/source-resolution$/)
-    await page.getByText('返回原文', { exact: true }).click()
+    // UNI-BUTTON接收点击，内部UNI-TEXT不接收指针事件；保持正常按钮点击及实际鉴权断言
+    await page
+      .locator('.page-actions .app-button')
+      .filter({ hasText: /^返回原文$/ })
+      .click()
     const response = await source
     expect(response.status()).toBe(200)
     const resolution = await response.json()
@@ -361,11 +378,22 @@ try {
     await page.locator('.card-surface').click({ position: { x: 8, y: 8 } })
     await expect(page.getByText('来源句', { exact: true })).toBeVisible()
     for (let index = 0; index < favoriteIds.length - 1; index++) {
-      await page.getByText('下一个', { exact: true }).click()
+      await page
+        .locator('.page-actions .app-button')
+        .filter({ hasText: /^下一个$/ })
+        .click()
+      await expect(page.locator('.page-subtitle')).toContainText(
+        `第 ${index + 2} 张 / ${favoriteIds.length}`
+      )
+      await expect(page.locator('.card-surface')).toBeVisible()
     }
     const completed = responseFor('POST', /\/reviews\/[^/]+\/complete$/)
-    await page.getByText('完成复习', { exact: true }).click()
+    await page
+      .locator('.page-actions .app-button')
+      .filter({ hasText: /^完成复习$/ })
+      .click()
     expect((await completed).status()).toBe(200)
+    await expect(page.locator('.home-page-view')).toBeVisible()
     await screenshot('review-complete')
   })
   await step('profile-post-readback', async () => {
@@ -373,7 +401,11 @@ try {
     const dismissContactPrompt = async () => {
       await expect.poll(() => inFlight.size, { timeout: 15000 }).toBe(0)
       const dialog = page.locator('.prompt-dialog')
-      if (await dialog.count()) await dialog.getByText('稍后再说', { exact: true }).click()
+      if (await dialog.count())
+        await dialog
+          .locator('.app-button')
+          .filter({ hasText: /^稍后再说$/ })
+          .click()
     }
     await open('/pages/profile/index')
     await expect(page.locator('.identity-head')).toBeVisible()
@@ -384,7 +416,10 @@ try {
     const original = await input.inputValue()
     await input.fill('联调学习者')
     const saved = responseFor('POST', /^\/api\/v1\/me\/profile$/)
-    await page.getByText('保存资料', { exact: true }).click()
+    await page
+      .locator('.profile-editor .app-button')
+      .filter({ hasText: /^保存资料$/ })
+      .click()
     expect((await saved).status()).toBe(200)
     await open('/pages/profile/index')
     await expect(page.locator('.identity-name')).toHaveText('联调学习者')
@@ -394,7 +429,10 @@ try {
     await screenshot('profile-post')
     await input.fill(original)
     const restored = responseFor('POST', /^\/api\/v1\/me\/profile$/)
-    await page.getByText('保存资料', { exact: true }).click()
+    await page
+      .locator('.profile-editor .app-button')
+      .filter({ hasText: /^保存资料$/ })
+      .click()
     expect((await restored).status()).toBe(200)
   })
   if (entities.short_reading_id) {
@@ -546,6 +584,7 @@ try {
   expect(results.network_failures).toHaveLength(0)
   expect(results.page_errors).toBe(0)
 } catch (error) {
+  await captureFailure?.().catch(() => undefined)
   results.steps.push({
     name: currentStep,
     result: 'FAILED',
