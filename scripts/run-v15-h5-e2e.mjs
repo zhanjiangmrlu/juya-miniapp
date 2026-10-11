@@ -550,6 +550,7 @@ try {
     name: currentStep,
     result: 'FAILED',
     error_type: error.name,
+    script_line: Number(error.stack?.match(/run-v15-h5-e2e\.mjs:(\d+):\d+/)?.[1]) || undefined,
     error_code: /^[A-Z0-9_]+$/.test(error.message) ? error.message : 'PAGE_OR_HTTP_ASSERTION_FAILED'
   })
   process.exitCode = 1

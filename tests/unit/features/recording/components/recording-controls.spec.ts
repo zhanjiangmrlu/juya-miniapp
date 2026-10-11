@@ -5,6 +5,29 @@ import { describe, expect, it } from 'vitest'
 import RecordingControls from '@/features/recording/components/recording-controls.vue'
 
 describe('录音提示优先级', () => {
+  it('审核关闭时向H5自定义按钮提供明确禁用语义，恢复后同步可用状态', async () => {
+    const wrapper = mount(RecordingControls, {
+      props: {
+        sentence: { entry_id: 's1', source_locator: 's1', entry_type: 'DIALOGUE', text: 'Hello' },
+        snapshot: {
+          selectedSentenceId: 's1',
+          recordingDisabled: true,
+          disabledByConfiguration: true,
+          status: 'IDLE'
+        }
+      }
+    })
+    for (const button of wrapper.findAll('.recording-action')) {
+      expect(button.attributes('role')).toBe('button')
+      expect(button.attributes('aria-disabled')).toBe('true')
+    }
+    await wrapper.setProps({
+      snapshot: { selectedSentenceId: 's1', recordingDisabled: false, status: 'IDLE' }
+    })
+    expect(wrapper.findAll('.recording-action')[0].attributes('aria-disabled')).toBe('false')
+    expect(wrapper.findAll('.recording-action')[1].attributes('aria-disabled')).toBe('true')
+    wrapper.unmount()
+  })
   it('录音和回听呈现实际设备状态，处理期间不允许再次启动', async () => {
     const wrapper = mount(RecordingControls, {
       props: {

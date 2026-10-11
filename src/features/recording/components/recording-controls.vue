@@ -77,6 +77,8 @@ const recordingHint = computed(() => {
     <view class="recording-grid">
       <button
         class="recording-action primary"
+        role="button"
+        :aria-disabled="Boolean(startDisabled)"
         :class="{
           'is-disabled': startDisabled,
           'is-recording': snapshot.status === RecordingStatus.RECORDING
@@ -88,6 +90,8 @@ const recordingHint = computed(() => {
       </button>
       <button
         class="recording-action"
+        role="button"
+        :aria-disabled="snapshot.status !== RecordingStatus.RECORDING"
         :class="{
           primary: snapshot.status === RecordingStatus.RECORDING,
           'is-disabled': snapshot.status !== RecordingStatus.RECORDING
@@ -99,6 +103,12 @@ const recordingHint = computed(() => {
       </button>
       <button
         class="recording-action"
+        role="button"
+        :aria-disabled="
+          !snapshot.hasRecording ||
+          Boolean(snapshot.processing) ||
+          snapshot.status === RecordingStatus.RECORDING
+        "
         :class="{
           primary: snapshot.hasRecording,
           'is-disabled':
@@ -139,6 +149,13 @@ const recordingHint = computed(() => {
       </button>
       <button
         class="recording-action"
+        role="button"
+        :aria-disabled="
+          !snapshot.hasRecording ||
+          Boolean(snapshot.processing) ||
+          snapshot.status === RecordingStatus.RECORDING ||
+          snapshot.recordingDisabled
+        "
         :class="{
           'is-disabled':
             !snapshot.hasRecording ||

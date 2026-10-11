@@ -2,7 +2,7 @@
 
 - 分支：`feature/v1.5-20261011`；起始 HEAD：`e5f8e2b`，起始工作区干净
 - 需求：20261011 开发交付整合确认版；方案：00、01、05、06、07、08
-- 状态：READY_FOR_REAL_HTTP_NOT_RUN，最终契约与本地门禁通过，真实页面HTTP尚未执行
+- 状态：REAL_HTTP_PARTIAL_RECORDING_CONTROL_FIX_READY_FOR_RERUN，真实页面前三步通过，修复本地门禁已通过待真实复跑
 - 最终消费契约：BFF `b38294b`，`tests/fixtures/contracts/v15-b38294b/openapi.json`／`provider.d.ts`；固定Git原始JSON SHA256 `6c6105d3b3d0e201b3824ecef796e38a595bc30e574b7b87aa3c04f049c4e780`
 - 范围：只修改 juya-miniapp；不切分支、不推送、不部署、不重启共享服务
 
@@ -106,3 +106,11 @@
 - 真实脚本末尾新增375/390/414/768/1024视口的实际scene/word-card/纯短文/history读取、末尾滚动、水平边界、固定操作区避让及脱敏截图，结果逐项记viewports。每次导航前等上一页实际API结算；没有真实结果前不将Mock截图记为本轮HTTP证据
 - 最终冻结消费者门禁（14:46—14:47）：136文件710测试通过，`pnpm check`、H5/mp-weixin正式构建exit0，page-meta16页通过。新历史功能独立只读审查Critical0/Important0；此前复核问题均有RED→GREEN及正常成功分支回归
 - 最终fixture必须使用 `tests/fixtures/contracts/v15-b38294b/openapi.json`，与后端Git原始JSON的LF字节hash一致；b382之后进度/换行说明/容器忽略提交不改变公开契约。最终运行器必须核对实际mounted JSON与该fixture语义相等，不能再指向a9历史fixture
+
+## 首次真实页面失败修复
+
+- 协调真实运行 `ac6a4281563744979c914cc3132c717b`：学习阶段、场景译文/收藏、发音resolve前三步PASS，禁录阅读完成步骤FAIL；11个实际API请求均2xx，0 network failures/0 page_errors，尚未发起切片signed-url。不据此标原音或完成通过
+- 根因复现：H5编译后的录音按钮是UNI-BUTTON；禁用节点带disabled="true"但缺role/aria-disabled，Playwright.isDisabled错误判false。在独占Mock H5 15193实际DOM观察停止/回听/重录均出现该差异
+- 修复保留业务disabled条件及原验收断言，为4个录音控制增加role=button和相同条件的aria-disabled；新增配置关闭/恢复语义回归RED→GREEN。实际H5复验禁用按钮aria-disabled=true且isDisabled=true，可用按钮false，未触发麦克风或改种子
+- 真实脚本失败报告新增仅本脚本数字行号script_line，避免泛化错误失去定位，同时不输出Playwright完整错误/正文/凭证。真实禁录、任意选句、原音授权和完成全部仍要求实际通过；共享环境不由本对话重启
+- 修复门禁（15:10—15:12）：136文件711测试通过；修正新增fixture必需source_locator后check exit0，定向7项复验通过；H5/mp-weixin正式构建exit0、page-meta16页通过。仅新建的独占Mock预览15193已核对进程身份并停止，不触及协调私有服务
