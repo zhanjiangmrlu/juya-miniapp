@@ -66,15 +66,35 @@ handleLoad 的 GET 失败一律 `presentLearningResult(null)`，与初始化尚�
 
 测试建议：已加载 A 后清理/切 B 立即不显示 A 统计；initialize 在途切账号后不发送第二 GET；成果在途切账号/隐藏后不写结果或 fallback、不提示旧错误；show 当前身份正常读取；review 迟到不导航。生产 shared HTTP 的 SESSION_CHANGED 保护保持。
 
-### P2：390px 成果页末按钮初始被导航覆盖，仍需区分可滚动与不可达
+### P2：成果页短内容初始布局偏差，按钮滚到底可达
 
 协调截图 `complete-390.png` 已亲验：开始翻卡按钮约 y741—787，导航 top768，初始约19px覆盖；本轮没有启动服务或修改布局。
 
-代码已经有 ScenePageLayout 纵向内容及12px末尾 padding，TabPageLayout 的导航高度+安全区底部留白（`tab-page-layout.vue:67`），completed.vue 的 scene-actions 非固定栏。仅这张初始截图不能证明按钮无法滚到导航上方，也不能直接判定缺少底部 padding。
+代码已经有 ScenePageLayout 纵向内容及12px末尾 padding，TabPageLayout 的导航高度+安全区底部留白（`tab-page-layout.vue:67`），completed.vue 的 scene-actions 非固定栏。协调追加的 `probe-more-results.json` 已确认滚动可达，不是死按钮或末尾留白不足：
 
-最小手机方案先由协调现有浏览器量 scrollingElement 的剩余滚动空间、主动滚动后两按钮矩形与导航 top，并检查真实 click/trial。如果可滚且完全露出，只补成果页末按钮的严格验收，不能因首屏裁切就盲改正确的滚动布局。如果已到滚动末尾仍覆盖，则在成果页局部保证操作组处于可滚动主体内、补实际导航/安全区高度的留白；若最新 M16 要求390首屏全露出，再按当前母版调整局部间距，保持字体、44px点击区与业务。不要全局修改 TabPageLayout、缩小按钮或新做固定操作栏。
+| 手机视口 | 初始覆盖   | 滚到底后覆盖 | 末尾按钮bottom / 导航top |
+| -------- | ---------- | ------------ | ------------------------ |
+| 375×812  | 24.09375px | 0            | 727 / 738.90625px        |
+| 390×844  | 19px       | 0            | 756 / 768px              |
+| 414×896  | 0          | 0            | 803 / 815.328125px       |
+
+最小手机方案：按最新 M16 常规短内容母版核对375/390首屏操作组位置，只调整成果页局部间距或内容高度，保留当前可滚布局、字体和44px点击区；长内容允许正常滚动，不强制把全部内容挤入一屏。补成果页初始位置与末尾滚动的不同断言及正常 click/trial。不要全局修改 TabPageLayout、缩小按钮、新做固定操作栏或把可达情况报为功能不可用。
 
 验收：375/390/414，短/长标题、正常/错误状态、两按钮均可完整滚动至导航上方且普通点击可达。之前真实成果检查只等卡片/明细可见，尚未覆盖这项末按钮断言。
+
+### P2：已配置词汇图片加载失败缺少重试入口
+
+需求第23章第1185行明确“有图但加载失败可重试；无图内容直接阅读文字”。`scene-word-card.vue:34—36` 的 image 只有 src/mode，没有 @error、失败状态或重试事件；`use-scene-page.ts:160—182` 的 resolveWordImages 对非401/403取址失败也未给每张词卡提供可重试状态。
+
+协调在现有Mock UI中 abort `/static/fixtures/latte@3x.png`，`probe-more-results.json` imageFailure记录 imageCount=1、retryCount=0、hasText=1、favoriteButtons=5：文字和收藏保留，但有图失败无重试。前者符合降级要求，后者是功能缺口；不能把它归为“本来未配图”。本轮只读源码和证据，未修改产品。
+
+最小方案：按当前词卡独立保存图像 loading/error，image @error 只影响该图，提供同位重试；通过现有同sceneId/revision/image_asset_id的受控取址重读，或为仍有效地址重新挂载图片，不拼接签名、不改收藏与发音。补当前页面/会话代次保护，重试成功清错误，反复失败仍保留文字；无图词汇、无图片区语块不出现伪错误或重试。测试覆盖取址失败、图片字节失败、重试成功/失败、无图、离页/切账号迟到。
+
+### P2：词语发音 Playing 状态图与最新设计不一致
+
+协调已读取 Figma `2686:633` 独立Playing状态图，图形为暂停符号；源码 `pronunciation-button.vue:30/38/60/99` 虽有playing状态、aria-label=暂停发音及透明度动画，但非失败时始终用 pronunciation-idle.svg，没有独立Playing图。属于状态视觉偏差，不代表播放/暂停业务已被证实不可用。
+
+注意 `probe-more-results.json` playing数组中 playing均false，不能据此声称真实Playing浏览器状态已复现。当前结论基于协调设计读图与本轮源代码映射；后续需真实进入PLAYING后核图、点击暂停及恢复，不能只改CSS透明度。最小方案是消费当前正式Playing资产，保留现有audio所有权、点击隔离、loading/error与无目标隐藏规则，分别回归idle/loading/playing/paused/error及44px点击区。本轮不修改图标或样式。
 
 ## 验收基线过时（交协调替换）
 
