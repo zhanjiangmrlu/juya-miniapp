@@ -7,11 +7,12 @@ import type { RecordingPort } from '@/shared/types/recording'
 export const createBrowserRecordingPort = (): RecordingPort => {
   let stream: MediaStream | undefined
   let recorder: MediaRecorder | undefined
-  let chunks: Blob[] = []
   let timer: ReturnType<typeof globalThis.setTimeout> | undefined
   let disposed = false
   let recordingListener: ((path?: string) => void) | undefined
   let stopPromise: Promise<string> | undefined
+  let stopResolve: ((path: string) => void) | undefined
+  let stopReject: ((error: Error) => void) | undefined
   const paths = new Set<string>()
   const player = new Audio()
   let listener: ((type: RecordingPlaybackEventType) => void) | undefined
@@ -20,41 +21,50 @@ export const createBrowserRecordingPort = (): RecordingPort => {
   player.addEventListener('ended', () => listener?.(RecordingPlaybackEventType.ENDED))
   player.addEventListener('error', () => listener?.(RecordingPlaybackEventType.ERROR))
 
+  /** 清除本次录音的最长时限计时器 */
+  const clearTimer = () => {
+    if (timer) globalThis.clearTimeout(timer)
+    timer = undefined
+  }
+
   /** 停止设备并返回本次临时对象 URL */
   const stop = (): Promise<string> => {
     if (stopPromise) return stopPromise
-    if (!recorder || recorder.state === 'inactive')
+    if (disposed || !recorder || recorder.state === 'inactive')
       return Promise.reject(new Error('没有正在录制的音频'))
-    if (timer) globalThis.clearTimeout(timer)
+    clearTimer()
     const device = recorder
     stopPromise = new Promise((resolve, reject) => {
-      device.onstop = () => {
-        const path = URL.createObjectURL(
-          new Blob(chunks, { type: device.mimeType || 'audio/webm' })
-        )
-        paths.add(path)
-        resolve(path)
+      stopResolve = resolve
+      stopReject = reject
+      try {
+        device.stop()
+      } catch {
+        reject(new Error('录音设备停止失败'))
       }
-      device.onerror = (error) => {
-        reject(error)
-      }
-      device.stop()
     })
     return stopPromise.finally(() => {
       stopPromise = undefined
+      stopResolve = undefined
+      stopReject = undefined
     })
   }
 
   return {
     requestPermission: async () => {
       try {
-        if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined')
+        if (
+          disposed ||
+          !navigator.mediaDevices?.getUserMedia ||
+          typeof MediaRecorder === 'undefined'
+        )
           return false
         const granted = await navigator.mediaDevices.getUserMedia({ audio: true })
         if (disposed) {
           granted.getTracks().forEach((track) => track.stop())
           return false
         }
+        stream?.getTracks().forEach((track) => track.stop())
         stream = granted
         return true
       } catch {
@@ -62,14 +72,45 @@ export const createBrowserRecordingPort = (): RecordingPort => {
       }
     },
     start: async () => {
-      if (!stream) throw new Error('录音权限未开启')
+      if (disposed || !stream || stopPromise) throw new Error('录音设备暂不可用')
       player.pause()
-      chunks = []
-      recorder = new MediaRecorder(stream)
-      recorder.ondataavailable = (event) => {
-        if (event.data.size) chunks.push(event.data)
+      const chunks: Blob[] = []
+      const device = new MediaRecorder(stream)
+      recorder = device
+      let finished = false
+      /** 结束本次设备错误并拒绝待停止请求，不保留不完整录音 */
+      const fail = () => {
+        if (finished) return
+        finished = true
+        clearTimer()
+        if (stopReject) stopReject(new Error('录音设备失败'))
+        else if (!disposed) recordingListener?.()
+        try {
+          if (device.state === 'recording') device.stop()
+        } catch {
+          // 设备错误已通知控制器，退出仍会释放麦克风
+        }
       }
-      recorder.start()
+      device.ondataavailable = (event) => {
+        if (!disposed && !finished && event.data.size) chunks.push(event.data)
+      }
+      device.onerror = fail
+      device.onstop = () => {
+        if (finished) return
+        if (disposed || !chunks.length) {
+          fail()
+          return
+        }
+        finished = true
+        clearTimer()
+        const path = URL.createObjectURL(
+          new Blob(chunks, { type: device.mimeType || 'audio/webm' })
+        )
+        paths.add(path)
+        if (stopResolve) stopResolve(path)
+        else recordingListener?.(path)
+      }
+      device.start()
       timer = globalThis.setTimeout(() => {
         void stop().then(
           (path) => recordingListener?.(path),
@@ -80,6 +121,7 @@ export const createBrowserRecordingPort = (): RecordingPort => {
     stop,
     /** 回听本次录音，path 为页面创建的临时对象 URL */
     playback: async (path) => {
+      if (disposed || !paths.has(path)) throw new Error('本次录音已清理')
       if (player.src !== path) player.src = path
       await player.play()
     },
@@ -113,8 +155,13 @@ export const createBrowserRecordingPort = (): RecordingPort => {
       listener = undefined
       player.pause()
       player.src = ''
-      if (timer) globalThis.clearTimeout(timer)
-      if (recorder?.state === 'recording') recorder.stop()
+      clearTimer()
+      stopReject?.(new Error('本次录音已清理'))
+      try {
+        if (recorder?.state === 'recording') recorder.stop()
+      } catch {
+        // 停止失败不阻断后续麦克风与对象 URL 清理
+      }
       stream?.getTracks().forEach((track) => track.stop())
       for (const path of paths) URL.revokeObjectURL(path)
       paths.clear()

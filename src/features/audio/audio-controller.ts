@@ -23,6 +23,7 @@ export class AudioController {
   private unsubscribe?: () => void
   private abort?: AudioCancellation
   private resolver?: AudioUrlResolver
+  private disposed = false
   private state: AudioSnapshot = { status: AudioStatus.IDLE, target: null }
 
   /** options 为音频设备、签名服务和状态回调 */
@@ -32,32 +33,33 @@ export class AudioController {
     return this.state
   }
 
-  /** 播放或暂停目标，target 为固定版本资源和可选句子时间区间 */
+  /** 播放或暂停目标，target 为固定资源和可选句子区间，resolver 为本次授权取址服务 */
   play = async (target: AudioTarget, resolver?: AudioUrlResolver): Promise<void> => {
+    if (this.disposed) return
     claimPlayback(this, this.stop)
+    const resume =
+      isSameAudioTarget(this.state.target, target) && this.state.status === AudioStatus.PAUSED
+    const resumeTime = resume ? this.state.currentTimeMs : undefined
     if (isSameAudioTarget(this.state.target, target)) {
       if (this.state.status === AudioStatus.PLAYING) {
         this.pause()
         return
       }
-      if (this.state.status === AudioStatus.PAUSED) {
-        this.options.engine.play()
-        return
-      }
       if (this.state.status === AudioStatus.LOADING) return
     }
     this.cancel()
-    this.resolver = resolver ?? this.options.resolveUrl
+    this.resolver = resolver ?? (resume ? this.resolver : undefined) ?? this.options.resolveUrl
     this.forbiddenRetried = false
     this.update({
       status: AudioStatus.LOADING,
       target,
-      currentTimeMs: target.target_type === AudioTargetType.SENTENCE ? 0 : (target.start_ms ?? 0)
+      currentTimeMs:
+        resumeTime ?? (target.target_type === AudioTargetType.SENTENCE ? 0 : (target.start_ms ?? 0))
     })
     await this.resolve(target, this.generation)
   }
 
-  /** 暂停当前资源，继续时沿用设备时间 */
+  /** 暂停当前资源，继续时重新取址并恢复暂停时间 */
   pause = (): void => {
     if (this.state.status === AudioStatus.PLAYING) this.options.engine.pause()
   }
@@ -86,6 +88,8 @@ export class AudioController {
 
   /** 释放播放器并使所有迟到请求失效 */
   dispose = (): void => {
+    if (this.disposed) return
+    this.disposed = true
     this.stop()
     this.options.engine.destroy()
   }
@@ -94,6 +98,7 @@ export class AudioController {
   private cancel = (): void => {
     this.generation++
     this.abort?.abort()
+    this.abort = undefined
     this.unsubscribe?.()
     this.unsubscribe = undefined
     if (this.state.target) this.options.engine.stop()
@@ -142,7 +147,10 @@ export class AudioController {
       if (status === 401 || status === 403 || status === 404 || status === 409 || status === 410) {
         this.stop()
         this.options.onAccessDenied?.(target)
-      } else this.update({ ...this.state, status: AudioStatus.FAILED })
+      } else {
+        this.cancel()
+        this.update({ ...this.state, status: AudioStatus.FAILED })
+      }
     }
   }
 

@@ -21,3 +21,9 @@ export interface RecordingSnapshot {
   selectedSentenceId: string | null
   status: RecordingStatus
 }
+
+export interface NativeRecordingCallbacks {
+  started(): void
+  stopped(path: string): void
+  failed(error: unknown): void
+}

@@ -41,7 +41,7 @@ describe('AudioController', () => {
     await controller.play(second)
 
     expect(engine.pause).toHaveBeenCalledTimes(1)
-    expect(engine.stop).toHaveBeenCalledTimes(1)
+    expect(engine.stop).toHaveBeenCalledTimes(2)
     expect(engine.play).toHaveBeenCalledTimes(3)
     expect(engine.setSource).toHaveBeenLastCalledWith('https://audio.test/two')
   })

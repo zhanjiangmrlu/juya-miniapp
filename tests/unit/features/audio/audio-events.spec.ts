@@ -126,17 +126,64 @@ describe('真实音频事件与区间', () => {
     expect(controller.snapshot.target?.sentence_id).toBe('s3')
   })
 
-  it('暂停后继续保留设备时间点而不会重新 seek', async () => {
+  it('暂停后继续重验授权并恢复暂停时间点', async () => {
+    const { engine, emit } = createEngine()
+    const resolveUrl = vi.fn(async () => 'signed')
+    const controller = new AudioController({
+      engine: engine as never,
+      resolveUrl
+    })
+    await controller.play(target)
+    emit({ type: 'timeupdate', currentTimeMs: 4200 })
+    await controller.play(target)
+    expect(controller.snapshot.status).toBe('PAUSED')
+    await controller.play(target)
+    expect(resolveUrl).toHaveBeenCalledTimes(2)
+    expect(engine.seek).toHaveBeenLastCalledWith(4.2)
+    expect(controller.snapshot.status).toBe('PLAYING')
+    controller.dispose()
+  })
+
+  it('暂停期间失权后继续不会播放旧签名', async () => {
     const { engine } = createEngine()
+    const denied = vi.fn()
+    const resolveUrl = vi
+      .fn()
+      .mockResolvedValueOnce('signed')
+      .mockRejectedValueOnce({ status: 403 })
+    const controller = new AudioController({
+      engine: engine as never,
+      resolveUrl,
+      onAccessDenied: denied
+    })
+    await controller.play(target)
+    await controller.play(target)
+    await controller.play(target)
+    expect(engine.play).toHaveBeenCalledOnce()
+    expect(denied).toHaveBeenCalledWith(target)
+    expect(controller.snapshot.target).toBeNull()
+    controller.dispose()
+  })
+
+  it('设置音频资源失败后旧设备事件不能覆盖失败状态', async () => {
+    const { engine } = createEngine(false)
+    let late!: (event: { type: string }) => void
+    engine.subscribe = vi.fn((listener) => {
+      late = listener
+      return vi.fn()
+    })
+    engine.setSource = vi.fn(() => {
+      throw new Error('device unavailable')
+    })
     const controller = new AudioController({
       engine: engine as never,
       resolveUrl: async () => 'signed'
     })
     await controller.play(target)
-    await controller.play(target)
-    expect(controller.snapshot.status).toBe('PAUSED')
-    await controller.play(target)
-    expect(engine.seek).toHaveBeenCalledOnce()
+    late({ type: 'play' })
+    expect(controller.snapshot.status).toBe('FAILED')
+    expect(engine.stop).toHaveBeenCalledOnce()
+    controller.dispose()
   })
 
   it('签名接口确认权限失效后释放播放器并通知清空正文', async () => {

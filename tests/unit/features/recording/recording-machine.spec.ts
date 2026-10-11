@@ -21,6 +21,62 @@ const createPort = (permission = true): RecordingPort => {
 }
 
 describe('RecordingController', () => {
+  it('替换旧文件删除失败后在退出时重试并清理新旧录音', async () => {
+    const port = createPort()
+    port.stop = vi.fn().mockResolvedValueOnce('old.aac').mockResolvedValueOnce('new.aac')
+    const deleted: string[] = []
+    port.deleteFile = vi.fn(async (path) => {
+      deleted.push(path)
+      if (deleted.length === 1) throw new Error('temporary filesystem failure')
+    })
+    const controller = new RecordingController(port)
+    await controller.selectSentence('s1')
+    await controller.start()
+    await controller.stop()
+    await controller.start()
+    await controller.stop()
+    expect(controller.snapshot.status).toBe('RECORDED')
+    await controller.dispose()
+    expect(deleted).toEqual(['old.aac', 'old.aac', 'new.aac'])
+  })
+  it('删除文件失败仍销毁端口、取消监听并清空会话状态', async () => {
+    const port = createPort()
+    const unsubscribe = vi.fn()
+    port.subscribeRecording = () => unsubscribe
+    port.destroy = vi.fn()
+    const controller = new RecordingController(port)
+    await controller.selectSentence('s1')
+    await controller.start()
+    await controller.stop()
+    port.deleteFile = vi.fn(async () => {
+      throw new Error('filesystem unavailable')
+    })
+    await controller.dispose()
+    expect(unsubscribe).toHaveBeenCalledOnce()
+    expect(port.destroy).toHaveBeenCalledOnce()
+    expect(controller.snapshot.selectedSentenceId).toBeNull()
+  })
+  it('停止返回空文件时不提供无效回听入口', async () => {
+    const port = createPort()
+    port.stop = vi.fn(async () => '')
+    const controller = new RecordingController(port)
+    await controller.selectSentence('s1')
+    await controller.start()
+    await controller.stop()
+    expect(controller.snapshot).toMatchObject({ status: 'FAILED', hasRecording: false })
+    await controller.dispose()
+  })
+  it('销毁后的选句及开关更新不会重新写入会话状态', async () => {
+    const controller = new RecordingController(createPort())
+    await controller.dispose()
+    await controller.selectSentence('late-sentence')
+    controller.setEnabled(false)
+    expect(controller.snapshot).toMatchObject({
+      selectedSentenceId: null,
+      status: 'IDLE',
+      recordingDisabled: false
+    })
+  })
   it('回听自然结束后忽略迟到暂停事件，保留可重播状态', async () => {
     const port = createPort()
     let event!: (type: RecordingPlaybackEventType) => void

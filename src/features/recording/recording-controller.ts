@@ -1,10 +1,10 @@
 import { claimPlayback, releasePlayback } from '@/features/audio/playback-ownership'
-import { RECORDING_MAX_DURATION_MS } from '@/shared/constants/recording'
 import { RecordingPlaybackEventType, RecordingStatus } from '@/shared/enums/recording'
 
 import type { RecordingPort, RecordingSnapshot } from '@/shared/types/recording'
 
 import { createBrowserRecordingPort } from './browser-recording-port'
+import { createNativeRecordingPort } from './native-recording-port'
 import { createRecordingSnapshot } from './recording-machine'
 
 export type { RecordingPort } from '@/shared/types/recording'
@@ -21,6 +21,7 @@ export class RecordingController {
   private permission: boolean | undefined
   private permissionRequest?: Promise<boolean>
   private recordings = new Map<string, string>()
+  private paths = new Set<string>()
   private state = createRecordingSnapshot()
   private generation = 0
   private pendingStop?: Promise<void>
@@ -52,13 +53,17 @@ export class RecordingController {
     })
     this.unsubscribeRecording = port.subscribeRecording?.((path) => {
       const id = this.state.selectedSentenceId
-      if (this.disposed || !id || this.state.status !== RecordingStatus.RECORDING) return
+      if (path) this.paths.add(path)
+      if (this.disposed || !id || this.state.status !== RecordingStatus.RECORDING) {
+        if (path) void this.releaseFile(path).catch(() => undefined)
+        return
+      }
       if (!path) {
         this.update({ ...this.state, status: RecordingStatus.FAILED })
         return
       }
       const previous = this.recordings.get(id)
-      if (previous && previous !== path) void port.deleteFile(previous)
+      if (previous && previous !== path) void this.releaseFile(previous).catch(() => undefined)
       this.recordings.set(id, path)
       this.update({ ...this.state, hasRecording: true, status: RecordingStatus.RECORDED })
     })
@@ -70,6 +75,7 @@ export class RecordingController {
 
   /** 配置录音审核降级，enabled 为服务端允许本次会话录音的开关 */
   setEnabled = (enabled: boolean): void => {
+    if (this.disposed) return
     if (!enabled) {
       this.stopPlayback()
       void this.stop()
@@ -83,6 +89,7 @@ export class RecordingController {
 
   /** 选择句子，id 为稳定句子标识，旧录音停止后仍归属于旧句 */
   selectSentence = async (id: string): Promise<void> => {
+    if (this.disposed) return
     this.stopPlayback()
     const stopping = this.stop()
     this.generation++
@@ -102,6 +109,7 @@ export class RecordingController {
       !sentenceId ||
       this.state.recordingDisabled ||
       this.disposed ||
+      this.state.processing ||
       this.pendingStart ||
       this.state.status === RecordingStatus.RECORDING
     )
@@ -138,7 +146,10 @@ export class RecordingController {
       await this.port.start(sentenceId)
       if (generation !== this.generation || this.disposed) {
         const path = await this.port.stop()
-        await this.port.deleteFile(path)
+        if (path) {
+          this.paths.add(path)
+          await this.releaseFile(path)
+        }
         return
       }
       this.update({ ...this.state, processing: false, status: RecordingStatus.RECORDING })
@@ -160,9 +171,11 @@ export class RecordingController {
     this.pendingStop = this.port
       .stop()
       .then(async (path) => {
+        if (!path) throw new Error('录音设备未返回临时文件')
+        this.paths.add(path)
         const previous = this.recordings.get(sentenceId)
-        if (previous && previous !== path) await this.port.deleteFile(previous)
         this.recordings.set(sentenceId, path)
+        if (previous && previous !== path) await this.releaseFile(previous).catch(() => undefined)
         if (
           this.state.selectedSentenceId === sentenceId &&
           this.state.status === RecordingStatus.RECORDING &&
@@ -186,7 +199,7 @@ export class RecordingController {
 
   /** 回听当前句最近录音，设备事件决定实际播放状态 */
   playback = async (): Promise<void> => {
-    if (this.pendingStart) return
+    if (this.pendingStart || this.state.processing) return
     if (this.state.status === RecordingStatus.PLAYBACK) {
       this.port.pausePlayback?.()
       return
@@ -236,7 +249,13 @@ export class RecordingController {
     if (generation !== this.generation || this.disposed) return
     const path = this.recordings.get(sentenceId)
     if (path) {
-      await this.port.deleteFile(path)
+      try {
+        await this.releaseFile(path)
+      } catch {
+        if (generation === this.generation && !this.disposed)
+          this.update({ ...this.state, status: RecordingStatus.FAILED })
+        return
+      }
       this.recordings.delete(sentenceId)
     }
     if (generation !== this.generation || this.disposed) return
@@ -254,13 +273,20 @@ export class RecordingController {
     this.generation++
     this.port.stopPlayback()
     await this.stop()
-    const paths = [...new Set(this.recordings.values())]
-    await Promise.all(paths.map((path) => this.port.deleteFile(path)))
+    const paths = [...new Set([...this.paths, ...this.recordings.values()])]
+    await Promise.allSettled(paths.map((path) => this.releaseFile(path)))
     this.recordings.clear()
+    this.paths.clear()
     this.unsubscribe?.()
     this.unsubscribeRecording?.()
     this.port.destroy?.()
     this.update(createRecordingSnapshot())
+  }
+
+  /** 删除会话临时文件，path 为设备产生的文件，失败时保留清理登记供退出重试 */
+  private releaseFile = async (path: string): Promise<void> => {
+    await this.port.deleteFile(path)
+    this.paths.delete(path)
   }
 
   /** 更新录音快照，snapshot 为当前句与本地设备状态 */
@@ -276,91 +302,6 @@ export const createUniRecordingPort = (): RecordingPort => {
   return createBrowserRecordingPort()
   // #endif
   // #ifndef H5
-  const recorder = uni.getRecorderManager()
-  const playback = uni.createInnerAudioContext()
-  let stopResolver: ((path: string) => void) | undefined
-  let stopReject: ((error: unknown) => void) | undefined
-  let startResolver: (() => void) | undefined
-  let startReject: ((error: unknown) => void) | undefined
-  let playbackListener: ((type: RecordingPlaybackEventType) => void) | undefined
-  let recordingListener: ((path?: string) => void) | undefined
-  recorder.onStart(() => {
-    startResolver?.()
-    startResolver = undefined
-    startReject = undefined
-  })
-  recorder.onStop((result) => {
-    if (stopResolver) stopResolver(result.tempFilePath)
-    else recordingListener?.(result.tempFilePath)
-    stopResolver = undefined
-    stopReject = undefined
-  })
-  recorder.onError((error) => {
-    startReject?.(error)
-    stopReject?.(error)
-    if (!startReject && !stopReject) recordingListener?.()
-    startResolver = undefined
-    stopResolver = undefined
-  })
-  playback.onPlay(() => playbackListener?.(RecordingPlaybackEventType.PLAY))
-  playback.onPause(() => playbackListener?.(RecordingPlaybackEventType.PAUSE))
-  playback.onEnded(() => playbackListener?.(RecordingPlaybackEventType.ENDED))
-  playback.onError(() => playbackListener?.(RecordingPlaybackEventType.ERROR))
-  return {
-    deleteFile: (path) =>
-      new Promise((resolve) => {
-        try {
-          uni
-            .getFileSystemManager()
-            .unlink({ fail: () => resolve(), filePath: path, success: () => resolve() })
-        } catch {
-          resolve()
-        }
-      }),
-    playback: (path) => {
-      if (playback.src !== path) playback.src = path
-      playback.play()
-      return Promise.resolve()
-    },
-    pausePlayback: () => playback.pause(),
-    subscribePlayback: (listener) => {
-      playbackListener = listener
-      return () => {
-        playbackListener = undefined
-      }
-    },
-    subscribeRecording: (listener) => {
-      recordingListener = listener
-      return () => {
-        recordingListener = undefined
-      }
-    },
-    requestPermission: () =>
-      new Promise((resolve) => {
-        uni.authorize({
-          fail: () => resolve(false),
-          scope: 'scope.record',
-          success: () => resolve(true)
-        })
-      }),
-    start: () =>
-      new Promise((resolve, reject) => {
-        startResolver = resolve
-        startReject = reject
-        recorder.start({ duration: RECORDING_MAX_DURATION_MS, format: 'aac' })
-      }),
-    stop: () =>
-      new Promise((resolve, reject) => {
-        stopResolver = resolve
-        stopReject = reject
-        recorder.stop()
-      }),
-    stopPlayback: () => playback.stop(),
-    destroy: () => {
-      recordingListener = undefined
-      playbackListener = undefined
-      playback.destroy()
-    }
-  }
+  return createNativeRecordingPort()
   // #endif
 }

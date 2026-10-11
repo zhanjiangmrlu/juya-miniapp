@@ -62,10 +62,7 @@ const bounded = <T>(
       resolve(undefined)
     }, remaining)
     signal.addEventListener('abort', abort, { once: true })
-    if (signal.aborted) {
-      abort()
-      return
-    }
+    // 即使调用服务时同步取消，也先监听已创建请求的拒绝，避免迟到错误成为未处理异常
     void work.then(
       (value) => {
         cleanup()
@@ -76,6 +73,7 @@ const bounded = <T>(
         reject(error)
       }
     )
+    if (signal.aborted) abort()
   })
 
 /** 解析受控目标，target 为确认读音，context 为内容或收藏授权，service 为请求端口，signal 为切页取消信号 */

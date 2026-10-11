@@ -7,6 +7,21 @@ const target = { target_id: 'confirmed-reading', can_prepare: true }
 afterEach(() => vi.useRealTimers())
 
 describe('受控发音准备', () => {
+  it('服务端调用同步取消时仍消化迟到请求失败', async () => {
+    const abort = new AbortController()
+    const service = {
+      resolve: () => {
+        abort.abort()
+        return Promise.reject(new Error('late transport failure'))
+      },
+      task: vi.fn()
+    }
+    await expect(
+      resolvePronunciation(target, context, service as never, abort.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(service.task).not.toHaveBeenCalled()
+  })
   it('同次动作只创建一次准备请求，轮询完成后返回固定资源', async () => {
     vi.useFakeTimers()
     const service = {
