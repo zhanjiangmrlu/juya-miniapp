@@ -13,6 +13,7 @@ import { AudioButtonVariant, AudioStatus } from '@/shared/enums/audio'
 import { NavigationType } from '@/shared/enums/navigation'
 import { decodePageQuery } from '@/shared/navigation/decode-page-query'
 import { navigate } from '@/shared/navigation/navigate'
+import { useSessionStore } from '@/stores/session'
 
 import type { SceneEntry } from '@/shared/contracts/learning'
 
@@ -73,6 +74,7 @@ const currentSentence = computed(() => {
 })
 let highlightTimer: ReturnType<typeof globalThis.setTimeout> | undefined
 let pageActive = false
+let pageGeneration = 0
 watch(
   () => audio.snapshot.status,
   (status) => {
@@ -101,7 +103,9 @@ const duration = computed(() => {
 /** 读取当前场景并只对当前版本唯一句子恢复来源，query为路由参数 */
 const load = async (query?: Record<string, string>) => {
   pageActive = true
+  const request = ++pageGeneration
   await initialize(query?.sceneId)
+  if (!pageActive || request !== pageGeneration) return
   const locator = decodePageQuery(query?.sourceLocator)
   const stored = uni.getStorageSync(`juya.scene-position.${sceneId.value}`) as
     { entry_id?: string; offset?: number } | undefined
@@ -121,6 +125,7 @@ const load = async (query?: Record<string, string>) => {
   )
   if (!entry || !pageActive) return
   await nextTick()
+  if (!pageActive || request !== pageGeneration) return
   if (locator && versionMatches) {
     highlightedId.value = entry.entry_id
     uni.pageScrollTo({ selector: `#sentence-${entry.entry_id}`, duration: 0 })
@@ -132,18 +137,21 @@ const load = async (query?: Record<string, string>) => {
 }
 /** 切全文译文后恢复现有像素位置，不改变收藏和播放 */
 const toggleTranslation = async () => {
+  const request = pageGeneration
   const top = scrollTop.value
   scene.toggleChinese()
   await nextTick()
+  if (!pageActive || request !== pageGeneration) return
   uni.pageScrollTo({ scrollTop: top, duration: 0 })
 }
 /** 保存当前页面稳定句子和真实滚动，event为页面滚动位置 */
 const scroll = (event: { scrollTop: number }) => {
+  const request = pageGeneration
   scrollTop.value = event.scrollTop
   const selector = uni.createSelectorQuery()
   selector.selectAll('.sentence-row').boundingClientRect()
   selector.exec((results) => {
-    if (!pageActive) return
+    if (!pageActive || request !== pageGeneration) return
     const rows = results[0] as { bottom: number }[] | undefined
     const entry = scene.dialogueEntries[rows?.findIndex((row) => row.bottom > 78) ?? -1]
     if (entry) savePosition({ entry_id: entry.source_locator, offset: event.scrollTop })
@@ -162,10 +170,14 @@ const toggleFavorite = (entry: SceneEntry) => {
 /** 离页停止受限原音和迟到定位 */
 const cleanup = () => {
   pageActive = false
+  pageGeneration++
+  highlightedId.value = ''
   if (highlightTimer) globalThis.clearTimeout(highlightTimer)
+  highlightTimer = undefined
   disposeAudio()
 }
 onLoad(load)
+watch(() => useSessionStore().cleanupGeneration, cleanup, { flush: 'sync' })
 onShow(() => {
   pageActive = true
 })

@@ -8,3 +8,4 @@ project.private.config.json
 tests/fixtures/contracts/v15-3f9207a/openapi.json
 tests/fixtures/contracts/v15-3f9207a/examples.json
 tests/fixtures/contracts/v15-19f28ef/openapi.json
+tests/fixtures/contracts/v15-a9a97b8/openapi.json

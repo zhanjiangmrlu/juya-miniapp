@@ -91,3 +91,8 @@
 - 本轮门禁（14:17—14:20）：129文件659测试通过；修正单个测试import排序后 `pnpm check` exit0；H5和mp-weixin正式构建exit0，page-meta16页通过。缺BASE的真实脚本预检非零退出、0请求、0网络失败；这不是服务联调通过
 - 脚本复核修正：关闭浏览器后再次汇总迟到网络失败并判失败；录音关闭场景实际选第二句、原音取址200并核对切片resource_id；本人资料联系提示通过真实“稍后再说”处理
 - 反馈草稿离开表单后的跨账号清理正在补全局store保护；此项复核结束及最终BFF契约消费前不标READY
+- 草稿全局身份保护已提交 `0cb57de`；反馈/账号最终复核的冷启动页面冻结、撤回标记、来源重载、无效补充取消已读正在RED→GREEN修复
+- 本轮正式中间消费基线 `a9a97b8eaed183a7b60a0d17c8be116016ba35f4`，fixture：`tests/fixtures/contracts/v15-a9a97b8/openapi.json`／`provider.d.ts`；64 paths／73 operations／67 schemas，固定Git内容JSON SHA256 `e3d47760bfbab61818c4a4e373105dbeb10c8b6c5e91f2f00d481d93b90e55ae`；旧fixture只保留历史回归，最终BFF如续改契约将再次同步
+- 已发布录音严格布尔、运营稳定排序及短文独立安全历史；前端正在补场景历史分页、短文独立已读数/历史摘要和生成类型消费。安全封面及预览进度摘要仍待后续正式契约
+- 真实脚本种子前提：scene_id 为 recording_enabled=false、至少2句且第2句有真实 slice_target_id/slice_version 的dialogue；word_card_id 为同英文2词卡、中文释义不同且义项/来源稳定独立；short_reading_id 为未完成纯文本篇且包含标签。脚本已实际验证双义项分别收藏并加入同轮完整复习；缺条件明确失败，不能以跳过通过
+- 协调现纯文本种子不足以验原音；最小同版SQL/素材绑定与独占loopback字节端口规则见 `docs/implementation/v15-local-audio-seed.md`。保留原SQLResourceSigner/Authorizer，只替换隔离存储端口，实际HEAD/hash/短时HMAC校验，不能恒定返回200；本地资源证据不等于OSS云或真人听音

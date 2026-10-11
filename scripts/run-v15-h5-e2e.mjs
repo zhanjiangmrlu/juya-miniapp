@@ -264,6 +264,47 @@ try {
     await page.waitForURL((url) => url.hash.includes('/scene/completed'))
     await screenshot('recording-disabled-completed')
   })
+  if (entities.word_card_id) {
+    await step('word-card-distinct-senses', async () => {
+      const opened = responseFor('POST', /\/scenes\/[^/]+\/open$/)
+      await open(`/sub-packages/scene/detail?sceneId=${encodeURIComponent(entities.word_card_id)}`)
+      const response = await opened
+      expect(response.status()).toBe(200)
+      const data = await response.json()
+      expect(data.scene.content_type).toBe('word_card')
+      expect(data.scene.content_id).toBe(entities.word_card_id)
+      const cards = page.locator('.scene-word-card:not(.chunk)')
+      await expect(cards).toHaveCount(2)
+      expect(await cards.nth(0).locator('.word-english').textContent()).toBe(
+        await cards.nth(1).locator('.word-english').textContent()
+      )
+      expect(await cards.nth(0).locator('.word-meaning').textContent()).not.toBe(
+        await cards.nth(1).locator('.word-meaning').textContent()
+      )
+      const distinctIds = []
+      for (let index = 0; index < 2; index++) {
+        const button = cards.nth(index).locator('.favorite-button')
+        if ((await button.textContent()).includes('已收藏')) {
+          const removed = responseFor('DELETE', /\/favorite-snapshots\/[^/]+$/)
+          await button.click()
+          expect((await removed).status()).toBe(200)
+          await expect(button).toHaveText('收藏')
+        }
+        const saved = responseFor('POST', /^\/api\/v1\/favorite-snapshots$/)
+        await button.click()
+        const savedResponse = await saved
+        expect(savedResponse.status()).toBe(201)
+        const snapshot = await savedResponse.json()
+        expect(snapshot.active).toBe(true)
+        distinctIds.push(snapshot.favorite_id)
+        await expect(button).toHaveText('已收藏')
+      }
+      expect(new Set(distinctIds).size).toBe(2)
+      favoriteIds.push(...distinctIds)
+      await screenshot('word-card-distinct-senses')
+    })
+  } else
+    results.steps.push({ name: 'word-card-distinct-senses', result: 'NOT_RUN_ENTITY_REQUIRED' })
   await step('banks-and-detail-source', async () => {
     const list = responseFor('GET', /^\/api\/v1\/favorite-snapshots$/)
     await open('/pages/favorites/index')
@@ -340,17 +381,6 @@ try {
     await page.getByText('保存资料', { exact: true }).click()
     expect((await restored).status()).toBe(200)
   })
-  if (entities.word_card_id) {
-    await step('word-card-content', async () => {
-      const opened = responseFor('POST', /\/scenes\/[^/]+\/open$/)
-      await open(`/sub-packages/scene/detail?sceneId=${encodeURIComponent(entities.word_card_id)}`)
-      const response = await opened
-      expect(response.status()).toBe(200)
-      expect((await response.json()).scene.content_type).toBe('word_card')
-      await expect(page.locator('.scene-word-card').first()).toBeVisible()
-      await screenshot('word-card')
-    })
-  } else results.steps.push({ name: 'word-card-content', result: 'NOT_RUN_ENTITY_REQUIRED' })
   if (entities.short_reading_id) {
     await step('short-reading-pure-read-complete', async () => {
       const opened = responseFor('POST', /\/short-readings\/[^/]+\/open$/)
