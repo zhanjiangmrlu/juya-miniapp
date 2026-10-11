@@ -28,6 +28,53 @@ afterEach(() => {
 })
 
 describe('createProgressQueue', () => {
+  it('发送期间继续滚动保留并发送最后位置且序号严格递增', async () => {
+    vi.useFakeTimers()
+    let release!: () => void
+    const sender = vi.fn(
+      async (_command: ProgressCommand, _key: string): Promise<void> => undefined
+    )
+    sender.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve
+        })
+    )
+    const queue = createProgressQueue(createStorage(), sender)
+    queue.enqueuePosition('scene-1', firstPosition)
+    const sending = queue.flush()
+    queue.enqueuePosition('scene-1', latestPosition)
+    release()
+    await sending
+    expect(
+      sender.mock.calls.map(([command]) => command.kind === 'POSITION' && command.position)
+    ).toEqual([firstPosition, latestPosition])
+    const [first, latest] = sender.mock.calls.map(([command]) =>
+      command.kind === 'POSITION' ? command.clientSequence : 0
+    )
+    expect(latest).toBeGreaterThan(first)
+    queue.dispose()
+  })
+  it('清空期间旧请求完成不删除新账号命令或重新持久化旧命令', async () => {
+    const storage = createStorage()
+    let release!: () => void
+    const sender = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve
+        })
+    )
+    const queue = createProgressQueue(storage, sender)
+    queue.enqueueCompletion('previous-account')
+    const sending = queue.flush()
+    queue.clear()
+    queue.enqueueCompletion('current-account')
+    release()
+    await sending
+    expect(queue.snapshot.map((command) => command.sceneId)).toEqual(['current-account'])
+    expect(sender).toHaveBeenCalledOnce()
+    queue.clear()
+  })
   it('在微信缺少 Web Crypto 时生成稳定的可重试命令', async () => {
     vi.useFakeTimers()
     vi.stubGlobal('crypto', undefined)

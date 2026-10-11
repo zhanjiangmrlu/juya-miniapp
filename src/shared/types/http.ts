@@ -14,6 +14,7 @@ export interface RequestOptions {
 }
 
 export interface HttpClient {
+  patch<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T>
   delete<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T>
   get<T>(path: string, options?: RequestOptions): Promise<T>
   post<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T>

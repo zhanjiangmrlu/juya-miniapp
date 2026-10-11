@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { AudioController } from '@/features/audio/audio-controller'
 import { getAudioTargetKey, isSameAudioTarget } from '@/features/audio/audio-machine'
 import {
+  canPronounceTarget,
   getPronunciationAudioTarget,
   resolvePronunciation
 } from '@/features/audio/pronunciation-controller'
@@ -14,6 +15,7 @@ import { getRuntimeServices } from '@/services/runtime'
 import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { AudioStatus, AudioTargetType, PronunciationStatus } from '@/shared/enums/audio'
 import { useSceneStore } from '@/stores/scene'
+import { useSessionStore } from '@/stores/session'
 
 import type { PronunciationContext, PronunciationTarget } from '@/shared/contracts/audio'
 import type { AudioTarget } from '@/shared/contracts/learning'
@@ -100,7 +102,7 @@ export const useAudioStore = defineStore('audio', () => {
     context: PronunciationContext,
     service?: PronunciationService
   ) => {
-    if (target.status === PronunciationStatus.UNAVAILABLE) return
+    if (!canPronounceTarget(target)) return
     const playbackTarget = getPronunciationAudioTarget(target, context)
     const current = controller?.snapshot
     if (
@@ -138,6 +140,7 @@ export const useAudioStore = defineStore('audio', () => {
 
   /** 停止原音以便开始录音或本地回听 */
   const stop = () => controller?.stop()
+  watch(() => useSessionStore().cleanupGeneration, dispose, { flush: 'sync' })
 
   return { currentKey, dispose, play, playPronunciation, snapshot, stop }
 })

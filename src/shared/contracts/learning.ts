@@ -1,4 +1,5 @@
 import type { StablePosition } from './common'
+import type { SceneSnapshot } from './scene-snapshot'
 import type { AccessLevel } from '@/shared/enums/entitlements'
 import type { SceneEntryType } from '@/shared/enums/learning'
 
@@ -9,6 +10,7 @@ export interface LearningModule {
   title: string
 }
 export interface LearningModulesResponse {
+  config_version?: number | string
   items: LearningModule[]
 }
 export interface SceneSummary {
@@ -26,12 +28,18 @@ export interface SceneSummary {
   trial_sentence?: string
 }
 export interface LearningCatalogResponse {
+  config_version?: number | string
+  user_stage?: string
   authorization_pending: boolean
   items: SceneSummary[]
   profile_completion_enabled?: boolean
 }
 export type { SceneEntryType } from '@/shared/enums/learning'
 export interface AudioTarget {
+  purpose?: string
+  context?: import('./audio').PronunciationContext
+  resource_version?: string
+  local_url?: string
   scene_id?: string
   revision_id?: string
   resource_id?: string
@@ -44,6 +52,18 @@ export interface AudioTarget {
   version_id: string
 }
 export interface SceneEntry {
+  content_type?: string
+  sense_id?: string
+  source_id?: string
+  favorite_id?: string | null
+  image_asset_id?: string | null
+  image_url?: string
+  pronunciation?: {
+    target_id: string
+    can_prepare: boolean
+    resource_version?: string
+    status?: string
+  } | null
   entry_version?: number
   revision_id?: string
   scene_id?: string
@@ -69,6 +89,8 @@ export interface SceneEntry {
   text: string
 }
 export interface SceneContent extends SceneSummary {
+  content_type?: string
+  recording_enabled?: boolean
   revision_id?: string
   content_version?: number
   original_image_asset_id?: string | null
@@ -138,7 +160,7 @@ export interface SceneOpenWireResponse {
   activated_at: string | null
   authorization_pending: boolean
   earliest_expires_at: string | null
-  scene: PublishedScene | PreviewScene | SceneContent | null
+  scene: PublishedScene | PreviewScene | SceneContent | SceneSnapshot | null
   sources: readonly string[]
 }
 export interface SceneEntryQuery {

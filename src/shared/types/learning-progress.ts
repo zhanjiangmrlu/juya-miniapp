@@ -29,6 +29,7 @@ export interface ProgressQueueOptions {
 export type ProgressSender = (command: ProgressCommand, idempotencyKey: string) => Promise<void>
 
 export interface ProgressQueue {
+  dispose(): void
   clear(): void
   enqueueCompletion(sceneId: string): void
   enqueuePosition(sceneId: string, position: StablePosition): void

@@ -5,6 +5,7 @@ import { createSceneService } from '@/features/scene/scene-service'
 describe('发布资源接口', () => {
   it('原图和整段音频签名均限定场景修订，编码路径和查询参数', async () => {
     const client = {
+      patch: vi.fn(),
       get: vi
         .fn()
         .mockResolvedValue({ url: '/audio.wav', resource_id: 'audio', expires_at: '2099-01-01' }),

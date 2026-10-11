@@ -20,7 +20,8 @@ const expectedPackages = {
     'completed'
   ],
   favorites: ['phrases', 'detail', 'sources', 'review-front', 'review-back', 'history'],
-  profile: ['contact-prompt', 'contact-edit', 'contact-manage', 'contact-correction'],
+  profile: ['contact-prompt', 'contact-edit', 'contact-manage', 'contact-correction', 'edit'],
+  'short-reading': ['index', 'detail', 'preview'],
   entitlement: ['index', 'pending', 'active', 'ending', 'ended', 'exception'],
   feedback: ['messages', 'index', 'create', 'detail', 'resolution', 'content-blocked'],
   account: ['index', 'clear-confirm', 'delete-confirm', 'deletion-pending'],
@@ -53,7 +54,7 @@ describe('页面分包配置', () => {
       'pages/favorites/index',
       'pages/profile/index'
     ])
-    expect(config.subPackages).toHaveLength(9)
+    expect(config.subPackages).toHaveLength(10)
     expect(config.preloadRule).toBeUndefined()
     for (const [business, names] of Object.entries(expectedPackages)) {
       const subpackage = config.subPackages?.find(
@@ -62,7 +63,7 @@ describe('页面分包配置', () => {
       expect(subpackage?.pages.map((page) => page.path)).toEqual(names)
       expect(subpackage?.independent).not.toBe(true)
     }
-    expect(config.subPackages?.flatMap((item) => item.pages)).toHaveLength(40)
+    expect(config.subPackages?.flatMap((item) => item.pages)).toHaveLength(44)
   })
 
   it('44 条路由唯一、源文件存在，页面样式与迁移前一致', () => {
@@ -72,8 +73,8 @@ describe('页面分包配置', () => {
         item.pages.map((page) => ({ ...page, path: `${item.root}/${page.path}` }))
       )
     ]
-    expect(pages).toHaveLength(44)
-    expect(new Set(pages.map((page) => page.path)).size).toBe(44)
+    expect(pages).toHaveLength(48)
+    expect(new Set(pages.map((page) => page.path)).size).toBe(48)
     for (const page of pages) {
       expect(existsSync(resolve(`src/${page.path}.vue`)), page.path).toBe(true)
       expect(page.style).toEqual({ navigationStyle: 'custom' })

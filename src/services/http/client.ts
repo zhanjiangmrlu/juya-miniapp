@@ -96,6 +96,7 @@ export const createHttpClient = (options: HttpClientOptions): HttpClient => {
     delete: (path, body, requestOptions) => send(HttpMethod.DELETE, path, body, requestOptions),
     get: (path, requestOptions) => send(HttpMethod.GET, path, undefined, requestOptions),
     post: (path, body, requestOptions) => send(HttpMethod.POST, path, body, requestOptions),
+    patch: (path, body, requestOptions) => send(HttpMethod.PATCH, path, body, requestOptions),
     put: (path, body, requestOptions) => send(HttpMethod.PUT, path, body, requestOptions)
   }
 }

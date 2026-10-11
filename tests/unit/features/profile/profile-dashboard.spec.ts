@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import ProfileDashboard from '@/features/profile/components/profile-dashboard.vue'
+import { useSessionStore } from '@/stores/session'
 const dependencies = vi.hoisted(() => ({
   show: undefined as (() => Promise<void>) | undefined,
   hide: undefined as (() => void) | undefined,
@@ -33,6 +35,7 @@ vi.mock('@/services/runtime', () => ({
   })
 }))
 beforeEach(() => {
+  setActivePinia(createPinia())
   vi.clearAllMocks()
   vi.stubGlobal('uni', { getStorageSync: () => '', setStorageSync: dependencies.storage })
 })
@@ -48,7 +51,7 @@ const options = {
   }
 }
 describe('联系提示真实曝光', () => {
-  it.each(['hide', 'unload'] as const)(
+  it.each(['hide', 'unload', 'cleanup'] as const)(
     '资料请求期间%s，异步返回不得消耗唯一提示机会',
     async (leave) => {
       let resolve!: (value: unknown) => void
@@ -60,7 +63,8 @@ describe('联系提示真实曝光', () => {
       )
       const wrapper = mount(ProfileDashboard, options)
       const request = dependencies.show?.()
-      dependencies[leave]?.()
+      if (leave === 'cleanup') useSessionStore().invalidateLearningData()
+      else dependencies[leave]?.()
       resolve({ juya_id: 'one', contact_prompt_eligible: true })
       await request
       await flushPromises()

@@ -5,7 +5,6 @@ import { computed } from 'vue'
 import AppState from '@/components/app-state/app-state.vue'
 import AccessNotice from '@/features/learning/components/access-notice.vue'
 import EntryPageShell from '@/features/learning/components/entry-page-shell.vue'
-import EntrySummary from '@/features/learning/components/entry-summary.vue'
 import LearningPageHeading from '@/features/learning/components/learning-page-heading.vue'
 import SceneListSection from '@/features/learning/components/scene-list-section.vue'
 import { useLearningPage } from '@/features/learning/use-learning-page'
@@ -21,9 +20,12 @@ const {
   load,
   noticeVisible,
   openExplore,
+  openFavorites,
   openProfile,
   openReview,
-  selectScene
+  selectScene,
+  selectModule,
+  profileActionShown
 } = useLearningPage()
 const isNew = computed(() => learning.sections.stage === LearningCatalogStage.NEW)
 const openTitles = computed(() =>
@@ -52,19 +54,34 @@ useAnalyticsPage('pages/learning/index')
       title="场景学习"
       :large="!isNew"
     />
+    <view v-if="learning.sections.modules.length" class="learning-modules"
+      ><button
+        v-for="module in learning.sections.modules"
+        :key="module.public_id"
+        :class="{ selected: module.key === 'scene_learning' }"
+        @click="selectModule(module)"
+      >
+        {{ module.title }}
+      </button></view
+    >
     <AppState
-      v-if="learning.sections.authorizationPending"
+      v-if="!learning.loading && !learning.error && !learning.sections.modules.length"
+      title="学习内容正在调整，请稍后再来。"
+      icon-label="暂无内容"
+      description="你仍可查看收藏与学习档案。"
+      ><button class="primary-action" @click="openFavorites">前往收藏</button></AppState
+    >
+    <AppState
+      v-else-if="learning.sections.authorizationPending"
       title="学习内容暂不可用"
       icon-label="权限确认中"
       description="正在重新确认你的内容权限，请稍后重试。"
     />
-    <template v-else-if="isNew">
-      <EntrySummary
-        class="open-summary"
-        label="开放学习"
-        :value="`${learning.sections.openScenes.length} 个场景`"
-        description="所有开放场景都可自由选择"
-      />
+    <template
+      v-else-if="
+        isNew && learning.sections.modules.some((module) => module.key === 'scene_learning')
+      "
+    >
       <SceneListSection
         title="开放场景"
         compact
@@ -73,7 +90,9 @@ useAnalyticsPage('pages/learning/index')
       />
       <button class="primary-action" @click="openExplore">探索更多内容</button>
     </template>
-    <template v-else>
+    <template
+      v-else-if="learning.sections.modules.some((module) => module.key === 'scene_learning')"
+    >
       <SceneListSection
         title="继续学习"
         :scenes="learning.sections.currentLearning"
@@ -104,7 +123,7 @@ useAnalyticsPage('pages/learning/index')
     </template>
     <AccessNotice
       v-if="noticeVisible"
-      :show-profile-action="learning.sections.showProfileAction"
+      :show-profile-action="learning.sections.showProfileAction && !profileActionShown"
       @close="closeNotice"
       @profile="openProfile"
     />
@@ -115,6 +134,31 @@ useAnalyticsPage('pages/learning/index')
 
 .open-summary {
   margin-top: 23px;
+}
+
+.learning-modules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+
+  button {
+    flex: 1;
+    min-width: 100px;
+    min-height: 44px;
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: #e2eed9;
+    color: #254733;
+    font-size: 15px;
+    line-height: 24px;
+
+    &.selected {
+      background: #4e7f3b;
+      color: #fff;
+    }
+  }
 }
 
 .entitled-section {

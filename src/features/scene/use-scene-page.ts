@@ -1,7 +1,8 @@
 import { onShow } from '@dcloudio/uni-app'
-import { computed, ref } from 'vue'
+import { computed, getCurrentScope, onScopeDispose, ref, watch, watchEffect } from 'vue'
 
 import { createProgressQueue } from '@/features/learning-progress/progress-queue'
+import { sceneEntryKey } from '@/features/scene/scene-entry-identity'
 import { getAnalytics } from '@/services/analytics/runtime'
 import { createRequestId } from '@/services/http/request-id'
 import { getRuntimeServices } from '@/services/runtime'
@@ -12,9 +13,12 @@ import { SceneEntryType } from '@/shared/enums/learning'
 import { ProgressCommandKind } from '@/shared/enums/learning-progress'
 import { SceneModelKind } from '@/shared/enums/scene'
 import { useAudioStore } from '@/stores/audio'
+import { useFavoriteStore } from '@/stores/favorites'
 import { useSceneStore } from '@/stores/scene'
+import { useSessionStore } from '@/stores/session'
 
 import type { StablePosition } from '@/shared/contracts/common'
+import type { FavoriteReference } from '@/shared/contracts/favorites'
 import type { AudioTarget, ClickableSpan, SceneEntry } from '@/shared/contracts/learning'
 import type { HttpStatusCarrier } from '@/shared/types/http'
 import type { ScenePageOptions } from '@/shared/types/scene'
@@ -27,6 +31,8 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
   const audio = useAudioStore()
   const runtime = getRuntimeServices()
   const scene = useSceneStore()
+  const favorites = useFavoriteStore()
+  const session = useSessionStore()
   const sceneId = ref('')
   const scrollTarget = ref('')
   const scrollTop = ref(0)
@@ -45,6 +51,43 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
   let imageRetried = false
   let completing = false
   let suspended = false
+  /** 提取可收藏的确认目标，entry为本篇条目，缺少稳定身份时拒绝猜配 */
+  const referenceFor = (entry: SceneEntry): FavoriteReference | undefined => {
+    const model = fullModel.value
+    if (!model?.content_version || !entry.sense_id || !entry.source_id) return undefined
+    return {
+      content_type: model.content_type ?? 'dialogue',
+      content_id: model.sceneId,
+      content_version: model.content_version,
+      entry_id: entry.entry_id,
+      sense_id: entry.sense_id,
+      source_id: entry.source_id
+    }
+  }
+  const pendingFavoriteIds = computed(() =>
+    (fullModel.value?.entries ?? [])
+      .filter((entry) => {
+        const reference = referenceFor(entry)
+        return reference && favorites.stateFor(reference).pending
+      })
+      .map(sceneEntryKey)
+  )
+  /** 将银行／来源共享可信状态应用至当前已加载条目 */
+  watchEffect(
+    () => {
+      for (const entry of [
+        ...(fullModel.value?.entries ?? []),
+        ...(scene.sheet ? [scene.sheet.snapshot.entry] : [])
+      ]) {
+        const reference = referenceFor(entry)
+        if (!reference) continue
+        const state = favorites.stateFor(reference)
+        entry.favorited = state.is_favorited
+        entry.favorite_id = state.favorite_id
+      }
+    },
+    { flush: 'sync' }
+  )
   const progressQueue = createProgressQueue(
     {
       clear: () => uni.removeStorageSync(PROGRESS_QUEUE_KEY),
@@ -66,6 +109,20 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
         idempotencyKey
       )
     }
+  )
+  if (getCurrentScope()) onScopeDispose(progressQueue.dispose)
+  watch(
+    () => session.cleanupGeneration,
+    () => {
+      suspended = true
+      generation++
+      sheetRequest++
+      progressQueue.clear()
+      imageUrl.value = ''
+      imageOpen.value = false
+      scene.clear()
+    },
+    { flush: 'sync' }
   )
 
   /** 处理授权失败，error 为 API 返回错误，拒绝访问时清空正文及媒体 */
@@ -99,6 +156,31 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
       if (request === generation) imageLoading.value = false
     }
   }
+  /** 解析当前发布词汇图片，request为加载代次，图片失败保留文字且不填充设计样图 */
+  const resolveWordImages = async (request: number) => {
+    const model = fullModel.value
+    if (!model?.revision_id) return
+    await Promise.all(
+      model.entries
+        .filter((entry) => entry.image_asset_id)
+        .map(async (entry) => {
+          try {
+            const resource = await runtime.scene.getResource(
+              model.sceneId,
+              entry.image_asset_id!,
+              model.revision_id!
+            )
+            if (request === generation && fullModel.value === model) entry.image_url = resource.url
+          } catch (error) {
+            if (
+              request === generation &&
+              [401, 403].includes((error as HttpStatusCarrier)?.status ?? 0)
+            )
+              handleFailure(error)
+          }
+        })
+    )
+  }
 
   /** 使用路由标识加载场景，id 为授权场景 ID，缺失时不猜测场景 */
   const initialize = async (id?: string) => {
@@ -129,7 +211,7 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
         { token }
       )
     }
-    await resolveImage(request)
+    await Promise.all([resolveImage(request), resolveWordImages(request)])
     void progressQueue.flush()
   }
 
@@ -221,44 +303,52 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
     scene.closeSheet()
   }
 
-  /** 收藏权威词卡，entry 为固定发布版本的词条快照 */
+  /** 切换当前义项来源收藏，entry 为同版确认条目，正文不参与写入 */
   const favorite = async (entry: SceneEntry) => {
     const token = analytics.capture()
     const model = fullModel.value
     const request = generation
-    if (entry.favorited || !model?.revision_id || suspended) return
+    const reference = referenceFor(entry)
+    if (!reference || !model || suspended) {
+      uni.showToast({ icon: 'none', title: '请重新加载已确认内容后收藏' })
+      return
+    }
+    const state = favorites.stateFor(reference)
+    if (state.pending) return
     try {
-      await runtime.client.post('/api/v1/favorites', {
-        entry_stable_id: entry.entry_id,
-        entry_type: entry.entry_type,
-        scene_id: model.sceneId,
-        revision_id: entry.revision_id ?? model.revision_id,
-        entry_version: entry.entry_version ?? 1,
-        sentence_snapshot: entry.sentence_snapshot ?? entry.text,
-        source_locator: entry.source_locator,
-        text: entry.text
-      })
+      const removing = state.is_favorited && state.favorite_id
+      if (removing) await favorites.remove(removing, runtime.favorites)
+      else await favorites.create(reference, runtime.favorites)
       if (request !== generation || fullModel.value !== model) return
-      entry.favorited = true
-      analytics.track(
-        AnalyticsEvent.FAVORITE_ADD_SUCCESS,
-        {
-          content_scene_id: model.sceneId,
-          content_revision_id: model.revision_id,
-          entry_type: entry.entry_type
-        },
-        { token, once: `${visitKey}:${model.sceneId}:${entry.entry_id}` }
-      )
-      uni.showToast({ icon: 'success', title: '已收藏' })
+      entry.favorited = state.is_favorited
+      entry.favorite_id = state.favorite_id
+      if (!removing)
+        analytics.track(
+          AnalyticsEvent.FAVORITE_ADD_SUCCESS,
+          {
+            content_scene_id: model.sceneId,
+            content_revision_id: model.revision_id,
+            entry_type: entry.entry_type
+          },
+          { token, once: `${visitKey}:${model.sceneId}:${entry.entry_id}` }
+        )
+      uni.showToast({ icon: 'success', title: removing ? '已取消收藏' : '已收藏' })
     } catch (error) {
-      if (request === generation && fullModel.value === model) handleFailure(error)
+      if (request === generation && fullModel.value === model) {
+        const status = (error as HttpStatusCarrier)?.status
+        if (status === 409) uni.showToast({ icon: 'none', title: '内容已更新，请重新加载后收藏' })
+        else handleFailure(error)
+      }
     }
   }
 
   /** 保存稳定阅读位置，position 为最后可见句子及相对偏移 */
   const savePosition = (position: StablePosition) => {
     if (sceneId.value && !suspended && fullModel.value) {
-      uni.setStorageSync(`juya.scene-position.${sceneId.value}`, position)
+      uni.setStorageSync(`juya.scene-position.${sceneId.value}`, {
+        ...position,
+        content_version: fullModel.value.content_version
+      })
       progressQueue.enqueuePosition(sceneId.value, position)
     }
   }
@@ -342,6 +432,7 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
     inspectEntry,
     inspectSentence,
     openImage,
+    pendingFavoriteIds,
     originalImageUrl,
     play,
     savePosition,

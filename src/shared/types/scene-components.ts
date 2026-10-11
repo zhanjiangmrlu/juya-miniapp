@@ -94,3 +94,32 @@ export type SceneStatusPageProps = {
 export type SceneStatusPageEmits = {
   action: []
 }
+
+/** 场景统一阅读主体及当前本篇词卡 */
+export type SceneReadingViewProps = {
+  entries: SceneEntry[]
+  words: SceneEntry[]
+  chunks: SceneEntry[]
+  chineseVisible: boolean
+  contentVersion?: number
+  highlightedId?: string
+  pendingIds?: string[]
+}
+export type SceneReadingViewEmits = {
+  toggleTranslation: []
+  favorite: [entry: SceneEntry]
+  playSentence: [entry: SceneEntry]
+}
+export type SceneWordCardProps = {
+  entry: SceneEntry
+  contentVersion?: number
+  pending?: boolean
+  chunk?: boolean
+}
+export type SceneWordCardEmits = { favorite: [entry: SceneEntry] }
+export type SceneEntryGridProps = {
+  entries: SceneEntry[]
+  contentVersion?: number
+  pendingIds?: string[]
+}
+export type SceneEntryGridEmits = { favorite: [entry: SceneEntry] }

@@ -13,7 +13,7 @@ export const MOCK_FIXTURES = {
       {
         access: 'OPEN',
         chinese_title: '讨论城堡展览',
-        image_url: '/static/images/castle-card.png',
+        image_url: '/static/home/coffee-home.png',
         progress: 68,
         scene_id: 'scene-castle',
         series: '日常英语',
@@ -24,7 +24,7 @@ export const MOCK_FIXTURES = {
       {
         access: 'OPEN',
         chinese_title: '点早餐',
-        image_url: '/static/images/castle-card.png',
+        image_url: '/static/home/coffee-home.png',
         progress: 0,
         scene_id: 'scene-breakfast',
         series: '日常英语',
@@ -35,7 +35,7 @@ export const MOCK_FIXTURES = {
       {
         access: 'OPEN',
         chinese_title: '在咖啡店',
-        image_url: '/static/images/castle-card.png',
+        image_url: '/static/home/coffee-home.png',
         progress: 32,
         scene_id: 'scene-coffee-shop',
         series: '日常英语',
@@ -47,7 +47,7 @@ export const MOCK_FIXTURES = {
         access: 'PREVIEW',
         chinese_title: '周末公路旅行',
         description: '可查看主题、难度与简介',
-        image_url: '/static/images/castle-card.png',
+        image_url: '/static/home/coffee-home.png',
         scene_id: 'scene-weekend-trip',
         series: '旅行英语',
         tags: ['内容预览'],
@@ -77,7 +77,8 @@ export const MOCK_FIXTURES = {
         key: 'scene_learning',
         public_id: 'module-scene-learning',
         title: '场景学习'
-      }
+      },
+      { enabled: true, key: 'short_reading', public_id: 'module-short-reading', title: '短文阅读' }
     ]
   } satisfies LearningModulesResponse,
   scene: {
@@ -127,8 +128,8 @@ export const MOCK_FIXTURES = {
           text: 'put together'
         }
       ],
-      hero_image_url: '/static/images/castle-card.png',
-      image_url: '/static/images/castle-card.png',
+      hero_image_url: '/static/home/coffee-home.png',
+      image_url: '/static/home/coffee-home.png',
       scene_id: 'scene-castle',
       series: '日常英语',
       tags: ['开放学习场景'],

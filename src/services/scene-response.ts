@@ -11,6 +11,104 @@ import type {
   SceneOpenResponse,
   SceneOpenWireResponse
 } from '@/shared/contracts/learning'
+import type { ConfirmedSceneEntry, SceneSnapshot } from '@/shared/contracts/scene-snapshot'
+
+/** 转换schema2授权快照，scene为冻结的同版资料，access为当前授权级别 */
+const adaptSnapshot = (scene: SceneSnapshot, access: SceneContent['access']): SceneContent => {
+  const audio = scene.whole_audio
+    ? {
+        scene_id: scene.content_id,
+        revision_id: scene.revision_id,
+        resource_id: scene.whole_audio.target_id,
+        target_id: scene.whole_audio.target_id,
+        version_id: scene.whole_audio.resource_version,
+        duration_ms: scene.whole_audio.duration_ms,
+        target_type: AudioTargetType.SCENE
+      }
+    : undefined
+  /** 转换确认条目，entry为本篇义项资料，type为词汇或语块 */
+  const entryModel = (entry: ConfirmedSceneEntry, type: SceneLookupEntryType): SceneEntry => ({
+    entry_id: entry.entry_id,
+    content_type: scene.content_type,
+    entry_type: type,
+    text: entry.english,
+    phonetic: entry.phonetic ?? undefined,
+    chinese: entry.meaning_zh,
+    explanation: entry.explanation,
+    sense_id: entry.sense_id,
+    source_id: entry.source_id,
+    sentence_snapshot: entry.source_sentence,
+    source_locator: entry.source_locator?.sentence_id ?? '',
+    source_sentence_ids: entry.source_locator?.sentence_id
+      ? [entry.source_locator.sentence_id]
+      : [],
+    scene_id: scene.content_id,
+    revision_id: scene.revision_id,
+    image_asset_id: type === SceneLookupEntryType.VOCABULARY ? entry.image_asset_id : undefined,
+    pronunciation: entry.pronunciation,
+    favorited: entry.is_favorited,
+    favorite_id: entry.favorite_id
+  })
+  return {
+    scene_id: scene.content_id,
+    revision_id: scene.revision_id,
+    content_version: scene.content_version,
+    content_type: scene.content_type,
+    original_image_asset_id: scene.learning_image_asset_id,
+    cover_asset_id: scene.cover_asset_id,
+    recording_enabled: scene.recording_enabled === true,
+    access,
+    title: scene.title_en,
+    chinese_title: scene.title_zh,
+    series: scene.series ?? '',
+    tags: [...(scene.tags ?? [])],
+    audio,
+    entries: [
+      ...scene.dialogue.map((sentence): SceneEntry => ({
+        entry_id: sentence.sentence_id,
+        source_locator: sentence.sentence_id,
+        entry_type: SceneEntryType.DIALOGUE,
+        text: sentence.english,
+        chinese: sentence.chinese,
+        speaker: sentence.speaker,
+        scene_id: scene.content_id,
+        revision_id: scene.revision_id,
+        clickable_spans: [],
+        ...(sentence.slice_target_id && sentence.slice_version
+          ? {
+              audio: {
+                target_id: sentence.slice_target_id,
+                resource_id: sentence.slice_target_id,
+                version_id: sentence.slice_version,
+                target_type: AudioTargetType.SENTENCE,
+                scene_id: scene.content_id,
+                revision_id: scene.revision_id,
+                sentence_id: sentence.sentence_id
+              }
+            }
+          : {}),
+        ...(audio &&
+        sentence.start_ms != null &&
+        sentence.end_ms != null &&
+        sentence.start_ms >= 0 &&
+        sentence.end_ms > sentence.start_ms &&
+        sentence.end_ms <= audio.duration_ms
+          ? {
+              audio_timing: {
+                target_id: audio.target_id,
+                version_id: audio.version_id,
+                start_ms: sentence.start_ms,
+                end_ms: sentence.end_ms,
+                timing_confirmed: true
+              }
+            }
+          : {})
+      })),
+      ...scene.words.map((entry) => entryModel(entry, SceneLookupEntryType.VOCABULARY)),
+      ...scene.chunks.map((entry) => entryModel(entry, SceneLookupEntryType.PHRASE))
+    ]
+  }
+}
 
 /** 将指定发布场景的资源与播放类型转换为受修订约束的音频目标 */
 const audioTarget = (
@@ -83,6 +181,10 @@ export const adaptSceneResponse = (response: SceneOpenWireResponse): SceneOpenRe
     }
     return result
   }
+  if ('words' in scene) {
+    result.scene = adaptSnapshot(scene, response.access)
+    return result
+  }
   if (!('content' in scene)) {
     if ('entries' in scene) result.scene = scene
     return result
@@ -134,7 +236,7 @@ export const adaptSceneResponse = (response: SceneOpenWireResponse): SceneOpenRe
         ? {
             audio: {
               ...audio,
-              target_type: AudioTargetType.SENTENCE,
+              target_type: AudioTargetType.SCENE,
               sentence_id: sentence.id,
               start_ms: timing.start_ms,
               end_ms: timing.end_ms

@@ -10,8 +10,8 @@ withDefaults(defineProps<PersonalPageProps>(), { navigation: '', active: Profile
   <TabPageLayout class="personal-layout" :active="active">
     <PageHeader :title="navigation || title" />
     <view class="personal-page">
-      <text class="page-title">{{ title }}</text>
-      <text class="page-subtitle">{{ subtitle }}</text>
+      <text v-if="!hideHeading" class="page-title">{{ title }}</text>
+      <text v-if="!hideHeading" class="page-subtitle">{{ subtitle }}</text>
       <view class="page-body"><slot /></view>
       <view v-if="$slots.actions" class="page-actions"><slot name="actions" /></view>
     </view>

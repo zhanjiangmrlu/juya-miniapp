@@ -13,6 +13,17 @@ import type {
 import type { AudioTarget } from '@/shared/contracts/learning'
 import type { AudioCancellationSignal, PronunciationService } from '@/shared/types/audio'
 
+/** 判断是否具有可播放或可准备的确认读音，target 为服务端目标描述 */
+export const canPronounceTarget = (target?: PronunciationTarget): boolean =>
+  Boolean(
+    target &&
+    target.status !== PronunciationStatus.UNAVAILABLE &&
+    (target.resource_version ||
+      target.can_prepare !== false ||
+      target.status === PronunciationStatus.READY ||
+      target.status === PronunciationStatus.PREPARING)
+  )
+
 /** 创建发音播放键，target 为确认读音，context 为当前原文或本人收藏引用 */
 export const getPronunciationAudioTarget = (
   target: PronunciationTarget,

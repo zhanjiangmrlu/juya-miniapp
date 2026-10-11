@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { createSceneModel, createSceneViewState } from '@/features/scene/scene-model'
 import { openSheet } from '@/features/vocabulary-sheet/sheet-controller'
 import { SceneEntryType } from '@/shared/enums/learning'
 import { SceneModelKind } from '@/shared/enums/scene'
+import { useFavoriteStore } from '@/stores/favorites'
+import { useSessionStore } from '@/stores/session'
 
 import type { StablePosition } from '@/shared/contracts/common'
 import type { SceneEntry } from '@/shared/contracts/learning'
@@ -45,7 +47,27 @@ export const useSceneStore = defineStore('scene', () => {
 
     try {
       const response = await service.open(sceneId)
-      if (request === generation) model.value = createSceneModel(response)
+      if (request === generation) {
+        const next = createSceneModel(response)
+        if (next.kind === SceneModelKind.FULL && next.content_version) {
+          const favorites = useFavoriteStore()
+          for (const entry of next.entries) {
+            if (!entry.sense_id || !entry.source_id) continue
+            favorites.seedState(
+              {
+                content_type: next.content_type ?? 'dialogue',
+                content_id: next.sceneId,
+                content_version: next.content_version,
+                entry_id: entry.entry_id,
+                sense_id: entry.sense_id,
+                source_id: entry.source_id
+              },
+              { is_favorited: Boolean(entry.favorited), favorite_id: entry.favorite_id ?? null }
+            )
+          }
+        }
+        model.value = next
+      }
     } catch {
       if (request !== generation) return
       error.value = true
@@ -82,6 +104,7 @@ export const useSceneStore = defineStore('scene', () => {
     viewState.value = createSceneViewState()
   }
 
+  watch(() => useSessionStore().cleanupGeneration, clear, { flush: 'sync' })
   return {
     clear,
     closeSheet,

@@ -1,6 +1,7 @@
 import type { ContactCorrectionStatus } from '@/shared/enums/contact-profile'
 
 export interface UserProfile {
+  avatar_object_key?: string | null
   contact_prompt_eligible?: boolean
   avatar_url: string | null
   deletion?: { effective_at: string; status: string } | null

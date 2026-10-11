@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
-import { nextTick, ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import { presentContact } from '@/features/contact-profile/contact-form'
@@ -18,6 +18,7 @@ import { NavigationType } from '@/shared/enums/navigation'
 import { ButtonVariant } from '@/shared/enums/ui'
 import { navigate } from '@/shared/navigation/navigate'
 import { useModalScrollLock } from '@/shared/use-page-scroll-lock'
+import { useSessionStore } from '@/stores/session'
 
 import type { UserProfile } from '@/shared/contracts/profile'
 import type { ContactPromptReceipt } from '@/shared/types/profile'
@@ -117,19 +118,34 @@ const hide = () => {
   visible = false
   generation++
   promptVisible.value = false
+  profile.value = undefined
+  contact.value = presentContact(null)
 }
 onShow(show)
 onHide(hide)
 onUnload(hide)
+watch(
+  () => useSessionStore().cleanupGeneration,
+  () => {
+    generation++
+    profile.value = undefined
+    contact.value = presentContact(null)
+    promptVisible.value = false
+    unread.value = 0
+    feedbackUnread.value = 0
+  },
+  { flush: 'sync' }
+)
 </script>
 <template>
-  <PersonalPage title="我的学习档案" subtitle="个人学习信息仅向你本人显示">
+  <PersonalPage title="我的学习档案" subtitle="个人学习信息仅向你本人显示" hide-heading>
     <ProfileIdentity
       :juya-id="profile?.juya_id || '正在加载'"
       :nickname="profile?.nickname || profile?.wechat_nickname || '学习者'"
       :avatar="profile?.avatar_url"
       :wechat-label="`微信号：${contact.wechatId || '未填写，去完善'}`"
       @contact="openContact"
+      @edit="open('/sub-packages/profile/edit')"
     />
     <text class="section-title">我的服务</text
     ><ProfileActionList

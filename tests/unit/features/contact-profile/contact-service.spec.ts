@@ -6,6 +6,7 @@ describe('联系提示曝光接口', () => {
   it('使用同一幂等键登记一次实际曝光', async () => {
     const client = {
       post: vi.fn().mockResolvedValue({ created: true }),
+      patch: vi.fn(),
       get: vi.fn(),
       put: vi.fn(),
       delete: vi.fn()

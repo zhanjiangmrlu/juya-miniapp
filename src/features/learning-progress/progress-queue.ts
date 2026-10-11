@@ -15,6 +15,12 @@ export type { ProgressQueueOptions } from '@/shared/types/learning-progress'
 export type { ProgressSender } from '@/shared/types/learning-progress'
 export type { ProgressQueue } from '@/shared/types/learning-progress'
 
+const activeQueues = new Set<ProgressQueue>()
+/** 清除所有仍存活页面的学习队列，阻止清空之后重建旧进度 */
+export const clearProgressQueues = () => {
+  for (const queue of activeQueues) queue.clear()
+}
+
 /** 创建可持久化的学习进度队列，位置合并而完成命令保持逐条发送。 */
 export function createProgressQueue(
   storage: ProgressQueueStorage,
@@ -25,6 +31,14 @@ export function createProgressQueue(
   const idFactory = options.idFactory ?? createRequestId
   let commands = storage.load()
   let flushing = false
+  let generation = 0
+  let lastSequence = Math.max(
+    0,
+    ...commands.map((command) =>
+      command.kind === ProgressCommandKind.POSITION ? command.clientSequence : 0
+    )
+  )
+  let inFlight: ProgressCommand | undefined
   let timer: ReturnType<typeof setTimeout> | undefined
 
   /** 保存当前队列快照，保证异常退出后可以继续发送。 */
@@ -45,26 +59,37 @@ export function createProgressQueue(
   async function flush() {
     if (flushing) return
     flushing = true
+    const request = generation
 
     try {
       while (commands.length > 0) {
         const command = commands[0]
+        inFlight = command
         try {
           await sender(command, command.idempotencyKey)
-          commands = commands.slice(1)
+          if (request !== generation) return
+          commands = commands.filter((candidate) => candidate !== command)
           persist()
         } catch {
           break
         }
       }
     } finally {
+      inFlight = undefined
       flushing = false
     }
   }
 
-  return {
+  const queue: ProgressQueue = {
+    dispose() {
+      generation++
+      if (timer) clearTimeout(timer)
+      timer = undefined
+      activeQueues.delete(queue)
+    },
     /** 清除本地与内存命令，供退出、清空数据和注销流程复用。 */
     clear() {
+      generation++
       if (timer) clearTimeout(timer)
       timer = undefined
       commands = []
@@ -81,8 +106,11 @@ export function createProgressQueue(
         (command) => command.kind === ProgressCommandKind.POSITION && command.sceneId === sceneId
       )
       const command: ProgressCommand = {
-        clientSequence: Date.now(),
-        idempotencyKey: existing >= 0 ? commands[existing].idempotencyKey : idFactory(),
+        clientSequence: (lastSequence = Math.max(Date.now(), lastSequence + 1)),
+        idempotencyKey:
+          existing >= 0 && commands[existing] !== inFlight
+            ? commands[existing].idempotencyKey
+            : idFactory(),
         kind: ProgressCommandKind.POSITION,
         position,
         sceneId
@@ -102,5 +130,7 @@ export function createProgressQueue(
       )
     }
   }
+  activeQueues.add(queue)
+  return queue
 }
 import { PROGRESS_QUEUE_DELAY_MS } from '@/shared/constants/learning-progress'

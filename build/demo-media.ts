@@ -20,6 +20,7 @@ export const excludeDemoMedia = (mockEnabled: boolean): Plugin => {
       for (const name of [
         'static/fixtures/coffee-original.png',
         'static/fixtures/silence.wav',
+        'static/fixtures/latte@3x.png',
         'static/home/coffee-home.png',
         'static/images/castle-card.png'
       ]) {

@@ -25,6 +25,8 @@ export interface SceneSummaryModel {
 }
 
 export interface FullSceneModel extends SceneSummaryModel {
+  content_type?: string
+  recording_enabled?: boolean
   audio?: AudioTarget
   revision_id?: string
   content_version?: number

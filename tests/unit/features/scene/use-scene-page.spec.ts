@@ -12,7 +12,8 @@ const runtime = vi.hoisted(() => ({
     savePosition: vi.fn(),
     complete: vi.fn()
   },
-  client: { post: vi.fn() }
+  client: { post: vi.fn() },
+  favorites: { create: vi.fn(), remove: vi.fn() }
 }))
 vi.mock('@/services/runtime', () => ({ getRuntimeServices: () => runtime }))
 const hooks = vi.hoisted(() => ({ show: undefined as (() => void) | undefined }))
@@ -28,6 +29,8 @@ const word = {
   entry_id: 'latte',
   entry_type: 'VOCABULARY',
   entry_version: 2,
+  sense_id: 'sense-1',
+  source_id: 'source-1',
   source_locator: 'sentence:s1:entry:latte',
   text: 'old text'
 }
@@ -37,6 +40,7 @@ const full = {
   scene: {
     scene_id: 'coffee',
     revision_id: 'revision',
+    content_version: 2,
     original_image_asset_id: 'image',
     entries: [word],
     chinese_title: '咖啡店',
@@ -100,7 +104,7 @@ describe('场景授权资源与词卡', () => {
     const page = useScenePage()
     await page.initialize('coffee')
     let reject!: (error: unknown) => void
-    runtime.client.post.mockImplementationOnce(
+    runtime.favorites.create.mockImplementationOnce(
       () =>
         new Promise((_resolve, fail) => {
           reject = fail
@@ -177,7 +181,8 @@ describe('场景授权资源与词卡', () => {
     page.savePosition({ entry_id: 's2', offset: 66 })
     expect(uni.setStorageSync).toHaveBeenCalledWith('juya.scene-position.coffee', {
       entry_id: 's2',
-      offset: 66
+      offset: 66,
+      content_version: 2
     })
   })
   beforeEach(() => {
@@ -190,6 +195,8 @@ describe('场景授权资源与词卡', () => {
       showToast: vi.fn()
     })
     runtime.scene.open.mockResolvedValue(full)
+    runtime.favorites.create.mockResolvedValue({ id: 'favorite-1', active: true })
+    runtime.favorites.remove.mockResolvedValue({ favorite_id: 'favorite-1', active: false })
     runtime.scene.getResource.mockResolvedValue({ url: 'signed-image' })
     runtime.scene.getEntry.mockResolvedValue({
       english: 'latte',
@@ -197,6 +204,8 @@ describe('场景授权资源与词卡', () => {
       explanation: '真实释义',
       entry_id: 'latte',
       entry_version: 2,
+      sense_id: 'sense-1',
+      source_id: 'source-1',
       source_sentence_ids: ['s1'],
       sentence_snapshot: 'Get a latte.',
       source_locator: word.source_locator,
@@ -255,18 +264,27 @@ describe('场景授权资源与词卡', () => {
     expect(page.scene.sheet).toBeUndefined()
   })
 
-  it('收藏携带固定发布版本及服务端来源定位', async () => {
+  it('收藏只携带固定版本和义项来源引用，取消同步而不影响译文和位置', async () => {
     const page = useScenePage()
     await page.initialize('coffee')
     await page.inspectEntry(word as never)
     await page.favorite(page.scene.sheet!.snapshot.entry)
-    expect(runtime.client.post.mock.calls[0][1]).toMatchObject({
-      scene_id: 'coffee',
-      revision_id: 'revision',
-      entry_version: 2,
-      source_locator: word.source_locator
+    expect(runtime.favorites.create.mock.calls[0][0]).toEqual({
+      content_type: 'dialogue',
+      content_id: 'coffee',
+      content_version: 2,
+      entry_id: 'latte',
+      sense_id: 'sense-1',
+      source_id: 'source-1'
     })
     expect(page.scene.sheet?.snapshot.open).toBe(true)
     expect(page.scene.sheet?.snapshot.entry.favorited).toBe(true)
+    page.scrollTop.value = 126
+    page.scene.toggleChinese()
+    await page.favorite(page.scene.sheet!.snapshot.entry)
+    expect(runtime.favorites.remove).toHaveBeenCalledWith('favorite-1', expect.any(String))
+    expect(page.scene.sheet?.snapshot.entry.favorited).toBe(false)
+    expect(page.scene.viewState.chineseVisible).toBe(true)
+    expect(page.scrollTop.value).toBe(126)
   })
 })

@@ -6,7 +6,7 @@ import type { LegacyRouteInput, NavigationIntent } from '@/shared/types/navigati
 export type { LegacyRouteInput } from '@/shared/types/navigation'
 
 /** 将有效查询参数安全编码后追加到目标路径。 */
-function appendQuery(path: string, query: Record<string, string | undefined>) {
+const appendQuery = (path: string, query: Record<string, string | undefined>) => {
   const parameters = Object.entries(query)
     .filter((entry): entry is [string, string] => entry[1] !== undefined)
     .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
@@ -14,7 +14,7 @@ function appendQuery(path: string, query: Record<string, string | undefined>) {
 }
 
 /** 将旧版页面编号映射为 V1.3 的唯一导航意图，集中承接历史入口。 */
-export function resolveLegacyRoute(input: LegacyRouteInput): NavigationIntent {
+export const resolveLegacyRoute = (input: LegacyRouteInput): NavigationIntent => {
   if (input.pageId === 'M04') {
     return { type: NavigationType.RE_LAUNCH, url: appendQuery(ROUTES.home, { networkError: '1' }) }
   }
@@ -24,8 +24,7 @@ export function resolveLegacyRoute(input: LegacyRouteInput): NavigationIntent {
       type: NavigationType.REDIRECT_TO,
       url: appendQuery(ROUTES.sceneDialogue, {
         sceneId: input.sceneId,
-        sourceLocator: input.sourceLocator,
-        sheet: input.pageId === 'M10' ? 'vocabulary' : 'phrase'
+        sourceLocator: input.sourceLocator
       })
     }
   }

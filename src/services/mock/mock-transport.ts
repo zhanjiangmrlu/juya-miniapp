@@ -7,13 +7,17 @@ import { SceneEntryType } from '@/shared/enums/learning'
 import type { HttpTransport, TransportRequest, TransportResponse } from '@/shared/types/http'
 import type { MockActionRequest, MockItemsResponse, MockTextRequest } from '@/shared/types/mock'
 
+import { createFavoriteSnapshotMock } from './favorite-snapshots-fixture'
 import { MOCK_FIXTURES } from './fixtures'
 import publishedScene from './published-scene.json'
+import { createSceneSnapshotFixture } from './scene-snapshot-fixture'
+import { handleShortReadingMock } from './short-reading-fixture'
 
 /** 复制 JSON 接口样本，兼容没有 structuredClone 的微信运行时 */
 const copyResponse = <T>(response: unknown): T => JSON.parse(JSON.stringify(response)) as T
 
 export class MockTransport implements HttpTransport {
+  private readonly snapshots = createFavoriteSnapshotMock()
   private promptExposed = false
   /** 按请求方法与路径返回隔离副本，未配置接口明确返回标准 404 错误。 */
   async request<T>(request: TransportRequest): Promise<TransportResponse<T>> {
@@ -21,7 +25,31 @@ export class MockTransport implements HttpTransport {
     const routeKey = `${request.method} ${url.pathname}`
     const scene = publishedScene.scene
     let fixture: unknown
-    if (routeKey === 'POST /api/v1/scenes/scene-coffee-shop/open') fixture = publishedScene
+    fixture = this.snapshots.handle(request)
+    fixture ??= handleShortReadingMock(request)
+    if (routeKey === 'POST /api/v1/scenes/scene-coffee-shop/open')
+      fixture = createSceneSnapshotFixture((entryId) => {
+        const result = this.snapshots.handle({
+          ...request,
+          method: HttpMethod.GET,
+          url: `${url.origin}/api/v1/favorite-snapshots?limit=100`
+        }) as { items: { entry_id: string; favorite_id: string; active: boolean }[] }
+        const favorite = result.items.find((entry) => entry.entry_id === entryId && entry.active)
+        return { is_favorited: Boolean(favorite), favorite_id: favorite?.favorite_id ?? null }
+      })
+    if (
+      request.method === HttpMethod.POST &&
+      /\/pronunciations\/[^/]+\/resolve$/.test(url.pathname)
+    )
+      fixture = {
+        status: 'READY',
+        resource_version: 'fixture-v1',
+        url: '/static/fixtures/silence.wav'
+      }
+    if (routeKey === 'PATCH /api/v1/me/profile') {
+      const body = request.body as { nickname: string | null; avatar_object_key: string | null }
+      fixture = { ...MOCK_FIXTURES.user, ...body }
+    }
     if (routeKey === 'POST /api/v1/scenes/scene-weekend-trip/open')
       fixture = {
         ...publishedScene,
@@ -45,8 +73,9 @@ export class MockTransport implements HttpTransport {
       fixture = {
         resource_id: resourceId,
         expires_at: '2099-01-01T00:00:00Z',
-        url:
-          resourceId.includes('original') || resourceId.includes('cover')
+        url: resourceId.includes('word-latte')
+          ? '/static/fixtures/latte@3x.png'
+          : resourceId.includes('original') || resourceId.includes('cover')
             ? '/static/fixtures/coffee-original.png'
             : '/static/fixtures/silence.wav'
       }

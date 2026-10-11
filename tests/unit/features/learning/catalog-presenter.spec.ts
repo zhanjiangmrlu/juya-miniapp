@@ -31,7 +31,7 @@ function catalog(items: SceneSummary[]): LearningCatalogResponse {
 }
 
 describe('presentCatalog', () => {
-  it('新用户优先展示开放场景，并忽略未知或停用模块', () => {
+  it('新用户优先展示开放场景，并遵循服务端启用模块', () => {
     const result = presentCatalog({
       catalog: catalog([
         scene({ access: 'OPEN', scene_id: 'open-1' }),
@@ -41,7 +41,7 @@ describe('presentCatalog', () => {
       modules
     })
 
-    expect(result.modules.map((item) => item.key)).toEqual(['scene_learning'])
+    expect(result.modules.map((item) => item.key)).toEqual(['scene_learning', 'future_module'])
     expect(result.stage).toBe('NEW')
     expect(result.openScenes.map((item) => item.sceneId)).toEqual(['open-1', 'open-2'])
     expect(result.openReview).toBeNull()

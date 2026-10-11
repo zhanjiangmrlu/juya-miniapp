@@ -9,6 +9,7 @@ import type { createResultService } from '@/features/learning-result/result-serv
 import type { createMessageService } from '@/features/messages/message-service'
 import type { createProfileService } from '@/features/profile/profile-service'
 import type { createSceneService } from '@/features/scene/scene-service'
+import type { createShortReadingService } from '@/features/short-reading/short-reading-service'
 import type { HttpClient } from '@/shared/types/http'
 
 export interface RuntimeServices {
@@ -24,4 +25,5 @@ export interface RuntimeServices {
   messages: ReturnType<typeof createMessageService>
   profile: ReturnType<typeof createProfileService>
   scene: ReturnType<typeof createSceneService>
+  shortReading: ReturnType<typeof createShortReadingService>
 }

@@ -9,6 +9,7 @@ import { createResultService } from '@/features/learning-result/result-service'
 import { createMessageService } from '@/features/messages/message-service'
 import { createProfileService } from '@/features/profile/profile-service'
 import { createSceneService } from '@/features/scene/scene-service'
+import { createShortReadingService } from '@/features/short-reading/short-reading-service'
 import { resolveApiBaseUrl } from '@/services/api-config'
 import { createHttpClient } from '@/services/http/client'
 import { ApiError } from '@/services/http/errors'
@@ -86,7 +87,8 @@ export const getRuntimeServices = (): RuntimeServices => {
     messages: createMessageService(client),
     result: createResultService(client),
     profile: createProfileService(client),
-    scene: createSceneService(client)
+    scene: createSceneService(client),
+    shortReading: createShortReadingService(client)
   }
   return services
 }

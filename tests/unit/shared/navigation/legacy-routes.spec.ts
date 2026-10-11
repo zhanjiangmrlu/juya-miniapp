@@ -10,16 +10,16 @@ describe('resolveLegacyRoute', () => {
     })
   })
 
-  it('M10 和 M11 回到原场景稳定位置并打开对应弹层', () => {
+  it('M10 和 M11 回到所属场景而不重开旧查词弹层', () => {
     expect(
       resolveLegacyRoute({ pageId: 'M10', sceneId: 'scene-1', sourceLocator: 'sentence-2' })
     ).toEqual({
       type: 'redirectTo',
-      url: '/sub-packages/scene/dialogue?sceneId=scene-1&sourceLocator=sentence-2&sheet=vocabulary'
+      url: '/sub-packages/scene/dialogue?sceneId=scene-1&sourceLocator=sentence-2'
     })
     expect(resolveLegacyRoute({ pageId: 'M11', sceneId: 'scene-1' })).toEqual({
       type: 'redirectTo',
-      url: '/sub-packages/scene/dialogue?sceneId=scene-1&sheet=phrase'
+      url: '/sub-packages/scene/dialogue?sceneId=scene-1'
     })
   })
 

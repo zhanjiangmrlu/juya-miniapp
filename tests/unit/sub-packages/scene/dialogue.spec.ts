@@ -118,7 +118,9 @@ const openPage = async (confirmed = true) => {
 
 /** 读取页面实际高亮句卡，避免只验证播放器内部状态 */
 const highlightedRows = () =>
-  wrapper.findAll('.dialogue-sentence.highlighted').map((row) => row.attributes('id'))
+  wrapper
+    .findAll('.sentence-row.highlighted')
+    .map((row) => row.attributes('id')?.replace(/^sentence-/, ''))
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -129,7 +131,9 @@ beforeEach(() => {
     createInnerAudioContext: () => playback.device,
     getStorageSync: (key: string) => storage.get(key),
     setStorageSync: (key: string, value: unknown) => storage.set(key, value),
-    removeStorageSync: (key: string) => storage.delete(key)
+    removeStorageSync: (key: string) => storage.delete(key),
+    pageScrollTo: vi.fn(),
+    navigateTo: vi.fn((options: { success: () => void }) => options.success())
   })
   runtime.scene.getSignedUrl.mockResolvedValue({ url: '/audio.wav' })
   runtime.scene.savePosition.mockResolvedValue({})
@@ -141,6 +145,24 @@ afterEach(() => {
 })
 
 describe('场景整段播放的句子激活展示', () => {
+  it('整段签名或加载失败可进入正式重试页，正文不作为完成条件', async () => {
+    runtime.scene.getSignedUrl.mockRejectedValueOnce(new Error('offline'))
+    await openPage()
+    expect(uni.navigateTo).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/sub-packages/scene/audio-failed?sceneId=work' })
+    )
+  })
+  it('点击有效句子从整段对应时间开始且不在句尾停止', async () => {
+    await openPage()
+    await wrapper.find('#sentence-s2').trigger('click')
+    await flushPromises()
+    expect(playback.device.currentTime).toBe(4)
+    expect(useAudioStore().snapshot.target).toMatchObject({ target_id: 'audio', start_ms: 4000 })
+    expect(useAudioStore().snapshot.target).not.toHaveProperty('end_ms')
+    playback.device.currentTime = 9
+    playback.tick()
+    expect(useAudioStore().snapshot.status).toBe('PLAYING')
+  })
   it('解码微信来源定位后高亮对应句子', async () => {
     runtime.scene.open.mockResolvedValue(adaptSceneResponse(openedScene(true)))
     wrapper = mount(Dialogue, {

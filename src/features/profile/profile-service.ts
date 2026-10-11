@@ -7,5 +7,9 @@ export type { ProfileService } from '@/shared/types/profile'
 /** 创建本人档案服务，client 为统一认证客户端 */
 export const createProfileService = (client: HttpClient): ProfileService => ({
   get: async () =>
-    adaptUserProfile(await client.get<UserProfileResponse | UserProfile>('/api/v1/me'))
+    adaptUserProfile(await client.get<UserProfileResponse | UserProfile>('/api/v1/me')),
+  update: async (payload) =>
+    adaptUserProfile(await client.patch<UserProfileResponse>('/api/v1/me/profile', payload)),
+  getAvatarCredential: (contentType) =>
+    client.post('/api/v1/me/avatar/upload-policy', { content_type: contentType })
 })

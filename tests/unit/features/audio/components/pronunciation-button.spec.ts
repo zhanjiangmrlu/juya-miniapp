@@ -32,6 +32,13 @@ describe('独立发音按钮', () => {
         .exists()
     ).toBe(false)
   })
+  it('没有上传版本且后台明确禁止准备时直接隐藏喇叭', () => {
+    const wrapper = mount(PronunciationButton, {
+      props: { context: {}, target: { target_id: 'unavailable-word', can_prepare: false } }
+    })
+    expect(wrapper.find('button').exists()).toBe(false)
+    wrapper.unmount()
+  })
   it('点击只播放受控目标，不向外层传递收藏或翻卡事件', async () => {
     const target = { target_id: 'word', can_prepare: true }
     const context = { favorite_id: 'favorite' }

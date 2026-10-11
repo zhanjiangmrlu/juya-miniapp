@@ -2,6 +2,7 @@
 import { onHide, onLoad, onUnload } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
+import streakFlame from '@/features/learning-result/assets/streak-flame@3x.png'
 import LearningResultCards from '@/features/learning-result/components/learning-result-cards.vue'
 import { presentLearningResult } from '@/features/learning-result/result-presenter'
 import { getResultReviewRoute } from '@/features/learning-result/result-review'
@@ -60,7 +61,10 @@ useAnalyticsPage('sub-packages/scene/completed')
     ><text class="scene-subtitle">你已完成「{{ fullModel?.chineseTitle ?? '本场景' }}」的学习</text>
     <view class="scene-highlight"
       ><text class="highlight-label">本次学习已记录</text
-      ><text class="highlight-value">{{ result.streakDays }} 天</text
+      ><view class="streak-value"
+        ><text class="highlight-value"
+          >{{ result.streakDays }} <text class="streak-unit">天</text></text
+        ><image :src="streakFlame" mode="aspectFit" /></view
       ><text class="highlight-hint">连续学习，保持热爱</text></view
     >
     <LearningResultCards :cards="result.cards" @select="openDetail" />
@@ -99,7 +103,27 @@ useAnalyticsPage('sub-packages/scene/completed')
 }
 
 .scene-section {
-  margin: 7px 0 5px;
+  margin: 22px 0 5px;
+}
+
+.streak-value {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  image {
+    width: 38px;
+    height: 44px;
+  }
+
+  .highlight-value {
+    font-size: 42px;
+    line-height: 55px;
+  }
+
+  .streak-unit {
+    font-size: 14px;
+  }
 }
 
 .result-details {

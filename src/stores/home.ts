@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { presentHome } from '@/features/home/home-presenter'
 import { useSessionStore } from '@/stores/session'
@@ -58,5 +58,6 @@ export const useHomeStore = defineStore('home', () => {
     loading.value = false
   }
 
+  watch(() => session.cleanupGeneration, clear, { flush: 'sync' })
   return { cancel, clear, data, dismissError, error, load, loading, view }
 })

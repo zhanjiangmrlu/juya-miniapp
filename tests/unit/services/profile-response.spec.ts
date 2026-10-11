@@ -16,6 +16,7 @@ describe('用户资料响应', () => {
       juya_id: '100001',
       nickname: null,
       avatar_url: null,
+      avatar_object_key: 'avatars/private.png',
       contact_prompt_eligible: true
     })
   })

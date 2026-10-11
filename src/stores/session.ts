@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
+import { clearProgressQueues } from '@/features/learning-progress/progress-queue'
+import { disposeLocalRecordings } from '@/features/recording/recording-controller'
+import { LEARNING_STORAGE_KEYS } from '@/shared/constants/account'
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/shared/constants/session'
 
 import type { UserProfile } from '@/shared/contracts/profile'
@@ -11,16 +14,22 @@ export const useSessionStore = defineStore('session', () => {
   const profile = ref<UserProfile>()
   const refreshToken = ref<string>()
   const refreshing = ref(false)
+  const cleanupGeneration = ref(0)
+  const contactGuideShown = ref(false)
   const isAuthenticated = computed(() => Boolean(accessToken.value))
+  /** 使所有学习页面请求与内存队列失效，保留当前身份 */
+  const invalidateLearningData = () => {
+    cleanupGeneration.value++
+  }
 
   /** 从本地缓存恢复令牌，供应用冷启动时同步初始化会话。 */
-  function restore() {
+  const restore = () => {
     accessToken.value = uni.getStorageSync(ACCESS_TOKEN_KEY) || undefined
     refreshToken.value = uni.getStorageSync(REFRESH_TOKEN_KEY) || undefined
   }
 
   /** 同步更新内存和持久化令牌，确保后续请求读取到同一份会话。 */
-  function saveTokens(tokens: SessionTokenPair) {
+  const saveTokens = (tokens: SessionTokenPair) => {
     accessToken.value = tokens.access_token
     refreshToken.value = tokens.refresh_token
     uni.setStorageSync(ACCESS_TOKEN_KEY, tokens.access_token)
@@ -28,16 +37,27 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   /** 清除全部会话数据，在刷新失败或主动退出时回到匿名状态。 */
-  function clear() {
+  const clear = () => {
+    clearProgressQueues()
+    invalidateLearningData()
+    contactGuideShown.value = false
     accessToken.value = undefined
     refreshToken.value = undefined
     profile.value = undefined
     uni.removeStorageSync(ACCESS_TOKEN_KEY)
     uni.removeStorageSync(REFRESH_TOKEN_KEY)
+    for (const key of LEARNING_STORAGE_KEYS) uni.removeStorageSync(key)
+    for (const key of uni.getStorageInfoSync?.().keys ?? []) {
+      if (key.startsWith('juya.scene-position.')) uni.removeStorageSync(key)
+    }
+    void disposeLocalRecordings()
   }
   return {
     accessToken,
     clear,
+    cleanupGeneration,
+    invalidateLearningData,
+    contactGuideShown,
     isAuthenticated,
     profile,
     refreshing,

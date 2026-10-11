@@ -52,15 +52,14 @@ const presentScene = (scene: SceneSummary): SceneCardViewModel => {
 
 /** 按后台顺序生成分区，input 包含启用模块及当前账号目录 */
 export const presentCatalog = (input: CatalogPresentationInput): CatalogSections => {
-  const modules = input.modules.filter(
-    (module) => module.enabled && module.key === 'scene_learning'
-  )
+  const modules = input.modules.filter((module) => module.enabled)
   const visible = input.catalog.items.filter((scene) => scene.access !== AccessLevel.HIDDEN)
   const open = visible.filter((scene) => scene.access === AccessLevel.OPEN)
   const entitled = visible.filter(
     (scene) => scene.access === AccessLevel.FORMAL || scene.access === AccessLevel.LIMITED
   )
   const hasEntitlement =
+    input.catalog.user_stage === LearningCatalogStage.ENTITLED ||
     entitled.length > 0 ||
     visible.some(
       (scene) =>

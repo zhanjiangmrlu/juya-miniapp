@@ -1,3 +1,5 @@
+import { clearProgressQueues } from '@/features/learning-progress/progress-queue'
+import { disposeLocalRecordings } from '@/features/recording/recording-controller'
 import { LEARNING_STORAGE_KEYS } from '@/shared/constants/account'
 import { useAudioStore } from '@/stores/audio'
 import { useFavoriteStore } from '@/stores/favorites'
@@ -41,6 +43,12 @@ export function createUniLocalDataScope(): LocalDataScope {
     clearSession: () => useSessionStore().clear(),
     removeStorage: (key) => uni.removeStorageSync(key),
     resetLearningStores: () => {
+      clearProgressQueues()
+      useSessionStore().invalidateLearningData()
+      for (const key of uni.getStorageInfoSync?.().keys ?? []) {
+        if (key.startsWith('juya.scene-position.')) uni.removeStorageSync(key)
+      }
+      void disposeLocalRecordings()
       useAudioStore().dispose()
       useFavoriteStore().clear()
       useHomeStore().clear()

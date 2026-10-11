@@ -44,8 +44,10 @@ export const createSceneModel = (response: SceneOpenResponse): SceneModel => {
     entries: response.scene?.entries ?? [],
     kind: SceneModelKind.FULL,
     audio: response.scene?.audio,
+    recording_enabled: response.scene?.recording_enabled === true,
     revision_id: response.scene?.revision_id,
     content_version: response.scene?.content_version,
+    content_type: response.scene?.content_type,
     original_image_asset_id: response.scene?.original_image_asset_id,
     cover_asset_id: response.scene?.cover_asset_id,
     description: response.scene?.description ?? ''

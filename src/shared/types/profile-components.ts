@@ -6,6 +6,7 @@ export type PersonalPageProps = {
   subtitle: string
   navigation?: string
   active?: ProfileTabKey
+  hideHeading?: boolean
 }
 
 /** PersonalRow 输入属性 */
@@ -46,4 +47,4 @@ export type ProfileIdentityProps = {
 }
 
 /** ProfileIdentity 事件契约 */
-export type ProfileIdentityEmits = { contact: [] }
+export type ProfileIdentityEmits = { contact: []; edit: [] }

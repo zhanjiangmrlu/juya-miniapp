@@ -7,6 +7,7 @@ export const adaptUserProfile = (response: UserProfileResponse | UserProfile): U
     juya_id: response.juya_number,
     nickname: response.nickname,
     avatar_url: response.avatar_url ?? null,
+    ...('avatar_object_key' in response ? { avatar_object_key: response.avatar_object_key } : {}),
     contact_prompt_eligible: response.contact_prompt_eligible ?? false,
     ...(response.deletion ? { deletion: response.deletion } : {})
   }

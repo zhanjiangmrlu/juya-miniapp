@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 import { presentFavorites } from '@/features/favorites/favorite-presenter'
 import { createRequestId } from '@/services/http/request-id'
 import { FavoriteType } from '@/shared/enums/favorites'
+import { useSessionStore } from '@/stores/session'
 
 import type { FavoriteItem, FavoriteReference } from '@/shared/contracts/favorites'
 import type {
@@ -274,6 +275,7 @@ export const useFavoriteStore = defineStore('favorites', () => {
     Object.assign(tabState[FavoriteType.PHRASE], createTabState())
     Object.assign(tabState[FavoriteType.VOCABULARY], createTabState())
   }
+  watch(() => useSessionStore().cleanupGeneration, clear, { flush: 'sync' })
   return {
     activeTab,
     create,

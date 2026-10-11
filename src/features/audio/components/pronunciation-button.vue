@@ -4,7 +4,10 @@ import { computed } from 'vue'
 import pronunciationError from '@/features/audio/assets/pronunciation-error.svg'
 import pronunciationIdle from '@/features/audio/assets/pronunciation-idle.svg'
 import { getAudioTargetKey } from '@/features/audio/audio-machine'
-import { getPronunciationAudioTarget } from '@/features/audio/pronunciation-controller'
+import {
+  canPronounceTarget,
+  getPronunciationAudioTarget
+} from '@/features/audio/pronunciation-controller'
 import { AudioStatus, PronunciationStatus } from '@/shared/enums/audio'
 import { useAudioStore } from '@/stores/audio'
 
@@ -19,7 +22,7 @@ const current = computed(
 )
 const unavailable = computed(
   () =>
-    props.target?.status === PronunciationStatus.UNAVAILABLE ||
+    !canPronounceTarget(props.target) ||
     (current.value && audio.snapshot.pronunciationStatus === PronunciationStatus.UNAVAILABLE)
 )
 const loading = computed(() => current.value && audio.snapshot.status === AudioStatus.LOADING)

@@ -186,6 +186,12 @@
           "style": {
             "navigationStyle": "custom"
           }
+        },
+        {
+          "path": "edit",
+          "style": {
+            "navigationStyle": "custom"
+          }
         }
       ]
     },
@@ -305,6 +311,29 @@
       "pages": [
         {
           "path": "index",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        }
+      ]
+    },
+    {
+      "root": "sub-packages/short-reading",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "preview",
           "style": {
             "navigationStyle": "custom"
           }
