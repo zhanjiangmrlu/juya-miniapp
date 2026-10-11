@@ -94,7 +94,7 @@ handleLoad 的 GET 失败一律 `presentLearningResult(null)`，与初始化尚�
 
 协调已读取 Figma `2686:633` 独立Playing状态图，图形为暂停符号；源码 `pronunciation-button.vue:30/38/60/99` 虽有playing状态、aria-label=暂停发音及透明度动画，但非失败时始终用 pronunciation-idle.svg，没有独立Playing图。属于状态视觉偏差，不代表播放/暂停业务已被证实不可用。
 
-注意 `probe-more-results.json` playing数组中 playing均false，不能据此声称真实Playing浏览器状态已复现。当前结论基于协调设计读图与本轮源代码映射；后续需真实进入PLAYING后核图、点击暂停及恢复，不能只改CSS透明度。最小方案是消费当前正式Playing资产，保留现有audio所有权、点击隔离、loading/error与无目标隐藏规则，分别回归idle/loading/playing/paused/error及44px点击区。本轮不修改图标或样式。
+协调已通过正常点击第一词卡.word-english并等待.pronunciation-button.playing，最新 `probe-more-results.json` playing.observed=true、首图标playing=true且source实际指向pronunciation-idle.svg；`pronunciation-playing-390.png` 已亲验。当前为实际本地播放状态与源码映射一致的图形偏差证据，替代早先无效直接赋值的探测；不代表真实供应商/人工听音通过。后续需核图、点击暂停及恢复，不能只改CSS透明度。最小方案是消费当前正式Playing资产，保留现有audio所有权、点击隔离、loading/error与无目标隐藏规则，分别回归idle/loading/playing/paused/error及44px点击区。本轮不修改图标或样式。
 
 ### P2：成果通用复习入口遗漏语块收藏
 
@@ -111,13 +111,15 @@ handleLoad 的 GET 失败一律 `presentLearningResult(null)`，与初始化尚�
 
 可复现脚本/结构化结果在忽略目录 `.v15-artifacts.local/audit-result-review.cjs.txt` / `result-review-audit.json`。这是函数消费者现状证据，不是浏览器/真实BFF复习已失败的声明。
 
+协调独立ESM调用也在最新probe-more-results.json的resultReviewEntry记录 mixed只带word-one、onlyChunks退回词汇银行，与本轮分页/仅语块复现一致。
+
 最小方案：成果无显式筛选时使用全部有效词汇/语块，明确有筛选的银行入口继续使用当前tab/filter；不能把无词汇等同无收藏。保留全部分页、去重、完整快照、冲突刷新和固定幂等键。混合通用队列应与银行的各自筛选/复习进度分清，不能只删除一行filter后继续把通用进度冒充词汇银行进度；无需新增后端DTO或接口。两银行各自专用复习不受此问题结论影响，首页也未调用这个helper，未把全部复习入口笼统判为词汇-only。
 
 测试建议：混合收藏分页队列含所有有效ID、仅语块直接可复习、确实空集合才回收藏入口、银行词汇/语块筛选分别保留、通用队列不覆盖银行进度、取消/版本冲突仍刷新。本轮未修改业务或现有单测期望。
 
 ## 验收基线过时（交协调替换）
 
-`tests/visual/visual-cases.ts` 仍以旧2478/2479/2480节点和69状态为清单，M05/M09/M14/M16/M19/M21/M24/M27等改版状态仍指向旧节点；responsive-contract.spec.ts 固定69状态及平板768视口。这类结构测试通过不证明与最新 `2660:3` 的40手机状态一致。协调生成当前映射后，应成组替换清单/数量/手机视口及对应证据，本轮不猜节点、不批量删除视觉测试。
+`tests/visual/visual-cases.ts` 仍以旧2478/2479/2480节点和69状态为清单，M05/M09/M14/M16/M19/M21/M24/M27等改版状态仍指向旧节点；responsive-contract.spec.ts 固定69状态及平板768视口。这类结构测试通过不证明与最新 `2660:3` 的40手机状态一致。协调已生成根审计目录phone-design-matrix.json，phone-only且逐项区分CURRENT_H5_UI_CAPTURE和仅源码映射；后续应据它成组替换清单/数量/手机视口及对应证据。本轮不改视觉测试，不把40项映射等同40项视觉通过。
 
 旧 route 到当前阅读页的兼容条目不是新Figma的额外功能；应区分“当前手机设计状态”和“旧入口兼容回归”。协调已修正页面截图使用独立顶层查询强制 onLoad，以及正确 rain-check 语块 ID；本轮未将旧页缓存/错误夹具当成新增业务缺陷。
 
