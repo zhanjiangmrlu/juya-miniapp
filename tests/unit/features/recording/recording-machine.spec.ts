@@ -21,6 +21,24 @@ const createPort = (permission = true): RecordingPort => {
 }
 
 describe('RecordingController', () => {
+  it('回听自然结束后忽略迟到暂停事件，保留可重播状态', async () => {
+    const port = createPort()
+    let event!: (type: RecordingPlaybackEventType) => void
+    port.subscribePlayback = (listener) => {
+      event = listener
+      return () => undefined
+    }
+    const controller = new RecordingController(port)
+    await controller.selectSentence('s1')
+    await controller.start()
+    await controller.stop()
+    await controller.playback()
+    event('play')
+    event('ended')
+    event('pause')
+    expect(controller.snapshot.status).toBe('RECORDED')
+    await controller.dispose()
+  })
   it('审核配置关闭只禁用录音，不请求麦克风且允许选句', async () => {
     const port = createPort()
     const controller = new RecordingController(port)

@@ -69,7 +69,7 @@ const play = () => {
   flex: none;
   align-items: center;
   justify-content: center;
-  margin: -12px 0 -12px -4px;
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;

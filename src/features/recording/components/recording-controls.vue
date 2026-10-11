@@ -78,7 +78,8 @@ const recordingHint = computed(() => {
       <button
         class="recording-action primary"
         :class="{
-          'is-disabled': startDisabled
+          'is-disabled': startDisabled,
+          'is-recording': snapshot.status === RecordingStatus.RECORDING
         }"
         :disabled="Boolean(startDisabled)"
         @click="emit('start')"
@@ -232,6 +233,14 @@ const recordingHint = computed(() => {
       border-color: #d6dfc9;
       background: #f3f4ed;
       color: #879584;
+      opacity: 0.4;
+    }
+
+    &.is-recording {
+      border-color: #4e7f3b;
+      background: #4e7f3b;
+      color: #fff;
+      opacity: 1;
     }
   }
 

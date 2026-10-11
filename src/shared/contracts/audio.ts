@@ -22,11 +22,12 @@ export interface PronunciationContext {
 /** 内部统一准备结果，真实传输字段由服务适配 */
 export interface PronunciationResult {
   status: PronunciationStatus
-  task_id?: string
-  resource_version?: string
-  url?: string
+  task_id?: string | null
+  resource_version?: string | null
+  url?: string | null
   can_retry?: boolean
-  code?: string
+  code?: string | null
+  expires_at?: string | null
 }
 
 /** 服务返回保留后台任务状态，页面统一映射为四态 */

@@ -45,7 +45,11 @@ export type AudioUrlResolver = (
 
 export interface PronunciationService {
   resolve(target: PronunciationTarget, context: PronunciationContext): Promise<PronunciationResult>
-  task(taskId: string, context: PronunciationContext): Promise<PronunciationResult>
+  task(
+    taskId: string,
+    context: PronunciationContext,
+    target?: PronunciationTarget
+  ): Promise<PronunciationResult>
 }
 
 export interface AudioSnapshot {

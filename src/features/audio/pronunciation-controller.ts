@@ -88,7 +88,11 @@ export const resolvePronunciation = async (
     await bounded(new Promise<never>(() => undefined), signal, Math.min(interval, remaining))
     if (signal.aborted) throw cancelled()
     if (Date.now() >= deadline) break
-    result = await bounded(service.task(result.task_id, context), signal, deadline - Date.now())
+    result = await bounded(
+      service.task(result.task_id, context, target),
+      signal,
+      deadline - Date.now()
+    )
     interval = Math.min(interval + 500, PRONUNCIATION_POLL_MAX_MS)
   }
   if (signal.aborted) throw cancelled()

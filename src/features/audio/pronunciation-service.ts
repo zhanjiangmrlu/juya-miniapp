@@ -1,6 +1,26 @@
 import { PronunciationStatus } from '@/shared/enums/audio'
 
-import type { PronunciationResult, PronunciationWireResult } from '@/shared/contracts/audio'
+import type {
+  PronunciationContext,
+  PronunciationResult,
+  PronunciationTarget,
+  PronunciationWireResult
+} from '@/shared/contracts/audio'
+
+/** 提交BFF公共白名单引用，context 为授权来源，target 为可选固定资源，不提交文本、供应商配置及用户身份 */
+const reference = (context: PronunciationContext, target?: PronunciationTarget) => ({
+  ...(context.favorite_id
+    ? { favorite_id: context.favorite_id }
+    : {
+        content_type: context.content_type,
+        content_id: context.content_id,
+        content_version: context.content_version,
+        entry_id: context.entry_id,
+        sense_id: context.sense_id,
+        source_id: context.source_id
+      }),
+  resource_version: target?.resource_version
+})
 import type { PronunciationService } from '@/shared/types/audio'
 import type { HttpClient } from '@/shared/types/http'
 
@@ -42,11 +62,11 @@ export const createPronunciationService = (client: HttpClient): PronunciationSer
     requestPronunciation(
       client.post<PronunciationWireResult>(
         `/api/v1/pronunciations/${encodeURIComponent(target.target_id)}/resolve`,
-        { ...context, resource_version: target.resource_version }
+        reference(context, target)
       )
     ),
-  task: (taskId, context) => {
-    const query = Object.entries(context)
+  task: (taskId, context, target) => {
+    const query = Object.entries({ ...reference(context, target), target_id: target?.target_id })
       .filter(([, value]) => value !== undefined)
       .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
       .join('&')

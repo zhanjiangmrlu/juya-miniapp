@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAudioStore } from '@/stores/audio'
 
-const dependencies = vi.hoisted(() => ({ source: vi.fn() }))
+const dependencies = vi.hoisted(() => ({ source: vi.fn(), clearScene: vi.fn() }))
+vi.mock('@/stores/scene', () => ({ useSceneStore: () => ({ clear: dependencies.clearScene }) }))
 vi.mock('@/features/audio/uni-audio-engine', () => ({
   createUniAudioEngine: () => ({
     setSource: dependencies.source,
@@ -25,6 +26,33 @@ beforeEach(() => {
 const target = { target_id: 'word', can_prepare: true }
 const context = { favorite_id: 'owned-favorite' }
 describe('发音与全局音频状态', () => {
+  it('短文音频被拒只释放当前播放器，不清理无关场景正文', async () => {
+    const audio = useAudioStore()
+    await audio.play(
+      { target_id: 'reading', version_id: 'v2', target_type: 'short_reading_whole' },
+      {
+        getSignedUrl: async () => {
+          throw { status: 403 }
+        }
+      }
+    )
+    expect(audio.snapshot.target).toBeNull()
+    expect(dependencies.clearScene).not.toHaveBeenCalled()
+    audio.dispose()
+  })
+  it('当前场景音频被拒会清理该场景正文', async () => {
+    const audio = useAudioStore()
+    await audio.play(
+      { target_id: 'scene', version_id: 'v2', target_type: 'scene' },
+      {
+        getSignedUrl: async () => {
+          throw { status: 403 }
+        }
+      }
+    )
+    expect(dependencies.clearScene).toHaveBeenCalledTimes(1)
+    audio.dispose()
+  })
   it('服务端禁止重试时保留终态，重复英文点击不再次请求', async () => {
     const service = {
       resolve: vi.fn(async () => ({ status: 'FAILED', can_retry: false })),

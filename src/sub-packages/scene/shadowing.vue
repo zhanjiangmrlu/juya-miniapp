@@ -251,6 +251,10 @@ useAnalyticsPage('sub-packages/scene/shadowing')
   overflow-y: auto;
   gap: 6px;
 
+  :deep(.sentence-speaker) {
+    color: #96523a;
+  }
+
   :deep(.dialogue-sentence.selected) {
     outline: 1px solid #a8c995;
   }

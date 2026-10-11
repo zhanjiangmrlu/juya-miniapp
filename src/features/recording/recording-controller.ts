@@ -42,9 +42,13 @@ export class RecordingController {
         this.update({ ...this.state, status: RecordingStatus.PLAYBACK })
       else if (type === RecordingPlaybackEventType.PAUSE)
         this.update({ ...this.state, status: RecordingStatus.PAUSED })
-      else if (type === RecordingPlaybackEventType.ENDED)
+      else if (type === RecordingPlaybackEventType.ENDED) {
+        this.playbackRequested = false
         this.update({ ...this.state, status: RecordingStatus.RECORDED })
-      else this.update({ ...this.state, status: RecordingStatus.FAILED })
+      } else {
+        this.playbackRequested = false
+        this.update({ ...this.state, status: RecordingStatus.FAILED })
+      }
     })
     this.unsubscribeRecording = port.subscribeRecording?.((path) => {
       const id = this.state.selectedSentenceId
