@@ -5,7 +5,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createUmengDriver, sanitizeLaunch } from '@/services/analytics/umeng-driver'
 
-import type { AnalyticsNative, UmengSdkFactory } from '@/shared/types/analytics'
+import type {
+  AnalyticsNative,
+  AnalyticsNativeCall,
+  UmengSdkFactory
+} from '@/shared/types/analytics'
 
 import { wrapUmengSource } from '../../../../build/umeng-sdk'
 
@@ -16,6 +20,7 @@ const factory = new Function(
   wrapUmengSource(source).replace('export default', 'return')
 )() as UmengSdkFactory
 
+/** 用拆分的微信 API 创建真实 SDK 测试驱动并记录缓存和请求 */
 const makeDriver = () => {
   const storage = new Map<string, unknown>()
   const requests: { success?: (value: unknown) => void; fail?: (value: unknown) => void }[] = []
@@ -25,16 +30,14 @@ const makeDriver = () => {
     setStorageSync: (key: string, value: unknown) => storage.set(key, value),
     removeStorageSync: (key: string) => storage.delete(key),
     getStorageInfoSync: () => ({ keys: [...storage.keys()] }),
-    getSystemInfo: vi.fn((options) =>
-      options.success?.({
-        system: 'iOS 17',
-        screenWidth: 390,
-        screenHeight: 844,
-        pixelRatio: 3,
-        model: 'iPhone',
-        brand: 'Apple'
-      })
-    ),
+    getDeviceInfo: vi.fn(() => ({
+      system: 'iOS 17',
+      platform: 'ios',
+      model: 'iPhone',
+      brand: 'Apple'
+    })),
+    getWindowInfo: vi.fn(() => ({ screenWidth: 390, screenHeight: 844, pixelRatio: 3 })),
+    getAppBaseInfo: vi.fn(() => ({ version: '8.0.60', SDKVersion: '3.8.0', language: 'zh_CN' })),
     getNetworkType: vi.fn((options) => options.success?.({ networkType: 'wifi' })),
     getAccountInfoSync: () => ({ miniProgram: { envVersion: 'trial', version: '1.0' } }),
     getLaunchOptionsSync: () => ({
@@ -74,14 +77,84 @@ describe('真实 2.8.0 SDK 隔离与撤回', () => {
     vi.stubGlobal('Component', Component)
     vi.stubGlobal('wx', wx)
     const { driver, native } = makeDriver()
-    expect(native.getSystemInfo).not.toHaveBeenCalled()
+    expect(native.getDeviceInfo).not.toHaveBeenCalled()
+    expect(native.getWindowInfo).not.toHaveBeenCalled()
+    expect(native.getAppBaseInfo).not.toHaveBeenCalled()
     expect(native.request).not.toHaveBeenCalled()
     await driver.start()
+    expect(native.getDeviceInfo).toHaveBeenCalled()
+    expect(native.getWindowInfo).toHaveBeenCalled()
+    expect(native.getAppBaseInfo).toHaveBeenCalled()
     const globals = globalThis as unknown as Record<string, unknown>
     expect(globals.App).toBe(App)
     expect(globals.Page).toBe(Page)
     expect(globals.Component).toBe(Component)
     expect(wx).toEqual({ marker: true })
+    driver.stop()
+  })
+
+  it('以拆分 API 为旧 SDK 提供完整基础信息及完成回调，撤回后停止读取', async () => {
+    const { native } = makeDriver()
+    let getSystemInfo: (call: AnalyticsNativeCall) => void = () => {}
+    const driver = createUmengDriver({
+      native,
+      appKey: 'test-key',
+      factory: (scope) => {
+        getSystemInfo = scope.wx.getSystemInfo as typeof getSystemInfo
+        return factory(scope)
+      }
+    })
+    await driver.start()
+    const success = vi.fn()
+    const complete = vi.fn()
+    getSystemInfo({ success, complete })
+    const expected = {
+      system: 'iOS 17',
+      platform: 'ios',
+      model: 'iPhone',
+      brand: 'Apple',
+      screenWidth: 390,
+      screenHeight: 844,
+      pixelRatio: 3,
+      version: '8.0.60',
+      SDKVersion: '3.8.0',
+      language: 'zh_CN',
+      errMsg: 'getSystemInfo:ok'
+    }
+    expect(success).toHaveBeenCalledWith(expected)
+    expect(complete).toHaveBeenCalledWith(expected)
+    driver.stop()
+    vi.clearAllMocks()
+    getSystemInfo({ success, complete })
+    expect(native.getDeviceInfo).not.toHaveBeenCalled()
+    expect(success).not.toHaveBeenCalled()
+    expect(complete).not.toHaveBeenCalled()
+  })
+
+  it('拆分 API 不可用时走失败与完成回调，不回退到弃用 API', async () => {
+    const { native } = makeDriver()
+    let getSystemInfo: (call: AnalyticsNativeCall) => void = () => {}
+    const driver = createUmengDriver({
+      native,
+      appKey: 'test-key',
+      factory: (scope) => {
+        getSystemInfo = scope.wx.getSystemInfo as typeof getSystemInfo
+        return factory(scope)
+      }
+    })
+    await driver.start()
+    native.getDeviceInfo.mockImplementation(() => {
+      throw new Error('unavailable')
+    })
+    const success = vi.fn()
+    const fail = vi.fn()
+    const complete = vi.fn()
+    getSystemInfo({ success, fail, complete })
+    expect(success).not.toHaveBeenCalled()
+    expect(fail).toHaveBeenCalledWith({ errMsg: 'getSystemInfo:fail analytics info unavailable' })
+    expect(complete).toHaveBeenCalledWith({
+      errMsg: 'getSystemInfo:fail analytics info unavailable'
+    })
     driver.stop()
   })
 

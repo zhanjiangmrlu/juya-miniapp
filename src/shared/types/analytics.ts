@@ -52,7 +52,9 @@ export interface AnalyticsNative {
   setStorageSync: (key: string, value: unknown) => void
   getStorageInfoSync: () => { keys: string[] }
   removeStorageSync: (key: string) => void
-  getSystemInfo: (options: AnalyticsNativeCall) => unknown
+  getDeviceInfo: () => Record<string, unknown>
+  getWindowInfo: () => Record<string, unknown>
+  getAppBaseInfo: () => Record<string, unknown>
   getNetworkType: (options: AnalyticsNativeCall) => unknown
   getAccountInfoSync?: () => unknown
   getLaunchOptionsSync?: () => AnalyticsLaunch

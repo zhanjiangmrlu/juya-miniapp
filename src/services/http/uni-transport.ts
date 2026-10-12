@@ -3,14 +3,13 @@ import { HttpMethod } from '@/shared/enums/http'
 
 import type { HttpTransport, TransportRequest, TransportResponse } from '@/shared/types/http'
 export class UniTransport implements HttpTransport {
-  /** 将 uni.request 回调接口适配为请求层使用的 Promise 传输协议。 */
+  /** 将 uni.request 回调适配为 Promise，request 为请求地址、方法、请求头和业务数据 */
   request<T>(request: TransportRequest): Promise<TransportResponse<T>> {
     return new Promise((resolve, reject) => {
       // 微信官方method清单不含PATCH，本人资料统一使用已发布POST端点
-      if (
-        request.method === HttpMethod.PATCH &&
-        uni.getSystemInfoSync().uniPlatform === 'mp-weixin'
-      ) {
+      const appInfo = request.method === HttpMethod.PATCH ? uni.getAppBaseInfo() : undefined
+      // uni 运行时补充 uniPlatform，但当前 GetAppBaseInfoResult 类型未声明该字段
+      if (appInfo && 'uniPlatform' in appInfo && appInfo.uniPlatform === 'mp-weixin') {
         reject(
           new ApiError('PROFILE_UPDATE_METHOD_UNAVAILABLE', '资料保存暂不可用，请稍后重试', 503)
         )

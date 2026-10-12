@@ -130,9 +130,23 @@ export const createUmengDriver = (options: {
           callback(call.fail, { errMsg: 'analytics storage unavailable' })
         }
       },
-      /** 获取设备基础信息，call 为 SDK 回调 */
+      /** 用拆分 API 适配 SDK 的基础信息回调，call 为 SDK 成功、失败及完成处理函数 */
       getSystemInfo: (call: AnalyticsNativeCall) => {
-        if (active) return options.native.getSystemInfo(guardedCall(call))
+        if (!active) return
+        try {
+          const info = {
+            ...options.native.getDeviceInfo(),
+            ...options.native.getWindowInfo(),
+            ...options.native.getAppBaseInfo(),
+            errMsg: 'getSystemInfo:ok'
+          }
+          callback(call.success, info)
+          callback(call.complete, info)
+        } catch {
+          const error = { errMsg: 'getSystemInfo:fail analytics info unavailable' }
+          callback(call.fail, error)
+          callback(call.complete, error)
+        }
       },
       /** 获取网络类型，call 为 SDK 回调 */
       getNetworkType: (call: AnalyticsNativeCall) => {
