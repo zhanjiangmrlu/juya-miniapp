@@ -84,7 +84,9 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-这一步尚未在服务器执行。继续保留占位页时，发布脚本会校验失败并回滚；流水线不会自动改写共享 Nginx 配置。
+2026-10-12 已完成服务器接入。修改前备份为 `/opt/juya/backups/h5-first-deploy-20261012T030146Z/juya-test-domains.conf`；仅替换 H5 的 HTTPS server 块，其他域名配置保持原字节内容。`nginx -t` 成功后重新加载，再用现有第 2 次运行制品执行部署，日志输出 `DEPLOY_OK service=juya-miniapp-h5 version=2-repair-20261012110146-968818`。
+
+公网 H5 首页与入口 `/assets/index-C_jFru1C.js` 均返回 200，后台登录页与后台 API 就绪检查仍返回 200。服务器 `8001` 端口尚未监听，小程序 API、浏览器身份链路与业务流程尚未验收。此次直接服务器修复不会更改云效第 2 次运行的失败记录；可在云效重试主机部署，让流水线重新执行同一制品并更新状态。流水线本身仍不会自动改写共享 Nginx 配置。
 
 ## 验证与上线边界
 
