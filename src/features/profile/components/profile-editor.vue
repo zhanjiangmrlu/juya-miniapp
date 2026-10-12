@@ -131,7 +131,7 @@ watch(() => useSessionStore().cleanupGeneration, cleanup, { flush: 'sync' })
   <PersonalPage title="昵称和头像" subtitle="主动设置个人资料，不影响学习。">
     <view class="profile-editor">
       <image v-if="preview" class="avatar-preview" :src="preview" mode="aspectFill" />
-      <view v-else class="avatar-preview">芽</view>
+      <view v-else class="avatar-preview avatar-placeholder">芽</view>
       <button class="avatar-action" :disabled="loading || !ready" @click="chooseAvatar">
         选择头像
       </button>
@@ -174,15 +174,19 @@ watch(() => useSessionStore().cleanupGeneration, cleanup, { flush: 'sync' })
   background: #fffdf7;
 
   .avatar-preview {
-    display: grid;
+    display: block;
     width: 72px;
     height: 72px;
-    place-items: center;
     margin: 0 auto;
     border-radius: 50%;
     background: #e2eed9;
     color: #254733;
     font-size: 26px;
+  }
+
+  .avatar-placeholder {
+    display: grid;
+    place-items: center;
   }
 
   .avatar-action {

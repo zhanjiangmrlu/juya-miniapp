@@ -10,7 +10,7 @@ const copy = (value: string) => uni.setClipboardData({ data: value })
     <button class="identity-head" aria-label="修改本人昵称和头像" @click="emit('edit')">
       <image v-if="avatar" class="identity-avatar" :src="avatar" mode="aspectFill" /><view
         v-else
-        class="identity-avatar"
+        class="identity-avatar identity-placeholder"
         >芽</view
       >
       <view
@@ -75,16 +75,20 @@ const copy = (value: string) => uni.setClipboardData({ data: value })
   }
 
   .identity-avatar {
-    display: grid;
+    display: block;
     width: 52px;
     height: 52px;
     flex: none;
-    place-items: center;
     border: 1px solid #b4cfab;
     border-radius: 50%;
     background: #cfe4c4;
     font-size: 22px;
     font-weight: 700;
+  }
+
+  .identity-placeholder {
+    display: grid;
+    place-items: center;
   }
 
   .identity-id {
