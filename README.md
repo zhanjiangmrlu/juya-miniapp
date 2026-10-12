@@ -19,6 +19,7 @@ pnpm check
 pnpm test
 pnpm build:h5
 pnpm build:mp-weixin
+pnpm build:mp-weixin:test
 pnpm build:mp-weixin:local
 ```
 
@@ -32,6 +33,21 @@ pnpm build:mp-weixin:local
 H5 本地登录可在私有 `.env.development.local` 中配置 `VITE_LOCAL_DEV_MODE=true`，同时保持 `VITE_USE_MOCK_API=false`。后端需运行在 `JUYA_ENVIRONMENT=local|test` 并启用 `JUYA_LOCAL_DEV_MODE=true`，例如使用小程序 API 的 `scripts/start-local.ps1`。该后端模式提供本地契约样例，不代表真实微信认证或生产数据验收。完全离线预览则使用 `VITE_USE_MOCK_API=true`，请求由前端 MockTransport 响应。
 
 本地微信开发者工具调试使用 `pnpm dev:mp-weixin`，或执行 `pnpm build:mp-weixin:local` 后导入 `dist/build/mp-weixin`。这两个命令都读取 `.env.development`，连接小程序 API `http://127.0.0.1:8001`。普通 `pnpm build:mp-weixin` 使用生产配置，不读取 `.env.development`。管理后台 API 使用 `8000`，不包含 `/api/v1/home`。在微信开发者工具中开启“不校验合法域名”；真机调试需把地址改为电脑局域网地址并保留小程序 API 端口。
+
+微信小程序测试和生产打包分别使用以下命令，两者都关闭 Mock 和本地登录模式：
+
+| 环境 | 命令                        | 配置文件          | API 地址                          |
+| ---- | --------------------------- | ----------------- | --------------------------------- |
+| 测试 | `pnpm build:mp-weixin:test` | `.env.test`       | `https://test-api.juyayingyu.com` |
+| 生产 | `pnpm build:mp-weixin`      | `.env.production` | `https://api.juyayingyu.com`      |
+
+两种构建均输出到 `dist/build/mp-weixin`，后一次构建会覆盖前一次产物。测试构建也使用生产优化，仅环境配置切换为 `test`。
+
+终端环境变量、`.env.local` 和对应的 `.env.<模式>.local` 可以覆盖上述配置。如果之前在 PowerShell 手动设置过接口地址或开发开关，先清除当前终端的覆盖值，再执行对应打包命令：
+
+```powershell
+Remove-Item Env:VITE_API_BASE_URL, Env:VITE_USE_MOCK_API, Env:VITE_LOCAL_DEV_MODE -ErrorAction SilentlyContinue
+```
 
 H5 开发时，浏览器通过 Vite 的同源 `/api/v1` 代理访问 `VITE_API_BASE_URL`，避免直接跨域请求。修改 `.env.development` 后需重启开发服务。生产构建和微信小程序直接使用配置的 API 地址。未登录直接访问真实首页接口返回 `401 ACCESS_TOKEN_REQUIRED`，这是认证要求。
 
@@ -86,7 +102,8 @@ tests/
 
 - `pnpm check`：格式、脚本、样式与 TypeScript 门禁。
 - `pnpm test`：运行 `tests/` 下的单元、组件、结构契约、Mock 流程和静态视觉约束测试。
-- `pnpm build:mp-weixin`：生成 `dist/build/mp-weixin` 微信小程序产物。
+- `pnpm build:mp-weixin`：生成连接生产 API 的 `dist/build/mp-weixin` 微信小程序产物。
+- `pnpm build:mp-weixin:test`：生成连接测试 API 的 `dist/build/mp-weixin` 微信小程序产物。
 - `pnpm build:h5`：生成本地视觉验收产物；`tests/visual/visual-cases.ts` 固定 375×812、390×844、768×1024 三组视口和关键页面清单。
 
 微信开发者工具导入 `dist/build/mp-weixin` 后可做真机预览。需要 CLI 自动化时，请先在开发者工具的“设置 → 安全设置”中手动开启服务端口。
