@@ -47,6 +47,7 @@ function handleReview() {
     <text class="task-heading">今日学习任务</text>
     <TodayTaskCard
       :can-start="canStartTask"
+      :is-fallback="view.isFallback"
       :scene="taskScene"
       :task="view.todayTask"
       @start="handleStartTask"

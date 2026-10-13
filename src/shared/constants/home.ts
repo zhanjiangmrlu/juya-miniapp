@@ -3,6 +3,16 @@ import { TodayTaskKind } from '@/shared/enums/home'
 import type { TodayTask } from '@/shared/contracts/home'
 import type { TodayTaskViewModel } from '@/shared/types/home'
 
+export const UNAVAILABLE_TODAY_TASK_COPY = {
+  title: '连接后获取今日任务',
+  description: '学习记录只会在身份建立成功后生成。'
+}
+
+export const EMPTY_TODAY_TASK_COPY = {
+  title: '暂无可学习任务',
+  description: '可前往学习页查看开放内容，或稍后再来。'
+}
+
 export const TODAY_TASK_COPY: Record<TodayTask['kind'], Omit<TodayTaskViewModel, 'url'>> = {
   [TodayTaskKind.CONTINUE_SCENE]: {
     buttonLabel: '继续学习',

@@ -28,6 +28,19 @@ const {
   profileActionShown
 } = useLearningPage()
 const isNew = computed(() => learning.sections.stage === LearningCatalogStage.NEW)
+/** 仅在服务端启用场景模块时展示其内容及空状态 */
+const hasSceneModule = computed(() =>
+  learning.sections.modules.some((module) => module.key === 'scene_learning')
+)
+/** 目录中可学或可复习的场景存在时保留原有学习分区 */
+const hasLearningScenes = computed(
+  () =>
+    learning.sections.openScenes.length +
+      learning.sections.currentLearning.length +
+      learning.sections.entitledScenes.length +
+      (learning.sections.openReview?.totalCount ?? 0) >
+    0
+)
 const openTitles = computed(() =>
   learning.catalog.items
     .filter((scene) => scene.access === AccessLevel.OPEN)
@@ -65,11 +78,17 @@ useAnalyticsPage('pages/learning/index')
       </button></view
     >
     <AppState
-      v-if="!learning.loading && !learning.error && !learning.sections.modules.length"
-      title="学习内容正在调整，请稍后再来。"
-      icon-label="暂无内容"
-      description="你仍可查看收藏与学习档案。"
-      ><button class="primary-action" @click="openFavorites">前往收藏</button></AppState
+      v-if="learning.loading"
+      title="正在加载学习内容"
+      icon-label="加载中"
+      description="请稍候。"
+    />
+    <AppState
+      v-else-if="learning.error"
+      title="学习内容暂不可用"
+      icon-label="网络异常"
+      description="请检查网络后重试。"
+      ><button class="primary-action" @click="load">重新加载</button></AppState
     >
     <AppState
       v-else-if="learning.sections.authorizationPending"
@@ -77,11 +96,21 @@ useAnalyticsPage('pages/learning/index')
       icon-label="权限确认中"
       description="正在重新确认你的内容权限，请稍后重试。"
     />
-    <template
-      v-else-if="
-        isNew && learning.sections.modules.some((module) => module.key === 'scene_learning')
-      "
+    <AppState
+      v-else-if="!learning.sections.modules.length"
+      title="学习内容正在调整，请稍后再来。"
+      icon-label="暂无内容"
+      description="你仍可查看收藏与学习档案。"
+      ><button class="primary-action" @click="openFavorites">前往收藏</button></AppState
     >
+    <AppState
+      v-else-if="hasSceneModule && !hasLearningScenes"
+      title="暂无可学习的场景"
+      icon-label="暂无场景"
+      description="可先探索其他内容，或稍后再来。"
+      ><button class="primary-action" @click="openExplore">探索更多内容</button></AppState
+    >
+    <template v-else-if="isNew && hasSceneModule">
       <SceneListSection
         title="开放场景"
         compact
@@ -90,9 +119,7 @@ useAnalyticsPage('pages/learning/index')
       />
       <button class="primary-action" @click="openExplore">探索更多内容</button>
     </template>
-    <template
-      v-else-if="learning.sections.modules.some((module) => module.key === 'scene_learning')"
-    >
+    <template v-else-if="hasSceneModule">
       <SceneListSection
         title="继续学习"
         :scenes="learning.sections.currentLearning"

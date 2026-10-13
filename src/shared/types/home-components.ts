@@ -41,6 +41,7 @@ export type StreakCardProps = { checkins: CheckinSummary | null }
 /** TodayTaskCard 输入属性 */
 export type TodayTaskCardProps = {
   canStart?: boolean
+  isFallback?: boolean
   scene?: SceneCardViewModel
   task: TodayTaskViewModel | null
 }

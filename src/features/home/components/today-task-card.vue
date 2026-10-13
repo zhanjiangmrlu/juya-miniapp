@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { EMPTY_TODAY_TASK_COPY, UNAVAILABLE_TODAY_TASK_COPY } from '@/shared/constants/home'
+
 import type { TodayTaskCardEmits, TodayTaskCardProps } from '@/shared/types/home-components'
 
-const props = withDefaults(defineProps<TodayTaskCardProps>(), { canStart: true, scene: undefined })
+const props = withDefaults(defineProps<TodayTaskCardProps>(), {
+  canStart: true,
+  isFallback: true,
+  scene: undefined
+})
 
 const emit = defineEmits<TodayTaskCardEmits>()
 const imageUrl = computed(() => props.scene?.imageUrl)
+/** 按首页是否已取得真实响应区分连接提示与合法空任务 */
+const emptyCopy = computed(() =>
+  props.isFallback ? UNAVAILABLE_TODAY_TASK_COPY : EMPTY_TODAY_TASK_COPY
+)
 
 /** 将任务启动操作交给页面统一执行导航 */
 const handleStart = () => {
@@ -62,8 +72,8 @@ const handleStart = () => {
     </template>
     <view v-else class="task-fallback">
       <view class="series-tag"><text class="series-label">今日安排</text></view>
-      <text class="scene-title">连接后获取今日任务</text>
-      <text class="task-description">学习记录只会在身份建立成功后生成。</text>
+      <text class="scene-title">{{ emptyCopy.title }}</text>
+      <text class="task-description">{{ emptyCopy.description }}</text>
     </view>
   </view>
 </template>
