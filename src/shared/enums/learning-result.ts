@@ -7,3 +7,11 @@ export const LearningResultLabel = {
 
 export type LearningResultLabel = (typeof LearningResultLabel)[keyof typeof LearningResultLabel] &
   string
+/** 权威成果读取状态 */
+export const LearningResultStatus = {
+  LOADING: 'LOADING',
+  ERROR: 'ERROR',
+  SUCCESS: 'SUCCESS'
+} as const
+export type LearningResultStatus =
+  (typeof LearningResultStatus)[keyof typeof LearningResultStatus] & string

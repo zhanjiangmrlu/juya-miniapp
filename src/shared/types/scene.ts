@@ -9,7 +9,8 @@ import type {
   SignedMediaResponse,
   SignedResourceResponse
 } from '@/shared/contracts/learning'
-import type { SceneModelKind } from '@/shared/enums/scene'
+import type { SceneModelKind, WordImageStatus } from '@/shared/enums/scene'
+import type { Ref } from 'vue'
 
 export interface ClickableSegment {
   text: string
@@ -84,3 +85,8 @@ export interface SceneService {
 }
 
 export type ScenePageOptions = { resume?: boolean }
+/** 当前页面词汇图片状态及手动重签入口 */
+export interface WordImageController {
+  states: Ref<Record<string, WordImageStatus>>
+  retry(entry: SceneEntry): Promise<void>
+}

@@ -50,6 +50,53 @@ const full = {
 }
 
 describe('场景授权资源与词卡', () => {
+  it('进度403清空当前正文、原图与失效命令', async () => {
+    const page = useScenePage()
+    await page.initialize('coffee')
+    runtime.scene.savePosition.mockRejectedValueOnce({ status: 403, code: 'SCENE_ACCESS_DENIED' })
+    page.savePosition({ entry_id: 's1', offset: 1 })
+    await vi.waitFor(() => expect(page.fullModel.value).toBeUndefined(), { timeout: 1500 })
+    expect(page.originalImageUrl.value).toBe('')
+    expect(uni.setStorageSync).toHaveBeenLastCalledWith('juya.progress-queue', [])
+  })
+  it.each([503, 404])('词汇图片签名%s失败保留文字和失败状态，手动重试重新取址', async (status) => {
+    runtime.scene.open.mockResolvedValue({
+      ...full,
+      scene: { ...full.scene, entries: [{ ...word, image_asset_id: 'word-image' }] }
+    })
+    runtime.scene.getResource.mockImplementation(async (_scene, asset) => {
+      if (asset === 'word-image') throw { status }
+      return { url: 'signed-image' }
+    })
+    const page = useScenePage()
+    await page.initialize('coffee')
+    const entry = page.fullModel.value!.entries[0]
+    expect(entry.text).toBe('old text')
+    expect(page.wordImageStates.value['["latte","sense-1","source-1"]']).toBe('FAILED')
+    runtime.scene.getResource.mockResolvedValue({ url: 'retried-image' })
+    await page.retryWordImage(entry)
+    expect(entry.image_url).toBe('retried-image')
+    expect(page.wordImageStates.value['["latte","sense-1","source-1"]']).toBe('READY')
+  })
+  it('同词条不同来源图片取址不会互相使请求失效', async () => {
+    runtime.scene.open.mockResolvedValue({
+      ...full,
+      scene: {
+        ...full.scene,
+        entries: [
+          { ...word, image_asset_id: 'first-image' },
+          { ...word, source_id: 'second-source', image_asset_id: 'second-image' }
+        ]
+      }
+    })
+    runtime.scene.getResource.mockImplementation(async (_scene, asset) => ({ url: `${asset}-url` }))
+    const page = useScenePage()
+    await page.initialize('coffee')
+    expect(page.fullModel.value!.entries.map((entry) => entry.image_url)).toEqual([
+      'first-image-url',
+      'second-image-url'
+    ])
+  })
   it('场景实际打开成功上报一次，返回页面后台核验不重复计算', async () => {
     const page = useScenePage()
     await page.initialize('coffee')

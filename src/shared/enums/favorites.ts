@@ -22,3 +22,7 @@ export const FavoriteSourceStatus = {
 } as const
 export type FavoriteSourceStatus =
   (typeof FavoriteSourceStatus)[keyof typeof FavoriteSourceStatus] & string
+/** 翻卡入口的收藏筛选范围 */
+export const FavoriteReviewScope = { ALL: 'ALL', BANK: 'BANK' } as const
+export type FavoriteReviewScope = (typeof FavoriteReviewScope)[keyof typeof FavoriteReviewScope] &
+  string

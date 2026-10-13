@@ -1,17 +1,28 @@
 import { onShow } from '@dcloudio/uni-app'
-import { computed, getCurrentScope, onScopeDispose, ref, watch, watchEffect } from 'vue'
+import {
+  computed,
+  getCurrentInstance,
+  getCurrentScope,
+  onScopeDispose,
+  provide,
+  ref,
+  watch,
+  watchEffect
+} from 'vue'
 
 import { createProgressQueue } from '@/features/learning-progress/progress-queue'
 import { sceneEntryKey } from '@/features/scene/scene-entry-identity'
 import { getAnalytics } from '@/services/analytics/runtime'
 import { createRequestId } from '@/services/http/request-id'
 import { getRuntimeServices } from '@/services/runtime'
+import { AUDIO_PAGE_OWNER_KEY } from '@/shared/constants/audio-owner'
 import { PROGRESS_QUEUE_KEY } from '@/shared/constants/learning-progress'
+import { WORD_IMAGE_CONTROLLER_KEY } from '@/shared/constants/scene-images'
 import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { AudioTargetType } from '@/shared/enums/audio'
 import { SceneEntryType } from '@/shared/enums/learning'
 import { ProgressCommandKind } from '@/shared/enums/learning-progress'
-import { SceneModelKind } from '@/shared/enums/scene'
+import { SceneModelKind, WordImageStatus } from '@/shared/enums/scene'
 import { useAudioStore } from '@/stores/audio'
 import { useFavoriteStore } from '@/stores/favorites'
 import { useSceneStore } from '@/stores/scene'
@@ -29,6 +40,8 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
   const visitKey = createRequestId()
   const opened = new Set<string>()
   const audio = useAudioStore()
+  const audioOwner = Symbol('scene-page-audio')
+  if (getCurrentInstance()) provide(AUDIO_PAGE_OWNER_KEY, audioOwner)
   const runtime = getRuntimeServices()
   const scene = useSceneStore()
   const favorites = useFavoriteStore()
@@ -40,6 +53,8 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
   const imageOpen = ref(false)
   const imageLoading = ref(false)
   const sheetLoading = ref(false)
+  const wordImageStates = ref<Record<string, WordImageStatus>>({})
+  const wordImageRequests = new Map<string, number>()
   const fullModel = computed(() =>
     scene.model?.kind === SceneModelKind.FULL && scene.model.sceneId === sceneId.value
       ? scene.model
@@ -51,6 +66,7 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
   let imageRetried = false
   let completing = false
   let suspended = false
+  const progressOwners = new Map<string, { generation: number; model: typeof fullModel.value }>()
   /** 提取可收藏的确认目标，entry为本篇条目，缺少稳定身份时拒绝猜配 */
   const referenceFor = (entry: SceneEntry): FavoriteReference | undefined => {
     const model = fullModel.value
@@ -95,8 +111,10 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
       save: (commands) => uni.setStorageSync(PROGRESS_QUEUE_KEY, commands)
     },
     async (command, idempotencyKey) => {
+      progressOwners.set(idempotencyKey, { generation, model: fullModel.value })
       if (command.kind === ProgressCommandKind.COMPLETE) {
         await runtime.scene.complete(command.sceneId, idempotencyKey)
+        progressOwners.delete(idempotencyKey)
         return
       }
       await runtime.scene.savePosition(
@@ -108,6 +126,21 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
         },
         idempotencyKey
       )
+      progressOwners.delete(idempotencyKey)
+    },
+    {
+      /** 仅清理仍属于当前场景的拒绝，command 为失效命令，error 为服务端终态 */
+      onTerminalFailure: (command, error) => {
+        const owner = progressOwners.get(command.idempotencyKey)
+        progressOwners.delete(command.idempotencyKey)
+        if (
+          command.sceneId === sceneId.value &&
+          owner?.generation === generation &&
+          owner.model &&
+          owner.model === fullModel.value
+        )
+          handleFailure(error)
+      }
     }
   )
   if (getCurrentScope()) onScopeDispose(progressQueue.dispose)
@@ -120,6 +153,7 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
       progressQueue.clear()
       imageUrl.value = ''
       imageOpen.value = false
+      wordImageStates.value = {}
       scene.clear()
     },
     { flush: 'sync' }
@@ -129,12 +163,15 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
   const handleFailure = (error: unknown) => {
     const status = (error as HttpStatusCarrier)?.status
     if ([401, 403, 404, 409, 410].includes(status ?? 0)) {
+      suspended = true
       generation++
       sheetRequest++
       imageUrl.value = ''
       imageOpen.value = false
-      audio.dispose()
+      wordImageStates.value = {}
+      audio.cancelOwned(audioOwner)
       scene.clear()
+      uni.showToast({ icon: 'none', title: '内容访问已失效，请返回学习页重新确认' })
     } else uni.showToast({ icon: 'none', title: '加载失败，请重试' })
   }
 
@@ -156,31 +193,50 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
       if (request === generation) imageLoading.value = false
     }
   }
-  /** 解析当前发布词汇图片，request为加载代次，图片失败保留文字且不填充设计样图 */
-  const resolveWordImages = async (request: number) => {
+  /** 解析单个词汇图片，entry 为本版词条，request 为页面代次，重试重新取得签名 */
+  const resolveWordImage = async (entry: SceneEntry, request: number) => {
     const model = fullModel.value
-    if (!model?.revision_id) return
+    if (!model?.revision_id || !entry.image_asset_id || !model.entries.includes(entry)) return
+    const key = sceneEntryKey(entry)
+    const imageRequest = (wordImageRequests.get(key) ?? 0) + 1
+    wordImageRequests.set(key, imageRequest)
+    wordImageStates.value[key] = WordImageStatus.LOADING
+    entry.image_url = undefined
+    /** 判断返回的签名是否仍属于当前页面和词条请求 */
+    const current = () =>
+      request === generation &&
+      fullModel.value === model &&
+      wordImageRequests.get(key) === imageRequest
+    try {
+      const resource = await runtime.scene.getResource(
+        model.sceneId,
+        entry.image_asset_id,
+        model.revision_id
+      )
+      if (!current()) return
+      entry.image_url = resource.url
+      wordImageStates.value[key] = WordImageStatus.READY
+    } catch (error) {
+      if (!current()) return
+      if ([401, 403].includes((error as HttpStatusCarrier)?.status ?? 0)) handleFailure(error)
+      else wordImageStates.value[key] = WordImageStatus.FAILED
+    }
+  }
+  /** 解析当前发布词汇图片，request 为页面代次 */
+  const resolveWordImages = async (request: number) => {
     await Promise.all(
-      model.entries
+      (fullModel.value?.entries ?? [])
         .filter((entry) => entry.image_asset_id)
-        .map(async (entry) => {
-          try {
-            const resource = await runtime.scene.getResource(
-              model.sceneId,
-              entry.image_asset_id!,
-              model.revision_id!
-            )
-            if (request === generation && fullModel.value === model) entry.image_url = resource.url
-          } catch (error) {
-            if (
-              request === generation &&
-              [401, 403].includes((error as HttpStatusCarrier)?.status ?? 0)
-            )
-              handleFailure(error)
-          }
-        })
+        .map((entry) => resolveWordImage(entry, request))
     )
   }
+  /** 手动重签词汇图片，entry 为当前仍可访问的词条 */
+  const retryWordImage = async (entry: SceneEntry) => {
+    if (suspended || wordImageStates.value[sceneEntryKey(entry)] === WordImageStatus.LOADING) return
+    await resolveWordImage(entry, generation)
+  }
+  if (getCurrentInstance())
+    provide(WORD_IMAGE_CONTROLLER_KEY, { states: wordImageStates, retry: retryWordImage })
 
   /** 使用路由标识加载场景，id 为授权场景 ID，缺失时不猜测场景 */
   const initialize = async (id?: string) => {
@@ -192,6 +248,8 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
     imageOpen.value = false
     imageUrl.value = ''
     imageRetried = false
+    wordImageStates.value = {}
+    wordImageRequests.clear()
     sceneId.value = id ?? ''
     if (!id) {
       scene.clear()
@@ -220,7 +278,7 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
     if (!fullModel.value) return
     const sentence = scene.dialogueEntries.find((entry) => entry.entry_id === target.sentence_id)
     if (sentence) savePosition({ entry_id: sentence.source_locator, offset: scrollTop.value })
-    await audio.play(target, runtime.scene)
+    await audio.play(target, runtime.scene, audioOwner)
   }
 
   /** 从服务器获取词卡，entry 为列表引用，span 为点击位置绑定的版本和来源 */
@@ -408,9 +466,16 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
     sheetLoading.value = false
     imageLoading.value = false
     imageOpen.value = false
-    audio.dispose()
+    audio.cancelOwned(audioOwner)
     void progressQueue.flush()
   }
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      suspended = true
+      generation++
+      sheetRequest++
+      audio.cancelOwned(audioOwner)
+    })
 
   /** 返回已隐藏页面时重新核验当前场景，跟读页由自身重建录音端口 */
   onShow(() => {
@@ -440,6 +505,8 @@ export const useScenePage = (options: ScenePageOptions = {}) => {
     sceneId,
     scrollTarget,
     scrollTop,
-    sheetLoading
+    sheetLoading,
+    wordImageStates,
+    retryWordImage
   }
 }

@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { usePageAudioOwner } from '@/features/audio/use-page-audio-owner'
 import ReviewCard from '@/features/favorites/components/review-card.vue'
 import { createReviewSession } from '@/features/favorites/review-session'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
@@ -15,7 +16,7 @@ import {
   FAVORITE_REVIEW_REFRESH_CODES
 } from '@/shared/constants/favorites'
 import { AnalyticsEvent } from '@/shared/enums/analytics'
-import { FavoriteType, ReviewCardFace } from '@/shared/enums/favorites'
+import { FavoriteReviewScope, FavoriteType, ReviewCardFace } from '@/shared/enums/favorites'
 import { NavigationType } from '@/shared/enums/navigation'
 import { ProfileTabKey } from '@/shared/enums/profile'
 import { ButtonVariant } from '@/shared/enums/ui'
@@ -28,7 +29,9 @@ import type { ReviewPageViewProps } from '@/shared/types/favorites-components'
 const props = defineProps<ReviewPageViewProps>()
 const favorites = useFavoriteStore()
 const session = useSessionStore()
+const { cancelAudio } = usePageAudioOwner()
 const bank = ref<FavoriteType>(FavoriteType.VOCABULARY)
+const scope = ref<FavoriteReviewScope>(FavoriteReviewScope.BANK)
 const cardIds = ref<string[]>([])
 const index = ref(0)
 const item = ref<FavoriteItem>()
@@ -110,6 +113,8 @@ const load = async (query?: Record<string, string>) => {
   refreshNeeded.value = false
   item.value = undefined
   bank.value = query?.bank === FavoriteType.PHRASE ? FavoriteType.PHRASE : FavoriteType.VOCABULARY
+  scope.value =
+    query?.scope === FavoriteReviewScope.ALL ? FavoriteReviewScope.ALL : FavoriteReviewScope.BANK
   cardIds.value =
     query?.cardIds?.split(',').filter(Boolean) ??
     (query?.id ? [query.id] : favorites.tabState[bank.value].review?.cardIds || [])
@@ -195,7 +200,7 @@ const load = async (query?: Record<string, string>) => {
 const go = (page: string, position: number) =>
   navigate({
     type: NavigationType.REDIRECT_TO,
-    url: `/sub-packages/favorites/${page}?index=${position}&bank=${bank.value}`
+    url: `/sub-packages/favorites/${page}?index=${position}&bank=${bank.value}${scope.value === FavoriteReviewScope.ALL ? '&scope=ALL' : ''}`
   })
 /** 明确点击卡片或翻面按钮时切换卡面 */
 const flip = () => {
@@ -274,6 +279,15 @@ const refreshReview = async () => {
     if (request !== generation || suspended) return
     await load({
       bank: bank.value,
+      ...(scope.value === FavoriteReviewScope.ALL
+        ? {
+            scope: FavoriteReviewScope.ALL,
+            cardIds: favorites.items
+              .filter((card) => card.active !== false)
+              .map((card) => card.id)
+              .join(',')
+          }
+        : {}),
       index: String(favorites.tabState[bank.value].review?.index || 0)
     })
   } catch {
@@ -285,6 +299,7 @@ const refreshReview = async () => {
 onLoad(load)
 /** 隐藏复习页面时使旧加载或完成回调失效 */
 const hide = () => {
+  cancelAudio()
   suspended = true
   generation++
   busy.value = false
@@ -299,7 +314,13 @@ onShow(async () => {
     await favorites.load(getRuntimeServices().favorites, true)
     if (suspended || request !== generation) return
     const review = favorites.tabState[bank.value].review
-    await load({ ...lastQuery, index: String(review?.index || 0) })
+    await load({
+      ...lastQuery,
+      ...(scope.value === FavoriteReviewScope.ALL
+        ? { cardIds: (review?.cardIds ?? []).join(',') }
+        : {}),
+      index: String(review?.index || 0)
+    })
   } catch {
     if (suspended || request !== generation) return
     item.value = undefined

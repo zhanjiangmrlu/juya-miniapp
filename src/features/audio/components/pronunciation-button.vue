@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject, onScopeDispose, watch } from 'vue'
 
 import pronunciationError from '@/features/audio/assets/pronunciation-error.svg'
 import pronunciationIdle from '@/features/audio/assets/pronunciation-idle.svg'
@@ -8,6 +8,7 @@ import {
   canPronounceTarget,
   getPronunciationAudioTarget
 } from '@/features/audio/pronunciation-controller'
+import { AUDIO_PAGE_OWNER_KEY } from '@/shared/constants/audio-owner'
 import { AudioStatus, PronunciationStatus } from '@/shared/enums/audio'
 import { useAudioStore } from '@/stores/audio'
 
@@ -15,6 +16,7 @@ import type { PronunciationButtonProps } from '@/shared/types/audio-components'
 
 const props = defineProps<PronunciationButtonProps>()
 const audio = useAudioStore()
+const owner = inject(AUDIO_PAGE_OWNER_KEY, undefined)
 const current = computed(
   () =>
     props.target &&
@@ -41,8 +43,23 @@ const label = computed(() =>
 )
 /** 点击只提交当前确认目标，与收藏、详情及翻面事件隔离 */
 const play = () => {
-  if (props.target) void audio.playPronunciation(props.target, props.context)
+  if (!props.target) return
+  if (owner) void audio.playPronunciation(props.target, props.context, undefined, owner)
+  else void audio.playPronunciation(props.target, props.context)
 }
+
+/** 生成当前受控发音键，用于换卡时只取消旧目标 */
+const targetKey = computed(() =>
+  props.target
+    ? getAudioTargetKey(getPronunciationAudioTarget(props.target, props.context))
+    : undefined
+)
+/** 取消仍属于当前按钮的播放，key 为卸载或换卡前的发音键 */
+const cancel = (key?: string) => {
+  if (owner && key) audio.cancelOwned(owner, key)
+}
+watch(targetKey, (_next, previous) => cancel(previous), { flush: 'sync' })
+onScopeDispose(() => cancel(targetKey.value))
 </script>
 <template>
   <button

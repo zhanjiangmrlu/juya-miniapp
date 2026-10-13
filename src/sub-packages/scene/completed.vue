@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onHide, onLoad, onUnload } from '@dcloudio/uni-app'
-import { ref } from 'vue'
+import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
+import { onScopeDispose, ref, watch } from 'vue'
 
 import streakFlame from '@/features/learning-result/assets/streak-flame@3x.png'
 import LearningResultCards from '@/features/learning-result/components/learning-result-cards.vue'
@@ -11,21 +11,44 @@ import { useScenePage } from '@/features/scene/use-scene-page'
 import { useAnalyticsPage } from '@/services/analytics/use-analytics-page'
 import { getRuntimeServices } from '@/services/runtime'
 import { SCENE_COMPLETION_DETAILS as details } from '@/shared/constants/scene'
+import { LearningResultStatus } from '@/shared/enums/learning-result'
 import { NavigationType } from '@/shared/enums/navigation'
 import { navigate } from '@/shared/navigation/navigate'
+import { useSessionStore } from '@/stores/session'
 
-const result = ref(presentLearningResult(null))
+import type { LearningResultViewModel } from '@/shared/types/learning-result'
+
+const result = ref<LearningResultViewModel>()
+const status = ref<LearningResultStatus>(LearningResultStatus.LOADING)
 const reviewing = ref(false)
 const { disposeAudio, fullModel, initialize, sceneId } = useScenePage()
+let generation = 0
+let suspended = false
+
+/** 读取当前场景权威成果，失败保留同位重试，不制造零值成果 */
+const loadResult = async () => {
+  if (suspended || !sceneId.value) return
+  const request = ++generation
+  status.value = LearningResultStatus.LOADING
+  result.value = undefined
+  try {
+    const response = await getRuntimeServices().result.get(sceneId.value)
+    if (suspended || request !== generation) return
+    if (!response) throw new Error('成果数据暂不可用')
+    result.value = presentLearningResult(response)
+    status.value = LearningResultStatus.SUCCESS
+  } catch {
+    if (!suspended && request === generation) status.value = LearningResultStatus.ERROR
+  }
+}
 
 /** 完成页读取权威成果，query 为已完成场景路由参数 */
 const handleLoad = async (query?: Record<string, string>) => {
+  suspended = false
+  const request = ++generation
   await initialize(query?.sceneId)
-  try {
-    result.value = presentLearningResult(await getRuntimeServices().result.get(sceneId.value))
-  } catch {
-    result.value = presentLearningResult(null)
-  }
+  if (suspended || request !== generation) return
+  await loadResult()
 }
 /** 打开明细，route 为成果卡定义的真实入口 */
 const openDetail = async (route: string) => {
@@ -35,52 +58,87 @@ const openDetail = async (route: string) => {
 const home = async () => {
   await navigate({ type: NavigationType.RE_LAUNCH, url: '/pages/home/index' })
 }
-/** 读取完整收藏词汇队列并打开既有翻卡入口 */
+/** 读取完整有效词汇和语块队列并打开既有翻卡入口 */
 const review = async () => {
-  if (reviewing.value) return
+  if (reviewing.value || suspended) return
+  const request = generation
   reviewing.value = true
   try {
+    const url = await getResultReviewRoute(getRuntimeServices().favorites)
+    if (suspended || request !== generation) return
     await navigate({
       type: NavigationType.NAVIGATE_TO,
-      url: await getResultReviewRoute(getRuntimeServices().favorites)
+      url
     })
   } catch {
-    uni.showToast({ icon: 'none', title: '复习入口加载失败，请重试' })
+    if (!suspended && request === generation)
+      uni.showToast({ icon: 'none', title: '复习入口加载失败，请重试' })
   } finally {
-    reviewing.value = false
+    if (request === generation) reviewing.value = false
   }
 }
+/** 离页或账号清理后失效成果和复习读取 */
+const leave = () => {
+  suspended = true
+  generation++
+  result.value = undefined
+  reviewing.value = false
+  status.value = LearningResultStatus.LOADING
+  disposeAudio()
+}
 onLoad(handleLoad)
-onHide(disposeAudio)
-onUnload(disposeAudio)
+onHide(leave)
+onUnload(leave)
+onScopeDispose(leave)
+watch(() => useSessionStore().cleanupGeneration, leave, { flush: 'sync' })
+onShow(() => {
+  if (suspended) {
+    suspended = false
+    void loadResult()
+  }
+})
 useAnalyticsPage('sub-packages/scene/completed')
 </script>
 <template>
   <ScenePageLayout title="学习完成">
     <text class="scene-title">学习完成</text
     ><text class="scene-subtitle">你已完成「{{ fullModel?.chineseTitle ?? '本场景' }}」的学习</text>
-    <view class="scene-highlight"
-      ><text class="highlight-label">本次学习已记录</text
-      ><view class="streak-value"
-        ><text class="highlight-value"
-          >{{ result.streakDays }} <text class="streak-unit">天</text></text
-        ><image :src="streakFlame" mode="aspectFit" /></view
-      ><text class="highlight-hint">连续学习，保持热爱</text></view
-    >
-    <LearningResultCards :cards="result.cards" @select="openDetail" />
-    <view class="scene-section">查看本次成果</view>
-    <view class="result-details"
-      ><button
-        v-for="(detail, index) in details"
-        :key="detail.title"
-        @click="openDetail(result.cards[index].route)"
+    <template v-if="status === LearningResultStatus.SUCCESS && result">
+      <view class="scene-highlight"
+        ><text class="highlight-label">本次学习已记录</text
+        ><view class="streak-value"
+          ><text class="highlight-value"
+            >{{ result.streakDays }} <text class="streak-unit">天</text></text
+          ><image :src="streakFlame" mode="aspectFit" /></view
+        ><text class="highlight-hint">连续学习，保持热爱</text></view
       >
-        <view
-          ><text>{{ detail.title }}</text
-          ><text class="result-detail-hint">{{ detail.hint }}</text></view
-        ><text class="result-chevron">›</text>
-      </button></view
-    >
+      <LearningResultCards :cards="result.cards" @select="openDetail" />
+      <view class="scene-section">查看本次成果</view>
+      <view class="result-details"
+        ><button
+          v-for="(detail, index) in details"
+          :key="detail.title"
+          @click="openDetail(result.cards[index].route)"
+        >
+          <view
+            ><text>{{ detail.title }}</text
+            ><text class="result-detail-hint">{{ detail.hint }}</text></view
+          ><text class="result-chevron">›</text>
+        </button></view
+      >
+    </template>
+    <view v-else class="result-state">
+      <text>{{
+        status === LearningResultStatus.LOADING ? '成果加载中…' : '成果加载失败，请重试'
+      }}</text>
+      <button
+        v-if="status === LearningResultStatus.ERROR"
+        class="scene-action secondary"
+        @click="loadResult"
+      >
+        重试加载成果
+      </button>
+    </view>
     <view class="scene-actions"
       ><button class="scene-action secondary" @click="home">返回首页</button
       ><button

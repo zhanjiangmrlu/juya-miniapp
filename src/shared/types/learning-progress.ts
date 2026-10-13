@@ -24,6 +24,7 @@ export interface ProgressQueueStorage {
 export interface ProgressQueueOptions {
   delay?: number
   idFactory?: () => string
+  onTerminalFailure?: (command: ProgressCommand, error: unknown) => void
 }
 
 export type ProgressSender = (command: ProgressCommand, idempotencyKey: string) => Promise<void>

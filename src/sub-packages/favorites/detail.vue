@@ -5,6 +5,7 @@ import { ref, watch } from 'vue'
 import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import PronunciationButton from '@/features/audio/components/pronunciation-button.vue'
+import { usePageAudioOwner } from '@/features/audio/use-page-audio-owner'
 import { getFavoriteMissingMessage } from '@/features/favorites/favorite-missing-message'
 import { getFavoritePronunciation } from '@/features/favorites/favorite-pronunciation'
 import { presentSourceResolution } from '@/features/favorites/source-resolution'
@@ -25,9 +26,11 @@ const removing = ref(false)
 const resolving = ref(false)
 const favorites = useFavoriteStore()
 const session = useSessionStore()
+const { cancelAudio } = usePageAudioOwner()
 let sourceGeneration = 0
 /** 页面离开后忽略旧原文鉴权响应 */
 const leave = () => {
+  cancelAudio()
   sourceGeneration++
   resolving.value = false
   removing.value = false

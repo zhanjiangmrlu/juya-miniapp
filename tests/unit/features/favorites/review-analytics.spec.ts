@@ -81,6 +81,43 @@ const render = () =>
     }
   })
 describe('复习开始与完成统计', () => {
+  it('成果混合队列返回页面后保留有效词汇语块并移除已取消卡', async () => {
+    const store = useFavoriteStore()
+    store.items = [
+      { id: 'card', active: true, entry_type: 'VOCABULARY', english: 'coffee', sources: [] },
+      { id: 'phrase', active: true, entry_type: 'PHRASE', english: 'a cup of coffee', sources: [] }
+    ] as unknown as FavoriteItem[]
+    dependencies.create.mockImplementation(async (ids: string[]) => ({
+      id: 'session',
+      card_count: ids.length
+    }))
+    const wrapper = render()
+    await dependencies.load?.({ cardIds: 'card,phrase', scope: 'ALL' })
+    dependencies.hide?.()
+    dependencies.list = vi.fn(async () => ({
+      items: [store.items[1]],
+      has_more: false,
+      next_cursor: null
+    }))
+    dependencies.get.mockRejectedValue(new Error('removed'))
+    await dependencies.show?.()
+    await flushPromises()
+    expect(wrapper.findComponent({ name: 'ReviewCard' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'ReviewCard' }).props('item').id).toBe('phrase')
+    expect(store.tabState.VOCABULARY.review?.cardIds).toEqual(['phrase'])
+    wrapper.unmount()
+  })
+  it('成果混合队列翻面保留全部收藏范围', async () => {
+    const wrapper = render()
+    await dependencies.load?.({ cardIds: 'card', scope: 'ALL' })
+    wrapper.findComponent({ name: 'ReviewCard' }).vm.$emit('flip')
+    await flushPromises()
+    expect(dependencies.navigate).toHaveBeenCalledWith({
+      type: 'redirectTo',
+      url: '/sub-packages/favorites/review-front?index=0&bank=VOCABULARY&scope=ALL'
+    })
+    wrapper.unmount()
+  })
   it('提交复习期间切后台再返回，不保留旧请求的loading且迟到结果不跳转', async () => {
     let finish!: () => void
     const wrapper = render()

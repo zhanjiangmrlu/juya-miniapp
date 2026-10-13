@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 
 import PronunciationButton from '@/features/audio/components/pronunciation-button.vue'
 import { getFavoriteMissingMessage } from '@/features/favorites/favorite-missing-message'
 import { getFavoritePronunciation } from '@/features/favorites/favorite-pronunciation'
+import { AUDIO_PAGE_OWNER_KEY } from '@/shared/constants/audio-owner'
 import { FavoriteType, ReviewCardFace } from '@/shared/enums/favorites'
 import { useAudioStore } from '@/stores/audio'
 
@@ -11,10 +12,14 @@ import type { ReviewCardEmits, ReviewCardProps } from '@/shared/types/favorites-
 const props = defineProps<ReviewCardProps>()
 const emit = defineEmits<ReviewCardEmits>()
 const audio = useAudioStore()
+const owner = inject(AUDIO_PAGE_OWNER_KEY, undefined)
 const target = computed(() => getFavoritePronunciation(props.item))
 /** 点击英文仅播放本人快照发音，不改变卡面 */
 const pressWord = () => {
-  if (target.value) void audio.playPronunciation(target.value, { favorite_id: props.item.id })
+  if (!target.value) return
+  const context = { favorite_id: props.item.id }
+  if (owner) void audio.playPronunciation(target.value, context, undefined, owner)
+  else void audio.playPronunciation(target.value, context)
 }
 </script>
 <template>

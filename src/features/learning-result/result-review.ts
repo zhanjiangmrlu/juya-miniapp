@@ -1,4 +1,4 @@
-import { FavoriteType } from '@/shared/enums/favorites'
+import { FavoriteReviewScope, FavoriteType } from '@/shared/enums/favorites'
 
 import type { FavoriteService } from '@/shared/types/favorites'
 
@@ -11,12 +11,17 @@ export const getResultReviewRoute = async (
   let cursor: string | undefined
   do {
     const page = await service.list(cursor)
-    for (const item of page.items) if (item.entry_type === FavoriteType.VOCABULARY) ids.add(item.id)
+    for (const item of page.items)
+      if (
+        item.active !== false &&
+        [FavoriteType.VOCABULARY, FavoriteType.PHRASE].includes(item.entry_type)
+      )
+        ids.add(item.id)
     cursor = page.next_cursor || undefined
     if (cursor && cursors.has(cursor)) throw new Error('收藏分页重复，请重试')
     if (cursor) cursors.add(cursor)
   } while (cursor)
   return ids.size
-    ? `/sub-packages/favorites/review-front?cardIds=${encodeURIComponent([...ids].join(','))}&index=0&bank=VOCABULARY`
+    ? `/sub-packages/favorites/review-front?cardIds=${encodeURIComponent([...ids].join(','))}&index=0&bank=${FavoriteType.VOCABULARY}&scope=${FavoriteReviewScope.ALL}`
     : '/pages/favorites/index?tab=vocabulary'
 }

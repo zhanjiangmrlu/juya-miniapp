@@ -48,7 +48,9 @@ vi.mock('@/services/runtime', () => ({
     }
   })
 }))
-vi.mock('@/stores/audio', () => ({ useAudioStore: () => ({ snapshot: { status: 'IDLE' } }) }))
+vi.mock('@/stores/audio', () => ({
+  useAudioStore: () => ({ snapshot: { status: 'IDLE' }, cancelOwned: vi.fn() })
+}))
 vi.mock('@/shared/navigation/navigate', () => ({ navigate: dependencies.navigate }))
 /** 创建可撤销原文权限的收藏响应，allowed 为服务端当前访问能力 */
 const favorite = (allowed: boolean): FavoriteItem => ({

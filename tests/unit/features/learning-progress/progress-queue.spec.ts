@@ -28,6 +28,26 @@ afterEach(() => {
 })
 
 describe('createProgressQueue', () => {
+  it('403移除同场景失效命令并通知所有者，继续发送无关场景', async () => {
+    const storage = createStorage()
+    const denied = { status: 403, code: 'SCENE_ACCESS_DENIED' }
+    const failures: unknown[] = []
+    const sender = vi.fn(async (command: ProgressCommand) => {
+      if (command.sceneId === 'denied') throw denied
+    })
+    const queue = createProgressQueue(storage, sender, {
+      onTerminalFailure: (command, error) => failures.push([command.sceneId, error])
+    })
+    queue.enqueueCompletion('denied')
+    queue.enqueueCompletion('allowed')
+    queue.enqueueCompletion('denied')
+    await queue.flush()
+    expect(failures).toEqual([['denied', denied]])
+    expect(sender.mock.calls.map(([command]) => command.sceneId)).toEqual(['denied', 'allowed'])
+    expect(queue.snapshot).toEqual([])
+    expect(storage.load()).toEqual([])
+    queue.dispose()
+  })
   it('发送期间继续滚动保留并发送最后位置且序号严格递增', async () => {
     vi.useFakeTimers()
     let release!: () => void

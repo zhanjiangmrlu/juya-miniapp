@@ -28,6 +28,7 @@ export const useAudioStore = defineStore('audio', () => {
   let playSequence = 0
   let reportedSequence = -1
   let playbackToken: number | undefined
+  let playbackOwner: symbol | undefined
 
   const currentKey = computed(() =>
     snapshot.value.target ? getAudioTargetKey(snapshot.value.target) : null
@@ -82,8 +83,14 @@ export const useAudioStore = defineStore('audio', () => {
     return controller
   }
 
-  /** 播放目标，target 为资源区间，service 为签名服务 */
-  const play = async (target: AudioTarget, service: Pick<SceneService, 'getSignedUrl'>) => {
+  /** 播放目标，target 为资源区间，service 为签名服务，owner 为可选页面所有者 */
+  const play = async (
+    target: AudioTarget,
+    service: Pick<SceneService, 'getSignedUrl'>,
+    owner?: symbol
+  ) => {
+    if (playbackOwner !== owner) controller?.stop()
+    playbackOwner = owner
     const current = controller?.snapshot
     if (
       !current ||
@@ -96,11 +103,12 @@ export const useAudioStore = defineStore('audio', () => {
     await ensureController().play(target, async (next) => (await service.getSignedUrl(next)).url)
   }
 
-  /** 播放确认发音，target 为读音目标，context 为内容或收藏授权，service 为可注入的受控解析端口 */
+  /** 播放确认发音，target 为读音目标，context 为授权引用，service 为解析端口，owner 为当前页面所有者 */
   const playPronunciation = async (
     target: PronunciationTarget,
     context: PronunciationContext,
-    service?: PronunciationService
+    service?: PronunciationService,
+    owner?: symbol
   ) => {
     if (!canPronounceTarget(target)) return
     const playbackTarget = getPronunciationAudioTarget(target, context)
@@ -111,6 +119,8 @@ export const useAudioStore = defineStore('audio', () => {
       current?.status === AudioStatus.FAILED
     )
       return
+    if (playbackOwner !== owner) controller?.stop()
+    playbackOwner = owner
     const player = ensureController()
     await player.play(playbackTarget, async (_next, signal) => {
       const result = await resolvePronunciation(
@@ -135,12 +145,19 @@ export const useAudioStore = defineStore('audio', () => {
   const dispose = () => {
     controller?.dispose()
     controller = undefined
+    playbackOwner = undefined
     snapshot.value = { status: AudioStatus.IDLE, target: null }
+  }
+
+  /** 仅取消仍属于该页面的请求及播放，owner 为页面身份，key 为可选旧目标键 */
+  const cancelOwned = (owner: symbol, key?: string) => {
+    if (playbackOwner !== owner || (key && currentKey.value !== key)) return
+    dispose()
   }
 
   /** 停止原音以便开始录音或本地回听 */
   const stop = () => controller?.stop()
   watch(() => useSessionStore().cleanupGeneration, dispose, { flush: 'sync' })
 
-  return { currentKey, dispose, play, playPronunciation, snapshot, stop }
+  return { cancelOwned, currentKey, dispose, play, playPronunciation, snapshot, stop }
 })

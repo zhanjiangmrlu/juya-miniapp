@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 
 import PronunciationButton from '@/features/audio/components/pronunciation-button.vue'
+import { sceneEntryKey } from '@/features/scene/scene-entry-identity'
+import { AUDIO_PAGE_OWNER_KEY } from '@/shared/constants/audio-owner'
+import { WORD_IMAGE_CONTROLLER_KEY } from '@/shared/constants/scene-images'
+import { WordImageStatus } from '@/shared/enums/scene'
 import { useAudioStore } from '@/stores/audio'
 
 import type { SceneWordCardEmits, SceneWordCardProps } from '@/shared/types/scene-components'
@@ -9,6 +13,25 @@ import type { SceneWordCardEmits, SceneWordCardProps } from '@/shared/types/scen
 const props = withDefaults(defineProps<SceneWordCardProps>(), { pending: false, chunk: false })
 const emit = defineEmits<SceneWordCardEmits>()
 const audio = useAudioStore()
+const audioOwner = inject(AUDIO_PAGE_OWNER_KEY, undefined)
+const images = inject(WORD_IMAGE_CONTROLLER_KEY, undefined)
+const imageFailed = ref(false)
+const imageStatus = computed(() => images?.states.value[sceneEntryKey(props.entry)])
+watch(
+  () => props.entry.image_url,
+  () => {
+    imageFailed.value = false
+  }
+)
+/** 图片设备加载失败时保留文字并展示同位重试 */
+const failImage = () => {
+  imageFailed.value = true
+}
+/** 请求当前词条的新签名，保留同位置失败提示直到加载成功 */
+const retryImage = () => {
+  emit('retryImage', props.entry)
+  if (images) void images.retry(props.entry)
+}
 const context = computed(() => ({
   content_type: props.entry.content_type ?? 'dialogue',
   content_id: props.entry.scene_id,
@@ -19,8 +42,10 @@ const context = computed(() => ({
 }))
 /** 播放本篇已确认目标，不提交任意英文合成 */
 const pronounce = () => {
-  if (props.entry.pronunciation)
-    void audio.playPronunciation(props.entry.pronunciation, context.value)
+  if (!props.entry.pronunciation) return
+  if (audioOwner)
+    void audio.playPronunciation(props.entry.pronunciation, context.value, undefined, audioOwner)
+  else void audio.playPronunciation(props.entry.pronunciation, context.value)
 }
 </script>
 <template>
@@ -32,8 +57,23 @@ const pronounce = () => {
       </view>
       <text v-if="entry.phonetic && !chunk" class="word-phonetic">{{ entry.phonetic }}</text>
       <view v-if="!chunk" class="word-image"
-        ><image v-if="entry.image_url" :src="entry.image_url" mode="aspectFit"
-      /></view>
+        ><image
+          v-if="entry.image_url && !imageFailed"
+          :src="entry.image_url"
+          mode="aspectFit"
+          @error="failImage"
+        />
+        <text v-if="imageStatus === WordImageStatus.LOADING">图片加载中…</text>
+        <button
+          v-else-if="
+            entry.image_asset_id && (imageFailed || imageStatus === WordImageStatus.FAILED)
+          "
+          class="image-retry"
+          @click.stop="retryImage"
+        >
+          图片加载失败 · 重试图片
+        </button>
+      </view>
       <text class="word-meaning">{{ entry.chinese }}</text>
     </view>
     <button
@@ -98,6 +138,20 @@ const pronounce = () => {
     image {
       width: 68px;
       height: 68px;
+    }
+  }
+
+  .image-retry {
+    margin: 0;
+    padding: 6px;
+    border: 0;
+    background: transparent;
+    color: #4e7f3b;
+    font-size: 12px;
+    line-height: 22px;
+
+    &::after {
+      border: 0;
     }
   }
 

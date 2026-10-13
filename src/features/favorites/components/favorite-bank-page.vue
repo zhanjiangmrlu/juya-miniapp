@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { usePageAudioOwner } from '@/features/audio/use-page-audio-owner'
 import FavoriteList from '@/features/favorites/components/favorite-list.vue'
 import PersonalPage from '@/features/profile/components/personal-page.vue'
 import { getRuntimeServices } from '@/services/runtime'
@@ -22,6 +23,7 @@ const props = withDefaults(defineProps<FavoriteBankPageProps>(), {
 })
 const favorites = useFavoriteStore()
 const session = useSessionStore()
+const { cancelAudio } = usePageAudioOwner()
 const error = ref('')
 let visible = false
 let generation = 0
@@ -115,6 +117,7 @@ onShow(async () => {
 })
 /** 隐藏或销毁银行后阻止旧请求操作当前新页面 */
 const leave = () => {
+  cancelAudio()
   visible = false
   generation++
 }

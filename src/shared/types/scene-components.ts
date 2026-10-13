@@ -70,7 +70,7 @@ export type SceneWordCardProps = {
   pending?: boolean
   chunk?: boolean
 }
-export type SceneWordCardEmits = { favorite: [entry: SceneEntry] }
+export type SceneWordCardEmits = { favorite: [entry: SceneEntry]; retryImage: [entry: SceneEntry] }
 export type SceneEntryGridProps = {
   entries: SceneEntry[]
   contentVersion?: number

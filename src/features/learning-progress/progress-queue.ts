@@ -1,6 +1,7 @@
 import { createRequestId } from '@/services/http/request-id'
 import { ProgressCommandKind } from '@/shared/enums/learning-progress'
 
+import type { HttpStatusCarrier } from '@/shared/types/http'
 import type {
   ProgressCommand,
   ProgressQueue,
@@ -21,12 +22,12 @@ export const clearProgressQueues = () => {
   for (const queue of activeQueues) queue.clear()
 }
 
-/** 创建可持久化的学习进度队列，位置合并而完成命令保持逐条发送。 */
-export function createProgressQueue(
+/** 创建持久化队列，storage 为本地存储，sender 为发送端口，options 为延迟、幂等键及终态回调 */
+export const createProgressQueue = (
   storage: ProgressQueueStorage,
   sender: ProgressSender,
   options: ProgressQueueOptions = {}
-): ProgressQueue {
+): ProgressQueue => {
   const delay = options.delay ?? PROGRESS_QUEUE_DELAY_MS
   const idFactory = options.idFactory ?? createRequestId
   let commands = storage.load()
@@ -41,13 +42,13 @@ export function createProgressQueue(
   let inFlight: ProgressCommand | undefined
   let timer: ReturnType<typeof setTimeout> | undefined
 
-  /** 保存当前队列快照，保证异常退出后可以继续发送。 */
-  function persist() {
+  /** 保存当前队列快照，保证异常退出后可以继续发送 */
+  const persist = () => {
     storage.save(commands)
   }
 
-  /** 延后发送位置更新，并用最后一次滚动重新计时。 */
-  function schedule() {
+  /** 延后发送位置更新，并用最后一次滚动重新计时 */
+  const schedule = () => {
     if (timer) clearTimeout(timer)
     timer = setTimeout(() => {
       timer = undefined
@@ -55,8 +56,8 @@ export function createProgressQueue(
     }, delay)
   }
 
-  /** 顺序发送命令；失败项保留原幂等键并等待下一次重试。 */
-  async function flush() {
+  /** 顺序发送命令，可恢复错误保留原幂等键，终态拒绝移除该场景并通知页面 */
+  const flush = async () => {
     if (flushing) return
     flushing = true
     const request = generation
@@ -70,8 +71,14 @@ export function createProgressQueue(
           if (request !== generation) return
           commands = commands.filter((candidate) => candidate !== command)
           persist()
-        } catch {
-          break
+        } catch (error) {
+          if (request !== generation) return
+          const status = (error as HttpStatusCarrier)?.status
+          if (![401, 403, 404, 409, 410].includes(status ?? 0)) break
+          commands = commands.filter((candidate) => candidate.sceneId !== command.sceneId)
+          persist()
+          options.onTerminalFailure?.(command, error)
+          if (request !== generation) return
         }
       }
     } finally {

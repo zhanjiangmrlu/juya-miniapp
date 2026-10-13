@@ -36,7 +36,9 @@ vi.mock('@/services/runtime', () => ({
     favorites: { list: dependencies.list, remove: dependencies.remove }
   })
 }))
-vi.mock('@/stores/audio', () => ({ useAudioStore: () => ({ snapshot: { status: 'IDLE' } }) }))
+vi.mock('@/stores/audio', () => ({
+  useAudioStore: () => ({ snapshot: { status: 'IDLE' }, cancelOwned: vi.fn() })
+}))
 beforeEach(() => {
   setActivePinia(createPinia())
   vi.resetAllMocks()
