@@ -9,6 +9,15 @@ const item = { id: 'one', screenshots: [] } as unknown as FeedbackItem
 const image = { path: '/one.png', mimeType: 'image/png', size: 50 }
 beforeEach(() => vi.resetAllMocks())
 describe('补充截图提交', () => {
+  it('敏感补充在上传和POST前拒绝且不修改文字与截图', async () => {
+    const supplement = vi.fn()
+    const text = '请转账'
+    await expect(submitSupplement({ supplement } as never, item, text, image)).rejects.toThrow()
+    expect(upload).not.toHaveBeenCalled()
+    expect(supplement).not.toHaveBeenCalled()
+    expect(text).toBe('请转账')
+    expect(image).toEqual({ path: '/one.png', mimeType: 'image/png', size: 50 })
+  })
   it('截图上传期间原会话失效，迟到对象键不得形成补充写入', async () => {
     let finish!: (key: string) => void
     let current = true

@@ -19,7 +19,10 @@ import PersonalPage from '@/features/profile/components/personal-page.vue'
 import PersonalRow from '@/features/profile/components/personal-row.vue'
 import PersonalSummary from '@/features/profile/components/personal-summary.vue'
 import { getRuntimeServices } from '@/services/runtime'
-import { FEEDBACK_CATEGORY_LABELS } from '@/shared/constants/feedback'
+import {
+  FEEDBACK_CATEGORY_LABELS,
+  FEEDBACK_CONTENT_BLOCKED_MESSAGE
+} from '@/shared/constants/feedback'
 import { FeedbackResolutionAction, FeedbackStatus } from '@/shared/enums/feedback'
 import { MessageRelatedType } from '@/shared/enums/messages'
 import { NavigationType } from '@/shared/enums/navigation'
@@ -113,7 +116,7 @@ const submit = async () => {
   const validation = validateSupplement(supplement.value)
   if (!validation.valid || !validation.normalized) {
     editing.value = true
-    error.value = '补充说明需为 1 至 300 字'
+    error.value = validation.blocked ? FEEDBACK_CONTENT_BLOCKED_MESSAGE : '补充说明需为 1 至 300 字'
     return
   }
   const request = lifecycle.capture()

@@ -5,6 +5,7 @@ import { reactive } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
 import FeedbackDetailView from '@/features/feedback/components/feedback-detail-view.vue'
+import FeedbackImagePicker from '@/features/feedback/components/feedback-image-picker.vue'
 import FeedbackResolutionActions from '@/features/feedback/components/feedback-resolution-actions.vue'
 
 import type { FeedbackItem } from '@/shared/contracts/feedback'
@@ -17,6 +18,7 @@ const dependencies = vi.hoisted(() => ({
   list: vi.fn(),
   markRead: vi.fn(),
   supplement: vi.fn(),
+  credential: vi.fn(),
   resolve: vi.fn(),
   navigate: vi.fn()
 }))
@@ -44,7 +46,8 @@ vi.mock('@/services/runtime', () => ({
     feedback: {
       get: dependencies.get,
       resolve: dependencies.resolve,
-      supplement: dependencies.supplement
+      supplement: dependencies.supplement,
+      getUploadCredential: dependencies.credential
     },
     messages: { list: dependencies.list, markRead: dependencies.markRead }
   })
@@ -67,6 +70,30 @@ beforeEach(() => {
 })
 
 describe('反馈页面展示分支', () => {
+  it('敏感补充先于上传和POST拦截，显示安全提示并保留附件用于编辑重试', async () => {
+    const wrapper = mount(FeedbackDetailView, { global: { stubs: { PageHeader: true } } })
+    await dependencies.show?.()
+    wrapper.findComponent(AppButton).vm.$emit('press')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('textarea').trigger('input', { detail: { value: '付款码' } })
+    const image = { path: '/one.png', mimeType: 'image/png', size: 2 }
+    wrapper.findComponent(FeedbackImagePicker).vm.$emit('select', image)
+    wrapper.findComponent(AppButton).vm.$emit('press')
+    await flushPromises()
+    expect(dependencies.supplement).not.toHaveBeenCalled()
+    expect(dependencies.credential).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('内容未通过检查，请修改后重新提交')
+    expect(wrapper.find('textarea').element.value).toBe('付款码')
+    expect(wrapper.findComponent(FeedbackImagePicker).props('image')).toEqual(image)
+    await wrapper.find('textarea').trigger('input', { detail: { value: ' 第二句无法播放 ' } })
+    wrapper.findComponent(FeedbackImagePicker).vm.$emit('select', undefined)
+    dependencies.supplement.mockResolvedValue({ ...item, status: 'SUPPLEMENTED' })
+    wrapper.findComponent(AppButton).vm.$emit('press')
+    await flushPromises()
+    expect(dependencies.supplement).toHaveBeenCalledExactlyOnceWith('one', '第二句无法播放', [])
+    expect(wrapper.find('textarea').exists()).toBe(false)
+    wrapper.unmount()
+  })
   it('正常补充成功不取消在途消息已读且保留最新时间线', async () => {
     let finish!: (value: unknown) => void
     dependencies.list.mockImplementationOnce(

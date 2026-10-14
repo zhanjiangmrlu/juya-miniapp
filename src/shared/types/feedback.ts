@@ -20,6 +20,7 @@ export interface FeedbackDraft {
 }
 
 export interface FeedbackDraftValidation {
+  blocked?: boolean
   errors: { category?: string; description?: string; screenshot?: string }
   normalized?: Pick<FeedbackDraft, 'category' | 'description' | 'screenshots' | 'source'>
   valid: boolean
@@ -46,6 +47,10 @@ export type FeedbackSourceScene = {
   series: string
 }
 
-export type FeedbackSupplementValidation = { normalized?: string; valid: boolean }
+export type FeedbackSupplementValidation = {
+  blocked?: boolean
+  normalized?: string
+  valid: boolean
+}
 
 export type PickedFeedbackFile = { path: string; size: number; type?: string }

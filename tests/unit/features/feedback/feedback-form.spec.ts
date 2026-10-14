@@ -10,6 +10,8 @@ import {
 
 import type { FeedbackItem } from '@/shared/contracts/feedback'
 
+import contentSafetyCases from './content-safety-cases.json'
+
 const baseDraft = {
   category: 'CONTENT',
   description: ' 第二句的中文释义似乎不准确。 ',
@@ -31,6 +33,22 @@ const createFeedback = (overrides: Partial<FeedbackItem> = {}): FeedbackItem => 
 }
 
 describe('feedback form', () => {
+  it.each(contentSafetyCases)('按既有文本规则校验创建与补充：$label', ({ text, blocked }) => {
+    const draft = { ...baseDraft, description: ` ${text} ` }
+    expect(validateFeedbackDraft(draft).valid).toBe(!blocked)
+    expect(validateSupplement(` ${text} `).valid).toBe(!blocked)
+    expect(draft.description).toBe(` ${text} `)
+  })
+
+  it('普通中文正文在300字边界正常规范化，301字拒绝', () => {
+    const text = '句'.repeat(300)
+    expect(validateFeedbackDraft({ ...baseDraft, description: ` ${text} ` })).toMatchObject({
+      valid: true,
+      normalized: { description: text }
+    })
+    expect(validateSupplement(` ${text} `)).toEqual({ valid: true, normalized: text })
+    expect(validateSupplement(`${text}句`).valid).toBe(false)
+  })
   it('未来处理时间不开放重开且七天后不开放重开', () => {
     const now = new Date('2026-10-02T08:00:00Z')
     expect(

@@ -1,3 +1,5 @@
+import { ApiError } from '@/services/http/errors'
+import { FEEDBACK_CONTENT_BLOCKED_MESSAGE } from '@/shared/constants/feedback'
 import { FeedbackCategory } from '@/shared/enums/feedback'
 
 import type { FeedbackItem } from '@/shared/contracts/feedback'
@@ -19,6 +21,8 @@ export const submitSupplement = async (
     description: text,
     screenshots: screenshot ? [screenshot] : []
   })
+  if (validation.blocked)
+    throw new ApiError('FEEDBACK_CONTENT_BLOCKED', FEEDBACK_CONTENT_BLOCKED_MESSAGE, 422)
   if (!validation.valid || !validation.normalized)
     throw new Error(Object.values(validation.errors)[0])
   if (screenshot && item.screenshots.length) throw new Error('整条反馈最多上传 1 张截图')

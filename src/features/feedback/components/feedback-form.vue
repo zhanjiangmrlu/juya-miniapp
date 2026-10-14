@@ -123,6 +123,13 @@ const submit = async () => {
     return
   }
   const validation = validateFeedbackDraft(store.draft)
+  if (validation.blocked) {
+    await navigate({
+      type: NavigationType.REDIRECT_TO,
+      url: '/sub-packages/feedback/content-blocked'
+    })
+    return
+  }
   if (!validation.valid || !validation.normalized) {
     error.value = Object.values(validation.errors)[0] ?? '请检查反馈内容'
     return

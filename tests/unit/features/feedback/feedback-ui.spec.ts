@@ -41,6 +41,50 @@ beforeEach(() => {
 })
 afterEach(() => vi.unstubAllGlobals())
 describe('反馈草稿提交', () => {
+  it('前置拦截先于截图上传和创建，M43保留完整草稿并允许修改后重试', async () => {
+    const store = useFeedbackDraftStore()
+    const draft = {
+      category: 'CONTENT',
+      description: '微信号：Abc_123',
+      source: { scene_id: 'one', source_locator: 'sentence-two' },
+      screenshots: [{ path: '/one.png', mimeType: 'image/png', size: 2 }]
+    }
+    store.update(draft)
+    const wrapper = mount(FeedbackForm, {
+      global: { stubs: { picker: { template: '<div><slot /></div>' } } }
+    })
+    wrapper.findComponent(AppButton).vm.$emit('press')
+    await flushPromises()
+    expect(dependencies.credential).not.toHaveBeenCalled()
+    expect(uni.uploadFile).not.toHaveBeenCalled()
+    expect(dependencies.create).not.toHaveBeenCalled()
+    expect(dependencies.navigate).toHaveBeenCalledExactlyOnceWith({
+      type: 'redirectTo',
+      url: '/sub-packages/feedback/content-blocked'
+    })
+    expect(store.draft).toEqual(draft)
+    wrapper.unmount()
+
+    const blocked = mount(FeedbackForm, {
+      props: { blocked: true },
+      global: { stubs: { picker: { template: '<div><slot /></div>' } } }
+    })
+    expect(blocked.text()).toContain('内容未通过检查')
+    expect(blocked.find('textarea').element.value).toBe(draft.description)
+    await blocked.find('textarea').trigger('input', { detail: { value: ' 第二句无法播放 ' } })
+    store.update({ screenshots: [] })
+    dependencies.create.mockResolvedValue({ id: 'new-feedback' })
+    blocked.findComponent(AppButton).vm.$emit('press')
+    await flushPromises()
+    expect(dependencies.create).toHaveBeenCalledExactlyOnceWith({
+      category: 'CONTENT',
+      description: '第二句无法播放',
+      screenshots: [],
+      source: draft.source
+    })
+    expect(store.draft.description).toBe('')
+    blocked.unmount()
+  })
   it('返回同一表单重新读取内容系列且正常提交成功', async () => {
     dependencies.catalog.mockResolvedValue({
       items: [{ scene_id: 'one', title: 'Series One', series: 'one' }]

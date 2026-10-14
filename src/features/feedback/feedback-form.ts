@@ -1,5 +1,7 @@
 import {
+  FEEDBACK_BLOCKED_TEXT_PATTERNS,
   FEEDBACK_CATEGORIES,
+  FEEDBACK_CONTENT_BLOCKED_MESSAGE,
   FEEDBACK_DESCRIPTION_MAX_LENGTH,
   FEEDBACK_DESCRIPTION_MIN_LENGTH,
   FEEDBACK_IMAGE_MAX_BYTES,
@@ -24,7 +26,11 @@ export type { FeedbackScreenshotDraft } from '@/shared/types/feedback'
 export type { FeedbackDraft } from '@/shared/types/feedback'
 export type { FeedbackDraftValidation } from '@/shared/types/feedback'
 
-/** 校验反馈分类、去空白后的正文及单张图片限制，并返回可直接提交的标准值 */
+/** 检查既有六类文本规则，text 为本次反馈或补充正文；不把命中正文或规则写入日志 */
+const isBlockedFeedbackText = (text: string): boolean =>
+  FEEDBACK_BLOCKED_TEXT_PATTERNS.some((pattern) => pattern.test(text))
+
+/** 校验反馈分类、正文及单张图片，draft 为用户本机草稿，返回标准值或不含敏感原文的错误 */
 export const validateFeedbackDraft = (draft: FeedbackDraft): FeedbackDraftValidation => {
   const description = draft.description.trim()
   const errors: FeedbackDraftValidation['errors'] = {}
@@ -36,6 +42,9 @@ export const validateFeedbackDraft = (draft: FeedbackDraft): FeedbackDraftValida
   )
     errors.description = '补充说明需为 1 至 300 字'
 
+  const blocked = isBlockedFeedbackText(description)
+  if (blocked) errors.description = FEEDBACK_CONTENT_BLOCKED_MESSAGE
+
   if (draft.screenshots.length > FEEDBACK_SCREENSHOT_LIMIT) {
     errors.screenshot = '最多上传 1 张截图'
   } else if (draft.screenshots[0]) {
@@ -45,7 +54,8 @@ export const validateFeedbackDraft = (draft: FeedbackDraft): FeedbackDraftValida
     else if (screenshot.size > FEEDBACK_IMAGE_MAX_BYTES) errors.screenshot = '截图不能超过 5 MiB'
   }
 
-  if (Object.keys(errors).length > 0) return { errors, valid: false }
+  if (Object.keys(errors).length > 0)
+    return blocked ? { blocked: true, errors, valid: false } : { errors, valid: false }
   return {
     errors,
     normalized: {
@@ -63,9 +73,10 @@ export const preserveDraftAfterUploadFailure = (draft: FeedbackDraft): FeedbackD
   return { ...draft, screenshots: [...draft.screenshots] }
 }
 
-/** 校验补充说明并返回去除首尾空白后的提交值 */
+/** 校验补充长度和既有文本规则，text 为本机补充草稿，标准值保持原有首尾空白规范化 */
 export const validateSupplement = (text: string): FeedbackSupplementValidation => {
   const normalized = text.trim()
+  if (isBlockedFeedbackText(normalized)) return { blocked: true, valid: false }
   return normalized.length >= FEEDBACK_DESCRIPTION_MIN_LENGTH &&
     normalized.length <= FEEDBACK_DESCRIPTION_MAX_LENGTH
     ? { normalized, valid: true }
