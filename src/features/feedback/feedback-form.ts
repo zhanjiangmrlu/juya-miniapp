@@ -73,14 +73,19 @@ export const preserveDraftAfterUploadFailure = (draft: FeedbackDraft): FeedbackD
   return { ...draft, screenshots: [...draft.screenshots] }
 }
 
-/** 校验补充长度和既有文本规则，text 为本机补充草稿，标准值保持原有首尾空白规范化 */
-export const validateSupplement = (text: string): FeedbackSupplementValidation => {
+/** 仅校验反馈文本长度，text 为需要保留既有字数规则的本机输入，返回去首尾空白后的值 */
+export const validateFeedbackTextLength = (text: string): FeedbackSupplementValidation => {
   const normalized = text.trim()
-  if (isBlockedFeedbackText(normalized)) return { blocked: true, valid: false }
   return normalized.length >= FEEDBACK_DESCRIPTION_MIN_LENGTH &&
     normalized.length <= FEEDBACK_DESCRIPTION_MAX_LENGTH
     ? { normalized, valid: true }
     : { valid: false }
+}
+
+/** 校验补充长度和既有文本规则，text 为本机补充草稿，标准值保持原有首尾空白规范化 */
+export const validateSupplement = (text: string): FeedbackSupplementValidation => {
+  if (isBlockedFeedbackText(text.trim())) return { blocked: true, valid: false }
+  return validateFeedbackTextLength(text)
 }
 
 /** 仅在服务端明确要求补充且已有管理员回复时开放补充入口 */

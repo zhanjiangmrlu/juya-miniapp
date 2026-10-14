@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 
 import AppButton from '@/components/app-button/app-button.vue'
-import { getResolutionActions, validateSupplement } from '@/features/feedback/feedback-form'
+import { getResolutionActions, validateFeedbackTextLength } from '@/features/feedback/feedback-form'
 import { FeedbackResolutionAction } from '@/shared/enums/feedback'
 
 import type {
@@ -26,14 +26,14 @@ const input = (event: unknown) => {
 const resolved = () => {
   if (!props.loading) emit('resolve', { action: FeedbackResolutionAction.RESOLVED })
 }
-/** 先收集原因，再发送七天内唯一一次重开动作 */
+/** 先收集原因并按既有长度规则校验，再发送七天内唯一一次重开动作 */
 const reopen = () => {
   if (props.loading || !actions.value.canReopen) return
   if (!reopening.value) {
     reopening.value = true
     return
   }
-  const validation = validateSupplement(reason.value)
+  const validation = validateFeedbackTextLength(reason.value)
   if (!validation.valid || !validation.normalized) {
     error.value = '请填写 1 至 300 字的重开原因'
     return
