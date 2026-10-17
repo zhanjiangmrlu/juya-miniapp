@@ -6,11 +6,14 @@ import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { createAudioController } from '@/features/learning/audio-controller'
 import SceneAudioPlayer from '@/features/learning/components/scene-audio-player.vue'
-import { highlightSegments } from '@/features/learning/scene-model'
+import SceneDialogue from '@/features/learning/components/scene-dialogue.vue'
+import SceneVocabulary from '@/features/learning/components/scene-vocabulary.vue'
 import { operations, session } from '@/services/api'
 import { ApiError } from '@/services/errors'
 import { registerImagePreview } from '@/services/image-preview'
 import { mediaAddress } from '@/services/media-service'
+import { operationKey, resourceURL } from '@/services/platform'
+import { loadPronunciation } from '@/services/pronunciation-service'
 import { Routes } from '@/shared/constants/navigation'
 import { AudioStatus } from '@/shared/enums/audio'
 import { useAccountStore } from '@/stores/account-store'
@@ -21,7 +24,6 @@ import type { PublishedScene } from '@/shared/types/learning'
 const account = useAccountStore(),
   card = ref<PublishedScene | null>(null),
   summary = ref<components['schemas']['PersonalSummary'] | null>(null),
-  translated = ref(false),
   imageSrc = ref(''),
   imageError = ref(''),
   busy = ref(false),
@@ -45,6 +47,7 @@ const audioState = ref<AudioState>({
 let id = '',
   alive = true,
   generation = 0,
+  wordGeneration = 0,
   audio: ReturnType<typeof createAudioController> | null = null,
   imageOpen = false,
   releaseImage: (() => void) | null = null
@@ -73,6 +76,7 @@ const createAudio = () => {
 }
 /** 离开场景时释放播放器 */
 const stopAudio = () => {
+  wordGeneration++
   audio?.dispose()
   audio = null
 }
@@ -137,7 +141,6 @@ const load = async () => {
     stopAudio()
     card.value = value
     summary.value = null
-    translated.value = false
     awaitingState.value = false
     createAudio()
     void loadImage()
@@ -163,11 +166,52 @@ const refreshState = async () => {
 }
 /** 获取完整音频时继续使用当前同一发布版本 */
 const playFull = async () => {
+  wordGeneration++
   if (!card.value || stale.value) return
   createAudio()
   await audio?.toggleFull(async () => {
     try {
       return await mediaAddress(id, card.value!.content.audio_id!, card.value!.version_id)
+    } catch (reason) {
+      await invalid(reason)
+      throw reason
+    }
+  })
+}
+/** 获取同一发布版本的受控词汇发音，切换或离页后停止旧查询
+ * @param wordId 当前发布版本中的词汇编号
+ */
+const playWord = async (wordId: string) => {
+  if (!card.value || stale.value) return
+  createAudio()
+  const player = audio,
+    version = card.value.version_id,
+    run = ++wordGeneration
+  const active = () =>
+    alive &&
+    audio === player &&
+    wordGeneration === run &&
+    card.value?.version_id === version &&
+    !stale.value
+  await player?.playWord(wordId, async () => {
+    try {
+      const path = `/api/mini/v1/cards/${encodeURIComponent(id)}/words/${encodeURIComponent(wordId)}/pronunciation`
+      const url = await loadPronunciation(
+        {
+          active,
+          pause: () => new Promise((resolve) => setTimeout(resolve, 1000)),
+          request: (method, path, reference) =>
+            session.request<components['schemas']['SpeechState']>(
+              method === 'GET'
+                ? `${path}?version_id=${encodeURIComponent(reference.version_id || '')}`
+                : path,
+              method === 'POST' ? { method, key: operationKey(), body: reference } : {}
+            )
+        },
+        path,
+        { version_id: version }
+      )
+      return resourceURL(url)
     } catch (reason) {
       await invalid(reason)
       throw reason
@@ -336,31 +380,19 @@ onUnload(() => {
         :state="audioState"
         @toggle="playFull"
         @seek="audio?.seekFull($event)"
-      /><view class="dialogue-section"
-        ><view class="between"
-          ><text class="section-title">场景对话</text
-          ><button class="text-button" @click="translated = !translated">
-            {{ translated ? '收起译文' : '显示译文' }}
-          </button></view
-        ><view v-for="line in card.content.dialogue" :key="line.id" class="dialogue"
-          ><text class="speaker">{{ line.speaker }}</text
-          ><view class="english"
-            ><text
-              v-for="(part, index) in highlightSegments(line, card.content.vocabulary || [])"
-              :key="index"
-              :class="{ highlight: part.highlight }"
-              >{{ part.text }}</text
-            ></view
-          ><text v-if="translated" class="translation">{{ line.chinese }}</text></view
-        ></view
-      ><view class="vocabulary-section"
-        ><text class="section-title">重点词汇 <text class="section-note">本句释义</text></text
-        ><view v-for="word in card.content.vocabulary" :key="word.id" class="word"
-          ><text class="word-english">{{ word.english }}</text
-          ><text v-if="word.phonetic" class="phonetic">{{ word.phonetic }}</text
-          ><text class="meaning">{{ word.meaning }}</text></view
-        ></view
-      ><view v-if="card.content.chunks?.length" class="chunks-section"
+      /><SceneDialogue
+        :key="card.version_id"
+        :dialogue="card.content.dialogue || []"
+        :vocabulary="card.content.vocabulary || []"
+      />
+      <SceneVocabulary
+        :vocabulary="card.content.vocabulary || []"
+        :dialogue="card.content.dialogue || []"
+        :state="audioState"
+        :disabled="stale"
+        @play="playWord"
+      />
+      <view v-if="card.content.chunks?.length" class="chunks-section"
         ><text class="section-title">语块</text
         ><view v-for="chunk in card.content.chunks" :key="chunk.id" class="word"
           ><text class="word-english">{{ chunk.english }}</text
@@ -438,52 +470,8 @@ onUnload(() => {
   }
 }
 
-.dialogue-section,
-.vocabulary-section,
 .chunks-section {
   margin-top: 52rpx;
-}
-
-.dialogue-section {
-  .section-title {
-    margin-bottom: 0;
-  }
-
-  .between {
-    margin-bottom: 28rpx;
-  }
-
-  .dialogue {
-    margin-bottom: 32rpx;
-
-    .speaker {
-      color: #637268;
-      font-size: 22rpx;
-      display: block;
-      margin-bottom: 8rpx;
-    }
-
-    .english {
-      font-size: 32rpx;
-      line-height: 1.9;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-    }
-
-    .highlight {
-      background: #e3edda;
-      color: #347553;
-      border-radius: 6rpx;
-    }
-
-    .translation {
-      display: block;
-      color: #637268;
-      font-size: 26rpx;
-      line-height: 1.9;
-      margin-top: 12rpx;
-    }
-  }
 }
 
 .section-note {

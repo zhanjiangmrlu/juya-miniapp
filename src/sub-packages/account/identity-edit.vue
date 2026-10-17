@@ -10,6 +10,7 @@ import { useUnsavedGuard } from '@/composables/use-unsaved-guard'
 import { rebaseIdentity } from '@/features/profile/identity-model'
 import { operations, session } from '@/services/api'
 import { ApiError, isUnconfirmedFailure } from '@/services/errors'
+import { waitForMedia } from '@/services/media-processing'
 import { operationKey } from '@/services/platform'
 import { Routes } from '@/shared/constants/navigation'
 import { MediaState } from '@/shared/enums/media'
@@ -33,7 +34,8 @@ const account = useAccountStore(),
   unknown = ref(false),
   limit = ref(0)
 let alive = true,
-  uploadKey = ''
+  uploadKey = '',
+  accepted: components['schemas']['AvatarUpload'] | null = null
 const conflict = ref(false),
   rebased = ref(false)
 const busy = computed(() => uploading.value || saving.value)
@@ -86,26 +88,41 @@ const upload = async () => {
     )
     if (size > limit.value)
       throw new Error(`头像不能超过 ${Math.floor(limit.value / 1024 / 1024)} MB`)
-    let value = await session.request<components['schemas']['AvatarUpload']>(
-      '/api/mini/v1/me/avatar',
-      {
-        method: 'POST',
-        key: uploadKey,
-        body: {
-          file_path: selectedPath.value,
-          progress: (value: number) => {
-            if (alive) percent.value = value
+    if (!accepted) {
+      accepted = await session.request<components['schemas']['AvatarUpload']>(
+        '/api/mini/v1/me/avatar',
+        {
+          method: 'POST',
+          key: uploadKey,
+          body: {
+            file_path: selectedPath.value,
+            progress: (value: number) => {
+              if (alive) percent.value = value
+            }
           }
         }
-      }
-    )
-    while (alive && value.state !== MediaState.READY && value.state !== MediaState.FAILED) {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      if (!alive) return
-      value = await session.request(`/api/mini/v1/me/avatar/${value.id}/status`)
+      )
+    } else if (accepted.state === MediaState.FAILED) {
+      accepted = await session.request(`/api/mini/v1/me/avatar/${accepted.id}/retry`, {
+        method: 'POST',
+        key: operationKey()
+      })
     }
+    const value = await waitForMedia(
+      accepted!,
+      async () => {
+        const latest = await session.request<components['schemas']['MediaMetadata']>(
+          `/api/mini/v1/me/avatar/${accepted!.id}/status`
+        )
+        if (alive) accepted = latest
+        return latest
+      },
+      { active: () => alive }
+    )
     if (!alive) return
-    if (value.state !== MediaState.READY) throw new Error('头像处理暂未成功，请重试')
+    accepted = value
+    if (value.state === MediaState.FAILED) throw new Error('头像处理未成功，请重试或重新选择图片')
+    if (value.state !== MediaState.READY) throw new Error('头像仍在处理，可稍后继续查询')
     avatarId.value = value.id
   } catch (reason) {
     if (alive) uploadError.value = reason instanceof Error ? reason.message : '头像上传失败，请重试'
@@ -120,6 +137,7 @@ const selectImage = (path: string) => {
   if (!path || busy.value) return
   selectedPath.value = path
   uploadKey = operationKey()
+  accepted = null
   preview.value = path
   avatarId.value = base.value?.avatar_id || null
   void upload()
@@ -277,7 +295,9 @@ onUnload(() => {
         }}</text
         ><view v-if="uploadError" class="notice error"
           >{{ uploadError
-          }}<button class="text-button" :disabled="busy" @click="upload">重试上传</button></view
+          }}<button class="text-button" :disabled="busy" @click="upload">
+            继续处理／查询
+          </button></view
         ></view
       ><view v-if="rebased" class="notice"
         >已获取服务器当前资料，保留了你的修改。当前已保存昵称：{{
