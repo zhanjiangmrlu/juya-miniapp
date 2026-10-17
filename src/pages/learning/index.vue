@@ -3,6 +3,7 @@ import { onPullDownRefresh, onReachBottom, onShow, onUnload } from '@dcloudio/un
 import { ref } from 'vue'
 
 import AppAvatar from '@/components/app-avatar/app-avatar.vue'
+import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import LearningStatistics from '@/features/learning/components/learning-statistics.vue'
@@ -70,6 +71,8 @@ const profile = () => uni.navigateTo({ url: Routes.PROFILE })
 /** 从显式记录入口打开最近使用的标签 */
 const records = () => uni.navigateTo({ url: Routes.RECORDS })
 onShow(() => {
+  // H5 直接刷新路由时可能尚未建立原生底栏，使用回调处理该状态
+  uni.hideTabBar({ animation: false, fail: () => undefined })
   void refresh()
   void refreshStats()
 })
@@ -85,101 +88,144 @@ onUnload(() => {
 })
 </script>
 <template>
-  <AppPage title="句芽英语"
-    ><template #action
-      ><button class="text-button account-link" @click="profile">账号资料</button></template
-    ><view class="welcome between"
-      ><view
-        ><text class="greeting">{{ account.profile?.nickname || '学习者' }}，你好</text
-        ><text class="welcome-text">从一个真实场景，开始今天的学习</text></view
-      ><AppAvatar :src="account.avatarURL" :size="84" /></view
-    ><LearningStatistics v-if="account.statistics" :statistics="account.statistics" /><AppState
-      v-else
-      :busy="!statsError"
-      :error="statsError"
-      @retry="refreshStats"
-    /><view v-if="statsError && account.statistics" class="notice error"
-      >统计暂未更新 <button class="text-button" @click="refreshStats">重试</button></view
-    ><view class="today-line between"
-      ><text>{{
+  <AppPage title="句芽英语" footer>
+    <view class="welcome between">
+      <text class="greeting">{{ account.profile?.nickname || '学习者' }}，今天也学一点</text>
+      <button class="account-link" aria-label="账号资料" @click="profile">
+        <AppAvatar v-if="account.avatarURL" :src="account.avatarURL" :size="44" />
+        <text>账号</text>
+      </button>
+    </view>
+    <text class="home-title">English, every day.</text>
+    <LearningStatistics v-if="account.statistics" :statistics="account.statistics" />
+    <AppState v-else :busy="!statsError" :error="statsError" @retry="refreshStats" />
+    <view v-if="statsError && account.statistics" class="notice error">
+      统计暂未更新 <button class="text-button" @click="refreshStats">重试</button>
+    </view>
+    <view class="today-line between">
+      <text class="today-status">{{
         account.statistics
           ? account.statistics.checked_in_today
             ? '✓ 今日已打卡'
-            : '今日待打卡 · 完成一张卡片即可记录'
+            : '▣ 今日还未打卡'
           : '今日状态暂未获取'
-      }}</text
-      ><button class="text-button" @click="records">查看学习记录 ›</button></view
-    ><view class="catalog-heading between"
-      ><text class="section-title">场景学习</text
-      ><text v-if="total !== null" class="muted small">{{ total }} 张场景卡</text></view
-    ><AppState
+      }}</text>
+      <button class="text-button" @click="records">学习记录 ›</button>
+    </view>
+    <text class="today-help">{{
+      account.statistics?.checked_in_today
+        ? '继续学习或复习，积累更多表达。'
+        : '完成任意一张场景卡，即可完成今日打卡。'
+    }}</text>
+    <view class="catalog-heading between">
+      <text class="section-title">场景卡片</text>
+      <text v-if="total !== null" class="catalog-count">{{ total }} 张</text>
+    </view>
+    <AppState
       :busy="busy && total === null"
       :error="error"
       :empty="total === 0"
       title="场景卡正在准备中"
-      description="稍后再来看看，已有学习记录会保留"
-      @retry="refresh"
-    /><SceneCard v-for="card in cards" :key="card.id" :card="card" /><button
+      description="发布后会在这里展示。"
+      @retry="refresh" />
+    <SceneCard v-for="(card, index) in cards" :key="card.id" :card="card" :featured="index === 0" />
+    <button
       v-if="total !== null && cards.length < total"
       class="text-button more"
       :disabled="busy"
       @click="loadMore"
     >
-      {{ busy ? '加载中…' : '加载更多' }}</button
-    ><text v-else-if="cards.length" class="list-end">已显示全部场景卡</text></AppPage
-  >
+      {{ busy ? '加载中…' : '加载更多' }}
+    </button>
+    <text v-else-if="cards.length" class="list-end">已显示全部场景卡</text>
+    <AppBottomTabs active="learning"
+  /></AppPage>
 </template>
 <style scoped lang="scss">
 .welcome {
-  padding: 12rpx 0 8rpx;
+  min-height: 46.154rpx;
+  margin-bottom: 15.385rpx;
 
   .greeting {
-    font-size: 40rpx;
-    font-weight: 650;
-    display: block;
+    font-size: 25rpx;
+    line-height: 1.7;
+    color: #586c5b;
   }
 
-  .welcome-text {
-    font-size: 24rpx;
-    color: #637268;
-    margin-top: 10rpx;
-    display: block;
-  }
-}
-
-.today-line {
-  font-size: 22rpx;
-  color: #637268;
-  padding: 20rpx 0;
-
-  button {
-    font-size: 22rpx;
+  .account-link {
+    display: flex;
+    gap: 9.615rpx;
+    padding: 3.846rpx 0 3.846rpx 15.385rpx;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    font-size: 23.077rpx;
+    font-weight: 500;
     white-space: nowrap;
   }
 }
 
-.catalog-heading {
-  margin-top: 26rpx;
+.home-title {
+  display: block;
+  font-family: Fraunces, Georgia, serif;
+  font-size: 51.923rpx;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: -0.025em;
+  margin-bottom: 38.462rpx;
+}
 
-  .section-title {
-    margin-bottom: 0;
+.today-line {
+  font-size: 25rpx;
+  line-height: 1.7;
+  margin-bottom: 3.846rpx;
+
+  .today-status {
+    color: #ad4f32;
+  }
+
+  button {
+    font-size: 23.077rpx;
+    padding: 7.692rpx 0;
+    white-space: nowrap;
   }
 }
 
-.account-link {
-  font-size: 22rpx;
+.today-help {
+  display: block;
+  color: #586c5b;
+  font-size: 21.154rpx;
+  line-height: 1.8;
+  margin-top: 3.846rpx;
+}
+
+.catalog-heading {
+  margin: 53.846rpx 0 25rpx;
+  align-items: baseline;
+
+  .section-title {
+    font-size: 38.462rpx;
+    line-height: 1.5;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .catalog-count {
+    font-size: 23.077rpx;
+    color: #586c5b;
+  }
 }
 
 .list-end {
   display: block;
-  font-size: 22rpx;
-  color: #91a08d;
+  font-size: 21.154rpx;
+  color: #586c5b;
   text-align: center;
-  padding: 32rpx 0;
+  padding: 30.769rpx 0;
 }
 
 .more {
   width: 100%;
-  margin-top: 24rpx;
+  margin-top: 23.077rpx;
 }
 </style>

@@ -27,14 +27,9 @@ const change = (event: SliderChangeEvent) => {
 }
 </script>
 <template>
-  <view class="audio-player"
-    ><view class="between"
-      ><text class="audio-label">完整音频</text
-      ><text class="duration"
-        >{{ audioTime(position) }} / {{ audioTime(state.duration) }}</text
-      ></view
-    ><view class="player-controls"
-      ><button
+  <view class="audio-player">
+    <view class="audio-top">
+      <button
         class="play"
         :disabled="state.status === AudioStatus.LOADING"
         :aria-label="state.status === AudioStatus.PLAYING ? '暂停完整音频' : '播放完整音频'"
@@ -46,68 +41,95 @@ const change = (event: SliderChangeEvent) => {
             : state.status === AudioStatus.PLAYING
               ? 'Ⅱ'
               : '▶'
-        }}</text></button
-      ><slider
-        :value="position"
-        :max="state.duration || 1"
-        :min="0"
-        :step="0.1"
-        :disabled="!state.duration || state.status === AudioStatus.LOADING"
-        active-color="#347553"
-        background-color="#dce2d5"
-        block-color="#347553"
-        :block-size="14"
-        @changing="changing"
-        @change="change" /></view
-    ><button v-if="state.error" class="text-button error" @click="emit('toggle')">
+        }}</text>
+      </button>
+      <view class="audio-copy"
+        ><text class="audio-label">完整对话音频</text
+        ><text class="audio-english">LISTEN TO THE FULL DIALOGUE</text
+        ><text class="duration"
+          >{{ audioTime(position) }} / {{ audioTime(state.duration) }} · 整篇播放</text
+        ></view
+      >
+    </view>
+    <slider
+      :value="position"
+      :max="state.duration || 1"
+      :min="0"
+      :step="0.1"
+      :disabled="!state.duration || state.status === AudioStatus.LOADING"
+      active-color="#2b4438"
+      background-color="#ffffff"
+      block-color="#2b4438"
+      :block-size="8"
+      @changing="changing"
+      @change="change"
+    />
+    <button v-if="state.error" class="text-button error" @click="emit('toggle')">
       {{ state.error }}
-    </button></view
-  >
+    </button>
+  </view>
 </template>
 <style scoped lang="scss">
 .audio-player {
-  padding: 28rpx;
-  background: #eef3e9;
-  border-radius: 20rpx;
-  margin-top: 36rpx;
+  padding: 30.769rpx 30.769rpx 23.077rpx;
+  background: #e4f0db;
+  border-radius: 23.077rpx;
+  margin: 50rpx 0 51.923rpx;
+
+  .audio-top {
+    display: flex;
+    align-items: center;
+    gap: 23.077rpx;
+  }
+
+  .audio-copy {
+    flex: 1;
+    min-width: 0;
+  }
 
   .audio-label {
-    font-size: 26rpx;
+    display: block;
+    font-size: 26.923rpx;
     font-weight: 600;
   }
 
-  .duration {
-    font-size: 22rpx;
-    color: #637268;
+  .audio-english {
+    display: block;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 17.308rpx;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    line-height: 1.6;
+    color: #4f6d55;
+    margin-top: 5.769rpx;
   }
 
-  .player-controls {
-    display: flex;
-    align-items: center;
-    gap: 20rpx;
-    margin-top: 18rpx;
+  .duration {
+    display: block;
+    font-size: 21.154rpx;
+    color: #4f6d55;
+    margin-top: 5.769rpx;
+  }
 
-    .play {
-      width: 76rpx;
-      height: 76rpx;
-      border: 0;
-      border-radius: 50%;
-      background: #347553;
-      color: #fff;
-      padding: 0;
-      flex-shrink: 0;
-      font-size: 28rpx;
-    }
+  .play {
+    width: 84.615rpx;
+    height: 84.615rpx;
+    border: 0;
+    border-radius: 50%;
+    background: #bedda7;
+    color: #2b4438;
+    padding: 0;
+    flex-shrink: 0;
+    font-size: 30.769rpx;
+  }
 
-    slider {
-      flex: 1;
-      margin: 0 8rpx;
-    }
+  slider {
+    margin: 25rpx 0 0;
   }
 
   .error {
-    color: #a23f35;
-    font-size: 22rpx;
+    color: #97442d;
+    font-size: 23.077rpx;
   }
 }
 </style>

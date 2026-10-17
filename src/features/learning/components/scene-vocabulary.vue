@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
 import { AudioStatus } from '@/shared/enums/audio'
 
 import type { SceneVocabularyProps } from '@/shared/types/learning-components'
@@ -11,29 +12,43 @@ const sourceLine = (lineId?: string) =>
   props.dialogue.find((line) => line.id === lineId)?.english || ''
 </script>
 <template>
-  <view class="vocabulary-section"
-    ><text class="section-title">重点词汇 <text class="section-note">本句释义</text></text>
+  <view class="vocabulary-section">
+    <SceneSectionHeading english="Words to keep" chinese="重点词汇" :count="vocabulary.length" />
+    <text class="vocabulary-help">点击英文或喇叭听发音 · 中文为本句释义</text>
     <view v-for="word in vocabulary" :key="word.id" class="word">
-      <button
-        class="word-trigger"
-        :aria-label="`试听 ${word.english}`"
-        :disabled="
-          disabled || (state.wordId === word.id && state.wordStatus === AudioStatus.LOADING)
-        "
-        @click="word.id && emit('play', word.id)"
-      >
-        <text>{{ word.english }}</text
-        ><text class="voice-label">{{
-          state.wordId === word.id && state.wordStatus === AudioStatus.LOADING
-            ? '加载中…'
-            : state.wordId === word.id && state.wordStatus === AudioStatus.PLAYING
-              ? '播放中'
-              : '试听'
-        }}</text>
-      </button>
+      <view class="word-top">
+        <button
+          class="word-trigger"
+          :aria-label="`试听 ${word.english}`"
+          :disabled="
+            disabled || (state.wordId === word.id && state.wordStatus === AudioStatus.LOADING)
+          "
+          @click="word.id && emit('play', word.id)"
+        >
+          {{ word.english }}
+        </button>
+        <button
+          class="voice-button"
+          :aria-label="`播放${word.english}的发音`"
+          :disabled="
+            disabled || (state.wordId === word.id && state.wordStatus === AudioStatus.LOADING)
+          "
+          @click="word.id && emit('play', word.id)"
+        >
+          <text v-if="state.wordId === word.id && state.wordStatus === AudioStatus.LOADING">…</text
+          ><view v-else class="voice-icon"
+            ><view class="voice-box" /><view class="voice-cone" /><view class="voice-wave"
+          /></view>
+        </button>
+      </view>
       <text v-if="word.phonetic" class="phonetic">{{ word.phonetic }}</text
       ><text class="meaning">{{ word.meaning }}</text>
-      <text v-if="word.source" class="source">{{ sourceLine(word.source.line_id) }}</text>
+      <text v-if="word.source" class="source">原句 · {{ sourceLine(word.source.line_id) }}</text>
+      <text
+        v-if="state.wordId === word.id && state.wordStatus === AudioStatus.PLAYING"
+        class="voice-status"
+        >播放中</text
+      >
       <button
         v-if="state.wordId === word.id && state.wordError"
         class="text-button voice-error"
@@ -46,64 +61,126 @@ const sourceLine = (lineId?: string) =>
 </template>
 <style scoped lang="scss">
 .vocabulary-section {
-  margin-top: 52rpx;
+  margin-top: 57.692rpx;
+  border-top: 1px solid #dfe5d8;
+  padding-top: 51.923rpx;
 
-  .section-note {
-    font-size: 22rpx;
-    color: #637268;
-    font-weight: 400;
+  .vocabulary-help {
+    display: block;
+    font-size: 21.154rpx;
+    line-height: 1.8;
+    color: #586c5b;
+    margin: 13.462rpx 0;
   }
 
   .word {
-    padding: 26rpx 0;
-    border-bottom: 1px solid #e5e9de;
+    padding: 26.923rpx 0;
+    border-bottom: 1px solid #dfe5d8;
+  }
+
+  .word-top {
+    display: flex;
+    align-items: center;
+    gap: 13.462rpx;
   }
 
   .word-trigger {
+    flex: 1;
     padding: 0;
     border: 0;
+    border-radius: 0;
     background: none;
     justify-content: flex-start;
-    gap: 24rpx;
     text-align: left;
-    color: #254733;
-    font-size: 34rpx;
+    color: #2b4438;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 32.692rpx;
     font-weight: 600;
-    line-height: 1.6;
+    line-height: 1.5;
+    min-height: 61.538rpx;
+    overflow-wrap: anywhere;
   }
 
-  .voice-label {
-    color: #347553;
-    font-size: 22rpx;
-    font-weight: 400;
+  .voice-button {
+    color: #586c5b;
+    background: #fff;
+    border: 0;
+    border-radius: 50%;
+    width: 84.615rpx;
+    height: 84.615rpx;
+    flex-shrink: 0;
+    padding: 0;
+  }
+
+  .voice-icon {
+    position: relative;
+    width: 32.692rpx;
+    height: 32.692rpx;
+
+    .voice-box {
+      position: absolute;
+      left: 1.923rpx;
+      top: 11.538rpx;
+      width: 9.615rpx;
+      height: 11.538rpx;
+      border: 1.923rpx solid currentcolor;
+      border-right: 0;
+    }
+
+    .voice-cone {
+      position: absolute;
+      left: 11.538rpx;
+      top: 7.692rpx;
+      width: 9.615rpx;
+      height: 19.231rpx;
+      border: 1.923rpx solid currentcolor;
+      transform: skewY(-30deg);
+    }
+
+    .voice-wave {
+      position: absolute;
+      left: 22.115rpx;
+      top: 6.731rpx;
+      width: 9.615rpx;
+      height: 21.154rpx;
+      border-right: 1.923rpx solid currentcolor;
+      border-radius: 50%;
+    }
   }
 
   .phonetic {
     display: block;
-    color: #637268;
-    font-size: 24rpx;
-    margin-top: 4rpx;
+    color: #586c5b;
+    font-size: 21.154rpx;
+    margin-top: 7.692rpx;
   }
 
   .meaning {
     display: block;
-    font-size: 28rpx;
-    margin-top: 10rpx;
+    font-size: 25rpx;
+    margin-top: 7.692rpx;
     line-height: 1.8;
+    color: #ad4f32;
   }
 
   .source {
     display: block;
-    font-size: 24rpx;
-    color: #637268;
+    font-size: 21.154rpx;
+    color: #586c5b;
     line-height: 1.8;
-    margin-top: 16rpx;
+    margin-top: 13.462rpx;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .voice-status {
+    color: #586c5b;
+    font-size: 21.154rpx;
   }
 
   .voice-error {
-    font-size: 22rpx;
-    color: #a23f35;
+    font-size: 23.077rpx;
+    color: #97442d;
     justify-content: flex-start;
   }
 }

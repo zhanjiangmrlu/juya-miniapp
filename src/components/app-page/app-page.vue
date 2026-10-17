@@ -14,9 +14,9 @@ const props = withDefaults(
 )
 const emit = defineEmits<{ back: [] }>()
 const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync()
-let top = 0,
+let top = 32,
   right = 0,
-  nav = 44
+  nav = 56
 // #ifdef MP-WEIXIN
 const capsule = uni.getMenuButtonBoundingClientRect()
 top = info.statusBarHeight || 20
@@ -35,11 +35,21 @@ const goBack = () => {
 }
 </script>
 <template>
-  <view class="app-page" :class="{ 'has-footer': footer }"
+  <view
+    class="app-page"
+    :class="{ 'has-footer': footer }"
+    :style="{ '--page-header-height': `${top + nav}px` }"
     ><view class="page-nav" :style="headingStyle"
       ><button v-if="back" class="back-button" aria-label="返回" @click="goBack">
         <text>‹</text></button
-      ><text class="nav-title">{{ title }}</text
+      ><view v-if="title === '句芽英语'" class="nav-brand"
+        ><image
+          class="nav-wordmark"
+          src="/static/brand/juya-nav@3x.png"
+          mode="aspectFit"
+          aria-label="juya"
+        /><text>句芽英语</text></view
+      ><text v-else class="nav-title">{{ title }}</text
       ><view class="nav-action"><slot name="action" /></view></view
     ><view class="page-body"><slot /></view><slot name="footer"
   /></view>
@@ -47,7 +57,7 @@ const goBack = () => {
 <style scoped lang="scss">
 .app-page {
   min-height: 100vh;
-  background: #fffdf7;
+  background: #fffcf5;
 
   &.has-footer {
     padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
@@ -60,10 +70,23 @@ const goBack = () => {
   position: sticky;
   top: 0;
   z-index: 15;
-  background: #fffdf7;
-  border-bottom: 1px solid #e5e9de;
-  padding-left: 40rpx;
+  background: #fffcf5;
+  border-bottom: 0;
+  padding-left: 46.15rpx;
   padding-bottom: 0;
+
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 21.15rpx;
+    font-size: 26.92rpx;
+    font-weight: 500;
+
+    .nav-wordmark {
+      width: 106.67rpx;
+      height: 101.92rpx;
+    }
+  }
 
   .nav-title {
     font-size: 30rpx;
@@ -92,6 +115,6 @@ const goBack = () => {
 }
 
 .page-body {
-  padding: 40rpx;
+  padding: 46.15rpx 46.15rpx 53.85rpx;
 }
 </style>

@@ -6,3 +6,7 @@ export interface ImagePreviewContext {
   onInvalid: (reason: unknown) => void
   onClose: () => void
 }
+
+export interface ImageScaleEvent {
+  detail: { scale: number }
+}

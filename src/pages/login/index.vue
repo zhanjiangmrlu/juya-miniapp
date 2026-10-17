@@ -2,7 +2,7 @@
 import { onLoad } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
-import AppLeaf from '@/components/app-leaf/app-leaf.vue'
+import AppPage from '@/components/app-page/app-page.vue'
 import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vue'
 import { openTarget } from '@/services/navigation'
 import { Routes } from '@/shared/constants/navigation'
@@ -18,6 +18,10 @@ let target: string = Routes.LEARNING
 /** 用户主动同意后登录，失败不改变页面身份 */
 const login = async () => {
   if (busy.value) return
+  if (!agreed.value) {
+    error.value = '请先阅读并同意隐私说明'
+    return
+  }
   busy.value = true
   error.value = ''
   try {
@@ -46,131 +50,253 @@ onLoad((query) => {
 })
 </script>
 <template>
-  <view class="login-page"
-    ><view class="login-brand"
-      ><AppLeaf :size="100" /><text class="brand-name">句芽英语</text
-      ><text class="tagline">从真实场景开始，自然开口说英语</text></view
-    ><view class="welcome"
-      ><text class="title">让每一句，都有用处</text
-      ><text class="description">{{
-        '看懂场景，听见表达。\n从一张场景卡开始，每天学会一点。'
-      }}</text></view
-    ><view class="login-actions"
-      ><view v-if="error" class="notice error">{{ error }}</view
-      ><view class="consent-row"
-        ><checkbox-group @change="consent"
-          ><label class="consent"
-            ><checkbox value="agree" :checked="agreed" color="#347553" :disabled="busy" /><text
-              >我已阅读并同意</text
-            ></label
-          ></checkbox-group
-        ><button class="privacy-link" @click="privacy = true">《隐私及用途说明》</button></view
-      ><button class="primary" :disabled="busy || !agreed" :loading="busy" @click="login">
-        同意并登录</button
-      ><text class="footnote">使用微信身份登录，不需要先填写联系方式</text
-      ><text class="platform-hint">请在微信小程序中使用微信登录</text></view
-    ><AppPrivacySheet v-if="privacy" @close="privacy = false"
-  /></view>
+  <AppPage title="句芽英语" class="login-screen">
+    <view class="login-layout">
+      <view class="login-brand">
+        <image
+          class="login-botanical"
+          src="/static/brand/u00-botanical-watercolor@3x.webp"
+          mode="aspectFit"
+          :webp="true"
+          aria-hidden="true"
+        />
+        <image
+          class="login-wordmark"
+          src="/static/brand/juya-wordmark@3x.png"
+          mode="aspectFit"
+          role="img"
+          aria-label="juya"
+        />
+        <image
+          class="login-name"
+          src="/static/brand/juya-chinese@3x.png"
+          mode="aspectFit"
+          role="img"
+          aria-label="句芽英语"
+        />
+        <image
+          class="login-tagline"
+          src="/static/brand/juya-tagline@3x.png"
+          mode="aspectFit"
+          role="img"
+          aria-label="在真实场景里，不再孤立记单词"
+        />
+      </view>
+      <view class="login-card">
+        <view class="login-lead">
+          <text class="login-title">登录，留住每一次进步</text>
+          <text class="login-description">1500+张场景学习，覆盖约2w左右词汇和语块</text>
+        </view>
+        <view v-if="error" class="notice login-error" role="alert">{{ error }}</view>
+        <view class="consent-row">
+          <checkbox-group @change="consent">
+            <label class="consent">
+              <checkbox value="agree" :checked="agreed" color="#586c5b" :disabled="busy" />
+              <text>我已阅读并同意</text>
+            </label>
+          </checkbox-group>
+          <button class="privacy-link" @click="privacy = true">隐私说明</button>
+        </view>
+        <button class="primary" :disabled="busy" :loading="busy" @click="login">
+          {{ busy ? '登录中…' : '同意并登录' }}
+        </button>
+        <text class="login-optional">联系方式可稍后选填，不影响学习</text>
+      </view>
+      <text class="login-bottom">{{
+        '主动登录后创建或使用你的账号\n学习、收藏与打卡保存在同一账号'
+      }}</text>
+    </view>
+    <AppPrivacySheet v-if="privacy" @close="privacy = false" />
+  </AppPage>
 </template>
 <style scoped lang="scss">
-.login-page {
-  min-height: 100vh;
-  padding: 120rpx 48rpx 60rpx;
+.login-screen {
   display: flex;
   flex-direction: column;
-  background: #fffdf7;
+  background: #fffcf7;
+
+  :deep(.page-body) {
+    display: flex;
+    flex: 1;
+    padding: 0;
+  }
+
+  :deep(.page-nav) {
+    background: #fffcf7;
+  }
+}
+
+.login-layout {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: calc(100vh - var(--page-header-height));
+  padding: 0 34.62rpx 38.46rpx;
 }
 
 .login-brand {
+  position: relative;
+  isolation: isolate;
   display: flex;
+  flex: 1 0 500rpx;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  min-height: 500rpx;
+  padding: 46.15rpx 0 51.92rpx;
 
-  .leaf {
-    font-size: 104rpx;
-    color: #347553;
-    line-height: 1;
+  .login-botanical {
+    position: absolute;
+    z-index: -1;
+    top: 0;
+    left: -34.62rpx;
+    width: calc(100% + 69.24rpx);
+    height: 100%;
+    pointer-events: none;
   }
 
-  .brand-name {
-    font-size: 48rpx;
-    font-weight: 650;
-    color: #347553;
-    margin-top: 24rpx;
+  .login-wordmark {
+    flex: none;
+    width: 243.48rpx;
+    height: 215.38rpx;
   }
 
-  .tagline {
-    font-size: 24rpx;
-    color: #637268;
-    margin-top: 14rpx;
-  }
-}
-
-.welcome {
-  margin-top: 100rpx;
-
-  .title {
-    font-size: 44rpx;
+  .login-name {
+    flex: none;
+    width: 223.08rpx;
+    height: 84.62rpx;
   }
 
-  .description {
-    white-space: pre-line;
-    display: block;
-    margin-top: 24rpx;
-    color: #637268;
-    font-size: 28rpx;
-    line-height: 1.9;
+  .login-tagline {
+    position: relative;
+    top: -11.54rpx;
+    flex: none;
+    width: 398.08rpx;
+    height: 50rpx;
+    margin-top: 23.08rpx;
   }
 }
 
-.login-actions {
-  margin-top: auto;
-  padding-top: 100rpx;
+.login-card {
+  flex: none;
+  padding: 46.15rpx 34.62rpx 23.08rpx;
+  border-radius: 38.46rpx;
+  background: #fff;
+  box-shadow: 0 23.08rpx 69.23rpx rgb(43 68 56 / 6%);
 
   .primary {
-    min-height: 96rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 96.15rpx;
+    margin: 0;
+    padding: 23.08rpx 26.92rpx;
+    border: 1px solid #cde5b9;
+    border-radius: 23.08rpx;
+    background: #cde5b9;
+    color: #2b4438;
+    font-size: 30.77rpx;
+    font-weight: 600;
+    line-height: 46.15rpx;
+
+    &::after {
+      border: 0;
+    }
+
+    &[disabled] {
+      border-color: #e4efdc;
+      background: #e4efdc;
+      color: #586c5b;
+      opacity: 1;
+    }
   }
 
-  .footnote,
-  .platform-hint {
+  .login-error {
+    margin-bottom: 26.92rpx;
+    padding: 23.08rpx;
+    background: #f8edc4;
+    color: #795b2f;
+    font-size: 23.08rpx;
+    line-height: 40.38rpx;
+  }
+}
+
+.login-lead {
+  margin-bottom: 34.62rpx;
+  text-align: center;
+
+  .login-title {
     display: block;
-    text-align: center;
-    color: #637268;
-    font-size: 22rpx;
-    margin-top: 20rpx;
+    margin-bottom: 19.23rpx;
+    font-size: 36.54rpx;
+    font-weight: 600;
+    line-height: 59.62rpx;
   }
 
-  .platform-hint {
-    font-size: 20rpx;
-    margin-top: 8rpx;
+  .login-description {
+    display: block;
+    color: #586c5b;
+    font-size: 24.04rpx;
+    line-height: 42.31rpx;
   }
 }
 
 .consent-row {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 28rpx;
+  justify-content: center;
+  min-height: 84.62rpx;
+  margin-bottom: 23.08rpx;
+  font-size: 23.08rpx;
+  line-height: 42.31rpx;
 
   .privacy-link {
-    font-size: 22rpx;
-    padding: 0;
+    min-height: 84.62rpx;
+    margin: 0;
+    padding: 0 3.85rpx;
     border: 0;
     background: none;
-    color: #347553;
+    font-size: 23.08rpx;
+    font-weight: 400;
+    line-height: 42.31rpx;
+
+    &::after {
+      border: 0;
+    }
   }
 }
 
 .consent {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  font-size: 22rpx;
+  font-size: 23.08rpx;
+  line-height: 42.31rpx;
 
   checkbox {
-    transform: scale(0.72);
-    transform-origin: left center;
-    width: 48rpx;
+    width: 50rpx;
+    margin-right: 9.62rpx;
+    transform: scale(0.75);
+    transform-origin: center;
   }
+}
+
+.login-optional {
+  display: block;
+  margin-top: 34.62rpx;
+  color: #586c5b;
+  font-size: 23.08rpx;
+  line-height: 42.31rpx;
+  text-align: center;
+}
+
+.login-bottom {
+  flex: none;
+  margin: 46.15rpx 0 15.38rpx;
+  color: #586c5b;
+  font-size: 21.15rpx;
+  line-height: 40.38rpx;
+  text-align: center;
+  white-space: pre-line;
 }
 </style>

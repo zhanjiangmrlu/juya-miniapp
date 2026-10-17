@@ -1,33 +1,51 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
 import { highlightSegments } from '@/features/learning/scene-model'
+import { SCENE_HIGHLIGHT_COLORS } from '@/shared/constants/learning'
 
 import type { SceneDialogueProps } from '@/shared/types/learning-components'
-defineProps<SceneDialogueProps>()
+const props = defineProps<SceneDialogueProps>()
 const translated = ref(false)
+/** 为词汇在对话中的高亮复用稳定的原型配色
+ * @param quote 当前已确认来源的英文片段
+ */
+const highlightColor = (quote: string) => {
+  const index = props.vocabulary.findIndex((word) => word.source?.quote === quote)
+  return SCENE_HIGHLIGHT_COLORS[Math.max(0, index) % SCENE_HIGHLIGHT_COLORS.length]
+}
 </script>
 <template>
   <view class="dialogue-section">
-    <text class="section-title">场景对话</text>
-    <view v-for="line in dialogue" :key="line.id" class="dialogue">
+    <SceneSectionHeading english="The conversation" chinese="场景对话" />
+    <view
+      v-for="(line, lineIndex) in dialogue"
+      :key="line.id"
+      class="dialogue"
+      :class="{ 'long-speaker': line.speaker.length > 2, alternate: lineIndex % 2 === 1 }"
+    >
       <text class="speaker">{{ line.speaker }}</text>
       <view class="english"
         ><text
           v-for="(part, index) in highlightSegments(line, vocabulary)"
           :key="index"
           :class="{ highlight: part.highlight }"
+          :style="part.highlight ? { backgroundColor: highlightColor(part.text) } : undefined"
           >{{ part.text }}</text
         ></view
       >
     </view>
-    <button class="text-button translation-toggle" @click="translated = !translated">
-      {{ translated ? '收起译文' : '显示译文' }}
+    <button
+      class="translation-toggle"
+      :aria-expanded="translated"
+      @click="translated = !translated"
+    >
+      {{ translated ? '收起译文 ×' : '显示译文 ＋' }}
     </button>
     <view v-if="translated" class="translation-section">
-      <text class="translation-title">完整译文</text>
       <view v-for="line in dialogue" :key="line.id" class="translation-line"
-        ><text class="speaker">{{ line.speaker }}</text
+        ><text class="translation-speaker">{{ line.speaker }}：</text
         ><text class="translation">{{ line.chinese }}</text></view
       >
     </view>
@@ -35,59 +53,98 @@ const translated = ref(false)
 </template>
 <style scoped lang="scss">
 .dialogue-section {
-  margin-top: 52rpx;
-
   .dialogue {
-    margin-bottom: 32rpx;
+    position: relative;
+    padding-left: 61.538rpx;
+    margin-bottom: 36.538rpx;
   }
 
   .speaker {
-    color: #637268;
-    font-size: 22rpx;
-    display: block;
-    margin-bottom: 8rpx;
+    position: absolute;
+    left: 0;
+    top: 3.846rpx;
+    width: 42.308rpx;
+    height: 42.308rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #e4f0db;
+    font-size: 19.231rpx;
+    font-weight: 500;
+    line-height: 1;
+    color: #47674c;
+  }
+
+  .alternate .speaker {
+    background: #fbe4cd;
+    color: #ad4f32;
+  }
+
+  .long-speaker {
+    padding-left: 0;
+
+    .speaker {
+      position: static;
+      display: table;
+      width: auto;
+      height: auto;
+      padding: 7.692rpx 15.385rpx;
+      margin-bottom: 11.538rpx;
+      border-radius: 7.692rpx;
+      line-height: 1.5;
+    }
   }
 
   .english {
-    font-size: 32rpx;
-    line-height: 1.9;
+    font-size: 32.692rpx;
+    line-height: 53.846rpx;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
 
   .highlight {
-    background: #e3edda;
-    color: #347553;
-    border-radius: 6rpx;
+    background: #ddefd8;
+    color: #2b4438;
+    padding: 3.846rpx 5.769rpx;
+    border-radius: 5.769rpx;
+    font-weight: 700;
+    box-decoration-break: clone;
   }
 
   .translation-toggle {
-    justify-content: flex-start;
+    display: inline-flex;
+    font-size: 23.077rpx;
+    font-weight: 500;
+    border: 1px solid #dfe5d8;
+    border-radius: 15.385rpx;
+    padding: 15.385rpx 23.077rpx;
+    margin: 5.769rpx 0 0;
+    min-height: 69.231rpx;
+    background: #fff;
   }
 
   .translation-section {
-    margin-top: 20rpx;
-    padding: 28rpx;
-    background: #f2f4ed;
-    border-radius: 16rpx;
+    margin-top: 26.923rpx;
+    padding: 32.692rpx 28.846rpx 13.462rpx;
+    background: #fff;
+    border: 1px solid #dfe5d8;
+    border-radius: 19.231rpx;
   }
 
-  .translation-title {
-    display: block;
-    font-size: 26rpx;
-    font-weight: 600;
-    margin-bottom: 24rpx;
+  .translation-line {
+    font-size: 25rpx;
+    line-height: 1.9;
+    color: #586c5b;
+    margin-bottom: 23.077rpx;
   }
 
-  .translation-line + .translation-line {
-    margin-top: 24rpx;
+  .translation-speaker {
+    color: #ad4f32;
+    font-weight: 500;
   }
 
   .translation {
-    display: block;
-    color: #637268;
-    font-size: 26rpx;
-    line-height: 1.9;
     white-space: pre-wrap;
   }
 }

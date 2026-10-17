@@ -167,169 +167,181 @@ onUnload(() => {
 })
 </script>
 <template>
-  <AppPage title="学习记录" back
-    ><LearningStatistics
+  <AppPage title="学习记录" back>
+    <LearningStatistics
       v-if="account.statistics"
       :statistics="account.statistics"
       :on-select="switchTab"
-    /><AppState v-else :busy="!statsError" :error="statsError" @retry="loadStats" /><view
-      v-if="account.statistics"
-      class="today"
-      >{{
-        account.statistics.checked_in_today
-          ? '✓ 今日已打卡'
-          : '今日待打卡 · 完成一张场景卡即可记录'
-      }}<text>最长连续 {{ account.statistics.longest_streak }} 天</text></view
-    ><view class="tabs"
-      ><button
+    />
+    <AppState v-else :busy="!statsError" :error="statsError" @retry="loadStats" />
+    <view class="tabs">
+      <button
         :class="{ active: tab === RecordsTab.LEARNED }"
         @click="switchTab(RecordsTab.LEARNED)"
       >
-        已学卡片</button
-      ><button
+        已学卡片 {{ learnedTotal ?? account.statistics?.completed_cards ?? '' }}
+      </button>
+      <button
         :class="{ active: tab === RecordsTab.CHECKINS }"
         @click="switchTab(RecordsTab.CHECKINS)"
       >
-        打卡记录
-      </button></view
-    ><AppState
+        打卡记录 {{ checkinTotal ?? account.statistics?.total_checkin_days ?? '' }}
+      </button>
+    </view>
+    <AppState
       :busy="busy && (tab === RecordsTab.LEARNED ? learnedTotal === null : checkinTotal === null)"
       :error="error"
       :empty="tab === RecordsTab.LEARNED ? learnedTotal === 0 : checkinTotal === 0"
-      title="从第一张场景卡开始"
-      description="完成一张场景卡，开始记录学习"
+      :title="tab === RecordsTab.LEARNED ? '还没有完成记录' : '从今天开始打卡'"
+      :description="
+        tab === RecordsTab.LEARNED ? '学完场景卡后点击“已完成学习”。' : '完成任意场景卡，点亮今天。'
+      "
       @retry="load"
       ><button class="primary" @click="learn">去学习</button></AppState
-    ><view v-show="tab === RecordsTab.LEARNED"
-      ><SceneCard v-for="card in learned" :key="card.id" :card="card" history
+    >
+    <view v-show="tab === RecordsTab.LEARNED">
+      <SceneCard v-for="card in learned" :key="card.id" :card="card" history
         ><view class="record-times"
           ><text>首次完成 {{ dateText(card.first_completed_at) }}</text
           ><text>最近学习 {{ dateText(card.last_completed_at) }}</text></view
         ></SceneCard
-      ><button
+      >
+      <button
         v-if="learnedTotal !== null && learned.length < learnedTotal"
         class="text-button more"
         :disabled="busy"
         @click="more"
       >
         {{ busy ? '加载中…' : '加载更多' }}
-      </button></view
-    ><view v-show="tab === RecordsTab.CHECKINS"
-      ><view v-for="record in checkins" :key="record.date" class="checkin"
-        ><button class="checkin-heading" @click="expand(record.date)">
-          <text>{{ record.date }}</text
-          ><text class="checkin-summary"
-            >完成 {{ record.card_count }} 张
-            <text class="arrow">{{ expanded === record.date ? '⌃' : '⌄' }}</text></text
-          ></button
-        ><view v-if="expanded === record.date" class="day-cards"
-          ><AppState :busy="dayBusy" :error="dayError" @retry="expand(record.date)" /><SceneCard
-            v-for="card in day?.items"
-            :key="card.id"
-            :card="card"
-            history
+      </button>
+    </view>
+    <view v-show="tab === RecordsTab.CHECKINS">
+      <view v-for="record in checkins" :key="record.date" class="checkin">
+        <button
+          class="checkin-heading"
+          :aria-expanded="expanded === record.date"
+          @click="expand(record.date)"
+        >
+          <text class="checkin-date">{{ record.date }}</text
+          ><text class="checkin-badge">{{
+            record.date === account.statistics?.date ? '今日已打卡' : '已打卡'
+          }}</text
+          ><text class="arrow">{{ expanded === record.date ? '⌃' : '⌄' }}</text>
+        </button>
+        <text class="checkin-summary">当日完成 {{ record.card_count }} 张 · 每日只记一次打卡</text>
+        <view v-if="expanded === record.date" class="day-cards">
+          <AppState :busy="dayBusy" :error="dayError" @retry="expand(record.date)" />
+          <SceneCard v-for="card in day?.items" :key="card.id" :card="card" history compact
             ><text class="daily-time">{{ dateText(card.completed_at) }}</text></SceneCard
-          ></view
-        ></view
-      ><button
+          >
+        </view>
+      </view>
+      <button
         v-if="checkinTotal !== null && checkins.length < checkinTotal"
         class="text-button more"
         :disabled="busy"
         @click="more"
       >
         {{ busy ? '加载中…' : '加载更多' }}
-      </button></view
-    ></AppPage
-  >
+      </button>
+    </view>
+  </AppPage>
 </template>
 <style scoped lang="scss">
-.today {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-  font-size: 24rpx;
-  color: #637268;
-  margin-top: 20rpx;
-
-  > text {
-    font-size: 22rpx;
-  }
-}
-
 .tabs {
   display: flex;
-  border-bottom: 1px solid #dce2d5;
-  margin-top: 36rpx;
+  border-bottom: 1px solid #dfe5d8;
+  margin: 50rpx 0 13.462rpx;
 
   button {
     flex: 1;
     border: 0;
     border-radius: 0;
     background: none;
-    padding: 24rpx 12rpx;
-    font-size: 28rpx;
+    padding: 19.231rpx 11.538rpx;
+    font-size: 23.077rpx;
+    min-height: 86.538rpx;
+    color: #586c5b;
 
     &.active {
-      color: #347553;
-      font-weight: 600;
-      border-bottom: 4rpx solid #347553;
+      color: #2b4438;
+      border-bottom: 3.846rpx solid #2b4438;
     }
   }
 }
 
 .record-times {
-  margin-top: 10rpx;
+  margin-top: 13.462rpx;
 
   > text {
     display: block;
-    font-size: 20rpx;
+    font-size: 19.231rpx;
     line-height: 1.8;
-    color: #637268;
+    color: #586c5b;
   }
 }
 
 .daily-time {
-  font-size: 20rpx;
-  color: #637268;
+  font-size: 19.231rpx;
+  color: #586c5b;
   display: block;
-  margin-top: 8rpx;
+  margin-top: 7.692rpx;
 }
 
 .checkin {
-  border-bottom: 1px solid #dce2d5;
+  padding: 40.385rpx 0;
+  border-bottom: 1px solid #dfe5d8;
 
   .checkin-heading {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 11.538rpx;
     width: 100%;
     border: 0;
     border-radius: 0;
     background: none;
-    padding: 30rpx 0;
+    padding: 0;
     text-align: left;
-    font-size: 28rpx;
+  }
 
-    .checkin-summary {
-      font-size: 24rpx;
-      color: #637268;
-    }
+  .checkin-date {
+    flex: 1;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 28.846rpx;
+    font-weight: 500;
+  }
 
-    .arrow {
-      margin-left: 10rpx;
-    }
+  .checkin-badge {
+    background: #e4f0db;
+    color: #47614b;
+    font-size: 19.231rpx;
+    border-radius: 7.692rpx;
+    padding: 3.846rpx 11.538rpx;
+  }
+
+  .arrow {
+    font-size: 23.077rpx;
+    color: #586c5b;
+  }
+
+  .checkin-summary {
+    display: block;
+    font-size: 23.077rpx;
+    line-height: 1.8;
+    color: #586c5b;
+    margin-top: 13.462rpx;
   }
 
   .day-cards {
-    padding: 0 20rpx;
-    background: #f5f7ef;
-    border-radius: 16rpx;
-    margin-bottom: 20rpx;
+    padding: 5.769rpx 23.077rpx;
+    background: #f0f4e8;
+    border-radius: 17.308rpx;
+    margin-top: 25rpx;
   }
 }
 
 .more {
   width: 100%;
-  margin-top: 20rpx;
+  margin-top: 19.231rpx;
 }
 </style>

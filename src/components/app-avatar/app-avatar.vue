@@ -16,9 +16,9 @@ withDefaults(defineProps<{ src?: string; size?: number }>(), { src: '', size: 64
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #eef3e9;
+  background: #e4f0db;
   flex-shrink: 0;
-  color: #347553;
+  color: #2b4438;
 
   image {
     width: 100%;

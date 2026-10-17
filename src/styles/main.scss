@@ -1,9 +1,11 @@
+@import './design-fonts';
+
 page {
-  background: #fffdf7;
-  color: #254733;
-  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  font-size: 28rpx;
-  line-height: 1.7;
+  background: #fffcf5;
+  color: #2b4438;
+  font-family: 'DM Sans', 'Juya UI Chinese', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 26.92rpx;
+  line-height: 1.65;
 }
 
 view,
@@ -14,13 +16,19 @@ textarea {
   box-sizing: border-box;
 }
 
+button,
+input,
+textarea {
+  font-family: inherit;
+}
+
 .app-page button {
   margin: 0;
   line-height: 1.5;
-  border: 1px solid #dce2d5;
+  border: 1px solid #dfe5d8;
   border-radius: 16rpx;
-  background: #fffdf7;
-  color: #254733;
+  background: #fffcf5;
+  color: #2b4438;
   font-size: 28rpx;
   padding: 16rpx 24rpx;
   display: flex;
@@ -33,14 +41,14 @@ textarea {
 
   &[disabled] {
     opacity: 0.48;
-    color: #637268;
-    background: #eef3e9;
+    color: #586c5b;
+    background: #e4f0db;
   }
 
   &.primary {
-    color: #fff;
-    background: #347553;
-    border-color: #347553;
+    color: #2b4438;
+    background: #c8e2b5;
+    border-color: #c8e2b5;
     font-weight: 600;
   }
 
@@ -48,7 +56,7 @@ textarea {
     background: none;
     border: 0;
     padding: 8rpx 0;
-    color: #347553;
+    color: #2b4438;
     font-size: 24rpx;
   }
 }
@@ -58,7 +66,7 @@ textarea {
   display: block;
   width: 100%;
   font-size: 28rpx;
-  color: #254733;
+  color: #2b4438;
   background: #fff;
   border: 1px solid #cfd8c9;
   border-radius: 16rpx;
@@ -81,7 +89,7 @@ textarea {
 }
 
 .muted {
-  color: #637268;
+  color: #586c5b;
 }
 
 .small {
@@ -103,8 +111,8 @@ textarea {
 
 .notice {
   padding: 22rpx 26rpx;
-  border: 1px solid #dce2d5;
-  background: #eef3e9;
+  border: 1px solid #dfe5d8;
+  background: #e4f0db;
   border-radius: 16rpx;
   font-size: 24rpx;
   line-height: 1.8;
@@ -133,8 +141,8 @@ textarea {
 
 .safe-footer {
   padding: 24rpx 40rpx calc(24rpx + env(safe-area-inset-bottom));
-  background: #fffdf7;
-  border-top: 1px solid #dce2d5;
+  background: #fffcf5;
+  border-top: 1px solid #dfe5d8;
   position: fixed;
   bottom: 0;
   left: 0;

@@ -1,0 +1,26 @@
+{
+  "juya-wordmark": {
+    "x": 0,
+    "y": 0,
+    "width": 126.609375,
+    "height": 112
+  },
+  "juya-chinese": {
+    "x": 0,
+    "y": 0,
+    "width": 116,
+    "height": 44
+  },
+  "juya-tagline": {
+    "x": 0,
+    "y": 0,
+    "width": 207,
+    "height": 26
+  },
+  "juya-nav": {
+    "x": 0,
+    "y": 0,
+    "width": 55.46875,
+    "height": 53
+  }
+}

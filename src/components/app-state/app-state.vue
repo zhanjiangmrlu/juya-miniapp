@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import AppLeaf from '@/components/app-leaf/app-leaf.vue'
 defineProps<{
   busy?: boolean
   error?: string
@@ -15,7 +14,8 @@ defineEmits<{ retry: [] }>()
     ><button class="text-button" @click="$emit('retry')">重试</button></view
   ><view v-if="busy" class="loading" aria-live="polite">正在加载…</view
   ><view v-else-if="empty && !error" class="empty"
-    ><view class="empty-mark"><AppLeaf :size="50" /></view
+    ><view class="empty-mark"
+      ><view class="empty-book"><view class="book-page" /><view class="book-spine" /></view></view
     ><text class="empty-title">{{ title || '暂无记录' }}</text
     ><text class="empty-description">{{ description }}</text
     ><slot
@@ -24,19 +24,20 @@ defineEmits<{ retry: [] }>()
 <style scoped lang="scss">
 .loading {
   padding: 40rpx 0;
-  color: #637268;
-  font-size: 26rpx;
+  color: #586c5b;
+  font-size: 23.08rpx;
 }
 
 .empty {
   text-align: center;
-  padding: 70rpx 20rpx;
-  color: #637268;
+  padding: 92.31rpx 15.38rpx 69.23rpx;
+  color: #586c5b;
 
   .empty-mark {
-    width: 104rpx;
-    height: 104rpx;
-    border: 1px solid #dce2d5;
+    width: 96.15rpx;
+    height: 96.15rpx;
+    border: 0;
+    background: #e4f0db;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -44,17 +45,39 @@ defineEmits<{ retry: [] }>()
     margin: 0 auto 32rpx;
   }
 
+  .empty-book {
+    position: relative;
+    width: 46.15rpx;
+    height: 38.46rpx;
+    border: 1.5px solid #2b4438;
+    border-radius: 2rpx;
+
+    .book-page {
+      position: absolute;
+      inset: 6rpx;
+      border-top: 1px solid #2b4438;
+    }
+
+    .book-spine {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      height: 100%;
+      border-left: 1.5px solid #2b4438;
+    }
+  }
+
   .empty-title {
     display: block;
-    font-size: 32rpx;
-    font-weight: 600;
-    color: #254733;
-    margin-bottom: 12rpx;
+    font-size: 34.62rpx;
+    font-weight: 500;
+    color: #2b4438;
+    margin-bottom: 19.23rpx;
   }
 
   .empty-description {
     display: block;
-    font-size: 26rpx;
+    font-size: 23.08rpx;
     line-height: 1.9;
   }
 

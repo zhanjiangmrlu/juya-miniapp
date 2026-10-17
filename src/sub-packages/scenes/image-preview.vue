@@ -9,8 +9,9 @@ import { mediaAddress } from '@/services/media-service'
 import { backTo } from '@/services/navigation'
 import { Routes } from '@/shared/constants/navigation'
 
-import type { ImagePreviewContext } from '@/shared/types/image-preview'
-const src = ref(''),
+import type { ImagePreviewContext, ImageScaleEvent } from '@/shared/types/image-preview'
+const zoom = ref(1),
+  src = ref(''),
   error = ref(''),
   busy = ref(false)
 let context: ImagePreviewContext | null = null,
@@ -48,6 +49,12 @@ const imageFailed = async () => {
     }
   }
 }
+/** 记录双指缩放后的比例，同步底部缩放控件
+ * @param event 原图移动视图返回的实际缩放比例
+ */
+const scaleChanged = (event: ImageScaleEvent) => {
+  zoom.value = event.detail.scale
+}
 /** 关闭当前覆盖层，不退出原场景 */
 const close = () => backTo(Routes.LEARNING)
 onLoad((query) => {
@@ -64,51 +71,76 @@ onUnload(() => {
 })
 </script>
 <template>
-  <view class="image-overlay"
-    ><button class="close-image" aria-label="关闭大图" @click="close">×</button
-    ><view v-if="busy" class="overlay-message">正在加载原图…</view
-    ><view v-if="error" class="overlay-message"
+  <view class="image-overlay">
+    <view class="image-top"
+      ><button class="close-image" aria-label="关闭大图" @click="close">×</button
+      ><text>场景卡原图</text><view class="top-spacer"
+    /></view>
+    <view v-if="busy" class="overlay-message">正在加载原图…</view>
+    <view v-if="error" class="overlay-message"
       ><text>{{ error }}</text
       ><button :disabled="busy" @click="load">重新加载</button
       ><button @click="close">关闭</button></view
-    ><movable-area v-if="src && !error" class="zoom-area"
+    >
+    <movable-area v-if="src && !error" class="zoom-area"
       ><movable-view
         class="zoom-image"
         direction="all"
         scale
         :scale-min="1"
         :scale-max="5"
-        :scale-value="1"
+        :scale-value="zoom"
         :out-of-bounds="false"
-        ><image :src="src" mode="aspectFit" @error="imageFailed" /></movable-view></movable-area
-    ><text class="zoom-hint">双指缩放，放大后可拖动查看</text></view
-  >
+        @scale="scaleChanged"
+        ><image :src="src" mode="aspectFit" @error="imageFailed" /></movable-view
+    ></movable-area>
+    <view class="image-controls"
+      ><button aria-label="缩小原图" :disabled="zoom <= 1" @click="zoom = Math.max(1, zoom - 0.25)">
+        －</button
+      ><text>{{ Math.round(zoom * 100) }}%</text
+      ><button aria-label="放大原图" :disabled="zoom >= 5" @click="zoom = Math.min(5, zoom + 0.25)">
+        ＋</button
+      ><button class="reset-image" @click="zoom = 1">还原</button></view
+    >
+  </view>
 </template>
 <style scoped lang="scss">
 .image-overlay {
   position: fixed;
   inset: 0;
-  background: #142018;
+  background: #20362b;
   color: #fff;
+  display: flex;
+  flex-direction: column;
+
+  .image-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: calc(23.077rpx + env(safe-area-inset-top)) 34.615rpx 23.077rpx;
+    font-size: 23.077rpx;
+    z-index: 5;
+  }
 
   .close-image {
-    position: absolute;
-    right: 32rpx;
-    top: calc(28rpx + env(safe-area-inset-top));
-    width: 80rpx;
-    height: 80rpx;
+    width: 69.231rpx;
+    height: 69.231rpx;
     border: 0;
-    border-radius: 50%;
-    background: #fff2;
+    background: transparent;
     color: #fff;
-    font-size: 48rpx;
+    font-size: 46.154rpx;
     padding: 0;
-    z-index: 5;
+  }
+
+  .top-spacer {
+    width: 69.231rpx;
   }
 
   .zoom-area {
     width: 100%;
-    height: 100vh;
+    height: 0;
+    flex: 1;
+    overflow: hidden;
   }
 
   .zoom-image {
@@ -121,27 +153,41 @@ onUnload(() => {
     }
   }
 
-  .zoom-hint {
-    position: absolute;
-    bottom: calc(30rpx + env(safe-area-inset-bottom));
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-size: 22rpx;
-    color: #fff9;
-    pointer-events: none;
+  .image-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 25rpx;
+    padding: 30.769rpx 34.615rpx calc(51.923rpx + env(safe-area-inset-bottom));
+    font-size: 23.077rpx;
+    z-index: 5;
+
+    button {
+      color: #fff;
+      background: transparent;
+      min-width: 69.231rpx;
+      min-height: 69.231rpx;
+      border: 1px solid #647b68;
+      border-radius: 19.231rpx;
+      padding: 11.538rpx 19.231rpx;
+      font-size: 23.077rpx;
+    }
+
+    .reset-image {
+      border: 0;
+    }
   }
 
   .overlay-message {
     position: absolute;
     top: 40%;
-    left: 40rpx;
-    right: 40rpx;
+    left: 38.462rpx;
+    right: 38.462rpx;
     text-align: center;
-    font-size: 26rpx;
+    font-size: 25rpx;
 
     button {
-      margin-top: 24rpx;
+      margin-top: 23.077rpx;
       color: #fff;
       background: #fff2;
     }

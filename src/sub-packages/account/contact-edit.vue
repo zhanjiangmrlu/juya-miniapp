@@ -170,7 +170,7 @@ onUnload(() => {
 </script>
 <template>
   <AppPage
-    title="联系方式"
+    :title="base?.phone || base?.wechat_contact ? '修改联系方式' : '补充联系方式'"
     back
     footer
     custom-back
@@ -182,35 +182,41 @@ onUnload(() => {
       :busy="loading"
       :error="!base ? error : ''"
       @retry="load" /><template v-if="base && !loading && guard.canEdit.value"
-      ><view class="notice"
-        >联系方式选填，不影响学习。手动填写暂不验证归属，仅用于你主动提供的后续联系与服务。</view
+      ><view class="contact-intro"
+        >联系方式选填，不影响学习。<br />按需留下常用联系方式，便于必要时联系你。</view
       >
       <view v-if="rebased" class="notice"
         >已获取当前资料，保留了你手动修改的字段，请核对后再保存。<text v-if="base.phone"
           >当前已保存手机号：{{ base.phone }}</text
         ><text v-if="base.wechat_contact">当前已保存微信号：{{ base.wechat_contact }}</text></view
       >
-      <label class="field"
-        ><text class="field-label">手机号（选填）</text
+      <label class="field contact-edit-section"
+        ><view class="field-heading"
+          ><text class="field-label">手机号</text><text class="optional">选填</text></view
         ><input
           v-model="phone"
+          :class="{ invalid: !!fieldError.phone }"
           type="number"
           :maxlength="32"
           :disabled="busy || unknown"
-          placeholder="请输入11位大陆手机号"
-        /><text v-if="fieldError.phone" class="field-error">{{ fieldError.phone }}</text></label
-      ><label class="field"
-        ><text class="field-label">微信号（选填）</text
+          placeholder="填写常用手机号"
+        /><text v-if="fieldError.phone" class="field-error">{{ fieldError.phone }}</text
+        ><text v-else class="field-help">手动填写，暂不验证号码归属。</text></label
+      ><label class="field contact-edit-section"
+        ><view class="field-heading"
+          ><text class="field-label">微信号</text><text class="optional">选填</text></view
         ><input
           v-model="wechat"
+          :class="{ invalid: !!fieldError.wechat_contact }"
           :maxlength="64"
           :disabled="busy || unknown"
-          placeholder="6–20位，以字母开头"
+          placeholder="填写微信号，不是微信昵称"
         /><text v-if="fieldError.wechat_contact" class="field-error">{{
           fieldError.wechat_contact
-        }}</text></label
+        }}</text
+        ><text v-else class="field-help">请填写你常用的微信号。</text></label
       ><text class="help"
-        >已有联系方式不能通过清空删除，可以保留或修改。没有填写过的字段可以继续留空。</text
+        >两项都可以不填，直接返回继续学习。<br />已有联系方式可修改，不能通过清空删除。</text
       ><view v-if="error" class="notice error"
         >{{ error
         }}<button v-if="conflict" class="text-button" :disabled="busy" @click="reloadLatest">
@@ -243,19 +249,89 @@ onUnload(() => {
   /></AppPage>
 </template>
 <style scoped lang="scss">
-.field-error {
+.contact-intro {
+  font-size: 26.92rpx;
+  line-height: 1.9;
+  color: #586c5b;
+  margin: 15.38rpx 0 46.15rpx;
+}
+
+.field {
   display: block;
-  font-size: 24rpx;
-  color: #a23f35;
-  margin-top: 12rpx;
+  margin: 0 0 38.46rpx;
+  font-size: 25rpx;
+  line-height: 1.8;
+
+  .field-heading {
+    display: flex;
+    align-items: baseline;
+  }
+
+  .field-label {
+    margin: 0;
+    font-size: 25rpx;
+  }
+
+  .optional {
+    margin-left: 11.54rpx;
+    font-size: 23.08rpx;
+    font-weight: 400;
+    color: #586c5b;
+  }
+
+  input {
+    height: 92.31rpx;
+    margin-top: 17.31rpx;
+    padding: 23.08rpx 26.92rpx;
+    border: 1px solid #dfe5d8;
+    border-radius: 19.23rpx;
+    font-size: 26.92rpx;
+  }
+
+  .invalid {
+    border-color: #ad4f32;
+  }
+
+  .field-help,
+  .field-error {
+    display: block;
+    margin-top: 15.38rpx;
+    font-size: 21.15rpx;
+    line-height: 1.85;
+    color: #586c5b;
+  }
+
+  .field-error {
+    color: #ad4f32;
+    line-height: 1.7;
+  }
+
+  & + .field {
+    border-top: 1px solid #dfe5d8;
+    padding-top: 50rpx;
+    margin-top: 53.85rpx;
+  }
 }
 
 .help {
   display: block;
-  color: #637268;
-  font-size: 24rpx;
+  color: #586c5b;
+  font-size: 21.15rpx;
   line-height: 1.9;
-  margin-top: 40rpx;
-  margin-bottom: 36rpx;
+  margin-top: 46.15rpx;
+}
+
+.safe-footer {
+  padding: 25rpx 46.15rpx calc(53.85rpx + env(safe-area-inset-bottom));
+  gap: 23.08rpx;
+  background: #fffcf5;
+  border-color: #dfe5d8;
+
+  button {
+    min-height: 88.46rpx;
+    font-size: 26.92rpx;
+    border-radius: 19.23rpx;
+    line-height: 1.5;
+  }
 }
 </style>

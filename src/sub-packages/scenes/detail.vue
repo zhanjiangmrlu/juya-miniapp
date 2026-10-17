@@ -7,6 +7,8 @@ import AppState from '@/components/app-state/app-state.vue'
 import { createAudioController } from '@/features/learning/audio-controller'
 import SceneAudioPlayer from '@/features/learning/components/scene-audio-player.vue'
 import SceneDialogue from '@/features/learning/components/scene-dialogue.vue'
+import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
+import SceneUnavailable from '@/features/learning/components/scene-unavailable.vue'
 import SceneVocabulary from '@/features/learning/components/scene-vocabulary.vue'
 import { operations, session } from '@/services/api'
 import { ApiError } from '@/services/errors'
@@ -345,38 +347,49 @@ onUnload(() => {
 })
 </script>
 <template>
-  <AppPage title="场景详情" back footer
+  <AppPage :title="summary ? '场景卡暂不可用' : '场景学习'" back footer
     ><AppState :busy="busy && !card" :error="error" @retry="load" /><template v-if="stale"
       ><view class="notice">内容已更新，请重新获取后继续学习</view
       ><button class="primary" @click="load">刷新内容</button></template
-    ><view v-else-if="summary" class="unavailable"
-      ><text class="title">{{ summary.name }}</text
-      ><text class="unavailable-description">{{
-        summary.unavailable_reason === 'deleted'
-          ? '这张卡片已删除，你的学习记录和打卡成绩会保留。'
-          : '这张卡片暂不可用，你可以返回查看其他内容。'
-      }}</text
-      ><button v-if="summary.state.favorite" :disabled="favoriteBusy" @click="toggleFavorite">
-        {{ favoriteBusy ? '处理中…' : '取消收藏' }}</button
-      ><text v-else class="muted small">{{ message || '已有学习成绩会保留' }}</text></view
-    ><template v-else-if="card"
+    ><SceneUnavailable
+      v-else-if="summary"
+      :summary="summary"
+      :favorite-busy="favoriteBusy"
+      :message="message"
+      @unfavorite="toggleFavorite"
+    /><template v-else-if="card"
       ><view class="scene-title between"
         ><text class="title">{{ card.content.name }}</text
-        ><button class="favorite" :disabled="favoriteBusy" @click="toggleFavorite">
-          <text class="star">{{ favorite ? '★' : '☆' }}</text
-          ><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏' }}</text>
+        ><button
+          class="favorite"
+          :class="{ saved: favorite }"
+          :disabled="favoriteBusy"
+          :aria-pressed="favorite"
+          @click="toggleFavorite"
+        >
+          <text class="star">{{ favorite ? '♥' : '♡' }}</text
+          ><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏整卡' }}</text>
         </button></view
-      ><view class="scene-picture" @click="previewImage"
-        ><image
-          v-if="imageSrc && !imageError"
-          :src="imageSrc"
-          mode="widthFix"
-          :alt="card.content.name"
-          @error="imageError = '图片暂未加载，可重试'"
-        /><button v-else class="image-retry" @click.stop="loadImage">
-          {{ imageError || '正在加载场景图…' }}
-        </button></view
-      ><SceneAudioPlayer
+      ><view class="scene-picture">
+        <view class="scene-thumbnail" @click="previewImage">
+          <image
+            v-if="imageSrc && !imageError"
+            :src="imageSrc"
+            mode="aspectFit"
+            :alt="card.content.name"
+            @error="imageError = '图片暂未加载，可重试'"
+          />
+          <button v-else class="image-retry" @click.stop="loadImage">
+            {{ imageError || '正在加载场景图…' }}
+          </button>
+        </view>
+        <view class="scene-prompt">
+          <text class="prompt-title">Start with the scene.</text>
+          <text class="prompt-description">点开场景卡，查看完整图片。</text>
+          <button class="expand-image" @click="previewImage">放大场景卡</button>
+        </view>
+      </view>
+      <SceneAudioPlayer
         :state="audioState"
         @toggle="playFull"
         @seek="audio?.seekFull($event)"
@@ -393,8 +406,10 @@ onUnload(() => {
         @play="playWord"
       />
       <view v-if="card.content.chunks?.length" class="chunks-section"
-        ><text class="section-title">语块</text
-        ><view v-for="chunk in card.content.chunks" :key="chunk.id" class="word"
+        ><SceneSectionHeading english="Useful expressions" chinese="实用语块" /><view
+          v-for="chunk in card.content.chunks"
+          :key="chunk.id"
+          class="word"
           ><text class="word-english">{{ chunk.english }}</text
           ><text class="meaning">{{ chunk.chinese }}</text></view
         ></view
@@ -424,110 +439,135 @@ onUnload(() => {
 <style scoped lang="scss">
 .scene-title {
   align-items: flex-start;
+  gap: 19.231rpx;
+  margin-bottom: 23.077rpx;
 
   .title {
     flex: 1;
     min-width: 0;
+    font-size: 34.615rpx;
+    line-height: 1.6;
+    font-weight: 600;
     overflow-wrap: anywhere;
   }
 
   .favorite {
     flex-shrink: 0;
     display: flex;
-    flex-direction: column;
-    gap: 2rpx;
+    align-items: center;
+    gap: 11.538rpx;
     border: 0;
+    border-radius: 0;
     background: none;
-    padding: 4rpx 8rpx;
-    color: #347553;
-    font-size: 20rpx;
+    padding: 5.769rpx 0 5.769rpx 9.615rpx;
+    min-height: 61.538rpx;
+    color: #2b4438;
+    font-size: 21.154rpx;
 
     .star {
-      font-size: 42rpx;
-      line-height: 1.2;
+      font-size: 38.462rpx;
+      line-height: 1;
+    }
+
+    &.saved {
+      color: #ad4f32;
     }
   }
 }
 
 .scene-picture {
-  margin-top: 36rpx;
-  border-radius: 16rpx;
-  overflow: hidden;
-  background: #eef3e9;
+  display: flex;
+  align-items: center;
+  gap: 34.615rpx;
+  padding: 30.769rpx;
+  border: 1px solid #dfe5d8;
+  border-radius: 25rpx;
+  background: #fff;
+
+  .scene-thumbnail {
+    width: 176.923rpx;
+    height: 269.231rpx;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 7.692rpx;
+  }
 
   image {
     display: block;
     width: 100%;
+    height: 100%;
   }
 
   .image-retry {
-    min-height: 260rpx;
+    height: 100%;
     width: 100%;
-    background: none;
+    background: #f0f4e8;
     border: 0;
-    color: #637268;
-    font-size: 24rpx;
+    color: #586c5b;
+    font-size: 21.154rpx;
+    padding: 11.538rpx;
+    line-height: 1.8;
+  }
+
+  .scene-prompt {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .prompt-title {
+    display: block;
+    font-family: Fraunces, Georgia, serif;
+    font-size: 38.462rpx;
+    line-height: 1.35;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    margin-bottom: 17.308rpx;
+  }
+
+  .prompt-description {
+    display: block;
+    font-size: 21.154rpx;
+    line-height: 1.8;
+    margin-bottom: 19.231rpx;
+    color: #586c5b;
+  }
+
+  .expand-image {
+    border: 1px solid #dfe5d8;
+    background: #fff;
+    border-radius: 19.231rpx;
+    padding: 17.308rpx 19.231rpx;
+    font-size: 23.077rpx;
+    line-height: 1.5;
+    min-height: 76.923rpx;
   }
 }
 
 .chunks-section {
-  margin-top: 52rpx;
-}
-
-.section-note {
-  font-size: 22rpx;
-  color: #637268;
-  font-weight: 400;
+  margin-top: 57.692rpx;
 }
 
 .word {
-  padding: 26rpx 0;
-  border-bottom: 1px solid #e5e9de;
+  padding: 26.923rpx 0;
+  border-bottom: 1px solid #dfe5d8;
 
   .word-english {
     display: block;
-    font-size: 34rpx;
+    font-size: 28.846rpx;
     font-weight: 600;
-    line-height: 1.6;
-  }
-
-  .phonetic {
-    display: block;
-    color: #637268;
-    font-size: 24rpx;
-    margin-top: 4rpx;
+    line-height: 1.7;
   }
 
   .meaning {
     display: block;
-    font-size: 28rpx;
-    margin-top: 10rpx;
+    font-size: 25rpx;
+    margin-top: 9.615rpx;
     line-height: 1.8;
+    color: #ad4f32;
   }
 }
 
 .success {
-  margin-top: 40rpx;
-}
-
-.unavailable {
-  text-align: center;
-  padding: 90rpx 12rpx;
-
-  .title {
-    font-size: 38rpx;
-  }
-
-  .unavailable-description {
-    display: block;
-    color: #637268;
-    margin: 28rpx 0 40rpx;
-    font-size: 28rpx;
-    line-height: 1.9;
-  }
-
-  button {
-    margin-bottom: 24rpx;
-  }
+  margin-top: 46.154rpx;
 }
 </style>

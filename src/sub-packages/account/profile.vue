@@ -37,8 +37,8 @@ const editContact = () => uni.navigateTo({ url: Routes.CONTACT })
 /** 确认退出后撤销服务器会话，失败留在当前页 */
 const askLogout = () =>
   uni.showModal({
-    title: '退出登录？',
-    content: '本机业务会话和个人资料缓存将被清理，服务器上的学习记录与收藏会保留。',
+    title: '退出当前账号？',
+    content: '退出后需重新登录，学习记录和收藏会继续保留。',
     confirmText: '退出登录',
     cancelText: '取消',
     success: async (result) => {
@@ -63,12 +63,12 @@ onShow(() => {
     ><AppState :busy="busy && !account.profile" :error="error" @retry="load" /><template
       v-if="account.profile"
       ><view class="profile-summary"
-        ><AppAvatar :src="account.avatarURL" :size="144" /><view
+        ><AppAvatar :src="account.avatarURL" :size="127" /><view
           ><text class="title">{{ account.profile.nickname || '学习者' }}</text
-          ><text class="muted small">这里是你的学习账号</text></view
+          ><text class="muted small">每一次学习，都留在这里</text></view
         ></view
       ><button class="profile-link" @click="editProfile">
-        <text>编辑个人资料</text><text>›</text></button
+        <text>编辑个人资料</text><view class="chevron" aria-hidden="true" /></button
       ><view class="profile-section"
         ><view class="between"
           ><text class="section-title">联系方式</text
@@ -78,7 +78,7 @@ onShow(() => {
                 ? '修改联系方式'
                 : '补充联系方式'
             }}
-          </button></view
+            <view class="chevron" aria-hidden="true" /></button></view
         ><view v-if="account.profile.phone" class="contact-row"
           ><text class="muted">手机号</text
           ><text class="contact-value">{{ maskPhone(account.profile.phone) }}</text></view
@@ -87,15 +87,16 @@ onShow(() => {
           ><text class="contact-value">{{ account.profile.wechat_contact }}</text></view
         ><view v-if="!account.profile.phone && !account.profile.wechat_contact" class="no-contact"
           >未填写联系方式</view
-        ><text class="contact-note">联系方式选填，不影响学习、收藏和打卡</text></view
+        ><text v-if="!account.profile.phone && !account.profile.wechat_contact" class="contact-note"
+          >按需补充，不影响学习和收藏。</text
+        ></view
       ><view class="profile-links"
         ><button class="profile-link" @click="privacy = true">
-          <text>隐私及用途说明</text><text>›</text>
-        </button></view
+          <text>隐私说明</text><view class="chevron" aria-hidden="true" /></button></view
       ><view class="profile-bottom"
         ><button class="text-button" :disabled="logoutBusy" @click="askLogout">
           {{ logoutBusy ? '正在退出…' : '退出登录' }}</button
-        ><text>退出不影响已保存的学习成绩与收藏</text></view
+        ><text>学习记录与收藏会保留</text></view
       ></template
     ><AppPrivacySheet v-if="privacy" @close="privacy = false"
   /></AppPage>
@@ -104,12 +105,33 @@ onShow(() => {
 .profile-summary {
   display: flex;
   align-items: center;
-  gap: 32rpx;
-  padding: 20rpx 0 40rpx;
+  gap: 30.77rpx;
+  padding: 13.46rpx 0 46.15rpx;
+  margin-bottom: 5.77rpx;
+
+  :deep(.avatar) {
+    background: #e4f0db;
+    color: #586c5b;
+  }
+
+  :deep(.leaf-glyph) {
+    transform: scale(0.58);
+    color: #586c5b;
+  }
 
   .title {
-    font-size: 48rpx;
-    margin-bottom: 8rpx;
+    font-size: 44.23rpx;
+    font-weight: 500;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .small {
+    display: block;
+    margin-top: 7.69rpx;
+    font-size: 21.15rpx;
+    line-height: 1.8;
+    color: #586c5b;
   }
 }
 
@@ -118,70 +140,107 @@ onShow(() => {
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  min-height: 101.92rpx;
   border: 0;
-  border-bottom: 1px solid #dce2d5;
+  border-bottom: 1px solid #dfe5d8;
   border-radius: 0;
   background: none;
-  padding: 26rpx 0;
-  font-size: 28rpx;
+  padding: 26.92rpx 0;
+  font-size: 25rpx;
+}
+
+.chevron {
+  width: 13.46rpx;
+  height: 13.46rpx;
+  margin-right: 9.62rpx;
+  border-top: 1.5px solid currentcolor;
+  border-right: 1.5px solid currentcolor;
+  transform: rotate(45deg);
+  flex-shrink: 0;
 }
 
 .profile-section {
-  border-top: 1px solid #dce2d5;
-  padding-top: 44rpx;
-  margin-top: 52rpx;
+  padding-top: 46.15rpx;
+  margin-top: 55.77rpx;
+
+  .between {
+    margin-bottom: 11.54rpx;
+  }
 
   .section-title {
-    font-size: 32rpx;
+    font-size: 28.85rpx;
+    font-weight: 500;
     margin-bottom: 0;
+  }
+
+  .text-button {
+    gap: 11.54rpx;
+    min-height: 76.92rpx;
+    padding: 5.77rpx 0;
+    font-size: 23.08rpx;
+    color: #2b4438;
   }
 
   .contact-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 28rpx;
-    padding: 32rpx 0;
-    font-size: 28rpx;
-    border-bottom: 1px solid #e6ebdf;
+    gap: 26.92rpx;
+    min-height: 109.62rpx;
+    padding: 30.77rpx 0;
+    font-size: 25rpx;
+    border-bottom: 1px solid #dfe5d8;
+
+    .muted {
+      flex-shrink: 0;
+      color: #586c5b;
+    }
 
     .contact-value {
       overflow-wrap: anywhere;
       text-align: right;
+      font-weight: 500;
+      line-height: 1.8;
     }
   }
 
   .no-contact {
-    padding: 32rpx 0;
-    color: #637268;
-    font-size: 28rpx;
+    margin: 42.31rpx 0 7.69rpx;
+    color: #586c5b;
+    font-size: 28.85rpx;
   }
 
   .contact-note {
-    font-size: 24rpx;
-    color: #637268;
     display: block;
-    margin-top: 20rpx;
+    font-size: 23.08rpx;
+    line-height: 1.8;
+    color: #586c5b;
+    margin: 13.46rpx 0;
   }
 }
 
 .profile-links {
-  margin-top: 48rpx;
+  margin-top: 50rpx;
 }
 
 .profile-bottom {
-  margin-top: 120rpx;
+  margin-top: 111.54rpx;
+  padding-bottom: 15.38rpx;
   text-align: center;
 
   button {
+    width: 100%;
+    min-height: 76.92rpx;
+    color: #ad4f32;
+    font-size: 25rpx;
     margin: auto;
   }
 
   text {
     display: block;
-    color: #637268;
-    font-size: 22rpx;
-    margin-top: 8rpx;
+    color: #586c5b;
+    font-size: 19.23rpx;
+    margin-top: 7.69rpx;
   }
 }
 </style>

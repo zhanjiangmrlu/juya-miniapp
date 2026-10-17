@@ -267,7 +267,7 @@ onUnload(() => {
 </script>
 <template>
   <AppPage
-    title="个人资料"
+    title="编辑个人资料"
     back
     footer
     custom-back
@@ -280,21 +280,20 @@ onUnload(() => {
       :error="!base ? error : ''"
       @retry="load" /><template v-if="base && !loading && guard.canEdit.value"
       ><view class="identity-photo"
-        ><AppAvatar :src="preview" :size="192" /><!-- #ifdef MP-WEIXIN --><button
+        ><AppAvatar :src="preview" :size="181" /><!-- #ifdef MP-WEIXIN --><button
           class="text-button"
           open-type="chooseAvatar"
           :disabled="busy || unknown"
           @chooseavatar="chooseAvatar"
         >
-          选择头像</button
+          更换头像</button
         ><!-- #endif --><!-- #ifndef MP-WEIXIN --><button
           class="text-button"
           :disabled="busy || unknown"
           @click="chooseImage"
         >
-          选择头像</button
-        ><!-- #endif --><text class="photo-help"
-          >主动选择图片，保存后更新头像 · 最大 {{ Math.floor(limit / 1024 / 1024) }} MB</text
+          更换头像</button
+        ><!-- #endif --><text class="photo-help">主动选择一张图片，作为你的头像</text
         ><text v-if="uploading" class="upload-progress">{{
           percent < 100 ? `上传中 ${percent}%` : '正在处理头像…'
         }}</text
@@ -315,8 +314,9 @@ onUnload(() => {
           type="nickname"
           :maxlength="80"
           :disabled="busy || unknown"
-          placeholder="请输入昵称，留空显示学习者" /></label
-      ><text class="account-note">头像和昵称仅用于展示，不会改变你的账号身份、学习记录或收藏。</text
+          placeholder="填写昵称"
+        /><text class="field-help">未设置时使用“学习者”</text></label
+      ><text class="account-note">修改只影响头像和昵称，学习记录与收藏会保留。</text
       ><view v-if="error" class="notice error"
         >{{ error
         }}<button v-if="conflict" class="text-button" :disabled="busy" @click="reloadLatest">
@@ -353,36 +353,92 @@ onUnload(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24rpx 0 48rpx;
+  padding: 19.23rpx 0 57.69rpx;
+
+  :deep(.avatar) {
+    margin-bottom: 23.08rpx;
+    background: #e4f0db;
+  }
+
+  :deep(.leaf-glyph) {
+    transform: scale(0.68);
+    color: #586c5b;
+  }
 
   .text-button {
-    margin-top: 16rpx;
+    min-height: 76.92rpx;
+    font-size: 23.08rpx;
+    color: #2b4438;
+    padding: 5.77rpx 0;
   }
 
   .photo-help {
-    font-size: 24rpx;
-    color: #637268;
+    margin: 13.46rpx 0;
+    font-size: 21.15rpx;
+    color: #586c5b;
     text-align: center;
     line-height: 1.8;
   }
 
   .upload-progress {
-    font-size: 24rpx;
-    color: #347553;
-    margin-top: 16rpx;
+    font-size: 23.08rpx;
+    color: #41664d;
+    margin-top: 15.38rpx;
   }
 
   .notice {
-    margin-top: 24rpx;
+    margin-top: 23.08rpx;
     width: 100%;
+  }
+}
+
+.field {
+  margin: 0 0 38.46rpx;
+  font-size: 25rpx;
+  line-height: 1.8;
+
+  .field-label {
+    margin: 0;
+    font-size: 25rpx;
+  }
+
+  input {
+    height: 92.31rpx;
+    margin-top: 17.31rpx;
+    padding: 23.08rpx 26.92rpx;
+    border: 1px solid #dfe5d8;
+    border-radius: 19.23rpx;
+    font-size: 26.92rpx;
+  }
+
+  .field-help {
+    display: block;
+    margin-top: 15.38rpx;
+    color: #586c5b;
+    font-size: 21.15rpx;
+    line-height: 1.85;
   }
 }
 
 .account-note {
   display: block;
-  color: #637268;
-  font-size: 24rpx;
+  color: #586c5b;
+  font-size: 21.15rpx;
   line-height: 1.9;
-  margin: 48rpx 0 36rpx;
+  margin-top: 46.15rpx;
+}
+
+.safe-footer {
+  padding: 25rpx 46.15rpx calc(53.85rpx + env(safe-area-inset-bottom));
+  gap: 23.08rpx;
+  background: #fffcf5;
+  border-color: #dfe5d8;
+
+  button {
+    min-height: 88.46rpx;
+    font-size: 26.92rpx;
+    border-radius: 19.23rpx;
+    line-height: 1.5;
+  }
 }
 </style>
