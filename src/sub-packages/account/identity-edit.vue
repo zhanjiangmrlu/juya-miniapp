@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 
 import AppAvatar from '@/components/app-avatar/app-avatar.vue'
 import AppPage from '@/components/app-page/app-page.vue'
+import AppReturnBarrier from '@/components/app-return-barrier/app-return-barrier.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import AppUnsavedDialog from '@/components/app-unsaved-dialog/app-unsaved-dialog.vue'
 import { useUnsavedGuard } from '@/composables/use-unsaved-guard'
@@ -272,8 +273,12 @@ onUnload(() => {
     custom-back
     :fallback="Routes.PROFILE"
     @back="guard.requestBack"
-    ><AppState :busy="loading" :error="!base ? error : ''" @retry="load" /><template
-      v-if="base && !loading"
+    ><AppState
+      v-if="!guard.canEdit.value"
+      error="当前微信版本不支持安全返回，请升级微信后编辑资料" /><AppState
+      :busy="loading"
+      :error="!base ? error : ''"
+      @retry="load" /><template v-if="base && !loading && guard.canEdit.value"
       ><view class="identity-photo"
         ><AppAvatar :src="preview" :size="192" /><!-- #ifdef MP-WEIXIN --><button
           class="text-button"
@@ -321,7 +326,7 @@ onUnload(() => {
         </button></view
       ></template
     ><template #footer
-      ><view v-if="base && !loading" class="safe-footer"
+      ><view v-if="base && !loading && guard.canEdit.value" class="safe-footer"
         ><button :disabled="busy" @click="guard.requestBack">取消</button
         ><button
           class="primary"
@@ -332,7 +337,11 @@ onUnload(() => {
           {{ unknown ? '重试保存' : '保存' }}
         </button></view
       ></template
-    ><AppUnsavedDialog
+    ><AppReturnBarrier
+      v-if="guard.canEdit.value"
+      :show="guard.nativeShow.value"
+      @beforeleave="guard.nativeBeforeLeave"
+      @afterleave="guard.nativeAfterLeave" /><AppUnsavedDialog
       v-if="guard.open.value"
       :busy="busy"
       :unknown="unknown"
