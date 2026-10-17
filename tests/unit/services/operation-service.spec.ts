@@ -124,3 +124,48 @@ it('keeps the original write key when a gateway returns a server error after an 
   await operations.run('complete:a', '/api/mini/v1/cards/a/complete', 'POST', { version_id: 'v1' })
   expect(request.mock.calls[0]?.[1].key).toBe(request.mock.calls[1]?.[1].key)
 })
+
+it('settles the original frozen completion after a result miss and a newer publication', async () => {
+  const { request, operations } = setup()
+  const body = { version_id: 'v1' }
+  request.mockRejectedValueOnce(new ApiError('network_unknown', '响应未知'))
+  await expect(
+    operations.run('complete:a', '/api/mini/v1/cards/a/complete', 'POST', body)
+  ).rejects.toBeInstanceOf(ApiError)
+  body.version_id = 'v2'
+  request
+    .mockRejectedValueOnce(new ApiError('operation_unknown', '尚无结果', 404))
+    .mockRejectedValueOnce(new ApiError('version_changed', '内容已更新', 409))
+  await expect(operations.recover('complete:a')).rejects.toMatchObject({ code: 'version_changed' })
+  expect(request.mock.calls[2]).toEqual([
+    '/api/mini/v1/cards/a/complete',
+    { method: 'POST', body: { version_id: 'v1' }, key: 'write-key-1' }
+  ])
+  expect(operations.pending('complete:a')).toBe(false)
+  request.mockResolvedValueOnce({ date: '2026-10-18' })
+  await operations.run('complete:a', '/api/mini/v1/cards/a/complete', 'POST', body)
+  expect(request.mock.calls[3]?.[1].key).toBe('write-key-2')
+})
+
+it('replays only the previous contact input when result lookup misses and keeps it out of storage', async () => {
+  const { request, operations, records } = setup()
+  request.mockRejectedValueOnce(new ApiError('network_unknown', '响应未知'))
+  await expect(
+    operations.run('contact-save', '/api/mini/v1/me/contact', 'PATCH', {
+      phone: '13800138000',
+      version: 1
+    })
+  ).rejects.toBeInstanceOf(ApiError)
+  request
+    .mockRejectedValueOnce(new ApiError('operation_unknown', '尚无结果', 404))
+    .mockResolvedValueOnce({ contact_version: 2, phone: '13800138000' })
+  expect(await operations.recover('contact-save')).toEqual({
+    contact_version: 2,
+    phone: '13800138000'
+  })
+  expect(request.mock.calls[2]?.[1]).toMatchObject({
+    body: { phone: '13800138000', version: 1 },
+    key: 'write-key-1'
+  })
+  expect(JSON.stringify(Array.from(records.values()))).not.toContain('13800138000')
+})

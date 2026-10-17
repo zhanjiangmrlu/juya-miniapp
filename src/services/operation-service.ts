@@ -30,20 +30,41 @@ export const createOperationService = (ports: OperationPorts) => {
     )
     fingerprints.delete(`${owner.userId}:${action}`)
   }
-  /** 查询成功结果，未找到时不伪造成功也不换新日期
+  /** 先查询回执，未找到时用内存中的原正文和原键重试，不替换为页面新输入
    * @param action 本人待确认行为
    */
   const recover = async <T>(action: string): Promise<T | null> => {
     const state = context(),
       record = state.records.find((row) => row.action === action)
     if (!record) return null
-    const value = await ports.session.request<{ status: 'succeeded'; result: T }>(
-      `/api/mini/v1/operations/${encodeURIComponent(record.key)}`
-    )
+    let result: T
+    try {
+      const value = await ports.session.request<{ status: 'succeeded'; result: T }>(
+        `/api/mini/v1/operations/${encodeURIComponent(record.key)}`
+      )
+      result = value.result
+    } catch (reason) {
+      const frozen = fingerprints.get(`${state.userId}:${action}`)
+      if (!(reason instanceof ApiError) || reason.code !== 'operation_unknown' || !frozen)
+        throw reason
+      if (ports.session.userId() !== state.userId)
+        throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
+      try {
+        result = await ports.session.request<T>(record.path, {
+          method: record.method,
+          body: JSON.parse(frozen).body,
+          key: record.key
+        })
+      } catch (retryError) {
+        if (retryError instanceof ApiError && !isUnconfirmedFailure(retryError))
+          forget(action, state)
+        throw retryError
+      }
+    }
     forget(action, state)
     if (ports.session.userId() !== state.userId)
       throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
-    return value.result
+    return result
   }
   /** 同一次保存或学习操作始终复用同一键，未知结果前禁止改换正文
    * @param action 当前页面动作的唯一业务名称
