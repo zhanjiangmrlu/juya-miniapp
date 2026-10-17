@@ -2,8 +2,8 @@
   "name": "句芽英语",
   "appid": "",
   "description": "从真实场景开始，自然开口说英语",
-  "versionName": "0.1.0",
-  "versionCode": "100",
+  "versionName": "1.5.0",
+  "versionCode": "150",
   "transformPx": false,
   "uniStatistics": {
     "enable": false
@@ -11,7 +11,7 @@
   "mp-weixin": {
     "appid": "wx55af725d6cf39d91",
     "setting": {
-      "urlCheck": false
+      "urlCheck": true
     },
     "usingComponents": true
   }

@@ -1,12 +1,4 @@
-.superpowers/
+AGENTS.md
+pnpm-lock.yaml
 dist/
 node_modules/
-coverage/
-project.config.json
-project.private.config.json
-# Keep the provider's published JSON byte-for-byte for provenance checks
-tests/fixtures/contracts/v15-3f9207a/openapi.json
-tests/fixtures/contracts/v15-3f9207a/examples.json
-tests/fixtures/contracts/v15-19f28ef/openapi.json
-tests/fixtures/contracts/v15-a9a97b8/openapi.json
-tests/fixtures/contracts/v15-b38294b/openapi.json

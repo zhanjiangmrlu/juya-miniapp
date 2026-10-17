@@ -1,71 +1,65 @@
 <script setup lang="ts">
-import type { AppStateProps } from '@/shared/types/ui-components'
-
-defineProps<AppStateProps>()
+import AppLeaf from '@/components/app-leaf/app-leaf.vue'
+defineProps<{
+  busy?: boolean
+  error?: string
+  empty?: boolean
+  title?: string
+  description?: string
+}>()
+defineEmits<{ retry: [] }>()
 </script>
-
 <template>
-  <view class="app-state" role="status">
-    <view class="app-state__icon" role="img" :aria-label="iconLabel || title">
-      <slot name="icon">
-        <view class="app-state__icon-mark" />
-      </slot>
-    </view>
-    <text class="app-state__title">{{ title }}</text>
-    <text class="app-state__description">{{ description }}</text>
-    <view v-if="$slots.default" class="app-state__actions">
-      <slot />
-    </view>
-  </view>
+  <view v-if="error" class="notice error"
+    ><text>{{ error }}</text
+    ><button class="text-button" @click="$emit('retry')">重试</button></view
+  ><view v-if="busy" class="loading" aria-live="polite">正在加载…</view
+  ><view v-else-if="empty && !error" class="empty"
+    ><view class="empty-mark"><AppLeaf :size="50" /></view
+    ><text class="empty-title">{{ title || '暂无记录' }}</text
+    ><text class="empty-description">{{ description }}</text
+    ><slot
+  /></view>
 </template>
-
 <style scoped lang="scss">
-@use '@/styles/mixins.scss' as mixins;
-@use '@/styles/tokens.scss' as tokens;
+.loading {
+  padding: 40rpx 0;
+  color: #637268;
+  font-size: 26rpx;
+}
 
-.app-state {
-  display: flex;
-  align-items: center;
-  padding: 64rpx 40rpx;
-  flex-direction: column;
+.empty {
   text-align: center;
+  padding: 70rpx 20rpx;
+  color: #637268;
 
-  &__icon {
-    display: grid;
-    width: 88rpx;
-    height: 88rpx;
-    place-items: center;
+  .empty-mark {
+    width: 104rpx;
+    height: 104rpx;
+    border: 1px solid #dce2d5;
     border-radius: 50%;
-    background: tokens.$color-module;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 32rpx;
   }
 
-  &__icon-mark {
-    width: 24rpx;
-    height: 24rpx;
-    border: 6rpx solid tokens.$color-primary;
-    border-radius: 50%;
+  .empty-title {
+    display: block;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #254733;
+    margin-bottom: 12rpx;
   }
 
-  &__title {
-    margin-top: tokens.$space-4;
-    color: tokens.$color-text;
-    font-size: 36rpx;
-    font-weight: 700;
+  .empty-description {
+    display: block;
+    font-size: 26rpx;
+    line-height: 1.9;
   }
 
-  &__description {
-    @include mixins.text-wrap;
-
-    max-width: 560rpx;
-    margin-top: tokens.$space-2;
-    color: tokens.$color-text-muted;
-    font-size: 28rpx;
-    line-height: 1.7;
-  }
-
-  &__actions {
-    width: 100%;
-    margin-top: tokens.$space-5;
+  button {
+    margin-top: 36rpx;
   }
 }
 </style>

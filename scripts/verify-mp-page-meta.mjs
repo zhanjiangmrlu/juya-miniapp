@@ -1,44 +1,29 @@
 import assert from 'node:assert/strict'
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import process from 'node:process'
-
-const output = path.resolve(process.argv[2] || 'dist/build/mp-weixin')
-const config = JSON.parse(readFileSync(path.join(output, 'app.json'), 'utf8'))
-const pages = new Set([
-  ...config.pages,
-  ...(config.subPackages ?? config.subpackages ?? []).flatMap((subpackage) =>
-    subpackage.pages.map((page) => `${subpackage.root}/${page}`)
+import { fileURLToPath } from 'node:url'
+const root = fileURLToPath(new URL('../dist/build/mp-weixin/', import.meta.url))
+const configuration = JSON.parse(readFileSync(path.join(root, 'app.json'), 'utf8'))
+assert.deepEqual(
+  configuration.tabBar.list.map((item) => [item.text, item.pagePath]),
+  [
+    ['学习', 'pages/learning/index'],
+    ['收藏', 'pages/favorites/index']
+  ]
+)
+const pages = [
+  ...configuration.pages,
+  ...(configuration.subPackages || []).flatMap((group) =>
+    group.pages.map((page) => `${group.root}/${page}`)
   )
-])
-const failures = []
-let checked = 0
-
-/** 检查编译后页面的原生节点约束，directory 为待遍历的微信构建目录 */
-const inspect = (directory) => {
-  for (const item of readdirSync(directory, { withFileTypes: true })) {
-    const file = path.join(directory, item.name)
-    if (item.isDirectory()) {
-      inspect(file)
-      continue
-    }
-    if (!item.name.endsWith('.wxml')) continue
-    const wxml = readFileSync(file, 'utf8')
-    const metas = [...wxml.matchAll(/<page-meta\b([^>]*)>/g)]
-    if (!metas.length) continue
-    checked++
-    const route = path
-      .relative(output, file)
-      .replaceAll('\\', '/')
-      .replace(/\.wxml$/, '')
-    if (!pages.has(route)) failures.push(`${route}: page-meta 出现在自定义组件内`)
-    if (metas.length !== 1 || !/^\s*<page-meta\b/.test(wxml))
-      failures.push(`${route}: page-meta 必须唯一且为首节点`)
-    if (metas.some((meta) => /\bwx:(?:if|elif|else|for)\b/.test(meta[1])))
-      failures.push(`${route}: page-meta 不能动态渲染`)
-  }
+]
+for (const page of pages) {
+  const file = path.join(root, `${page}.json`)
+  assert.ok(existsSync(file), `Missing page configuration: ${page}`)
+  assert.equal(
+    JSON.parse(readFileSync(file, 'utf8')).navigationStyle,
+    'custom',
+    `Unexpected native header: ${page}`
+  )
 }
-inspect(output)
-assert.ok(checked >= 10, '弹窗涉及的页面必须包含原生滚动控制节点')
-assert.deepEqual(failures, [], failures.join('\n'))
-process.stdout.write(`通过：${checked} 个页面的 page-meta 均为固定首节点，组件内没有 page-meta\n`)
+console.info(`Verified ${pages.length} page configurations and two bottom tabs`)

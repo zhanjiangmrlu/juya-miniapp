@@ -10,7 +10,7 @@ export default {
     'selector-type-no-unknown': [
       true,
       {
-        ignoreTypes: ['page']
+        ignoreTypes: ['page', 'view', 'text', 'slider', 'checkbox']
       }
     ],
     'unit-no-unknown': [

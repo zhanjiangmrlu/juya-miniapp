@@ -1,33 +1,8 @@
-import type { DeletionRequest } from '@/shared/contracts/account'
-
-export interface AccountService {
-  clearLearningData(): Promise<void>
-  requestDeletion(): Promise<DeletionRequest>
-  revokeDeletion(): Promise<DeletionRequest>
+import type { components } from '@/shared/contracts/generated/mini-api'
+export type AccountProfile = components['schemas']['UserProfile']
+export type LoginResult = components['schemas']['WechatLoginResponse']
+export interface StoredSession {
+  access_token: string
+  user_id: string
+  expires_at?: string
 }
-
-export interface AccountDeletionCache {
-  juya_id: string
-  request: DeletionRequest
-}
-
-export interface DeletionViewModel {
-  canRevoke: boolean
-  effectiveAt: string
-  effectiveLabel: string
-  remainingMs: number
-  status: DeletionRequest['status']
-}
-
-export interface LocalDataScope {
-  clearFeedbackDraft(): void
-  clearSession(): void
-  removeStorage(key: string): void
-  resetLearningStores(): void
-}
-
-export type AccountLearningHistoryResponse = {
-  items: Array<{ scene_id: string; completed_at: string | null }>
-}
-
-export type AccountDeletionSummary = { effective_at: string; status: string }

@@ -1,12 +1,12 @@
 {
   "name": "juya-miniapp",
-  "version": "0.1.0",
+  "version": "1.5.0",
   "private": true,
   "description": "句芽英语多端应用",
-  "packageManager": "pnpm@11.22.0",
+  "packageManager": "pnpm@11.25.0",
   "engines": {
     "node": ">=22.22.0 <23",
-    "pnpm": "11.22.0"
+    "pnpm": "11.25.0"
   },
   "scripts": {
     "build": "pnpm build:mp-weixin",
@@ -25,14 +25,14 @@
     "lint:style:fix": "stylelint \"**/*.{vue,css,scss}\" --fix --max-warnings=0",
     "prepare": "simple-git-hooks",
     "test": "vitest run",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "generate:api": "openapi-typescript openapi/mini.json -o src/shared/contracts/generated/mini-api.d.ts && prettier src/shared/contracts/generated/mini-api.d.ts --write"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-5020620260917001",
     "@dcloudio/uni-components": "3.0.0-5020620260917001",
     "@dcloudio/uni-mp-weixin": "3.0.0-5020620260917001",
     "pinia": "2.1.7",
-    "umtrack-wx": "2.8.0",
     "vue": "3.4.21",
     "vue-i18n": "9.1.9"
   },
@@ -47,7 +47,6 @@
     "@vue/compiler-sfc": "3.4.21",
     "@vue/test-utils": "2.5.1",
     "@vue/tsconfig": "0.7.0",
-    "agent-browser": "^0.38.1",
     "eslint": "9.39.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-import-resolver-typescript": "4.4.5",
@@ -70,7 +69,8 @@
     "vite": "5.2.8",
     "vitest": "3.2.4",
     "vue-eslint-parser": "10.3.0",
-    "vue-tsc": "2.2.12"
+    "vue-tsc": "2.2.12",
+    "openapi-typescript": "7.13.0"
   },
   "lint-staged": {
     "*.{js,mjs,cjs,ts,tsx}": [
@@ -90,5 +90,6 @@
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm exec lint-staged"
-  }
+  },
+  "type": "module"
 }

@@ -1,13 +1,10 @@
-import type { FeedbackUploadCredential } from '@/shared/contracts/feedback'
-import type { UserProfile } from '@/shared/contracts/profile'
-
-export interface ProfileService {
-  get(): Promise<UserProfile>
-  update(payload: {
-    nickname: string | null
-    avatar_object_key: string | null
-  }): Promise<UserProfile>
-  getAvatarCredential(contentType: string): Promise<FeedbackUploadCredential>
+import type { AccountProfile } from './account'
+export type ContactBaseline = Pick<AccountProfile, 'phone' | 'wechat_contact' | 'contact_version'>
+export interface ContactInput {
+  phone: string
+  wechat_contact: string
 }
-
-export type ContactPromptReceipt = { key: string; recorded: boolean }
+export interface IdentityInput {
+  nickname: string
+  avatar_id: string | null
+}

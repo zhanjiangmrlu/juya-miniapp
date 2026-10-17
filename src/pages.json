@@ -1,25 +1,21 @@
 {
   "pages": [
     {
-      "path": "pages/home/index",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
       "path": "pages/learning/index",
       "style": {
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/favorites/index",
       "style": {
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
       }
     },
     {
-      "path": "pages/profile/index",
+      "path": "pages/login/index",
       "style": {
         "navigationStyle": "custom"
       }
@@ -27,41 +23,7 @@
   ],
   "subPackages": [
     {
-      "root": "sub-packages/home",
-      "pages": [
-        {
-          "path": "first-visit",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "today-task",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        }
-      ]
-    },
-    {
-      "root": "sub-packages/learning",
-      "pages": [
-        {
-          "path": "explore",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "no-access",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        }
-      ]
-    },
-    {
-      "root": "sub-packages/scene",
+      "root": "sub-packages/scenes",
       "pages": [
         {
           "path": "detail",
@@ -70,207 +32,20 @@
           }
         },
         {
-          "path": "dialogue",
+          "path": "image-preview",
           "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "vocabulary",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "chunks",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "audio-failed",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "restore-position",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "return-source",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "shadowing",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "completed",
-          "style": {
-            "navigationStyle": "custom"
+            "navigationStyle": "custom",
+            "disableScroll": true,
+            "backgroundColor": "#142018"
           }
         }
       ]
     },
     {
-      "root": "sub-packages/favorites",
-      "pages": [
-        {
-          "path": "phrases",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "detail",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "sources",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "review-front",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "review-back",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "history",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        }
-      ]
-    },
-    {
-      "root": "sub-packages/profile",
-      "pages": [
-        {
-          "path": "contact-prompt",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "contact-edit",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "contact-manage",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "contact-correction",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "edit",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        }
-      ]
-    },
-    {
-      "root": "sub-packages/entitlement",
+      "root": "sub-packages/records",
       "pages": [
         {
           "path": "index",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "pending",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "active",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "ending",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "ended",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "exception",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        }
-      ]
-    },
-    {
-      "root": "sub-packages/feedback",
-      "pages": [
-        {
-          "path": "messages",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "index",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "create",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "detail",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "resolution",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "content-blocked",
           "style": {
             "navigationStyle": "custom"
           }
@@ -281,59 +56,19 @@
       "root": "sub-packages/account",
       "pages": [
         {
-          "path": "index",
+          "path": "profile",
           "style": {
             "navigationStyle": "custom"
           }
         },
         {
-          "path": "clear-confirm",
+          "path": "identity-edit",
           "style": {
             "navigationStyle": "custom"
           }
         },
         {
-          "path": "delete-confirm",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "deletion-pending",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        }
-      ]
-    },
-    {
-      "root": "sub-packages/compat",
-      "pages": [
-        {
-          "path": "index",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        }
-      ]
-    },
-    {
-      "root": "sub-packages/short-reading",
-      "pages": [
-        {
-          "path": "index",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "detail",
-          "style": {
-            "navigationStyle": "custom"
-          }
-        },
-        {
-          "path": "preview",
+          "path": "contact-edit",
           "style": {
             "navigationStyle": "custom"
           }
@@ -342,8 +77,30 @@
     }
   ],
   "globalStyle": {
-    "backgroundColor": "#f8f1e2",
-    "navigationBarBackgroundColor": "#f8f1e2",
-    "navigationBarTextStyle": "black"
+    "backgroundColor": "#fffdf7",
+    "navigationBarBackgroundColor": "#fffdf7",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "句芽英语",
+    "enablePullDownRefresh": false
+  },
+  "tabBar": {
+    "color": "#637268",
+    "selectedColor": "#347553",
+    "backgroundColor": "#fffdf7",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/learning/index",
+        "text": "学习",
+        "iconPath": "static/navigation/learning@3x.png",
+        "selectedIconPath": "static/navigation/learning-selected@3x.png"
+      },
+      {
+        "pagePath": "pages/favorites/index",
+        "text": "收藏",
+        "iconPath": "static/navigation/favorites@3x.png",
+        "selectedIconPath": "static/navigation/favorites-selected@3x.png"
+      }
+    ]
   }
 }

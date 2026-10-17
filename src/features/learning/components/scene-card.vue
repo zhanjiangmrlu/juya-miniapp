@@ -1,289 +1,152 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
-import arrow from '@/features/learning/assets/arrow.svg'
-import book from '@/features/learning/assets/book.svg'
-import lock from '@/features/learning/assets/lock.svg'
+import { mediaAddress } from '@/services/media-service'
+import { openScene } from '@/services/navigation'
 
-import type { SceneCardEmits, SceneCardProps } from '@/shared/types/learning-components'
-const props = withDefaults(defineProps<SceneCardProps>(), {
-  compact: false,
-  actionLabel: '开始学习'
+import type { SceneListItem } from '@/shared/types/learning'
+const props = withDefaults(defineProps<{ card: SceneListItem; history?: boolean }>(), {
+  history: false
 })
-const emit = defineEmits<SceneCardEmits>()
-/** 根据进度展示完成、学习中或已开通文案 */
-const progressLabel = computed(() => {
-  if (props.scene.progress >= 100) return '已完成 · 可复习'
-  if (props.scene.progress > 0) return `学习中 · ${props.scene.progress}%`
-  return '可学习 · 已开通'
+const src = ref(''),
+  imageError = ref(false)
+let generation = 0
+const available = computed(() => !('available' in props.card) || props.card.available)
+const completed = computed(() => 'state' in props.card && props.card.state.completed)
+/** 单独重取短期缩略图，图片失败不阻止打开可读内容 */
+const loadImage = async () => {
+  const run = ++generation
+  imageError.value = false
+  if (!props.card.thumbnail_id) {
+    src.value = ''
+    return
+  }
+  try {
+    const value = await mediaAddress(
+      props.card.id,
+      props.card.thumbnail_id,
+      props.card.version_id,
+      props.history
+    )
+    if (run === generation) src.value = value
+  } catch {
+    if (run === generation) {
+      src.value = ''
+      imageError.value = true
+    }
+  }
+}
+watch(
+  () => [props.card.id, props.card.thumbnail_id, props.card.version_id],
+  () => {
+    void loadImage()
+  },
+  { immediate: true }
+)
+onBeforeUnmount(() => {
+  generation++
 })
-/** 上抛当前卡片，让页面根据后台权限决定导航或提示 */
-const handleSelect = () => emit('select', props.scene)
 </script>
 <template>
-  <button
-    class="scene-card"
-    :class="{ compact, preview: !scene.canOpen }"
-    :aria-label="`${scene.chineseTitle}，${scene.accessLabel}`"
-    @click="handleSelect"
+  <view class="scene-row" :class="{ unavailable: !available }" @click="openScene(card.id)"
+    ><view class="thumbnail"
+      ><image
+        v-if="src && !imageError"
+        :src="src"
+        mode="aspectFill"
+        @error="imageError = true"
+      /><button v-else-if="imageError" class="retry-image" @click.stop="loadImage">重试图片</button
+      ><text v-else class="image-placeholder">场景</text></view
+    ><view class="scene-copy"
+      ><text class="scene-name">{{ card.name }}</text
+      ><text v-if="!available" class="availability">{{
+        'unavailable_reason' in card && card.unavailable_reason === 'deleted'
+          ? '已删除 · 学习成绩保留'
+          : '暂不可用 · 学习成绩保留'
+      }}</text
+      ><text v-else class="scene-hint">场景对话 · 重点词汇</text
+      ><text v-if="completed" class="completed-badge">已完成</text><slot /></view
+    ><text class="arrow">›</text></view
   >
-    <image v-if="scene.imageUrl" class="cover" :src="scene.imageUrl" mode="aspectFill" />
-    <view v-else class="cover placeholder" aria-hidden="true">
-      <image
-        v-if="scene.category === 'directions'"
-        class="arrow-icon"
-        :src="arrow"
-        mode="aspectFit"
-      />
-      <image v-else class="book-icon" :src="book" mode="aspectFit" />
-    </view>
-    <view class="card-body">
-      <view v-if="!compact" class="badge"
-        ><text class="badge-label">{{ scene.canOpen ? scene.series : '内容预览' }}</text></view
-      >
-      <view class="title-row"
-        ><text class="card-title">{{ scene.chineseTitle }}</text
-        ><text v-if="compact" class="card-action">{{ actionLabel }}</text></view
-      >
-      <text class="card-subtitle">{{ scene.title }}{{ compact ? ` · ${scene.series}` : '' }}</text>
-      <template v-if="!compact">
-        <template v-if="scene.canOpen">
-          <text class="status">{{ progressLabel }}</text>
-          <view
-            v-if="scene.progress > 0 && scene.progress < 100"
-            class="progress"
-            aria-hidden="true"
-            ><view class="progress-value" :style="{ width: `${scene.progress}%` }"
-          /></view>
-        </template>
-        <template v-else>
-          <text class="description">{{ scene.description }}</text>
-          <view class="locked"
-            ><image class="lock-icon" :src="lock" mode="aspectFit" /><text class="locked-label"
-              >当前未开通</text
-            ></view
-          >
-        </template>
-      </template>
-      <text
-        v-if="scene.tags?.some((tag) => !['内容预览', '开放学习场景'].includes(tag))"
-        class="tags"
-        >{{
-          scene.tags.filter((tag) => !['内容预览', '开放学习场景'].includes(tag)).join(' · ')
-        }}</text
-      >
-    </view>
-  </button>
 </template>
 <style scoped lang="scss">
-@use '@/styles/tokens.scss' as tokens;
-
-.scene-card {
-  display: grid;
+.scene-row {
+  display: flex;
+  align-items: center;
+  gap: 28rpx;
   width: 100%;
-  min-height: 141px;
-  align-items: start;
-  grid-template-columns: 108px minmax(0, 1fr);
-  gap: 12px;
-  margin: 0;
-  padding: 11px 19px 11px 11px;
-  border: 1px solid tokens.$color-border;
-  border-radius: 16px;
-  background: tokens.$color-card;
-  color: tokens.$color-text;
-  text-align: left;
-  line-height: normal;
+  border-bottom: 1px solid #e5e9de;
+  padding: 28rpx 0;
 
-  .cover {
-    width: 108px;
-    height: 117px;
-    border-radius: 12px;
-  }
-
-  .placeholder {
-    display: grid;
-    place-items: center;
-    background: #e5f2df;
-  }
-
-  .arrow-icon {
-    width: 11.1333px;
-    height: 20.4667px;
-  }
-
-  .book-icon {
-    width: 25.8px;
-    height: 24.68px;
-  }
-
-  .card-body {
-    min-width: 0;
-  }
-
-  .badge {
+  .thumbnail {
+    width: 112rpx;
+    height: 150rpx;
+    flex-shrink: 0;
+    border: 1px solid #dce2d5;
+    border-radius: 10rpx;
+    background: #eef3e9;
+    overflow: hidden;
     display: flex;
-    width: fit-content;
-    min-width: 72px;
-    height: 24px;
     align-items: center;
     justify-content: center;
-    padding: 0 12px;
-    border-radius: 12px;
-    background: tokens.$color-module;
-    font-size: 11px;
-  }
 
-  .badge-label {
-    transform: translateY(-4px);
-  }
-
-  .title-row {
-    display: flex;
-    align-items: start;
-    justify-content: space-between;
-    gap: 6px;
-    margin-top: 6px;
-  }
-
-  .card-title {
-    transform: translateY(-4px);
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 25px;
-    overflow-wrap: anywhere;
-  }
-
-  .card-subtitle {
-    transform: translateY(-4px);
-    display: block;
-    margin-top: 2px;
-    color: tokens.$color-text-muted;
-    font-size: 12px;
-    line-height: 22px;
-    overflow-wrap: anywhere;
-  }
-
-  .status {
-    transform: translateY(-4px);
-    display: block;
-    margin-top: 6px;
-    font-size: 11px;
-    line-height: 20px;
-  }
-
-  .progress {
-    height: 6px;
-    margin-top: 2px;
-    overflow: hidden;
-    border-radius: 3px;
-    background: tokens.$home-track;
-  }
-
-  .progress-value {
-    height: 100%;
-    border-radius: inherit;
-    background: tokens.$home-progress;
-  }
-
-  .locked-label {
-    transform: translateY(-4px);
-  }
-
-  .tags {
-    display: block;
-    margin-top: 4px;
-    font-size: 10px;
-    color: tokens.$color-text-muted;
-  }
-
-  &.compact {
-    min-height: 91px;
-    padding: 6px 9px;
-    border-radius: 12px;
-    grid-template-columns: 72px minmax(0, 1fr);
-
-    .cover {
-      width: 72px;
-      height: 77px;
-      border-radius: 11px;
+    image {
+      width: 100%;
+      height: 100%;
     }
 
-    .title-row {
-      margin-top: 3px;
+    .retry-image {
+      font-size: 20rpx;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: #637268;
     }
 
-    .card-title {
-      font-size: 14px;
-      line-height: 24px;
-    }
-
-    .card-action {
-      flex-shrink: 0;
-      margin-top: 1px;
-      color: tokens.$color-primary;
-      font-size: 10px;
-      line-height: 23px;
-    }
-
-    .card-subtitle {
-      margin-top: 5px;
-      font-size: 11px;
-      line-height: 19px;
+    .image-placeholder {
+      font-size: 20rpx;
+      color: #91a08d;
     }
   }
 
-  &.preview {
-    min-height: 177px;
-    padding: 11px;
-    grid-template-columns: 126px minmax(0, 1fr);
+  .scene-copy {
+    flex: 1;
+    min-width: 0;
 
-    .cover {
-      width: 126px;
-      height: 153px;
-    }
-
-    .badge {
-      min-width: 74px;
-      margin-top: 3px;
-    }
-
-    .title-row {
-      margin-top: 14px;
-    }
-
-    .card-title {
-      font-size: 18px;
-      line-height: 28px;
-    }
-
-    .card-subtitle {
-      margin-top: 1px;
-      line-height: 21px;
-    }
-
-    .description {
-      transform: translateY(-4px);
+    .scene-name {
+      font-size: 32rpx;
+      font-weight: 600;
       display: block;
-      margin-top: 7px;
-      font-size: 12px;
-      line-height: 23px;
+      line-height: 1.6;
       overflow-wrap: anywhere;
     }
 
-    .locked {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: 9px;
-      color: tokens.$color-text-muted;
-      font-size: 11px;
-      line-height: 23px;
+    .scene-hint,
+    .availability {
+      display: block;
+      color: #637268;
+      font-size: 22rpx;
+      margin-top: 10rpx;
     }
 
-    .lock-icon {
-      width: 16px;
-      height: 16px;
+    .completed-badge {
+      display: inline-block;
+      background: #eef3e9;
+      color: #347553;
+      font-size: 20rpx;
+      padding: 2rpx 12rpx;
+      border-radius: 8rpx;
+      margin-top: 12rpx;
     }
+  }
+
+  .arrow {
+    color: #637268;
+    font-size: 40rpx;
+  }
+
+  .unavailable {
+    opacity: 0.75;
   }
 }
 </style>

@@ -1,53 +1,9 @@
-/** 播放器事件类型 */
-export const AudioEventType = {
-  CANPLAY: 'canplay',
-  PLAY: 'play',
-  PAUSE: 'pause',
+export const AudioStatus = {
+  IDLE: 'idle',
+  LOADING: 'loading',
+  PLAYING: 'playing',
+  PAUSED: 'paused',
   ENDED: 'ended',
-  TIMEUPDATE: 'timeupdate',
   ERROR: 'error'
 } as const
-
-export type AudioEventType = (typeof AudioEventType)[keyof typeof AudioEventType] & string
-
-/** 音频播放状态 */
-export const AudioStatus = {
-  FAILED: 'FAILED',
-  IDLE: 'IDLE',
-  LOADING: 'LOADING',
-  PAUSED: 'PAUSED',
-  PLAYING: 'PLAYING'
-} as const
-
 export type AudioStatus = (typeof AudioStatus)[keyof typeof AudioStatus] & string
-
-/** 服务端受控发音准备状态 */
-export const PronunciationStatus = {
-  READY: 'READY',
-  PREPARING: 'PREPARING',
-  FAILED: 'FAILED',
-  UNAVAILABLE: 'UNAVAILABLE'
-} as const
-export type PronunciationStatus = (typeof PronunciationStatus)[keyof typeof PronunciationStatus] &
-  string
-
-/** 音频按钮展示样式 */
-export const AudioButtonVariant = {
-  COMPACT: 'compact',
-  LARGE: 'large',
-  INLINE: 'inline',
-  PILL: 'pill'
-} as const
-
-export type AudioButtonVariant = (typeof AudioButtonVariant)[keyof typeof AudioButtonVariant] &
-  string
-
-/** 前端已使用的音频目标类型，接口仍允许未知值 */
-export const AudioTargetType = {
-  SCENE: 'scene',
-  SENTENCE: 'sentence',
-  WORD: 'word',
-  PHRASE: 'phrase',
-  LEGACY_ENTRY: 'ENTRY'
-} as const
-export type AudioTargetType = (typeof AudioTargetType)[keyof typeof AudioTargetType] & string

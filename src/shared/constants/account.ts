@@ -1,8 +1,2 @@
-export const LEARNING_STORAGE_KEYS = [
-  'juya.progress-queue',
-  'juya.recordings',
-  'juya.review-session',
-  'juya.history-cache'
-] as const
-
-export const DELETION_STATE_KEY = 'juya.deletion-state'
+export const SESSION_STORAGE_KEY = 'juya-rebuild-mini-session-v1'
+export const CONSENT_VERSION = '2026-10-17'
