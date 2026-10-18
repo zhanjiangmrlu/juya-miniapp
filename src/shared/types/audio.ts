@@ -1,5 +1,11 @@
+import type { PLAYBACK_RATES } from '@/shared/constants/audio'
 import type { AudioStatus } from '@/shared/enums/audio'
+export type PlaybackRate = (typeof PLAYBACK_RATES)[number]
+export interface LearningAudioSession {
+  rate: PlaybackRate
+}
 export interface AudioPort {
+  playbackRate?: number
   src: string
   currentTime: number
   duration: number
@@ -15,6 +21,8 @@ export interface AudioPort {
   onTimeUpdate: (callback: () => void) => void
 }
 export interface AudioState {
+  rate: PlaybackRate
+  rateError: string
   status: AudioStatus
   position: number
   duration: number

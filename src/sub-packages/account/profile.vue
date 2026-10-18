@@ -100,8 +100,6 @@ onShow(() => {
           ><text class="contact-value">{{ account.profile.wechat_contact }}</text></view
         ><view v-if="!account.profile.phone && !account.profile.wechat_contact" class="no-contact"
           >未填写联系方式</view
-        ><text v-if="!account.profile.phone && !account.profile.wechat_contact" class="contact-note"
-          >按需补充，不影响学习和收藏。</text
         ></view
       ><view class="profile-links"
         ><button class="profile-link" @click="privacy = true">
@@ -130,8 +128,9 @@ onShow(() => {
   display: flex;
   align-items: center;
   gap: 30.77rpx;
-  padding: 13.46rpx 0 46.15rpx;
-  margin-bottom: 5.77rpx;
+  padding: 13.462rpx 0 0;
+  margin-top: -15.385rpx;
+  margin-bottom: 19.231rpx;
 
   :deep(.avatar) {
     background: #e4f0db;
@@ -159,11 +158,12 @@ onShow(() => {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  min-height: 101.92rpx;
+  min-height: 92.308rpx;
   border: 0;
   border-radius: 0;
   background: none;
-  padding: 26.92rpx 0;
+  padding: 23.077rpx 0;
+  border-bottom: 1px solid #dfe5d8;
   font-size: 25rpx;
 }
 
@@ -174,8 +174,8 @@ onShow(() => {
 }
 
 .profile-section {
-  padding-top: 46.15rpx;
-  margin-top: 55.77rpx;
+  padding-top: 0;
+  margin-top: 34.615rpx;
 
   .between {
     margin-bottom: 11.54rpx;
@@ -200,8 +200,8 @@ onShow(() => {
     align-items: center;
     justify-content: space-between;
     gap: 26.92rpx;
-    min-height: 109.62rpx;
-    padding: 30.77rpx 0;
+    min-height: 92.308rpx;
+    padding: 23.077rpx 0;
     font-size: 25rpx;
     border-bottom: 1px solid #dfe5d8;
 
@@ -219,26 +219,19 @@ onShow(() => {
   }
 
   .no-contact {
-    margin: 42.31rpx 0 7.69rpx;
+    margin: 15.385rpx 0 0;
+    line-height: 1.75;
     color: #586c5b;
     font-size: 28.85rpx;
-  }
-
-  .contact-note {
-    display: block;
-    font-size: 23.08rpx;
-    line-height: 1.8;
-    color: #586c5b;
-    margin: 13.46rpx 0;
   }
 }
 
 .profile-links {
-  margin-top: 50rpx;
+  margin-top: 23.077rpx;
 }
 
 .profile-bottom {
-  margin-top: 111.54rpx;
+  margin-top: 53.846rpx;
   padding-bottom: 15.38rpx;
   text-align: center;
 

@@ -11,6 +11,7 @@ import SceneSectionHeading from '@/features/learning/components/scene-section-he
 import SceneUnavailable from '@/features/learning/components/scene-unavailable.vue'
 import SceneVocabulary from '@/features/learning/components/scene-vocabulary.vue'
 import { operations, session } from '@/services/api'
+import { createAudioPort } from '@/services/audio-port'
 import { ApiError } from '@/services/errors'
 import { registerImagePreview } from '@/services/image-preview'
 import { mediaAddress } from '@/services/media-service'
@@ -21,7 +22,7 @@ import { AudioStatus } from '@/shared/enums/audio'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
-import type { AudioPort, AudioState } from '@/shared/types/audio'
+import type { AudioState } from '@/shared/types/audio'
 import type { PublishedScene } from '@/shared/types/learning'
 const account = useAccountStore(),
   card = ref<PublishedScene | null>(null),
@@ -38,6 +39,8 @@ const account = useAccountStore(),
   awaitingState = ref(false),
   stale = ref(false)
 const audioState = ref<AudioState>({
+  rate: 1,
+  rateError: '',
   status: AudioStatus.IDLE,
   position: 0,
   duration: 0,
@@ -66,11 +69,9 @@ const completionLabel = computed(() =>
 /** 进入当前场景时创建两路互斥音频，不自动播放 */
 const createAudio = () => {
   if (audio || !card.value) return
-  const full = uni.createInnerAudioContext(),
-    word = uni.createInnerAudioContext()
-  full.autoplay = false
-  word.autoplay = false
-  audio = createAudioController(full as AudioPort, word as AudioPort, (state) => {
+  const full = createAudioPort(),
+    word = createAudioPort()
+  audio = createAudioController(full, word, (state) => {
     if (alive) audioState.value = state
   })
   audio.state.duration = card.value.audio_duration || 0
@@ -101,6 +102,7 @@ const invalid = async (reason: unknown) => {
   summary.value = {
     id,
     name: previous?.content.name || '这张场景卡',
+    title_en: previous?.content.title_en || '',
     thumbnail_id: null,
     available: false,
     version_id: null,
@@ -374,6 +376,7 @@ onUnload(() => {
             aria-hidden="true"
           /><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏整卡' }}</text>
         </button></view
+      ><text v-if="card.content.title_en" class="scene-english">{{ card.content.title_en }}</text
       ><view class="scene-picture">
         <view class="scene-thumbnail" @click="previewImage">
           <image
@@ -397,6 +400,7 @@ onUnload(() => {
         :state="audioState"
         @toggle="playFull"
         @seek="audio?.seekFull($event)"
+        @rate="audio?.setRate($event)"
       /><SceneDialogue
         :key="card.version_id"
         :dialogue="card.content.dialogue || []"
@@ -479,6 +483,15 @@ onUnload(() => {
   }
 }
 
+.scene-english {
+  display: block;
+  font-family: Fraunces, Georgia, serif;
+  font-size: 42.308rpx;
+  line-height: 1.42;
+  margin-bottom: 53.846rpx;
+  overflow-wrap: anywhere;
+}
+
 .scene-picture {
   display: flex;
   align-items: center;
@@ -558,15 +571,17 @@ onUnload(() => {
 
   .word-english {
     display: block;
-    font-size: 28.846rpx;
+    font-size: 38.462rpx;
     font-weight: 500;
-    line-height: 1.7;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
   }
 
   .meaning {
     display: block;
-    font-size: 25rpx;
+    font-size: 30.769rpx;
     margin-top: 9.615rpx;
+    overflow-wrap: anywhere;
     line-height: 1.8;
     color: #ad4f32;
   }

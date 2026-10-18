@@ -15,6 +15,7 @@ it('uses only the permitted summary thumbnail and returns to the original list',
       summary: {
         id: 'old-card',
         name: '历史场景',
+        title_en: 'A Historic Scene',
         thumbnail_id: 'safe-thumb',
         version_id: null,
         available: false,
@@ -29,6 +30,7 @@ it('uses only the permitted summary thumbnail and returns to the original list',
   expect(ports.media).toHaveBeenCalledExactlyOnceWith('old-card', 'safe-thumb', null, true)
   expect(page.find('audio').exists()).toBe(false)
   expect(page.text()).toContain('已有学习记录和打卡数据会保留')
+  expect(page.text()).toContain('A Historic Scene')
   await page.findAll('button')[0]!.trigger('click')
   expect(page.emitted('unfavorite')).toHaveLength(1)
   await page.findAll('button')[1]!.trigger('click')

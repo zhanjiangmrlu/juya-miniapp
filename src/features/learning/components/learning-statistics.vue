@@ -38,7 +38,10 @@ const records = (tab: RecordsTab) => {
   margin-bottom: 38.462rpx;
 
   .stat {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
     flex: 1;
     min-width: 0;
     padding: 0;
@@ -49,6 +52,8 @@ const records = (tab: RecordsTab) => {
 
     .number {
       display: block;
+      width: 100%;
+      text-align: center;
       padding-bottom: 7.692rpx;
       font-family: Fraunces, Georgia, serif;
       font-style: italic;
@@ -60,6 +65,8 @@ const records = (tab: RecordsTab) => {
 
     .label {
       display: block;
+      width: 100%;
+      text-align: center;
       font-size: 21.154rpx;
       font-weight: 400;
       line-height: 33.846rpx;

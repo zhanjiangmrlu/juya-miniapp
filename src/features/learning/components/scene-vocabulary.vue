@@ -25,7 +25,8 @@ const sourceLine = (lineId?: string) =>
           "
           @click="word.id && emit('play', word.id)"
         >
-          {{ word.english }}
+          <text class="word-english">{{ word.english }}</text>
+          <text v-if="word.phonetic" class="phonetic">{{ word.phonetic }}</text>
         </button>
         <button
           class="voice-button"
@@ -39,8 +40,7 @@ const sourceLine = (lineId?: string) =>
           ><image v-else src="/static/design/speaker.svg" mode="aspectFit" aria-hidden="true" />
         </button>
       </view>
-      <text v-if="word.phonetic" class="phonetic">{{ word.phonetic }}</text
-      ><text class="meaning">{{ word.meaning }}</text>
+      <text v-if="word.meaning" class="meaning">{{ word.meaning }}</text>
       <text v-if="word.source" class="source">原句 · {{ sourceLine(word.source.line_id) }}</text>
       <text
         v-if="state.wordId === word.id && state.wordStatus === AudioStatus.PLAYING"
@@ -72,19 +72,21 @@ const sourceLine = (lineId?: string) =>
   }
 
   .word {
-    padding: 26.923rpx 0;
+    padding: 30.769rpx 0;
     border-bottom: 1px solid #dfe5d8;
   }
 
   .word-top {
     display: flex;
-    align-items: center;
-    gap: 13.462rpx;
+    align-items: flex-start;
+    gap: 23.077rpx;
   }
 
   .word-trigger {
+    display: block;
     flex: 1;
-    padding: 0;
+    min-width: 0;
+    padding: 9.615rpx 0;
     border: 0;
     border-radius: 0;
     background: none;
@@ -92,10 +94,10 @@ const sourceLine = (lineId?: string) =>
     text-align: left;
     color: #2b4438;
     font-family: 'DM Sans', sans-serif;
-    font-size: 32.692rpx;
+    font-size: 38.462rpx;
     font-weight: 500;
     line-height: 1.5;
-    min-height: 61.538rpx;
+    min-height: 84.615rpx;
     overflow-wrap: anywhere;
   }
 
@@ -116,23 +118,26 @@ const sourceLine = (lineId?: string) =>
   }
 
   .phonetic {
-    display: block;
+    display: inline;
     color: #586c5b;
-    font-size: 21.154rpx;
-    margin-top: 7.692rpx;
+    font-size: 38.462rpx;
+    font-weight: 400;
+    line-height: 1.5;
+    margin-left: 15.385rpx;
   }
 
   .meaning {
     display: block;
-    font-size: 25rpx;
-    margin-top: 7.692rpx;
+    font-size: 30.769rpx;
+    margin-top: 11.538rpx;
+    overflow-wrap: anywhere;
     line-height: 1.8;
     color: #ad4f32;
   }
 
   .source {
     display: block;
-    font-size: 21.154rpx;
+    font-size: 30.769rpx;
     color: #586c5b;
     line-height: 1.8;
     margin-top: 13.462rpx;

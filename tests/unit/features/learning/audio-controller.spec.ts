@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { createAudioController } from '@/features/learning/audio-controller'
 
 class AudioBoundary {
+  playbackRate = 1
   src = ''
   currentTime = 0
   duration = 20
@@ -47,10 +48,67 @@ class AudioBoundary {
 const setup = () => {
   const full = new AudioBoundary(),
     word = new AudioBoundary()
-  const controller = createAudioController(full, word)
+  const controller = createAudioController(full, word, undefined, { rate: 1 })
   return { full, word, controller }
 }
 describe('single whole-audio player and word pronunciation', () => {
+  it('applies all five actual rates without starting paused audio or moving the playhead', async () => {
+    const { full, word, controller } = setup()
+    await controller.toggleFull(async () => '/full')
+    full.currentTime = 8
+    full.callbacks.time?.()
+    for (const rate of [1, 1.25, 1.5, 1.75, 2]) {
+      expect(controller.setRate(rate)).toBe(true)
+      expect(full.playbackRate).toBe(rate)
+      expect(controller.state.rate).toBe(rate)
+      expect(full.currentTime).toBe(8)
+      expect(full.playing).toBe(true)
+      expect(word.playbackRate).toBe(1)
+    }
+    await controller.toggleFull(async () => '/full')
+    controller.setRate(1.25)
+    controller.seekFull(12)
+    expect(full.playing).toBe(false)
+    expect(full.currentTime).toBe(12)
+    expect(full.playbackRate).toBe(1.25)
+    controller.dispose()
+  })
+  it('keeps last effective speed when a native setter rejects a rate', () => {
+    const { full, controller } = setup()
+    Object.defineProperty(full, 'playbackRate', { get: () => 1, set: () => {} })
+    expect(controller.setRate(1.75)).toBe(false)
+    expect(controller.state.rate).toBe(1)
+    expect(controller.state.rateError).toBeTruthy()
+    expect(full.playing).toBe(false)
+    controller.dispose()
+  })
+  it('retains session speed across scenes, word playback, retry and manual replay', async () => {
+    const session = { rate: 1 as 1 | 1.25 | 1.5 | 1.75 | 2 }
+    const full = new AudioBoundary(),
+      word = new AudioBoundary()
+    const first = createAudioController(full, word, undefined, session)
+    first.setRate(1.75)
+    await first.toggleFull(async () => '/first')
+    await first.playWord('word', async () => '/word')
+    expect(full.playing).toBe(false)
+    expect(full.playbackRate).toBe(1.75)
+    expect(word.playbackRate).toBe(1)
+    full.callbacks.error?.()
+    await first.toggleFull(async () => '/retry')
+    expect(full.playbackRate).toBe(1.75)
+    full.callbacks.ended?.()
+    await first.toggleFull(async () => '/replay')
+    expect(full.currentTime).toBe(0)
+    expect(first.state.rate).toBe(1.75)
+    first.dispose()
+    const nextFull = new AudioBoundary()
+    const next = createAudioController(nextFull, new AudioBoundary(), undefined, session)
+    expect(next.state.rate).toBe(1.75)
+    expect(nextFull.playing).toBe(false)
+    await next.toggleFull(async () => '/next')
+    expect(nextFull.playbackRate).toBe(1.75)
+    next.dispose()
+  })
   it('pauses whole audio at its position for a word and never automatically resumes it', async () => {
     const { full, word, controller } = setup()
     await controller.toggleFull(async () => '/full-ticket')

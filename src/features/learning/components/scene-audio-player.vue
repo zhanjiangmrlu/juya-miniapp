@@ -2,12 +2,21 @@
 import { computed, ref } from 'vue'
 
 import { audioTime } from '@/features/learning/scene-model'
+import { PLAYBACK_RATES } from '@/shared/constants/audio'
 import { AudioStatus } from '@/shared/enums/audio'
 
 import type { AudioState } from '@/shared/types/audio'
 import type { SliderChangeEvent } from '@/shared/types/ui'
 const props = defineProps<{ state: AudioState }>()
-const emit = defineEmits<{ toggle: []; seek: [seconds: number] }>()
+const emit = defineEmits<{ toggle: []; seek: [seconds: number]; rate: [value: number] }>()
+const ratesOpen = ref(false)
+/** 选择倍率后收起选项，由统一控制器确认实际生效
+ * @param rate 用户选择的完整音频倍率
+ */
+const chooseRate = (rate: number) => {
+  ratesOpen.value = false
+  emit('rate', rate)
+}
 const dragging = ref(false),
   dragPosition = ref(0)
 const position = computed(() => (dragging.value ? dragPosition.value : props.state.position))
@@ -49,6 +58,14 @@ const change = (event: SliderChangeEvent) => {
           >{{ audioTime(position) }} / {{ audioTime(state.duration) }} · 整篇播放</text
         ></view
       >
+      <button
+        class="rate-toggle"
+        data-action="toggle-rate"
+        :aria-expanded="ratesOpen"
+        @click="ratesOpen = !ratesOpen"
+      >
+        {{ state.rate }}× 倍速
+      </button>
     </view>
     <slider
       :value="position"
@@ -63,6 +80,19 @@ const change = (event: SliderChangeEvent) => {
       @changing="changing"
       @change="change"
     />
+    <view v-if="ratesOpen" class="rate-options" role="group" aria-label="完整音频倍速">
+      <button
+        v-for="rate in PLAYBACK_RATES"
+        :key="rate"
+        :data-rate="rate"
+        :class="{ selected: state.rate === rate }"
+        :aria-pressed="state.rate === rate"
+        @click="chooseRate(rate)"
+      >
+        {{ rate }}×
+      </button>
+    </view>
+    <text v-if="state.rateError" class="rate-error" role="alert">{{ state.rateError }}</text>
     <button v-if="state.error" class="text-button error" @click="emit('toggle')">
       {{ state.error }}
     </button>
@@ -78,7 +108,7 @@ const change = (event: SliderChangeEvent) => {
   .audio-top {
     display: flex;
     align-items: center;
-    gap: 23.077rpx;
+    gap: 19.231rpx;
   }
 
   .audio-copy {
@@ -129,6 +159,50 @@ const change = (event: SliderChangeEvent) => {
 
   slider {
     margin: 25rpx 0 0;
+  }
+
+  .rate-toggle {
+    flex-shrink: 0;
+    width: 107.115rpx;
+    min-height: 84.615rpx;
+    border: 1px solid #b8cdb0;
+    border-radius: 15.385rpx;
+    padding: 7.692rpx;
+    background: #fffcf5;
+    font-size: 23.077rpx;
+    white-space: nowrap;
+  }
+
+  .rate-options {
+    display: flex;
+    gap: 7.692rpx;
+    margin-top: 23.077rpx;
+    border-top: 1px solid #b8cdb0;
+    padding-top: 23.077rpx;
+
+    button {
+      flex: 1;
+      min-width: 0;
+      min-height: 84.615rpx;
+      border: 1px solid transparent;
+      border-radius: 15.385rpx;
+      padding: 7.692rpx 0;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 25rpx;
+      background: #fffcf5;
+    }
+
+    .selected {
+      border-color: #8db972;
+      background: #bedda7;
+    }
+  }
+
+  .rate-error {
+    display: block;
+    margin-top: 15.385rpx;
+    color: #97442d;
+    font-size: 23.077rpx;
   }
 
   .error {

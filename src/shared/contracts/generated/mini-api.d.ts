@@ -510,6 +510,11 @@ export interface components {
       id: string
       /** Name */
       name: string
+      /**
+       * Title En
+       * @default
+       */
+      title_en: string
       /** Version Id */
       version_id: string
       /** Thumbnail Id */
@@ -591,6 +596,11 @@ export interface components {
       id: string
       /** Name */
       name: string
+      /**
+       * Title En
+       * @default
+       */
+      title_en: string
       /** Thumbnail Id */
       thumbnail_id: string | null
       /** Available */
@@ -663,6 +673,11 @@ export interface components {
       id: string
       /** Name */
       name: string
+      /**
+       * Title En
+       * @default
+       */
+      title_en: string
       /** Thumbnail Id */
       thumbnail_id: string | null
       /** Available */
@@ -683,6 +698,12 @@ export interface components {
     }
     /** MediaMetadata */
     MediaMetadata: {
+      /** Playback Id */
+      playback_id?: string | null
+      /** Playback Content Type */
+      playback_content_type?: string | null
+      /** Processing Stage */
+      processing_stage?: string | null
       /** Id */
       id: string
       /** Kind */
@@ -772,6 +793,11 @@ export interface components {
       id: string
       /** Name */
       name: string
+      /**
+       * Title En
+       * @default
+       */
+      title_en: string
       /** Thumbnail Id */
       thumbnail_id: string | null
       /** Available */
@@ -818,6 +844,11 @@ export interface components {
        * @default
        */
       name: string
+      /**
+       * Title En
+       * @default
+       */
+      title_en: string
       /** Image Id */
       image_id?: string | null
       /** Audio Id */

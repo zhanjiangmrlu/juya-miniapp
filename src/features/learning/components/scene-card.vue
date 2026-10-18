@@ -64,6 +64,7 @@ onBeforeUnmount(() => {
       ><text v-else class="image-placeholder">场景</text></view
     ><view class="scene-copy"
       ><text class="scene-name">{{ card.name }}</text
+      ><text v-if="card.title_en" class="scene-english">{{ card.title_en }}</text
       ><text v-if="!available" class="availability">{{
         'unavailable_reason' in card && card.unavailable_reason === 'deleted'
           ? '已删除 · 当前不可用'
@@ -124,6 +125,14 @@ onBeforeUnmount(() => {
       font-size: 25rpx;
       font-weight: 500;
       line-height: 42.5rpx;
+      overflow-wrap: anywhere;
+    }
+
+    .scene-english {
+      display: block;
+      font-family: Fraunces, Georgia, serif;
+      font-size: 34.615rpx;
+      line-height: 1.4;
       overflow-wrap: anywhere;
     }
 

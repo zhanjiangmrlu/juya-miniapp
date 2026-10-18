@@ -3968,6 +3968,11 @@
             "type": "string",
             "title": "Name"
           },
+          "title_en": {
+            "type": "string",
+            "title": "Title En",
+            "default": ""
+          },
           "version_id": {
             "type": "string",
             "title": "Version Id"
@@ -4171,6 +4176,11 @@
             "type": "string",
             "title": "Name"
           },
+          "title_en": {
+            "type": "string",
+            "title": "Title En",
+            "default": ""
+          },
           "thumbnail_id": {
             "anyOf": [
               {
@@ -4352,6 +4362,11 @@
             "type": "string",
             "title": "Name"
           },
+          "title_en": {
+            "type": "string",
+            "title": "Title En",
+            "default": ""
+          },
           "thumbnail_id": {
             "anyOf": [
               {
@@ -4424,6 +4439,39 @@
       },
       "MediaMetadata": {
         "properties": {
+          "playback_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playback Id"
+          },
+          "playback_content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playback Content Type"
+          },
+          "processing_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processing Stage"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -4678,6 +4726,11 @@
             "type": "string",
             "title": "Name"
           },
+          "title_en": {
+            "type": "string",
+            "title": "Title En",
+            "default": ""
+          },
           "thumbnail_id": {
             "anyOf": [
               {
@@ -4825,6 +4878,12 @@
             "type": "string",
             "maxLength": 160,
             "title": "Name",
+            "default": ""
+          },
+          "title_en": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Title En",
             "default": ""
           },
           "image_id": {

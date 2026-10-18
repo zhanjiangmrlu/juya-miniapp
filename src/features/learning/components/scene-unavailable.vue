@@ -41,6 +41,7 @@ onBeforeUnmount(() => {
       <text v-else>场景暂不可用</text>
     </view>
     <text class="title">{{ summary.name }}</text>
+    <text v-if="summary.title_en" class="english-title">{{ summary.title_en }}</text>
     <text class="description">{{
       summary.unavailable_reason === 'deleted'
         ? '这张场景卡已被删除。'
@@ -83,6 +84,14 @@ onBeforeUnmount(() => {
     font-size: 38.462rpx;
     font-weight: 500;
     line-height: 1.6;
+  }
+
+  .english-title {
+    display: block;
+    font-family: Fraunces, Georgia, serif;
+    font-size: 34.615rpx;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
   }
 
   .description {

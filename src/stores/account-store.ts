@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+import { resetLearningAudioSession } from '@/features/learning/learning-audio-session'
 import { onSessionExpired, operations, session } from '@/services/api'
 import { ApiError } from '@/services/errors'
 import { openLogin } from '@/services/navigation'
@@ -20,6 +21,7 @@ export const useAccountStore = defineStore('learner-account', () => {
   /** 清除个人界面和含输入正文的内存，保留服务器成绩 */
   const clear = () => {
     generation++
+    resetLearningAudioSession()
     profile.value = null
     statistics.value = null
     avatarURL.value = ''
@@ -66,6 +68,7 @@ export const useAccountStore = defineStore('learner-account', () => {
    */
   const login = async (agreed: boolean) => {
     const result = await session.login(agreed)
+    resetLearningAudioSession()
     profile.value = result.user
     return result.user
   }

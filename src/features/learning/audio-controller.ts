@@ -1,18 +1,30 @@
+import { DEFAULT_PLAYBACK_RATE, PLAYBACK_RATES } from '@/shared/constants/audio'
 import { AudioStatus } from '@/shared/enums/audio'
 
-import type { AudioPort, AudioState } from '@/shared/types/audio'
+import type {
+  AudioPort,
+  AudioState,
+  LearningAudioSession,
+  PlaybackRate
+} from '@/shared/types/audio'
+
+import { learningAudioSession } from './learning-audio-session'
 
 /** 用两条底层音轨实现完整音频与词汇的互斥播放
  * @param full 当前场景完整音频播放器
  * @param word 独立词汇播放器
  * @param changed 页面状态更新端口
+ * @param speedSession 本轮学习共享的内存倍速
  */
 export const createAudioController = (
   full: AudioPort,
   word: AudioPort,
-  changed: (state: AudioState) => void = () => {}
+  changed: (state: AudioState) => void = () => {},
+  speedSession: LearningAudioSession = learningAudioSession
 ) => {
   const state: AudioState = {
+    rate: speedSession.rate,
+    rateError: '',
     status: AudioStatus.IDLE,
     position: 0,
     duration: 0,
@@ -29,9 +41,55 @@ export const createAudioController = (
   const notify = () => {
     if (alive) changed({ ...state })
   }
+  /** 设置并回读底层倍率，拒绝无效档位或原生静默忽略
+   * @param rate 用户指定的完整音频倍率
+   */
+  const applyRate = (rate: number) => {
+    if (!PLAYBACK_RATES.includes(rate as PlaybackRate)) throw new Error('invalid rate')
+    if (typeof full.playbackRate !== 'number') {
+      if (rate === DEFAULT_PLAYBACK_RATE) return
+      throw new Error('rate unsupported')
+    }
+    full.playbackRate = rate
+    if (Math.abs(full.playbackRate - rate) > 0.001) throw new Error('rate rejected')
+  }
+  /** 仅在设置真实生效后提交当前档位，保持原有进度和暂停状态
+   * @param rate 用户选择的倍率
+   */
+  const setRate = (rate: number) => {
+    if (!alive) return false
+    const previous = state.rate
+    try {
+      applyRate(rate)
+      state.rate = rate as PlaybackRate
+      speedSession.rate = state.rate
+      state.rateError = ''
+      notify()
+      return true
+    } catch {
+      try {
+        applyRate(previous)
+      } catch {
+        /* 原生拒绝时保持上次已确认档位 */
+      }
+      state.rateError = '当前设备未能设置该倍速，请重试或选择其他档位'
+      notify()
+      return false
+    }
+  }
+  /** 新资源或原生重新开始播放后重设本会话档位 */
+  const restoreRate = () => {
+    if (setRate(state.rate)) return
+    // 新场景设备能力变化时回到可确认的正常速度，不显示虚假加速
+    if (setRate(DEFAULT_PLAYBACK_RATE)) {
+      state.rateError = '该倍速暂不可用，已恢复正常速度'
+      notify()
+    }
+  }
   full.onPlay(() => {
     if (!alive) return
     state.status = AudioStatus.PLAYING
+    restoreRate()
     if (pendingSeek > 0) {
       full.seek(pendingSeek)
       pendingSeek = 0
@@ -91,12 +149,16 @@ export const createAudioController = (
     state.wordStatus = AudioStatus.IDLE
     state.wordId = null
     if (state.status === AudioStatus.PAUSED && full.src) {
+      restoreRate()
       full.play()
       notify()
       return
     }
     const generation = ++fullGeneration
-    if (state.status === AudioStatus.ENDED) state.position = 0
+    if (state.status === AudioStatus.ENDED) {
+      state.position = 0
+      full.seek(0)
+    }
     pendingSeek = state.position
     state.status = AudioStatus.LOADING
     state.error = ''
@@ -105,6 +167,7 @@ export const createAudioController = (
       const url = await load()
       if (!alive || generation !== fullGeneration) return
       full.src = url
+      restoreRate()
       full.play()
     } catch {
       if (alive && generation === fullGeneration) {
@@ -135,6 +198,7 @@ export const createAudioController = (
       const url = await load()
       if (!alive || generation !== wordGeneration) return
       word.src = url
+      if (typeof word.playbackRate === 'number') word.playbackRate = DEFAULT_PLAYBACK_RATE
       word.seek(0)
       word.play()
     } catch {
@@ -165,5 +229,5 @@ export const createAudioController = (
     full.destroy()
     word.destroy()
   }
-  return { toggleFull, playWord, seekFull, dispose, state }
+  return { toggleFull, playWord, seekFull, setRate, dispose, state }
 }
