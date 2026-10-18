@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-const root = fileURLToPath(new URL('../dist/build/mp-weixin/', import.meta.url))
+const root = process.env.UNI_OUTPUT_DIR
+  ? path.resolve(process.env.UNI_OUTPUT_DIR)
+  : fileURLToPath(new URL('../dist/build/mp-weixin/', import.meta.url))
 const configuration = JSON.parse(readFileSync(path.join(root, 'app.json'), 'utf8'))
 assert.deepEqual(
   configuration.tabBar.list.map((item) => [item.text, item.pagePath]),
