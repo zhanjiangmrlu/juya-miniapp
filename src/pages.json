@@ -77,16 +77,16 @@
     }
   ],
   "globalStyle": {
-    "backgroundColor": "#fffdf7",
-    "navigationBarBackgroundColor": "#fffdf7",
+    "backgroundColor": "#fffcf5",
+    "navigationBarBackgroundColor": "#fffcf5",
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "句芽英语",
     "enablePullDownRefresh": false
   },
   "tabBar": {
-    "color": "#637268",
-    "selectedColor": "#347553",
-    "backgroundColor": "#fffdf7",
+    "color": "#586c5b",
+    "selectedColor": "#41664d",
+    "backgroundColor": "#fffcf5",
     "borderStyle": "white",
     "list": [
       {

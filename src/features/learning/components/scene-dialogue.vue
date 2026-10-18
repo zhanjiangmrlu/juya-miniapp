@@ -41,7 +41,12 @@ const highlightColor = (quote: string) => {
       :aria-expanded="translated"
       @click="translated = !translated"
     >
-      {{ translated ? '收起译文 ×' : '显示译文 ＋' }}
+      {{ translated ? '收起译文' : '显示译文'
+      }}<image
+        :src="translated ? '/static/design/translate-up.svg' : '/static/design/translate-down.svg'"
+        mode="aspectFit"
+        aria-hidden="true"
+      />
     </button>
     <view v-if="translated" class="translation-section">
       <view v-for="line in dialogue" :key="line.id" class="translation-line"
@@ -56,7 +61,7 @@ const highlightColor = (quote: string) => {
   .dialogue {
     position: relative;
     padding-left: 61.538rpx;
-    margin-bottom: 36.538rpx;
+    margin-bottom: 34.615rpx;
   }
 
   .speaker {
@@ -106,7 +111,7 @@ const highlightColor = (quote: string) => {
   .highlight {
     background: #ddefd8;
     color: #2b4438;
-    padding: 3.846rpx 5.769rpx;
+    padding: 1.923rpx 5.769rpx;
     border-radius: 5.769rpx;
     font-weight: 700;
     box-decoration-break: clone;
@@ -122,6 +127,12 @@ const highlightColor = (quote: string) => {
     margin: 5.769rpx 0 0;
     min-height: 69.231rpx;
     background: #fff;
+  }
+
+  .translation-toggle image {
+    width: 28.846rpx;
+    height: 28.846rpx;
+    margin-left: 11.538rpx;
   }
 
   .translation-section {

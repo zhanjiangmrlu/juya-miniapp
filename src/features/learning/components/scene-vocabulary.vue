@@ -36,9 +36,7 @@ const sourceLine = (lineId?: string) =>
           @click="word.id && emit('play', word.id)"
         >
           <text v-if="state.wordId === word.id && state.wordStatus === AudioStatus.LOADING">…</text
-          ><view v-else class="voice-icon"
-            ><view class="voice-box" /><view class="voice-cone" /><view class="voice-wave"
-          /></view>
+          ><image v-else src="/static/design/speaker.svg" mode="aspectFit" aria-hidden="true" />
         </button>
       </view>
       <text v-if="word.phonetic" class="phonetic">{{ word.phonetic }}</text
@@ -95,7 +93,7 @@ const sourceLine = (lineId?: string) =>
     color: #2b4438;
     font-family: 'DM Sans', sans-serif;
     font-size: 32.692rpx;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.5;
     min-height: 61.538rpx;
     overflow-wrap: anywhere;
@@ -112,40 +110,9 @@ const sourceLine = (lineId?: string) =>
     padding: 0;
   }
 
-  .voice-icon {
-    position: relative;
-    width: 32.692rpx;
-    height: 32.692rpx;
-
-    .voice-box {
-      position: absolute;
-      left: 1.923rpx;
-      top: 11.538rpx;
-      width: 9.615rpx;
-      height: 11.538rpx;
-      border: 1.923rpx solid currentcolor;
-      border-right: 0;
-    }
-
-    .voice-cone {
-      position: absolute;
-      left: 11.538rpx;
-      top: 7.692rpx;
-      width: 9.615rpx;
-      height: 19.231rpx;
-      border: 1.923rpx solid currentcolor;
-      transform: skewY(-30deg);
-    }
-
-    .voice-wave {
-      position: absolute;
-      left: 22.115rpx;
-      top: 6.731rpx;
-      width: 9.615rpx;
-      height: 21.154rpx;
-      border-right: 1.923rpx solid currentcolor;
-      border-radius: 50%;
-    }
+  .voice-button image {
+    width: 28.846rpx;
+    height: 28.846rpx;
   }
 
   .phonetic {

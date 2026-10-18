@@ -26,7 +26,7 @@ textarea {
   margin: 0;
   line-height: 1.5;
   border: 1px solid #dfe5d8;
-  border-radius: 16rpx;
+  border-radius: 19.231rpx;
   background: #fffcf5;
   color: #2b4438;
   font-size: 28rpx;
@@ -49,7 +49,7 @@ textarea {
     color: #2b4438;
     background: #c8e2b5;
     border-color: #c8e2b5;
-    font-weight: 600;
+    font-weight: 500;
   }
 
   &.text-button {
@@ -61,6 +61,13 @@ textarea {
   }
 }
 
+.app-page .primary[disabled] {
+  background: #e4f0db;
+  border-color: #e4f0db;
+  color: #586c5b;
+  opacity: 1;
+}
+
 .app-page input,
 .app-page textarea {
   display: block;
@@ -68,13 +75,13 @@ textarea {
   font-size: 28rpx;
   color: #2b4438;
   background: #fff;
-  border: 1px solid #cfd8c9;
-  border-radius: 16rpx;
+  border: 1px solid #dfe5d8;
+  border-radius: 19.231rpx;
   padding: 20rpx 24rpx;
 }
 
 .app-page input {
-  height: 92rpx;
+  height: 98.442rpx;
 }
 
 .field {
@@ -113,7 +120,7 @@ textarea {
   padding: 22rpx 26rpx;
   border: 1px solid #dfe5d8;
   background: #e4f0db;
-  border-radius: 16rpx;
+  border-radius: 19.231rpx;
   font-size: 24rpx;
   line-height: 1.8;
   margin-bottom: 24rpx;
@@ -127,20 +134,20 @@ textarea {
 
 .title {
   display: block;
-  font-size: 44rpx;
-  font-weight: 650;
+  font-size: 44.231rpx;
+  font-weight: 500;
   line-height: 1.5;
 }
 
 .section-title {
-  font-size: 36rpx;
-  font-weight: 650;
+  font-size: 38.462rpx;
+  font-weight: 500;
   display: block;
   margin-bottom: 28rpx;
 }
 
 .safe-footer {
-  padding: 24rpx 40rpx calc(24rpx + env(safe-area-inset-bottom));
+  padding: 25rpx 46.154rpx max(53.846rpx, env(safe-area-inset-bottom));
   background: #fffcf5;
   border-top: 1px solid #dfe5d8;
   position: fixed;
@@ -149,9 +156,10 @@ textarea {
   right: 0;
   z-index: 20;
   display: flex;
-  gap: 20rpx;
+  gap: 23.077rpx;
 
   button {
     flex: 1;
+    min-height: 88.462rpx;
   }
 }

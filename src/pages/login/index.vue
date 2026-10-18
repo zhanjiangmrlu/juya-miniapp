@@ -182,7 +182,7 @@ onLoad((query) => {
   padding: 46.15rpx 34.62rpx 23.08rpx;
   border-radius: 38.46rpx;
   background: #fff;
-  box-shadow: 0 23.08rpx 69.23rpx rgb(43 68 56 / 6%);
+  box-shadow: none;
 
   .primary {
     display: flex;
@@ -197,7 +197,7 @@ onLoad((query) => {
     background: #cde5b9;
     color: #2b4438;
     font-size: 30.77rpx;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 46.15rpx;
 
     &::after {
@@ -230,14 +230,14 @@ onLoad((query) => {
     display: block;
     margin-bottom: 19.23rpx;
     font-size: 36.54rpx;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 59.62rpx;
   }
 
   .login-description {
     display: block;
     color: #586c5b;
-    font-size: 24.04rpx;
+    font-size: 24.038rpx;
     line-height: 42.31rpx;
   }
 }
@@ -272,6 +272,11 @@ onLoad((query) => {
   align-items: center;
   font-size: 23.08rpx;
   line-height: 42.31rpx;
+
+  :deep(.uni-checkbox-input) {
+    border-color: #586c5b;
+    border-radius: 3px;
+  }
 
   checkbox {
     width: 50rpx;

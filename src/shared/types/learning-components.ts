@@ -2,6 +2,7 @@ import type { components } from '@/shared/contracts/generated/mini-api'
 import type { RecordsTab } from '@/shared/enums/learning'
 import type { SceneListItem } from '@/shared/types/learning'
 export interface LearningStatisticsProps {
+  showUnits?: boolean
   statistics: components['schemas']['Statistics']
   onSelect?: (tab: RecordsTab) => void
 }

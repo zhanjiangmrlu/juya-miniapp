@@ -26,7 +26,7 @@ defineEmits<{ close: [] }>()
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgb(26 40 29 / 36%);
+  background: #2b4438;
   display: flex;
   align-items: center;
   justify-content: center;

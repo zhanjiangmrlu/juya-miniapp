@@ -215,8 +215,6 @@ onUnload(() => {
           fieldError.wechat_contact
         }}</text
         ><text v-else class="field-help">请填写你常用的微信号。</text></label
-      ><text class="help"
-        >两项都可以不填，直接返回继续学习。<br />已有联系方式可修改，不能通过清空删除。</text
       ><view v-if="error" class="notice error"
         >{{ error
         }}<button v-if="conflict" class="text-button" :disabled="busy" @click="reloadLatest">
@@ -250,7 +248,7 @@ onUnload(() => {
 </template>
 <style scoped lang="scss">
 .contact-intro {
-  font-size: 26.92rpx;
+  font-size: 26.923rpx;
   line-height: 1.9;
   color: #586c5b;
   margin: 15.38rpx 0 46.15rpx;
@@ -280,12 +278,12 @@ onUnload(() => {
   }
 
   input {
-    height: 92.31rpx;
+    height: 98.442rpx;
     margin-top: 17.31rpx;
     padding: 23.08rpx 26.92rpx;
     border: 1px solid #dfe5d8;
     border-radius: 19.23rpx;
-    font-size: 26.92rpx;
+    font-size: 26.923rpx;
   }
 
   .invalid {
@@ -313,14 +311,6 @@ onUnload(() => {
   }
 }
 
-.help {
-  display: block;
-  color: #586c5b;
-  font-size: 21.15rpx;
-  line-height: 1.9;
-  margin-top: 46.15rpx;
-}
-
 .safe-footer {
   padding: 25rpx 46.15rpx calc(53.85rpx + env(safe-area-inset-bottom));
   gap: 23.08rpx;
@@ -329,7 +319,7 @@ onUnload(() => {
 
   button {
     min-height: 88.46rpx;
-    font-size: 26.92rpx;
+    font-size: 26.923rpx;
     border-radius: 19.23rpx;
     line-height: 1.5;
   }

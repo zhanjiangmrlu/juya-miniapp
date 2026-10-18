@@ -68,7 +68,7 @@ onUnload(() => {
 })
 </script>
 <template>
-  <AppPage title="我的收藏" footer>
+  <AppPage title="我的收藏" class="favorites-page" footer>
     <view class="favorites-heading between"
       ><text class="section-title">整卡收藏</text
       ><text v-if="total !== null" class="count">{{ total }} 张</text></view
@@ -96,6 +96,12 @@ onUnload(() => {
   /></AppPage>
 </template>
 <style scoped lang="scss">
+.favorites-page {
+  :deep(.nav-title) {
+    margin-left: 80.769rpx;
+  }
+}
+
 .favorites-heading {
   margin: 53.846rpx 0 25rpx;
   align-items: baseline;

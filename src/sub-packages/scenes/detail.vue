@@ -367,8 +367,12 @@ onUnload(() => {
           :aria-pressed="favorite"
           @click="toggleFavorite"
         >
-          <text class="star">{{ favorite ? '♥' : '♡' }}</text
-          ><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏整卡' }}</text>
+          <image
+            class="favorite-icon"
+            src="/static/design/heart.svg"
+            mode="aspectFit"
+            aria-hidden="true"
+          /><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏整卡' }}</text>
         </button></view
       ><view class="scene-picture">
         <view class="scene-thumbnail" @click="previewImage">
@@ -447,7 +451,7 @@ onUnload(() => {
     min-width: 0;
     font-size: 34.615rpx;
     line-height: 1.6;
-    font-weight: 600;
+    font-weight: 500;
     overflow-wrap: anywhere;
   }
 
@@ -464,9 +468,9 @@ onUnload(() => {
     color: #2b4438;
     font-size: 21.154rpx;
 
-    .star {
-      font-size: 38.462rpx;
-      line-height: 1;
+    .favorite-icon {
+      width: 36.538rpx;
+      height: 36.538rpx;
     }
 
     &.saved {
@@ -533,6 +537,7 @@ onUnload(() => {
   }
 
   .expand-image {
+    display: inline-flex;
     border: 1px solid #dfe5d8;
     background: #fff;
     border-radius: 19.231rpx;
@@ -554,7 +559,7 @@ onUnload(() => {
   .word-english {
     display: block;
     font-size: 28.846rpx;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.7;
   }
 

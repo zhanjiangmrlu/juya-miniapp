@@ -27,7 +27,7 @@ defineEmits<{ choose: [choice: LeaveChoice] }>()
 .veil {
   position: fixed;
   inset: 0;
-  background: rgb(26 40 29 / 36%);
+  background: #2b4438;
   z-index: 100;
   display: flex;
   align-items: center;

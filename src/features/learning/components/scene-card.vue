@@ -66,15 +66,13 @@ onBeforeUnmount(() => {
       ><text class="scene-name">{{ card.name }}</text
       ><text v-if="!available" class="availability">{{
         'unavailable_reason' in card && card.unavailable_reason === 'deleted'
-          ? '已删除 · 学习成绩保留'
-          : '暂不可用 · 学习成绩保留'
+          ? '已删除 · 当前不可用'
+          : '已下线 · 当前不可用'
       }}</text
-      ><text v-else class="scene-hint">{{
-        completed ? '已学过 · 点击复习' : '场景对话 · 重点词汇'
-      }}</text>
-      ><slot /></view
-    ><text class="arrow">›</text></view
-  >
+      ><text v-else-if="completed && !$slots.default" class="scene-hint">已学过 · 点击复习</text>
+      <slot v-if="available" /></view
+    ><image class="arrow" src="/static/design/chevron.svg" mode="aspectFit" aria-hidden="true"
+  /></view>
 </template>
 <style scoped lang="scss">
 .scene-row {
@@ -82,20 +80,20 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 26.923rpx;
   width: 100%;
-  border-bottom: 1px solid #dfe5d8;
+  min-height: 251.923rpx;
   padding: 34.615rpx 0;
 
   .thumbnail {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
     width: 119.231rpx;
     height: 180.769rpx;
-    flex-shrink: 0;
     border: 1px solid #dfe5d8;
     border-radius: 9.615rpx;
     background: #fff;
     overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 
     image {
       width: 100%;
@@ -103,11 +101,11 @@ onBeforeUnmount(() => {
     }
 
     .retry-image {
-      font-size: 19.231rpx;
       padding: 0;
       border: 0;
       background: none;
       color: #586c5b;
+      font-size: 19.231rpx;
     }
 
     .image-placeholder {
@@ -121,56 +119,53 @@ onBeforeUnmount(() => {
     min-width: 0;
 
     .scene-name {
+      display: block;
+      margin: 9.615rpx 0;
       font-size: 25rpx;
       font-weight: 500;
-      display: block;
-      line-height: 1.7;
-      margin: 9.615rpx 0;
+      line-height: 42.5rpx;
       overflow-wrap: anywhere;
     }
 
     .scene-hint,
     .availability {
       display: block;
+      margin-top: 11.538rpx;
       color: #586c5b;
       font-size: 21.154rpx;
-      line-height: 1.7;
-      margin-top: 11.538rpx;
+      line-height: 35.962rpx;
     }
   }
 
   .arrow {
-    color: #ad4f32;
-    font-size: 34.615rpx;
     flex-shrink: 0;
-  }
-
-  &.unavailable {
-    opacity: 0.75;
+    width: 34.615rpx;
+    height: 34.615rpx;
   }
 
   &.featured {
+    gap: 28.846rpx;
+    min-height: 282.692rpx;
+    margin-bottom: 7.692rpx;
+    padding: 25rpx;
     border: 1px solid #dfe5d8;
     border-radius: 25rpx;
     background: #fff;
-    padding: 25rpx;
-    gap: 28.846rpx;
-    margin-bottom: 7.692rpx;
-    min-height: 280.769rpx;
+
+    .arrow {
+      align-self: flex-end;
+      margin-bottom: 19.231rpx;
+    }
 
     .thumbnail {
       width: 151.923rpx;
       height: 228.846rpx;
       border-radius: 7.692rpx;
     }
-
-    .arrow {
-      align-self: flex-end;
-      margin-bottom: 9.615rpx;
-    }
   }
 
   &.compact {
+    min-height: 0;
     padding: 23.077rpx 0;
     gap: 21.154rpx;
 
@@ -181,11 +176,6 @@ onBeforeUnmount(() => {
 
     .scene-name {
       font-size: 21.154rpx;
-    }
-
-    .scene-hint,
-    .availability {
-      font-size: 19.231rpx;
     }
   }
 }

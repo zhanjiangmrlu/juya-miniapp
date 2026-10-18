@@ -17,7 +17,9 @@ const switchTab = (target: string) => uni.switchTab({ url: target })
       @click="switchTab(Routes.LEARNING)"
     >
       <image
-        src="/static/navigation/learning-selected@3x.png"
+        :src="
+          active === 'learning' ? '/static/design/book-active.svg' : '/static/design/book-muted.svg'
+        "
         mode="aspectFit"
         aria-hidden="true"
       /><text>学习</text>
@@ -28,7 +30,11 @@ const switchTab = (target: string) => uni.switchTab({ url: target })
       @click="switchTab(Routes.FAVORITES)"
     >
       <image
-        src="/static/navigation/favorites-selected@3x.png"
+        :src="
+          active === 'favorites'
+            ? '/static/design/heart-active.svg'
+            : '/static/design/heart-muted.svg'
+        "
         mode="aspectFit"
         aria-hidden="true"
       /><text>收藏</text>
@@ -54,7 +60,7 @@ const switchTab = (target: string) => uni.switchTab({ url: target })
     align-items: center;
     justify-content: center;
     gap: 17.31rpx;
-    min-height: 80.77rpx;
+    min-height: 82.692rpx;
     margin: 0;
     padding: 15.38rpx 19.23rpx;
     border: 0;
@@ -71,7 +77,7 @@ const switchTab = (target: string) => uni.switchTab({ url: target })
     &.active {
       background: #e4f0db;
       color: #2b4438;
-      font-weight: 500;
+      font-weight: 400;
     }
   }
 

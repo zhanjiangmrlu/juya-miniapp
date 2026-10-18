@@ -2,7 +2,6 @@
 import { onPullDownRefresh, onReachBottom, onShow, onUnload } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
-import AppAvatar from '@/components/app-avatar/app-avatar.vue'
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
@@ -92,7 +91,6 @@ onUnload(() => {
     <view class="welcome between">
       <text class="greeting">{{ account.profile?.nickname || '学习者' }}，今天也学一点</text>
       <button class="account-link" aria-label="账号资料" @click="profile">
-        <AppAvatar v-if="account.avatarURL" :src="account.avatarURL" :size="44" />
         <text>账号</text>
       </button>
     </view>
@@ -103,14 +101,21 @@ onUnload(() => {
       统计暂未更新 <button class="text-button" @click="refreshStats">重试</button>
     </view>
     <view class="today-line between">
-      <text class="today-status">{{
-        account.statistics
-          ? account.statistics.checked_in_today
-            ? '✓ 今日已打卡'
-            : '▣ 今日还未打卡'
-          : '今日状态暂未获取'
-      }}</text>
-      <button class="text-button" @click="records">学习记录 ›</button>
+      <view class="today-label"
+        ><image src="/static/design/calendar.svg" mode="aspectFit" aria-hidden="true" /><text
+          class="today-status"
+          >{{
+            account.statistics
+              ? account.statistics.checked_in_today
+                ? '今日已打卡'
+                : '今日还未打卡'
+              : '今日状态暂未获取'
+          }}</text
+        ></view
+      >
+      <button class="text-button" @click="records">
+        学习记录<image src="/static/design/record-arrow.svg" mode="aspectFit" aria-hidden="true" />
+      </button>
     </view>
     <text class="today-help">{{
       account.statistics?.checked_in_today
@@ -127,7 +132,9 @@ onUnload(() => {
       :empty="total === 0"
       title="场景卡正在准备中"
       description="发布后会在这里展示。"
-      @retry="refresh" />
+      @retry="refresh"
+      ><button v-if="total === 0" class="text-button" @click="refresh">刷新看看</button></AppState
+    >
     <SceneCard v-for="(card, index) in cards" :key="card.id" :card="card" :featured="index === 0" />
     <button
       v-if="total !== null && cards.length < total"
@@ -137,66 +144,76 @@ onUnload(() => {
     >
       {{ busy ? '加载中…' : '加载更多' }}
     </button>
-    <text v-else-if="cards.length" class="list-end">已显示全部场景卡</text>
     <AppBottomTabs active="learning"
   /></AppPage>
 </template>
 <style scoped lang="scss">
 .welcome {
-  min-height: 46.154rpx;
+  min-height: 53.846rpx;
   margin-bottom: 15.385rpx;
 
   .greeting {
     font-size: 25rpx;
-    line-height: 1.7;
+    line-height: 42.5rpx;
     color: #586c5b;
   }
 
   .account-link {
-    display: flex;
-    gap: 9.615rpx;
-    padding: 3.846rpx 0 3.846rpx 15.385rpx;
+    min-height: 53.846rpx;
+    padding: 7.692rpx 0 7.692rpx 28.846rpx;
     border: 0;
     border-radius: 0;
     background: none;
     font-size: 23.077rpx;
     font-weight: 500;
+    line-height: 38.462rpx;
     white-space: nowrap;
   }
 }
 
 .home-title {
   display: block;
+  margin-bottom: 38.462rpx;
   font-family: Fraunces, Georgia, serif;
   font-size: 51.923rpx;
   font-weight: 400;
-  line-height: 1.4;
+  line-height: 72.692rpx;
   letter-spacing: -0.025em;
-  margin-bottom: 38.462rpx;
 }
 
 .today-line {
+  min-height: 76.923rpx;
   font-size: 25rpx;
-  line-height: 1.7;
-  margin-bottom: 3.846rpx;
+  line-height: 42.5rpx;
 
-  .today-status {
+  .today-label {
+    display: flex;
+    align-items: center;
+    gap: 15.385rpx;
     color: #ad4f32;
   }
 
+  image {
+    flex-shrink: 0;
+    width: 34.615rpx;
+    height: 34.615rpx;
+  }
+
   button {
+    gap: 15.385rpx;
+    padding: 19.231rpx 0;
     font-size: 23.077rpx;
-    padding: 7.692rpx 0;
+    line-height: 38.462rpx;
     white-space: nowrap;
   }
 }
 
 .today-help {
   display: block;
-  color: #586c5b;
-  font-size: 21.154rpx;
-  line-height: 1.8;
   margin-top: 3.846rpx;
+  font-size: 21.154rpx;
+  line-height: 38.077rpx;
+  color: #586c5b;
 }
 
 .catalog-heading {
@@ -204,24 +221,16 @@ onUnload(() => {
   align-items: baseline;
 
   .section-title {
-    font-size: 38.462rpx;
-    line-height: 1.5;
-    font-weight: 600;
     margin: 0;
+    font-size: 38.462rpx;
+    font-weight: 500;
+    line-height: 57.692rpx;
   }
 
   .catalog-count {
     font-size: 23.077rpx;
     color: #586c5b;
   }
-}
-
-.list-end {
-  display: block;
-  font-size: 21.154rpx;
-  color: #586c5b;
-  text-align: center;
-  padding: 30.769rpx 0;
 }
 
 .more {

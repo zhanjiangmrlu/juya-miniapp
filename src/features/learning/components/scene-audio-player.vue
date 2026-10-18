@@ -35,13 +35,12 @@ const change = (event: SliderChangeEvent) => {
         :aria-label="state.status === AudioStatus.PLAYING ? '暂停完整音频' : '播放完整音频'"
         @click="emit('toggle')"
       >
-        <text>{{
-          state.status === AudioStatus.LOADING
-            ? '…'
-            : state.status === AudioStatus.PLAYING
-              ? 'Ⅱ'
-              : '▶'
-        }}</text>
+        <image
+          v-if="state.status !== AudioStatus.LOADING && state.status !== AudioStatus.PLAYING"
+          src="/static/design/play.svg"
+          mode="aspectFit"
+          aria-hidden="true"
+        /><text v-else>{{ state.status === AudioStatus.LOADING ? '…' : 'Ⅱ' }}</text>
       </button>
       <view class="audio-copy"
         ><text class="audio-label">完整对话音频</text
@@ -57,10 +56,10 @@ const change = (event: SliderChangeEvent) => {
       :min="0"
       :step="0.1"
       :disabled="!state.duration || state.status === AudioStatus.LOADING"
-      active-color="#2b4438"
-      background-color="#ffffff"
-      block-color="#2b4438"
-      :block-size="8"
+      active-color="#41664d"
+      background-color="#d6e2cd"
+      block-color="#41664d"
+      :block-size="10"
       @changing="changing"
       @change="change"
     />
@@ -71,7 +70,7 @@ const change = (event: SliderChangeEvent) => {
 </template>
 <style scoped lang="scss">
 .audio-player {
-  padding: 30.769rpx 30.769rpx 23.077rpx;
+  padding: 30.769rpx;
   background: #e4f0db;
   border-radius: 23.077rpx;
   margin: 50rpx 0 51.923rpx;
@@ -90,7 +89,7 @@ const change = (event: SliderChangeEvent) => {
   .audio-label {
     display: block;
     font-size: 26.923rpx;
-    font-weight: 600;
+    font-weight: 500;
   }
 
   .audio-english {
@@ -121,6 +120,11 @@ const change = (event: SliderChangeEvent) => {
     padding: 0;
     flex-shrink: 0;
     font-size: 30.769rpx;
+  }
+
+  .play image {
+    width: 38.462rpx;
+    height: 38.462rpx;
   }
 
   slider {

@@ -41,14 +41,9 @@ const goBack = () => {
     :style="{ '--page-header-height': `${top + nav}px` }"
     ><view class="page-nav" :style="headingStyle"
       ><button v-if="back" class="back-button" aria-label="返回" @click="goBack">
-        <text>‹</text></button
+        <image src="/static/design/back.svg" mode="aspectFit" aria-hidden="true" /></button
       ><view v-if="title === '句芽英语'" class="nav-brand"
-        ><image
-          class="nav-wordmark"
-          src="/static/brand/juya-nav@3x.png"
-          mode="aspectFit"
-          aria-label="juya"
-        /><text>句芽英语</text></view
+        ><text class="nav-wordmark">juya</text><text>句芽英语</text></view
       ><text v-else class="nav-title">{{ title }}</text
       ><view class="nav-action"><slot name="action" /></view></view
     ><view class="page-body"><slot /></view><slot name="footer"
@@ -60,61 +55,64 @@ const goBack = () => {
   background: #fffcf5;
 
   &.has-footer {
-    padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+    padding-bottom: calc(190rpx + env(safe-area-inset-bottom));
   }
 }
 
 .page-nav {
-  display: flex;
-  align-items: center;
   position: sticky;
   top: 0;
   z-index: 15;
+  display: flex;
+  align-items: center;
+  padding-left: 46.154rpx;
   background: #fffcf5;
-  border-bottom: 0;
-  padding-left: 46.15rpx;
-  padding-bottom: 0;
 
   .nav-brand {
     display: flex;
     align-items: center;
-    gap: 21.15rpx;
-    font-size: 26.92rpx;
+    gap: 21.154rpx;
+    font-size: 26.923rpx;
     font-weight: 500;
+    line-height: 41.731rpx;
+  }
 
-    .nav-wordmark {
-      width: 106.67rpx;
-      height: 101.92rpx;
-    }
+  .nav-wordmark {
+    font-family: Fraunces, Georgia, serif;
+    font-size: 51.923rpx;
+    font-style: italic;
+    font-weight: 400;
+    line-height: 84.615rpx;
+    letter-spacing: -0.035em;
   }
 
   .nav-title {
-    font-size: 30rpx;
-    font-weight: 600;
+    font-size: 28.846rpx;
+    font-weight: 500;
+    line-height: 44.712rpx;
   }
 
   .back-button {
+    width: 50rpx;
+    height: 76.923rpx;
+    margin-right: 15.385rpx;
+    padding: 0;
     border: 0;
     background: none;
-    width: 56rpx;
-    height: 80rpx;
-    padding: 0;
-    margin-left: -16rpx;
-    margin-right: 8rpx;
 
-    text {
-      font-size: 54rpx;
-      font-weight: 300;
+    image {
+      width: 42.308rpx;
+      height: 42.308rpx;
     }
   }
 
   .nav-action {
     margin-left: auto;
-    padding-right: 30rpx;
+    padding-right: 30.769rpx;
   }
 }
 
 .page-body {
-  padding: 46.15rpx 46.15rpx 53.85rpx;
+  padding: 46.154rpx 46.154rpx 53.846rpx;
 }
 </style>

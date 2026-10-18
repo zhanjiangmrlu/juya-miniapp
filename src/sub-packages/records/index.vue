@@ -171,6 +171,7 @@ onUnload(() => {
     <LearningStatistics
       v-if="account.statistics"
       :statistics="account.statistics"
+      :show-units="false"
       :on-select="switchTab"
     />
     <AppState v-else :busy="!statsError" :error="statsError" @retry="loadStats" />
@@ -201,10 +202,7 @@ onUnload(() => {
     >
     <view v-show="tab === RecordsTab.LEARNED">
       <SceneCard v-for="card in learned" :key="card.id" :card="card" history
-        ><view class="record-times"
-          ><text>首次完成 {{ dateText(card.first_completed_at) }}</text
-          ><text>最近学习 {{ dateText(card.last_completed_at) }}</text></view
-        ></SceneCard
+        ><text class="record-hint">已学过 · 点击复习</text></SceneCard
       >
       <button
         v-if="learnedTotal !== null && learned.length < learnedTotal"
@@ -259,26 +257,23 @@ onUnload(() => {
     border-radius: 0;
     background: none;
     padding: 19.231rpx 11.538rpx;
-    font-size: 23.077rpx;
-    min-height: 86.538rpx;
+    font-size: 25rpx;
+    min-height: 88.462rpx;
     color: #586c5b;
 
     &.active {
       color: #2b4438;
-      border-bottom: 3.846rpx solid #2b4438;
+      font-weight: 500;
     }
   }
 }
 
-.record-times {
-  margin-top: 13.462rpx;
-
-  > text {
-    display: block;
-    font-size: 19.231rpx;
-    line-height: 1.8;
-    color: #586c5b;
-  }
+.record-hint {
+  display: block;
+  margin-top: 11.538rpx;
+  font-size: 21.154rpx;
+  line-height: 35.962rpx;
+  color: #586c5b;
 }
 
 .daily-time {

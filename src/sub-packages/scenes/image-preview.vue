@@ -73,7 +73,8 @@ onUnload(() => {
 <template>
   <view class="image-overlay">
     <view class="image-top"
-      ><button class="close-image" aria-label="关闭大图" @click="close">×</button
+      ><button class="close-image" aria-label="关闭大图" @click="close">
+        <image src="/static/design/close.svg" mode="aspectFit" aria-hidden="true" /></button
       ><text>场景卡原图</text><view class="top-spacer"
     /></view>
     <view v-if="busy" class="overlay-message">正在加载原图…</view>
@@ -117,28 +118,42 @@ onUnload(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: calc(23.077rpx + env(safe-area-inset-top)) 34.615rpx 23.077rpx;
+    padding: calc(28.846rpx + env(safe-area-inset-top)) 19.231rpx 28.846rpx;
     font-size: 23.077rpx;
     z-index: 5;
   }
 
   .close-image {
-    width: 69.231rpx;
-    height: 69.231rpx;
+    width: 84.615rpx;
+    height: 84.615rpx;
     border: 0;
     background: transparent;
     color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 46.154rpx;
+    margin: 0;
     padding: 0;
+
+    image {
+      width: 38.462rpx;
+      height: 38.462rpx;
+    }
+  }
+
+  button::after {
+    border: 0;
   }
 
   .top-spacer {
-    width: 69.231rpx;
+    width: 84.615rpx;
   }
 
   .zoom-area {
-    width: 100%;
+    width: calc(100% - 46.154rpx);
     height: 0;
+    margin: 0 23.077rpx;
     flex: 1;
     overflow: hidden;
   }
@@ -157,12 +172,13 @@ onUnload(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 25rpx;
-    padding: 30.769rpx 34.615rpx calc(51.923rpx + env(safe-area-inset-bottom));
+    gap: 23.077rpx;
+    padding: 23.077rpx 34.615rpx max(51.923rpx, env(safe-area-inset-bottom));
     font-size: 23.077rpx;
     z-index: 5;
 
     button {
+      margin: 0;
       color: #fff;
       background: transparent;
       min-width: 69.231rpx;
@@ -171,6 +187,7 @@ onUnload(() => {
       border-radius: 19.231rpx;
       padding: 11.538rpx 19.231rpx;
       font-size: 23.077rpx;
+      line-height: 34.615rpx;
     }
 
     .reset-image {

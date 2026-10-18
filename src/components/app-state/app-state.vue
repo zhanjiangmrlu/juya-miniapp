@@ -15,7 +15,11 @@ defineEmits<{ retry: [] }>()
   ><view v-if="busy" class="loading" aria-live="polite">正在加载…</view
   ><view v-else-if="empty && !error" class="empty"
     ><view class="empty-mark"
-      ><view class="empty-book"><view class="book-page" /><view class="book-spine" /></view></view
+      ><image
+        class="empty-icon"
+        src="/static/design/empty-book.svg"
+        mode="aspectFit"
+        aria-hidden="true" /></view
     ><text class="empty-title">{{ title || '暂无记录' }}</text
     ><text class="empty-description">{{ description }}</text
     ><slot
@@ -45,26 +49,9 @@ defineEmits<{ retry: [] }>()
     margin: 0 auto 32rpx;
   }
 
-  .empty-book {
-    position: relative;
-    width: 46.15rpx;
-    height: 38.46rpx;
-    border: 1.5px solid #2b4438;
-    border-radius: 2rpx;
-
-    .book-page {
-      position: absolute;
-      inset: 6rpx;
-      border-top: 1px solid #2b4438;
-    }
-
-    .book-spine {
-      position: absolute;
-      top: 0;
-      left: 50%;
-      height: 100%;
-      border-left: 1.5px solid #2b4438;
-    }
+  .empty-icon {
+    width: 48.077rpx;
+    height: 48.077rpx;
   }
 
   .empty-title {

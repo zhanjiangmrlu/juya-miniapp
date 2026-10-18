@@ -360,11 +360,6 @@ onUnload(() => {
     background: #e4f0db;
   }
 
-  :deep(.leaf-glyph) {
-    transform: scale(0.68);
-    color: #586c5b;
-  }
-
   .text-button {
     min-height: 76.92rpx;
     font-size: 23.08rpx;
@@ -403,12 +398,12 @@ onUnload(() => {
   }
 
   input {
-    height: 92.31rpx;
+    height: 98.442rpx;
     margin-top: 17.31rpx;
     padding: 23.08rpx 26.92rpx;
     border: 1px solid #dfe5d8;
     border-radius: 19.23rpx;
-    font-size: 26.92rpx;
+    font-size: 26.923rpx;
   }
 
   .field-help {
@@ -436,7 +431,7 @@ onUnload(() => {
 
   button {
     min-height: 88.46rpx;
-    font-size: 26.92rpx;
+    font-size: 26.923rpx;
     border-radius: 19.23rpx;
     line-height: 1.5;
   }

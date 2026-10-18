@@ -6,6 +6,7 @@ import AppAvatar from '@/components/app-avatar/app-avatar.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import ProfileLogoutDialog from '@/features/profile/components/profile-logout-dialog.vue'
 import { maskPhone } from '@/features/profile/contact-model'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
@@ -13,7 +14,9 @@ const account = useAccountStore(),
   busy = ref(false),
   error = ref(''),
   privacy = ref(false),
-  logoutBusy = ref(false)
+  logoutBusy = ref(false),
+  logoutConfirm = ref(false),
+  logoutError = ref('')
 /** 只读页面读取真实资料，不将失败显示为没有联系方式 */
 const load = async () => {
   if (busy.value) return
@@ -34,26 +37,25 @@ const load = async () => {
 const editProfile = () => uni.navigateTo({ url: Routes.IDENTITY })
 /** 补充或修改选填的联系方式 */
 const editContact = () => uni.navigateTo({ url: Routes.CONTACT })
-/** 确认退出后撤销服务器会话，失败留在当前页 */
-const askLogout = () =>
-  uni.showModal({
-    title: '退出当前账号？',
-    content: '退出后需重新登录，学习记录和收藏会继续保留。',
-    confirmText: '退出登录',
-    cancelText: '取消',
-    success: async (result) => {
-      if (!result.confirm || logoutBusy.value) return
-      logoutBusy.value = true
-      error.value = ''
-      try {
-        await account.logout()
-      } catch (reason) {
-        error.value = reason instanceof Error ? reason.message : '退出暂未成功，请重试'
-      } finally {
-        logoutBusy.value = false
-      }
-    }
-  })
+/** 打开新的退出确认，清除上次取消前的错误 */
+const openLogout = () => {
+  logoutError.value = ''
+  logoutConfirm.value = true
+}
+/** 确认退出后撤销服务器会话，失败保留确认框供重试 */
+const logout = async () => {
+  if (logoutBusy.value) return
+  logoutBusy.value = true
+  logoutError.value = ''
+  try {
+    await account.logout()
+    logoutConfirm.value = false
+  } catch (reason) {
+    logoutError.value = reason instanceof Error ? reason.message : '退出暂未成功，请重试'
+  } finally {
+    logoutBusy.value = false
+  }
+}
 onShow(() => {
   void load()
 })
@@ -68,7 +70,13 @@ onShow(() => {
           ><text class="muted small">每一次学习，都留在这里</text></view
         ></view
       ><button class="profile-link" @click="editProfile">
-        <text>编辑个人资料</text><view class="chevron" aria-hidden="true" /></button
+        <text>编辑个人资料</text
+        ><image
+          class="chevron"
+          src="/static/design/profile-chevron.svg"
+          mode="aspectFit"
+          aria-hidden="true"
+        /></button
       ><view class="profile-section"
         ><view class="between"
           ><text class="section-title">联系方式</text
@@ -78,7 +86,12 @@ onShow(() => {
                 ? '修改联系方式'
                 : '补充联系方式'
             }}
-            <view class="chevron" aria-hidden="true" /></button></view
+            <image
+              class="chevron"
+              src="/static/design/profile-chevron.svg"
+              mode="aspectFit"
+              aria-hidden="true"
+            /></button></view
         ><view v-if="account.profile.phone" class="contact-row"
           ><text class="muted">手机号</text
           ><text class="contact-value">{{ maskPhone(account.profile.phone) }}</text></view
@@ -92,13 +105,24 @@ onShow(() => {
         ></view
       ><view class="profile-links"
         ><button class="profile-link" @click="privacy = true">
-          <text>隐私说明</text><view class="chevron" aria-hidden="true" /></button></view
+          <text>隐私说明</text
+          ><image
+            class="chevron"
+            src="/static/design/profile-chevron.svg"
+            mode="aspectFit"
+            aria-hidden="true"
+          /></button></view
       ><view class="profile-bottom"
-        ><button class="text-button" :disabled="logoutBusy" @click="askLogout">
+        ><button class="text-button" :disabled="logoutBusy" @click="openLogout">
           {{ logoutBusy ? '正在退出…' : '退出登录' }}</button
         ><text>学习记录与收藏会保留</text></view
       ></template
-    ><AppPrivacySheet v-if="privacy" @close="privacy = false"
+    ><ProfileLogoutDialog
+      v-if="logoutConfirm"
+      :busy="logoutBusy"
+      :error="logoutError"
+      @cancel="logoutConfirm = false"
+      @confirm="logout" /><AppPrivacySheet v-if="privacy" @close="privacy = false"
   /></AppPage>
 </template>
 <style scoped lang="scss">
@@ -111,11 +135,6 @@ onShow(() => {
 
   :deep(.avatar) {
     background: #e4f0db;
-    color: #586c5b;
-  }
-
-  :deep(.leaf-glyph) {
-    transform: scale(0.58);
     color: #586c5b;
   }
 
@@ -142,7 +161,6 @@ onShow(() => {
   width: 100%;
   min-height: 101.92rpx;
   border: 0;
-  border-bottom: 1px solid #dfe5d8;
   border-radius: 0;
   background: none;
   padding: 26.92rpx 0;
@@ -150,12 +168,8 @@ onShow(() => {
 }
 
 .chevron {
-  width: 13.46rpx;
-  height: 13.46rpx;
-  margin-right: 9.62rpx;
-  border-top: 1.5px solid currentcolor;
-  border-right: 1.5px solid currentcolor;
-  transform: rotate(45deg);
+  width: 38.462rpx;
+  height: 38.462rpx;
   flex-shrink: 0;
 }
 
@@ -199,7 +213,7 @@ onShow(() => {
     .contact-value {
       overflow-wrap: anywhere;
       text-align: right;
-      font-weight: 500;
+      font-weight: 400;
       line-height: 1.8;
     }
   }
