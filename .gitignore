@@ -12,6 +12,7 @@ project.private.config.json
 !.env.test
 !.env.production
 !.env.local-share
+!.env.local-share-h5
 *.tsbuildinfo
 *.local
 .DS_Store
