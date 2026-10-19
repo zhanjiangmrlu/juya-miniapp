@@ -19,6 +19,13 @@ it('renders the published English title above Chinese and keeps its WebP thumbna
   const page = mount(SceneCard, { props: { card } })
   await flushPromises()
   expect(page.get('.scene-english').text()).toBe(card.title_en)
+  expect(
+    page
+      .get('.scene-copy')
+      .findAll('text')
+      .map((node) => node.text())
+      .slice(0, 2)
+  ).toEqual([card.title_en, card.name])
   expect(page.get('.thumbnail image').attributes('webp')).toBe('true')
   await page.setProps({ card: { ...card, state: { ...card.state, completed: true } } })
   await flushPromises()

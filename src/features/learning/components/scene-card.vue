@@ -69,8 +69,8 @@ onBeforeUnmount(() => {
         重试图片</button
       ><text v-else class="image-placeholder">场景</text></view
     ><view class="scene-copy"
-      ><text class="scene-name">{{ card.name }}</text
       ><text v-if="card.title_en" class="scene-english">{{ card.title_en }}</text
+      ><text class="scene-name">{{ card.name }}</text
       ><text v-if="!available" class="availability">{{
         'unavailable_reason' in card && card.unavailable_reason === 'deleted'
           ? '已删除 · 当前不可用'
@@ -87,7 +87,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 26.923rpx;
   width: 100%;
-  min-height: 251.923rpx;
+  min-height: 268.577rpx;
   padding: 34.615rpx 0;
 
   .thumbnail {
@@ -122,12 +122,13 @@ onBeforeUnmount(() => {
   }
 
   .scene-copy {
+    align-self: flex-start;
     flex: 1;
     min-width: 0;
 
     .scene-name {
       display: block;
-      margin: 9.615rpx 0;
+      margin: 9.615rpx 0 0;
       font-size: 25rpx;
       font-weight: 500;
       line-height: 42.5rpx;
@@ -137,8 +138,10 @@ onBeforeUnmount(() => {
     .scene-english {
       display: block;
       font-family: Fraunces, Georgia, serif;
-      font-size: 38.462rpx;
-      line-height: 1.4;
+      font-size: 34.615rpx;
+      font-weight: 400;
+      line-height: 48.462rpx;
+      letter-spacing: -0.015em;
       overflow-wrap: anywhere;
     }
 
@@ -160,12 +163,21 @@ onBeforeUnmount(() => {
 
   &.featured {
     gap: 28.846rpx;
-    min-height: 282.692rpx;
+    min-height: 310.519rpx;
     margin-bottom: 7.692rpx;
     padding: 25rpx;
     border: 1px solid #dfe5d8;
     border-radius: 25rpx;
     background: #fff;
+
+    .scene-english {
+      font-size: 38.462rpx;
+      line-height: 51.923rpx;
+    }
+
+    .scene-name {
+      margin-top: 13.462rpx;
+    }
 
     .arrow {
       align-self: flex-end;
