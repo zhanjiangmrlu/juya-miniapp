@@ -79,3 +79,33 @@ it('cancels polling when the word or page changes and bounds a slow synthesis', 
   ).rejects.toThrow('发音暂不可用')
   expect(requests).toBe(4)
 })
+
+it('keeps waiting beyond the former twenty checks and follows the server polling interval', async () => {
+  const { loadPronunciation } = await import('@/services/pronunciation-service')
+  let queries = 0
+  const waits: number[] = []
+  const value = await loadPronunciation(
+    {
+      active: () => true,
+      pause: async (milliseconds) => {
+        waits.push(milliseconds)
+      },
+      request: async () => {
+        queries++
+        return {
+          state: queries > 21 ? 'ready' : 'processing',
+          url: queries > 21 ? '/ready' : null,
+          job_id: 'one',
+          error_code: null,
+          retry_after: 2
+        }
+      }
+    },
+    '/word',
+    { version_id: 'one' }
+  )
+  expect(value).toBe('/ready')
+  expect(queries).toBe(22)
+  expect(waits).toHaveLength(21)
+  expect(waits.every((value) => value === 2000)).toBe(true)
+})

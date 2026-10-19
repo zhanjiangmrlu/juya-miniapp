@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
@@ -10,13 +10,16 @@ import SceneDialogue from '@/features/learning/components/scene-dialogue.vue'
 import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
 import SceneUnavailable from '@/features/learning/components/scene-unavailable.vue'
 import SceneVocabulary from '@/features/learning/components/scene-vocabulary.vue'
-import { operations, session } from '@/services/api'
+import { onSessionExpired, operations, session } from '@/services/api'
 import { createAudioPort } from '@/services/audio-port'
 import { ApiError } from '@/services/errors'
+import { createFullAudioPreparation } from '@/services/full-audio-preparation'
 import { registerImagePreview } from '@/services/image-preview'
 import { mediaAddress } from '@/services/media-service'
 import { operationKey, resourceURL } from '@/services/platform'
 import { loadPronunciation } from '@/services/pronunciation-service'
+import { prepareAudioCacheFile, prepareWordAudioFile } from '@/services/word-audio-file'
+import { createWordAudioPreparation, waitForWordAudio } from '@/services/word-audio-preparation'
 import { Routes } from '@/shared/constants/navigation'
 import { AudioStatus } from '@/shared/enums/audio'
 import { useAccountStore } from '@/stores/account-store'
@@ -51,9 +54,11 @@ const audioState = ref<AudioState>({
 })
 let id = '',
   alive = true,
+  visible = true,
   generation = 0,
-  wordGeneration = 0,
   audio: ReturnType<typeof createAudioController> | null = null,
+  fullAudio: ReturnType<typeof createFullAudioPreparation> | null = null,
+  wordAudio: ReturnType<typeof createWordAudioPreparation> | null = null,
   imageOpen = false,
   releaseImage: (() => void) | null = null
 const favorite = computed(
@@ -68,21 +73,92 @@ const completionLabel = computed(() =>
 )
 /** 进入当前场景时创建两路互斥音频，不自动播放 */
 const createAudio = () => {
-  if (audio || !card.value) return
+  if (audio || !visible || !card.value || stale.value) return
+  const current = card.value,
+    owner = account.profile,
+    userId = session.userId()
   const full = createAudioPort(),
     word = createAudioPort()
-  audio = createAudioController(full, word, (state) => {
-    if (alive) audioState.value = state
+  const player = createAudioController(
+    full,
+    word,
+    (state) => {
+      if (alive) audioState.value = state
+    },
+    undefined,
+    (wordId) => wordAudio?.invalidate(wordId),
+    () => fullAudio?.invalidate()
+  )
+  audio = player
+  /** 确认两个准备任务仍属于当前页面、会话和发布版本 */
+  const active = () =>
+    alive &&
+    audio === player &&
+    account.profile === owner &&
+    session.userId() === userId &&
+    card.value?.version_id === current.version_id &&
+    !stale.value
+  /** 仅处理服务端确认的失效，后台网络失败不打断正文
+   * @param reason 地址请求或下载得到的访问错误
+   */
+  const onFailure = (reason: unknown) => {
+    if (reason instanceof ApiError && reason.status === 401) {
+      stopAudio()
+      void account.restore().catch(() => undefined)
+    } else void invalid(reason)
+  }
+  if (current.content.audio_id) {
+    const audioId = current.content.audio_id
+    fullAudio = createFullAudioPreparation({
+      active,
+      resolve: () => mediaAddress(id, audioId, current.version_id, false, true),
+      download: prepareAudioCacheFile,
+      prepared: player.prepareFull,
+      onFailure
+    })
+  }
+  wordAudio = createWordAudioPreparation({
+    active,
+    resolve: async (wordId, task) => {
+      const path = `/api/mini/v1/cards/${encodeURIComponent(id)}/words/${encodeURIComponent(wordId)}/pronunciation`
+      const url = await loadPronunciation(
+        {
+          active: task.active,
+          pause: (milliseconds) => waitForWordAudio(milliseconds, task),
+          request: (method, path, reference) =>
+            session.request<components['schemas']['SpeechState']>(
+              method === 'GET'
+                ? `${path}?version_id=${encodeURIComponent(reference.version_id || '')}`
+                : path,
+              method === 'POST' ? { method, key: operationKey(), body: reference } : {}
+            )
+        },
+        path,
+        { version_id: current.version_id }
+      )
+      return resourceURL(url)
+    },
+    download: prepareWordAudioFile,
+    onFailure
   })
   audio.state.duration = card.value.audio_duration || 0
   audioState.value = { ...audio.state }
+  fullAudio?.prefetch()
+  wordAudio.prefetch(
+    (current.content.vocabulary || []).flatMap((word) => (word.id ? [word.id] : []))
+  )
 }
-/** 离开场景时释放播放器 */
+/** 离开场景时先停止播放器，再取消准备任务和释放临时音频 */
 const stopAudio = () => {
-  wordGeneration++
   audio?.dispose()
   audio = null
+  fullAudio?.dispose()
+  fullAudio = null
+  wordAudio?.dispose()
+  wordAudio = null
 }
+const releaseAudioSession = onSessionExpired(stopAudio)
+watch(() => account.profile, stopAudio)
 /** 真实下线、删除或版本变化后关闭可操作正文
  * @param reason 服务端已确认的访问错误
  */
@@ -168,59 +244,21 @@ const refreshState = async () => {
     awaitingState.value = false
   }
 }
-/** 获取完整音频时继续使用当前同一发布版本 */
-const playFull = async () => {
-  wordGeneration++
+/** 已准备好的完整音频同步播放，提前点击只等待受控地址 */
+const playFull = () => {
   if (!card.value || stale.value) return
   createAudio()
-  await audio?.toggleFull(async () => {
-    try {
-      return await mediaAddress(id, card.value!.content.audio_id!, card.value!.version_id)
-    } catch (reason) {
-      await invalid(reason)
-      throw reason
-    }
-  })
+  const prepared = fullAudio
+  if (prepared) void audio?.toggleFull(() => prepared.load())
 }
-/** 获取同一发布版本的受控词汇发音，切换或离页后停止旧查询
+/** 已准备的词汇同步从本地播放，未完成时复用当前任务
  * @param wordId 当前发布版本中的词汇编号
  */
-const playWord = async (wordId: string) => {
+const playWord = (wordId: string) => {
   if (!card.value || stale.value) return
   createAudio()
-  const player = audio,
-    version = card.value.version_id,
-    run = ++wordGeneration
-  const active = () =>
-    alive &&
-    audio === player &&
-    wordGeneration === run &&
-    card.value?.version_id === version &&
-    !stale.value
-  await player?.playWord(wordId, async () => {
-    try {
-      const path = `/api/mini/v1/cards/${encodeURIComponent(id)}/words/${encodeURIComponent(wordId)}/pronunciation`
-      const url = await loadPronunciation(
-        {
-          active,
-          pause: () => new Promise((resolve) => setTimeout(resolve, 1000)),
-          request: (method, path, reference) =>
-            session.request<components['schemas']['SpeechState']>(
-              method === 'GET'
-                ? `${path}?version_id=${encodeURIComponent(reference.version_id || '')}`
-                : path,
-              method === 'POST' ? { method, key: operationKey(), body: reference } : {}
-            )
-        },
-        path,
-        { version_id: version }
-      )
-      return resourceURL(url)
-    } catch (reason) {
-      await invalid(reason)
-      throw reason
-    }
-  })
+  const prepared = wordAudio
+  if (prepared) void audio?.playWord(wordId, () => prepared.load(wordId))
 }
 /** 原图作为全屏覆盖页进入原生栈，系统返回只关闭覆盖层 */
 const previewImage = () => {
@@ -333,18 +371,24 @@ onLoad((query) => {
   void load()
 })
 onShow(() => {
+  visible = true
   if (card.value) {
     createAudio()
     void refreshState().catch(invalid)
   }
 })
 onHide(() => {
-  if (!imageOpen) stopAudio()
+  if (!imageOpen) {
+    visible = false
+    stopAudio()
+  }
 })
 onUnload(() => {
   alive = false
+  visible = false
   generation++
   stopAudio()
+  releaseAudioSession()
   releaseImage?.()
 })
 </script>

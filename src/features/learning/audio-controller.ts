@@ -15,12 +15,16 @@ import { learningAudioSession } from './learning-audio-session'
  * @param word 独立词汇播放器
  * @param changed 页面状态更新端口
  * @param speedSession 本轮学习共享的内存倍速
+ * @param wordFailed 原生播放失败时清除对应词汇的预加载资源
+ * @param fullFailed 完整音频播放失败时清除缓存并重新签发地址
  */
 export const createAudioController = (
   full: AudioPort,
   word: AudioPort,
   changed: (state: AudioState) => void = () => {},
-  speedSession: LearningAudioSession = learningAudioSession
+  speedSession: LearningAudioSession = learningAudioSession,
+  wordFailed: (id: string) => void = () => {},
+  fullFailed: () => void = () => {}
 ) => {
   const state: AudioState = {
     rate: speedSession.rate,
@@ -34,9 +38,15 @@ export const createAudioController = (
     wordError: ''
   }
   let alive = true,
+    fullSource = '',
     fullGeneration = 0,
     wordGeneration = 0,
-    pendingSeek = 0
+    wordSourceGeneration = 0,
+    pendingSeek = 0,
+    fullIntent = false,
+    fullStarting = false,
+    ratePausing = false,
+    pendingRate: PlaybackRate | null = null
   /** 输出当前可信音频状态 */
   const notify = () => {
     if (alive) changed({ ...state })
@@ -53,10 +63,10 @@ export const createAudioController = (
     full.playbackRate = rate
     if (Math.abs(full.playbackRate - rate) > 0.001) throw new Error('rate rejected')
   }
-  /** 仅在设置真实生效后提交当前档位，保持原有进度和暂停状态
+  /** 确认底层设置后提交档位，失败时保留上次已确认倍率
    * @param rate 用户选择的倍率
    */
-  const setRate = (rate: number) => {
+  const confirmRate = (rate: number) => {
     if (!alive) return false
     const previous = state.rate
     try {
@@ -77,17 +87,66 @@ export const createAudioController = (
       return false
     }
   }
+  /** 等待原生播放事件确认启动，期间仍允许词汇或暂停取消续播 */
+  const startFull = () => {
+    fullStarting = true
+    full.play()
+  }
+  /** 等待原生暂停确认后切速，多次选择只应用最后一次 */
+  const pauseForRate = () => {
+    ratePausing = true
+    pendingSeek = Number.isFinite(full.currentTime) ? full.currentTime : state.position
+    state.position = pendingSeek
+    full.pause()
+  }
+  /** 播放中排队切速，暂停时直接设置且不主动播放
+   * @param rate 用户最后选择的完整音频倍率
+   */
+  const setRate = (rate: number) => {
+    if (!alive) return false
+    if (!PLAYBACK_RATES.includes(rate as PlaybackRate)) return confirmRate(rate)
+    if (
+      pendingRate !== null ||
+      ratePausing ||
+      (fullIntent && (state.status === AudioStatus.PLAYING || fullStarting))
+    ) {
+      pendingRate = rate as PlaybackRate
+      state.rateError = ''
+      if (!ratePausing && !fullStarting) pauseForRate()
+      notify()
+      return !state.rateError
+    }
+    return confirmRate(rate)
+  }
   /** 新资源或原生重新开始播放后重设本会话档位 */
   const restoreRate = () => {
-    if (setRate(state.rate)) return
-    // 新场景设备能力变化时回到可确认的正常速度，不显示虚假加速
-    if (setRate(DEFAULT_PLAYBACK_RATE)) {
-      state.rateError = '该倍速暂不可用，已恢复正常速度'
+    try {
+      applyRate(state.rate)
+    } catch {
+      try {
+        applyRate(DEFAULT_PLAYBACK_RATE)
+        state.rate = DEFAULT_PLAYBACK_RATE
+        speedSession.rate = DEFAULT_PLAYBACK_RATE
+        state.rateError = '该倍速暂不可用，已恢复正常速度'
+      } catch {
+        state.rateError = '当前设备未能设置该倍速，请重试或选择其他档位'
+      }
       notify()
     }
   }
   full.onPlay(() => {
     if (!alive) return
+    fullStarting = false
+    // 原生晚到的播放事件不能覆盖用户暂停、词汇点读或尚未确认的切速
+    if (!fullIntent) {
+      full.pause()
+      return
+    }
+    if (pendingRate !== null && pendingRate !== state.rate) {
+      if (!ratePausing) pauseForRate()
+      return
+    }
+    pendingRate = null
     state.status = AudioStatus.PLAYING
     restoreRate()
     if (pendingSeek > 0) {
@@ -99,11 +158,21 @@ export const createAudioController = (
   full.onPause(() => {
     if (!alive) return
     state.status = AudioStatus.PAUSED
+    ratePausing = false
+    if (pendingRate !== null) {
+      const rate = pendingRate
+      pendingRate = null
+      confirmRate(rate)
+      if (fullIntent) startFull()
+    } else if (!fullStarting) fullIntent = false
     notify()
   })
   full.onEnded(() => {
     if (!alive) return
     state.status = AudioStatus.ENDED
+    fullIntent = false
+    fullStarting = false
+    pendingRate = null
     state.position = state.duration
     notify()
   })
@@ -116,31 +185,49 @@ export const createAudioController = (
   full.onError(() => {
     if (!alive) return
     state.status = AudioStatus.ERROR
+    fullIntent = false
+    fullStarting = false
+    pendingRate = null
     state.error = '音频暂不可用，点击重试'
+    fullFailed()
     notify()
   })
   word.onPlay(() => {
-    if (!alive) return
+    if (!alive || wordSourceGeneration !== wordGeneration) return
     state.wordStatus = AudioStatus.PLAYING
+    state.wordError = ''
     notify()
   })
   word.onEnded(() => {
-    if (!alive) return
+    if (!alive || wordSourceGeneration !== wordGeneration) return
     state.wordStatus = AudioStatus.IDLE
+    state.wordError = ''
     notify()
   })
   word.onError(() => {
-    if (!alive) return
+    if (!alive || wordSourceGeneration !== wordGeneration) return
     state.wordStatus = AudioStatus.ERROR
+    if (state.wordId) wordFailed(state.wordId)
     state.wordError = '发音暂不可用，点击重试'
     notify()
   })
-  /** 主动播放或暂停完整音频，重复加载点击不创建新请求
+  /** 空闲时提前绑定完整音源，播放或暂停后的资源不接受后台替换
+   * @param src 当前场景已经准备好的音源
+   */
+  const prepareFull = (src: string) => {
+    if (!alive || state.status !== AudioStatus.IDLE || fullIntent || fullStarting) return
+    if (fullSource === src) return
+    if (full.prepare) full.prepare(src)
+    else full.src = src
+    fullSource = src
+  }
+  /** 主动播放或暂停完整音频，同一音源续播与重播不重复设置地址
    * @param load 获取当前受控完整音频地址
    */
-  const toggleFull = async (load: () => Promise<string>) => {
+  const toggleFull = async (load: () => string | Promise<string>) => {
     if (!alive || state.status === AudioStatus.LOADING) return
-    if (state.status === AudioStatus.PLAYING) {
+    if (fullIntent) {
+      fullIntent = false
       full.pause()
       return
     }
@@ -148,12 +235,8 @@ export const createAudioController = (
     word.stop()
     state.wordStatus = AudioStatus.IDLE
     state.wordId = null
-    if (state.status === AudioStatus.PAUSED && full.src) {
-      restoreRate()
-      full.play()
-      notify()
-      return
-    }
+    state.wordError = ''
+    fullIntent = true
     const generation = ++fullGeneration
     if (state.status === AudioStatus.ENDED) {
       state.position = 0
@@ -164,14 +247,19 @@ export const createAudioController = (
     state.error = ''
     notify()
     try {
-      const url = await load()
+      const source = load()
+      const url = typeof source === 'string' ? source : await source
       if (!alive || generation !== fullGeneration) return
-      full.src = url
+      if (fullSource !== url) {
+        full.src = url
+        fullSource = url
+      }
       restoreRate()
-      full.play()
+      startFull()
     } catch {
       if (alive && generation === fullGeneration) {
         state.status = AudioStatus.ERROR
+        fullIntent = false
         state.error = '音频暂不可用，点击重试'
         notify()
       }
@@ -181,25 +269,33 @@ export const createAudioController = (
    * @param id 当前版本的词汇引用
    * @param load 获取该词汇的受控发音地址
    */
-  const playWord = async (id: string, load: () => Promise<string>) => {
+  const playWord = async (id: string, load: () => string | Promise<string>) => {
     if (!alive) return
     fullGeneration++
-    if (state.status === AudioStatus.PLAYING || state.status === AudioStatus.LOADING) {
+    const cancelFull = fullIntent || fullStarting || ratePausing
+    fullIntent = false
+    if (
+      cancelFull ||
+      state.status === AudioStatus.PLAYING ||
+      state.status === AudioStatus.LOADING
+    ) {
       full.pause()
       state.status = AudioStatus.PAUSED
     }
-    word.stop()
     const generation = ++wordGeneration
+    wordSourceGeneration = 0
+    word.stop()
     state.wordId = id
     state.wordStatus = AudioStatus.LOADING
     state.wordError = ''
     notify()
     try {
-      const url = await load()
+      const source = load()
+      const url = typeof source === 'string' ? source : await source
       if (!alive || generation !== wordGeneration) return
+      wordSourceGeneration = generation
       word.src = url
       if (typeof word.playbackRate === 'number') word.playbackRate = DEFAULT_PLAYBACK_RATE
-      word.seek(0)
       word.play()
     } catch {
       if (alive && generation === wordGeneration) {
@@ -215,6 +311,7 @@ export const createAudioController = (
   const seekFull = (seconds: number) => {
     if (!alive || !Number.isFinite(seconds)) return
     state.position = Math.max(0, Math.min(seconds, state.duration || full.duration || 0))
+    if (ratePausing || fullStarting) pendingSeek = state.position
     full.seek(state.position)
     notify()
   }
@@ -222,6 +319,8 @@ export const createAudioController = (
   const dispose = () => {
     if (!alive) return
     alive = false
+    fullIntent = false
+    pendingRate = null
     fullGeneration++
     wordGeneration++
     full.stop()
@@ -229,5 +328,5 @@ export const createAudioController = (
     full.destroy()
     word.destroy()
   }
-  return { toggleFull, playWord, seekFull, setRate, dispose, state }
+  return { prepareFull, toggleFull, playWord, seekFull, setRate, dispose, state }
 }

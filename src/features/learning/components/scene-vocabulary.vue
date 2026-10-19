@@ -48,7 +48,7 @@ const sourceLine = (lineId?: string) =>
         >播放中</text
       >
       <button
-        v-if="state.wordId === word.id && state.wordError"
+        v-if="state.wordId === word.id && state.wordStatus === AudioStatus.ERROR && state.wordError"
         class="text-button voice-error"
         @click="word.id && emit('play', word.id)"
       >

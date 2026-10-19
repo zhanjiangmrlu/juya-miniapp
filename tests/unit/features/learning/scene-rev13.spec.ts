@@ -87,3 +87,26 @@ it('hides meaning and phonetic independently while keeping English, full source 
   expect(page.emitted('play')).toEqual([['one']])
   page.unmount()
 })
+
+it('shows a word error only in the failed state, never during loading or playback', () => {
+  for (const wordStatus of ['loading', 'playing', 'idle'] as const) {
+    const page = mount(SceneVocabulary, {
+      props: {
+        state: { ...state, wordId: 'one', wordStatus, wordError: '发音暂不可用，点击重试' },
+        dialogue: [],
+        vocabulary: [
+          {
+            id: 'one',
+            english: 'hello',
+            meaning: '',
+            phonetic: '',
+            pronunciation_text: '',
+            pronunciation_issue: false
+          }
+        ]
+      }
+    })
+    expect(page.find('.voice-error').exists()).toBe(false)
+    page.unmount()
+  }
+})

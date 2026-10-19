@@ -5,6 +5,7 @@ export interface LearningAudioSession {
   rate: PlaybackRate
 }
 export interface AudioPort {
+  prepare?: (src: string) => void
   playbackRate?: number
   src: string
   currentTime: number
@@ -19,6 +20,32 @@ export interface AudioPort {
   onEnded: (callback: () => void) => void
   onError: (callback: () => void) => void
   onTimeUpdate: (callback: () => void) => void
+}
+export interface AudioPreparationCancellation {
+  active: () => boolean
+  onCancel: (callback: () => void) => () => void
+}
+export interface AudioCacheFile {
+  src: string
+  release: () => void
+}
+export interface FullAudioPreparationPorts {
+  resolve: () => Promise<string>
+  download: (url: string, task: AudioPreparationCancellation) => Promise<AudioCacheFile>
+  active: () => boolean
+  prepared: (src: string) => void
+  onFailure: (reason: unknown) => void
+}
+export interface FullAudioPreparationEntry {
+  expires: number
+  url: string
+  file: AudioCacheFile | null
+  address: Promise<string>
+  streaming: boolean
+  failed: boolean
+  stopDownload: () => void
+  cancelAddress: () => void
+  timer: ReturnType<typeof setTimeout>
 }
 export interface AudioState {
   rate: PlaybackRate

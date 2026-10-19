@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import { resetLearningAudioSession } from '@/features/learning/learning-audio-session'
 import { onSessionExpired, operations, session } from '@/services/api'
 import { ApiError } from '@/services/errors'
+import { clearMediaAddresses } from '@/services/media-service'
 import { openLogin } from '@/services/navigation'
 import { resourceURL } from '@/services/platform'
 import { Routes } from '@/shared/constants/navigation'
@@ -22,6 +23,7 @@ export const useAccountStore = defineStore('learner-account', () => {
   const clear = () => {
     generation++
     resetLearningAudioSession()
+    clearMediaAddresses()
     profile.value = null
     statistics.value = null
     avatarURL.value = ''
@@ -68,6 +70,7 @@ export const useAccountStore = defineStore('learner-account', () => {
    */
   const login = async (agreed: boolean) => {
     const result = await session.login(agreed)
+    clearMediaAddresses()
     resetLearningAudioSession()
     profile.value = result.user
     return result.user

@@ -43,6 +43,11 @@ const browserAudioPort = (): AudioPort => {
     currentTime: 0,
     duration: 0,
     playbackRate: 1,
+    prepare: (src) => {
+      audio.preload = 'auto'
+      audio.src = src
+      audio.load()
+    },
     play: () => {
       const generation = ++request
       void audio.play().catch(() => {
