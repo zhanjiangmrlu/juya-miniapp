@@ -55,9 +55,9 @@ onLoad((query) => {
       <view class="login-brand">
         <image
           class="login-botanical"
+          :webp="true"
           src="/static/brand/u00-botanical-watercolor@3x.webp"
           mode="aspectFit"
-          :webp="true"
           aria-hidden="true"
         />
         <image
@@ -147,7 +147,7 @@ onLoad((query) => {
 
   .login-botanical {
     position: absolute;
-    z-index: -1;
+    z-index: 0;
     top: 0;
     left: -34.62rpx;
     width: calc(100% + 69.24rpx);
@@ -156,12 +156,16 @@ onLoad((query) => {
   }
 
   .login-wordmark {
+    position: relative;
+    z-index: 1;
     flex: none;
     width: 243.48rpx;
     height: 215.38rpx;
   }
 
   .login-name {
+    position: relative;
+    z-index: 1;
     flex: none;
     width: 223.08rpx;
     height: 84.62rpx;
@@ -169,6 +173,7 @@ onLoad((query) => {
 
   .login-tagline {
     position: relative;
+    z-index: 1;
     top: -11.54rpx;
     flex: none;
     width: 398.08rpx;

@@ -34,6 +34,7 @@ onBeforeUnmount(() => {
       <image
         v-if="thumbnail"
         :src="thumbnail"
+        :webp="true"
         mode="aspectFit"
         alt="历史场景缩略图"
         @error="thumbnail = ''"

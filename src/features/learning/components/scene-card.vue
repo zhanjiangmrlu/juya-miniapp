@@ -15,8 +15,10 @@ const src = ref(''),
 let generation = 0
 const available = computed(() => !('available' in props.card) || props.card.available)
 const completed = computed(() => 'state' in props.card && props.card.state.completed)
-/** 单独重取短期缩略图，图片失败不阻止打开可读内容 */
-const loadImage = async () => {
+/** 读取可复用的短期缩略图，失败后可单独更新凭证
+ * @param renew 用户重试时是否重新签发图片地址
+ */
+const loadImage = async (renew = false) => {
   const run = ++generation
   imageError.value = false
   if (!props.card.thumbnail_id) {
@@ -28,7 +30,8 @@ const loadImage = async () => {
       props.card.id,
       props.card.thumbnail_id,
       props.card.version_id,
-      props.history
+      props.history,
+      renew
     )
     if (run === generation) src.value = value
   } catch {
@@ -39,7 +42,8 @@ const loadImage = async () => {
   }
 }
 watch(
-  () => [props.card.id, props.card.thumbnail_id, props.card.version_id],
+  () =>
+    JSON.stringify([props.card.id, props.card.thumbnail_id, props.card.version_id, props.history]),
   () => {
     void loadImage()
   },
@@ -59,8 +63,10 @@ onBeforeUnmount(() => {
         v-if="src && !imageError"
         :src="src"
         mode="aspectFit"
+        :webp="true"
         @error="imageError = true"
-      /><button v-else-if="imageError" class="retry-image" @click.stop="loadImage">重试图片</button
+      /><button v-else-if="imageError" class="retry-image" @click.stop="loadImage(true)">
+        重试图片</button
       ><text v-else class="image-placeholder">场景</text></view
     ><view class="scene-copy"
       ><text class="scene-name">{{ card.name }}</text
@@ -131,7 +137,7 @@ onBeforeUnmount(() => {
     .scene-english {
       display: block;
       font-family: Fraunces, Georgia, serif;
-      font-size: 34.615rpx;
+      font-size: 38.462rpx;
       line-height: 1.4;
       overflow-wrap: anywhere;
     }
