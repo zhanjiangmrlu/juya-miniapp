@@ -36,7 +36,8 @@
           "style": {
             "navigationStyle": "custom",
             "disableScroll": true,
-            "backgroundColor": "#142018"
+            "backgroundColor": "#20362b",
+            "navigationBarTextStyle": "white"
           }
         }
       ]

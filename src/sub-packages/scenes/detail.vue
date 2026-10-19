@@ -14,7 +14,7 @@ import { onSessionExpired, operations, session } from '@/services/api'
 import { createAudioPort } from '@/services/audio-port'
 import { ApiError } from '@/services/errors'
 import { createFullAudioPreparation } from '@/services/full-audio-preparation'
-import { registerImagePreview } from '@/services/image-preview'
+import { prepareImagePreviewSource, registerImagePreview } from '@/services/image-preview'
 import { mediaAddress } from '@/services/media-service'
 import { operationKey, resourceURL } from '@/services/platform'
 import { loadPronunciation } from '@/services/pronunciation-service'
@@ -60,6 +60,7 @@ let id = '',
   fullAudio: ReturnType<typeof createFullAudioPreparation> | null = null,
   wordAudio: ReturnType<typeof createWordAudioPreparation> | null = null,
   imageOpen = false,
+  imageRequest: Promise<string> | null = null,
   releaseImage: (() => void) | null = null
 const favorite = computed(
   () => card.value?.state.favorite || summary.value?.state.favorite || false
@@ -194,16 +195,44 @@ const invalid = async (reason: unknown) => {
     /* A learner without a previous favorite/completion only keeps the already-known safe label */
   }
 }
-/** 单独获取原图，失败不阻止正文学习 */
-const loadImage = async () => {
+/** 复用当前版本原图文件或进行中的下载，renew 表示用户主动重试损坏图片 */
+const resolveImage = (renew = false): Promise<string> => {
+  if (!renew && imageSrc.value && !imageError.value) return Promise.resolve(imageSrc.value)
+  if (imageRequest) return imageRequest
+  const scene = card.value,
+    run = generation
+  if (!scene?.content.image_id) return Promise.reject(new Error('场景图片暂不可用'))
+  const request = mediaAddress(
+    id,
+    scene.content.image_id,
+    scene.version_id,
+    false,
+    renew || !!imageError.value
+  )
+    .then(prepareImagePreviewSource)
+    .then((value) => {
+      if (alive && run === generation && card.value?.version_id === scene.version_id) {
+        imageSrc.value = value
+        imageError.value = ''
+      }
+      return value
+    })
+    .finally(() => {
+      if (imageRequest === request) imageRequest = null
+    })
+  imageRequest = request
+  return request
+}
+/** 单独获取原图，失败时重新签发当前版本的图片地址
+ * @param renew 用户重试时是否更新资源凭证
+ */
+const loadImage = async (renew = false) => {
   if (!card.value?.content.image_id) return
-  imageError.value = ''
   try {
-    const value = await mediaAddress(id, card.value.content.image_id, card.value.version_id)
-    if (alive) imageSrc.value = value
+    await resolveImage(renew)
   } catch (reason) {
     if (reason instanceof ApiError && [409, 410].includes(reason.status)) await invalid(reason)
-    else imageError.value = '图片暂未加载，可重试'
+    else if (alive) imageError.value = '图片暂未加载，可重试'
   }
 }
 /** 读取当前不可变发布内容，草稿不会进入详情 */
@@ -220,6 +249,8 @@ const load = async () => {
     if (!alive || run !== generation) return
     stopAudio()
     card.value = value
+    imageSrc.value = ''
+    imageRequest = null
     summary.value = null
     awaitingState.value = false
     createAudio()
@@ -270,6 +301,8 @@ const previewImage = () => {
     versionId: card.value.version_id,
     imageId: card.value.content.image_id,
     title: card.value.content.name,
+    initialSrc: imageError.value ? '' : imageSrc.value,
+    loadSource: resolveImage,
     onInvalid: (reason) => {
       void invalid(reason)
     },
@@ -427,10 +460,11 @@ onUnload(() => {
             v-if="imageSrc && !imageError"
             :src="imageSrc"
             mode="aspectFit"
+            :webp="true"
             :alt="card.content.name"
             @error="imageError = '图片暂未加载，可重试'"
           />
-          <button v-else class="image-retry" @click.stop="loadImage">
+          <button v-else class="image-retry" @click.stop="loadImage(true)">
             {{ imageError || '正在加载场景图…' }}
           </button>
         </view>

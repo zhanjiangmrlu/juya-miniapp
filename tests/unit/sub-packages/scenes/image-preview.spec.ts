@@ -1,0 +1,128 @@
+// @vitest-environment happy-dom
+import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
+
+const ports = vi.hoisted(() => ({
+  load: undefined as undefined | ((query: { id: string }) => void),
+  unload: undefined as undefined | (() => void),
+  media: vi.fn(),
+  request: vi.fn(),
+  back: vi.fn()
+}))
+vi.mock('@dcloudio/uni-app', () => ({
+  onLoad: (callback: typeof ports.load) => (ports.load = callback),
+  onUnload: (callback: typeof ports.unload) => (ports.unload = callback)
+}))
+vi.mock('@/services/api', () => ({ session: { request: ports.request } }))
+vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
+vi.mock('@/services/navigation', () => ({ backTo: ports.back }))
+
+import { registerImagePreview } from '@/services/image-preview'
+import ImagePreview from '@/sub-packages/scenes/image-preview.vue'
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  ports.media.mockResolvedValue('/fresh-original')
+  ports.request.mockResolvedValue({})
+  vi.stubGlobal('uni', {
+    getWindowInfo: () => ({ statusBarHeight: 47 }),
+    getImageInfo: vi.fn(({ src, success }) => success({ path: src }))
+  })
+})
+afterEach(() => vi.unstubAllGlobals())
+
+/** 用原生标签承接容器事件，tag 是小程序移动或缩放容器标签 */
+const nativeContainer = (tag: string) =>
+  defineComponent({
+    setup:
+      (_, { attrs, slots }) =>
+      () =>
+        h(tag, attrs, slots.default?.())
+  })
+
+/** 从同一版本的详情页打开原图，loadSource 表示详情页已加载或仍在进行的原图请求 */
+const openPreview = (loadSource?: () => Promise<string>) => {
+  const onInvalid = vi.fn(),
+    onClose = vi.fn()
+  registerImagePreview({
+    cardId: 'scene-1',
+    versionId: 'version-1',
+    imageId: 'image-1',
+    title: '晨间慢慢活动身体',
+    loadSource,
+    onInvalid,
+    onClose
+  })
+  const page = mount(ImagePreview, {
+    global: {
+      stubs: {
+        MovableView: nativeContainer('movable-view'),
+        MovableArea: nativeContainer('movable-area')
+      }
+    }
+  })
+  ports.load?.({ id: 'scene-1' })
+  return { page, onInvalid, onClose }
+}
+
+it('reuses the detail image request instead of fetching a second signed URL', async () => {
+  const loadSource = vi.fn().mockResolvedValue('/already-loaded-original'),
+    { page } = openPreview(loadSource)
+  await flushPromises()
+  expect(page.get('.zoom-image image').attributes('src')).toBe('/already-loaded-original')
+  expect(loadSource).toHaveBeenCalledOnce()
+  expect(page.get('.image-overlay').attributes('style')).toContain('--viewer-top: 47px')
+  expect(ports.media).not.toHaveBeenCalled()
+  page.unmount()
+})
+
+it('waits for the original pixels and removes the loading message only after image load', async () => {
+  const { page } = openPreview()
+  await flushPromises()
+  expect(page.text()).toContain('正在加载原图')
+  await page.get('.zoom-image image').trigger('load')
+  expect(page.text()).not.toContain('正在加载原图')
+  page.unmount()
+})
+
+it('keeps arbitrary pinch scales, clamps at 100–200%, and disables settling animation', async () => {
+  const { page } = openPreview()
+  await flushPromises()
+  const image = page.get('movable-view')
+  expect(image.attributes('scale-min')).toBe('1')
+  expect(image.attributes('scale-max')).toBe('2')
+  expect(image.attributes('animation')).toBe('false')
+  expect(image.attributes('inertia')).toBe('false')
+  await image.trigger('scale', { detail: { scale: 1.376 } })
+  await image.trigger('touchend')
+  expect(image.attributes('scale-value')).toBe('1')
+  expect(page.text()).toContain('138%')
+  await page.get('[aria-label="放大原图"]').trigger('click')
+  expect(image.attributes('scale-value')).toBe('1.626')
+  await image.trigger('scale', { detail: { scale: 2.1 } })
+  expect(page.text()).toContain('200%')
+  expect(page.get('[aria-label="放大原图"]').attributes('disabled')).toBeDefined()
+  await page.get('.reset-image').trigger('click')
+  expect(image.attributes('scale-value')).toBe('1')
+  expect(page.get('[aria-label="缩小原图"]').attributes('disabled')).toBeDefined()
+  page.unmount()
+})
+
+it('renews the original URL on explicit retry after cached pixels fail', async () => {
+  const { page } = openPreview(() => Promise.resolve('/expired-original'))
+  await flushPromises()
+  await page.get('.zoom-image image').trigger('error')
+  await flushPromises()
+  await page.get('.overlay-message button').trigger('click')
+  await flushPromises()
+  expect(ports.media).toHaveBeenCalledExactlyOnceWith(
+    'scene-1',
+    'image-1',
+    'version-1',
+    false,
+    true
+  )
+  expect(page.get('.zoom-image image').attributes('src')).toBe('/fresh-original')
+  page.unmount()
+})

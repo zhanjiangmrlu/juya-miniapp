@@ -3,6 +3,8 @@ export interface ImagePreviewContext {
   versionId: string
   imageId: string
   title: string
+  loadSource?: () => Promise<string>
+  initialSrc?: string
   onInvalid: (reason: unknown) => void
   onClose: () => void
 }

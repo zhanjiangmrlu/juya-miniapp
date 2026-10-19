@@ -4,3 +4,5 @@ export const WORD_ADDRESS_LIFETIME_MS = 240000
 export const FULL_AUDIO_LIFETIME_MS = WORD_ADDRESS_LIFETIME_MS
 export const WORD_AUDIO_FILE_PREFIX = 'juya-word-audio-'
 export const PRONUNCIATION_MAX_CHECKS = 120
+export const IMAGE_MIN_SCALE = 1
+export const IMAGE_MAX_SCALE = 2
