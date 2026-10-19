@@ -46,6 +46,30 @@ const temporaryWordAudio = (src: string): WordAudioFile => {
   }
 }
 
+/** 按实际文件头补齐播放器需要的扩展名，不将 WAV 误标成 MP3
+ * @param src 本次下载拥有的无扩展名缓存路径
+ */
+const playableAudioFile = (src: string): WordAudioFile => {
+  const fs = uni.getFileSystemManager(),
+    header = new Uint8Array(fs.readFileSync(src, undefined, 0, 12) as ArrayBuffer)
+  const mp3 =
+    (header[0] === 0x49 && header[1] === 0x44 && header[2] === 0x33) ||
+    (header[0] === 0xff && (header[1]! & 0xe0) === 0xe0 && (header[1]! & 0x06) !== 0)
+  const wav =
+    header[0] === 0x52 &&
+    header[1] === 0x49 &&
+    header[2] === 0x46 &&
+    header[3] === 0x46 &&
+    header[8] === 0x57 &&
+    header[9] === 0x41 &&
+    header[10] === 0x56 &&
+    header[11] === 0x45
+  if (!mp3 && !wav) throw new Error('音频文件格式暂不可用')
+  const path = `${src}.${mp3 ? 'mp3' : 'wav'}`
+  fs.renameSync(src, path)
+  return temporaryWordAudio(path)
+}
+
 /** 下载当前受控词汇音频，取消和迟到响应均清理本次文件
  * @param url 已经校验来源的短期发音地址
  * @param task 当前页面或词汇任务的取消边界
@@ -93,7 +117,15 @@ export const downloadWordAudio = (
         if (result.statusCode !== 200) {
           file.release()
           reject(new ApiError('word_audio_download_failed', '发音暂不可用', result.statusCode))
-        } else resolve(file)
+        } else {
+          try {
+            // 保留实际格式对应的扩展名，供 iPhone 原生播放器识别本地音源
+            resolve(playableAudioFile(filePath))
+          } catch (reason) {
+            file.release()
+            reject(reason)
+          }
+        }
       },
       fail: () => {
         if (settled) return

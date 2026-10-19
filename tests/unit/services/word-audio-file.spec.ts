@@ -35,7 +35,11 @@ it('downloads only a complete successful response and deletes its temporary file
       })
       return { abort: vi.fn() }
     }),
-    getFileSystemManager: () => ({ unlink })
+    getFileSystemManager: () => ({
+      unlink,
+      readFileSync: () => new Uint8Array([0x49, 0x44, 0x33, 0, 0, 0, 0, 0, 0, 0, 0, 0]).buffer,
+      renameSync: vi.fn()
+    })
   })
   const { task } = cancellation()
   const result = await downloadWordAudio(
@@ -98,6 +102,8 @@ it('removes only expired owned audio after a previous interrupted session', asyn
     env: { USER_DATA_PATH: 'wxfile://usr' },
     getFileSystemManager: () => ({
       unlink,
+      readFileSync: () => new Uint8Array([0x49, 0x44, 0x33, 0, 0, 0, 0, 0, 0, 0, 0, 0]).buffer,
+      renameSync: vi.fn(),
       readdir: (options: { success: (value: { files: string[] }) => void }) =>
         options.success({ files: [old, recent, 'other-file', 'juya-word-audio-invalid-file'] })
     }),

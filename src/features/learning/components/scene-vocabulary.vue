@@ -43,6 +43,11 @@ const sourceLine = (lineId?: string) =>
       <text v-if="word.meaning" class="meaning">{{ word.meaning }}</text>
       <text v-if="word.source" class="source">原句 · {{ sourceLine(word.source.line_id) }}</text>
       <text
+        v-if="state.wordId === word.id && state.wordStatus === AudioStatus.LOADING"
+        class="voice-status"
+        >正在加载发音…</text
+      >
+      <text
         v-if="state.wordId === word.id && state.wordStatus === AudioStatus.PLAYING"
         class="voice-status"
         >播放中</text
