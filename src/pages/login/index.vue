@@ -13,7 +13,8 @@ const account = useAccountStore(),
   agreed = ref(false),
   busy = ref(false),
   error = ref(''),
-  privacy = ref(false)
+  privacy = ref(false),
+  backgroundFailed = ref(false)
 let target: string = Routes.LEARNING
 /** 用户主动同意后登录，失败不改变页面身份 */
 const login = async () => {
@@ -55,10 +56,15 @@ onLoad((query) => {
       <view class="login-brand">
         <image
           class="login-botanical"
-          :webp="true"
-          src="/static/brand/u00-botanical-watercolor@3x.webp"
+          :src="
+            backgroundFailed
+              ? '/static/brand/u00-botanical-watercolor@3x.png'
+              : '/static/brand/u00-botanical-watercolor@3x.webp'
+          "
+          :webp="!backgroundFailed"
           mode="aspectFit"
           aria-hidden="true"
+          @error="backgroundFailed = true"
         />
         <image
           class="login-wordmark"
