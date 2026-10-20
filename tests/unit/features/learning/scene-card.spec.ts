@@ -14,6 +14,8 @@ it('renders the published English title above Chinese and keeps its WebP thumbna
     title_en: 'A Gentle Start to the Morning',
     thumbnail_id: 'thumb',
     published_at: '',
+    vocabulary_count: 10,
+    chunk_count: 5,
     state: { completed: false, today_completed: false, favorite: false }
   }
   const page = mount(SceneCard, { props: { card } })

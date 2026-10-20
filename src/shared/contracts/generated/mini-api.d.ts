@@ -521,6 +521,16 @@ export interface components {
       thumbnail_id: string | null
       /** Published At */
       published_at: string
+      /**
+       * Vocabulary Count
+       * @default 0
+       */
+      vocabulary_count: number
+      /**
+       * Chunk Count
+       * @default 0
+       */
+      chunk_count: number
       state: components['schemas']['CardState']
     }
     /** CardState */

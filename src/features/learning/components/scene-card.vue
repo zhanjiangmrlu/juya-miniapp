@@ -15,6 +15,18 @@ const src = ref(''),
 let generation = 0
 const available = computed(() => !('available' in props.card) || props.card.available)
 const completed = computed(() => 'state' in props.card && props.card.state.completed)
+/** 仅展示当前发布版本的实际内容数量，缺少的统计不填入示例值 */
+const contentSummary = computed(() => {
+  if (!available.value || !('vocabulary_count' in props.card)) return ''
+  const words = props.card.vocabulary_count,
+    chunks = props.card.chunk_count
+  return [
+    typeof words === 'number' && words > 0 ? `${words} 个词汇` : '',
+    typeof chunks === 'number' && chunks > 0 ? `${chunks} 个语块` : ''
+  ]
+    .filter(Boolean)
+    .join(' · ')
+})
 /** 读取可复用的短期缩略图，失败后可单独更新凭证
  * @param renew 用户重试时是否重新签发图片地址
  */
@@ -77,6 +89,7 @@ onBeforeUnmount(() => {
           : '已下线 · 当前不可用'
       }}</text
       ><text v-else-if="completed && !$slots.default" class="scene-hint">已学过 · 点击复习</text>
+      <text v-if="contentSummary" class="scene-meta">{{ contentSummary }}</text>
       <slot v-if="available" /></view
     ><image class="arrow" src="/static/design/chevron.svg" mode="aspectFit" aria-hidden="true"
   /></view>
@@ -146,12 +159,17 @@ onBeforeUnmount(() => {
     }
 
     .scene-hint,
+    .scene-meta,
     .availability {
       display: block;
       margin-top: 11.538rpx;
       color: #586c5b;
       font-size: 21.154rpx;
       line-height: 35.962rpx;
+    }
+
+    .scene-meta {
+      margin-top: 13.462rpx;
     }
   }
 
