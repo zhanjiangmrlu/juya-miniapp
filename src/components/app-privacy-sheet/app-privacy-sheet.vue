@@ -6,16 +6,8 @@ defineEmits<{ close: [] }>()
     ><view class="sheet"
       ><text class="dialog-title">隐私说明</text
       ><scroll-view scroll-y class="privacy-text"
-        ><text class="paragraph"
-          >微信身份用于识别同一学习账号，并同步你的收藏、已学卡片和打卡记录。只有你主动同意并点击登录后，才会进行身份登录。</text
-        ><text class="paragraph"
-          >头像和昵称只用于展示，你可以稍后主动选择和填写。系统不会自动读取微信头像昵称。</text
-        ><text class="paragraph"
-          >手机号与微信号均为选填，用于你主动提供的后续联系与服务。手动填写暂不验证归属，不影响学习、收藏或打卡。</text
-        ><text class="paragraph"
-          >学习记录只在你主动确认完成后产生，播放音频或查看页面不会替你打卡。已有学习成绩不会因卡片下线或删除而清零。</text
         ><text class="paragraph final-paragraph"
-          >退出登录会清理本机业务会话与个人资料缓存，服务器上的学习记录和收藏会保留。</text
+          >微信身份用于识别同一账号，保存学习记录和收藏。手机号、微信号在账号资料页自愿填写，不填写也可学习。头像昵称由你主动设置，不会自动读取。此处为原型用途说明，正式上线使用正式隐私政策。</text
         ></scroll-view
       ><button class="primary" @click="$emit('close')">我知道了</button></view
     ></view
@@ -46,6 +38,7 @@ defineEmits<{ close: [] }>()
       font-weight: 500;
       line-height: 1.6;
       color: #2b4438;
+      text-align: center;
       margin-bottom: 25rpx;
     }
 
