@@ -3,6 +3,7 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 
 import { mediaAddress } from '@/services/media-service'
 import { backTo } from '@/services/navigation'
+import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
 
 import type { SceneUnavailableProps } from '@/shared/types/learning-components'
 const props = defineProps<SceneUnavailableProps>()
@@ -13,9 +14,12 @@ let generation = 0
 const loadThumbnail = async () => {
   const run = ++generation
   thumbnail.value = ''
-  if (!props.summary.thumbnail_id) return
+  const thumbnailId = sceneImageId(props.summary.thumbnail_id)
+  if (!thumbnailId) return
   try {
-    const value = await mediaAddress(props.summary.id, props.summary.thumbnail_id, null, true)
+    const value = await mediaAddress(props.summary.id, thumbnailId, null, true).then(
+      sceneThumbnailURL
+    )
     if (run === generation) thumbnail.value = value
   } catch {
     /* 缩略图失败时保留安全名称与不可用状态 */

@@ -12,12 +12,14 @@ import SceneUnavailable from '@/features/learning/components/scene-unavailable.v
 import SceneVocabulary from '@/features/learning/components/scene-vocabulary.vue'
 import { onSessionExpired, operations, session } from '@/services/api'
 import { createAudioPort } from '@/services/audio-port'
+import { clientThumbnail } from '@/services/client-thumbnail'
 import { ApiError } from '@/services/errors'
 import { createFullAudioPreparation } from '@/services/full-audio-preparation'
 import { prepareImagePreviewSource, registerImagePreview } from '@/services/image-preview'
 import { mediaAddress } from '@/services/media-service'
 import { operationKey, resourceURL } from '@/services/platform'
 import { loadPronunciation } from '@/services/pronunciation-service'
+import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
 import { prepareAudioCacheFile, prepareWordAudioFile } from '@/services/word-audio-file'
 import { createWordAudioPreparation, waitForWordAudio } from '@/services/word-audio-preparation'
 import { Routes } from '@/shared/constants/navigation'
@@ -32,6 +34,7 @@ const account = useAccountStore(),
   summary = ref<components['schemas']['PersonalSummary'] | null>(null),
   imageSrc = ref(''),
   imageError = ref(''),
+  imageLoading = ref(false),
   busy = ref(false),
   error = ref(''),
   actionError = ref(''),
@@ -60,6 +63,8 @@ let id = '',
   fullAudio: ReturnType<typeof createFullAudioPreparation> | null = null,
   wordAudio: ReturnType<typeof createWordAudioPreparation> | null = null,
   imageOpen = false,
+  imageGeneration = 0,
+  originalSrc = '',
   imageRequest: Promise<string> | null = null,
   releaseImage: (() => void) | null = null
 const favorite = computed(
@@ -195,26 +200,29 @@ const invalid = async (reason: unknown) => {
     /* A learner without a previous favorite/completion only keeps the already-known safe label */
   }
 }
-/** 复用当前版本原图文件或进行中的下载，renew 表示用户主动重试损坏图片 */
+/** 查看时优先复用完整原图，缩图处理失败也可独立加载原图
+ * @param renew 用户主动重试原图时重新签发地址
+ */
 const resolveImage = (renew = false): Promise<string> => {
-  if (!renew && imageSrc.value && !imageError.value) return Promise.resolve(imageSrc.value)
-  if (imageRequest) return imageRequest
   const scene = card.value,
-    run = generation
-  if (!scene?.content.image_id) return Promise.reject(new Error('场景图片暂不可用'))
-  const request = mediaAddress(
-    id,
-    scene.content.image_id,
-    scene.version_id,
-    false,
-    renew || !!imageError.value
-  )
+    run = generation,
+    imageId = sceneImageId(scene?.thumbnail_id, scene?.content.image_id, true)
+  if (!scene || !imageId || stale.value || !alive)
+    return Promise.reject(new Error('场景图片暂不可用'))
+  if (!renew && originalSrc) return Promise.resolve(originalSrc)
+  if (imageRequest) return imageRequest
+  originalSrc = ''
+  const request = mediaAddress(id, imageId, scene.version_id, false, renew)
     .then(prepareImagePreviewSource)
     .then((value) => {
-      if (alive && run === generation && card.value?.version_id === scene.version_id) {
-        imageSrc.value = value
-        imageError.value = ''
-      }
+      if (
+        !alive ||
+        run !== generation ||
+        card.value?.version_id !== scene.version_id ||
+        stale.value
+      )
+        throw new Error('场景版本已变化，请重新打开图片')
+      originalSrc = value
       return value
     })
     .finally(() => {
@@ -223,16 +231,43 @@ const resolveImage = (renew = false): Promise<string> => {
   imageRequest = request
   return request
 }
-/** 单独获取原图，失败时重新签发当前版本的图片地址
+/** 优先加载已有缩略图，缺失时读取原图并在前端等比缩小
  * @param renew 用户重试时是否更新资源凭证
  */
 const loadImage = async (renew = false) => {
-  if (!card.value?.content.image_id) return
+  const scene = card.value,
+    thumbnailId = sceneImageId(scene?.thumbnail_id),
+    imageId = sceneImageId(scene?.thumbnail_id, scene?.content.image_id, true)
+  if (!scene || (!thumbnailId && !imageId) || imageLoading.value || stale.value || !alive) return
+  const run = ++imageGeneration,
+    version = scene.version_id
+  imageLoading.value = true
+  imageError.value = ''
+  imageSrc.value = ''
   try {
-    await resolveImage(renew)
+    if (thumbnailId) {
+      const value = await mediaAddress(id, thumbnailId, version, false, renew).then(
+        sceneThumbnailURL
+      )
+      if (alive && run === imageGeneration && card.value?.version_id === version && !stale.value)
+        imageSrc.value = value
+    } else {
+      const result = await clientThumbnail(
+        JSON.stringify([session.userId(), id, version]),
+        () => mediaAddress(id, imageId, version, false, renew),
+        renew
+      )
+      if (alive && run === imageGeneration && card.value?.version_id === version && !stale.value) {
+        imageSrc.value = result.thumbnailSrc
+        originalSrc = result.originalSrc
+      }
+    }
   } catch (reason) {
+    if (!alive || run !== imageGeneration || card.value?.version_id !== version) return
     if (reason instanceof ApiError && [409, 410].includes(reason.status)) await invalid(reason)
-    else if (alive) imageError.value = '图片暂未加载，可重试'
+    else imageError.value = '图片暂未加载，可重试'
+  } finally {
+    if (alive && run === imageGeneration) imageLoading.value = false
   }
 }
 /** 读取当前不可变发布内容，草稿不会进入详情 */
@@ -250,6 +285,10 @@ const load = async () => {
     stopAudio()
     card.value = value
     imageSrc.value = ''
+    imageError.value = ''
+    imageLoading.value = false
+    imageGeneration++
+    originalSrc = ''
     imageRequest = null
     summary.value = null
     awaitingState.value = false
@@ -301,7 +340,7 @@ const previewImage = () => {
     versionId: card.value.version_id,
     imageId: card.value.content.image_id,
     title: card.value.content.name,
-    initialSrc: imageError.value ? '' : imageSrc.value,
+    initialSrc: originalSrc,
     loadSource: resolveImage,
     onInvalid: (reason) => {
       void invalid(reason)
@@ -464,6 +503,9 @@ onUnload(() => {
             :alt="card.content.name"
             @error="imageError = '图片暂未加载，可重试'"
           />
+          <text v-else-if="!card.thumbnail_id && !card.content.image_id" class="image-retry"
+            >暂无场景图</text
+          >
           <button v-else class="image-retry" @click.stop="loadImage(true)">
             {{ imageError || '正在加载场景图…' }}
           </button>

@@ -41,8 +41,8 @@ const nativeContainer = (tag: string) =>
         h(tag, attrs, slots.default?.())
   })
 
-/** 从同一版本的详情页打开原图，loadSource 表示详情页已加载或仍在进行的原图请求 */
-const openPreview = (loadSource?: () => Promise<string>) => {
+/** 从同一版本详情页打开大图，loadSource 接收是否重新签发原图地址 */
+const openPreview = (loadSource?: (renew?: boolean) => Promise<string>) => {
   const onInvalid = vi.fn(),
     onClose = vi.fn()
   registerImagePreview({
@@ -110,19 +110,16 @@ it('keeps arbitrary pinch scales, clamps at 100–200%, and disables settling an
 })
 
 it('renews the original URL on explicit retry after cached pixels fail', async () => {
-  const { page } = openPreview(() => Promise.resolve('/expired-original'))
+  const loadSource = vi.fn(async (renew?: boolean) =>
+    renew ? '/fresh-original' : '/expired-original'
+  )
+  const { page } = openPreview(loadSource)
   await flushPromises()
   await page.get('.zoom-image image').trigger('error')
   await flushPromises()
   await page.get('.overlay-message button').trigger('click')
   await flushPromises()
-  expect(ports.media).toHaveBeenCalledExactlyOnceWith(
-    'scene-1',
-    'image-1',
-    'version-1',
-    false,
-    true
-  )
+  expect(loadSource.mock.calls).toEqual([[false], [true]])
   expect(page.get('.zoom-image image').attributes('src')).toBe('/fresh-original')
   page.unmount()
 })

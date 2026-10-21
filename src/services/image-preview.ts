@@ -1,15 +1,21 @@
 import type { ImagePreviewContext } from '@/shared/types/image-preview'
 let current: ImagePreviewContext | null = null
-/** 将微信原图下载为临时文件，详情缩略展示与大图共用，避免 no-store 资源重复下载
+/** 点击查看后准备原图文件，原生预处理失败时由图片组件直接加载同一授权原图
  * @param url 当前发布版本已授权的原图地址
  */
 export const prepareImagePreviewSource = async (url: string): Promise<string> => {
   // #ifdef MP-WEIXIN
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     uni.getImageInfo({
       src: url,
       success: (image) => resolve(image.path),
-      fail: () => reject(new Error('图片暂未加载，可重试'))
+      fail: (reason) => {
+        console.warn(
+          '[scene-image] 原图准备失败',
+          reason.errMsg.replace(/https?:\/\/\S+/g, '[资源地址]')
+        )
+        resolve(url)
+      }
     })
   })
   // #endif

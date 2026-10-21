@@ -28,6 +28,7 @@ it('uses only the permitted summary thumbnail and returns to the original list',
   })
   await flushPromises()
   expect(ports.media).toHaveBeenCalledExactlyOnceWith('old-card', 'safe-thumb', null, true)
+  expect(page.get('image').attributes('src')).toBe('/safe-thumbnail?thumbnail=list')
   expect(page.find('audio').exists()).toBe(false)
   expect(page.text()).toContain('已有学习记录和打卡数据会保留')
   expect(page.text()).toContain('A Historic Scene')

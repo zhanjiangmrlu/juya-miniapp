@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
+import { session } from '@/services/api'
+import { clientThumbnail } from '@/services/client-thumbnail'
 import { mediaAddress } from '@/services/media-service'
 import { openScene } from '@/services/navigation'
+import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
 
+import type { PublishedScene } from '@/shared/types/learning'
 import type { SceneCardProps } from '@/shared/types/learning-components'
 const props = withDefaults(defineProps<SceneCardProps>(), {
   history: false,
@@ -27,24 +31,38 @@ const contentSummary = computed(() => {
     .filter(Boolean)
     .join(' · ')
 })
-/** 读取可复用的短期缩略图，失败后可单独更新凭证
+/** 优先读取已有缩略图，仅为可读发布卡补齐前端缩图
  * @param renew 用户重试时是否重新签发图片地址
  */
 const loadImage = async (renew = false) => {
   const run = ++generation
   imageError.value = false
-  if (!props.card.thumbnail_id) {
+  const thumbnailId = sceneImageId(props.card.thumbnail_id)
+  if (!thumbnailId && (!available.value || !props.card.version_id)) {
     src.value = ''
     return
   }
   try {
-    const value = await mediaAddress(
-      props.card.id,
-      props.card.thumbnail_id,
-      props.card.version_id,
-      props.history,
-      renew
-    )
+    const cardId = props.card.id,
+      version = props.card.version_id
+    const value = thumbnailId
+      ? await mediaAddress(cardId, thumbnailId, version, props.history, renew).then(
+          sceneThumbnailURL
+        )
+      : (
+          await clientThumbnail(
+            JSON.stringify([session.userId(), cardId, version]),
+            async () => {
+              const scene = await session.request<PublishedScene>(
+                `/api/mini/v1/cards/${encodeURIComponent(cardId)}?version_id=${encodeURIComponent(version!)}`
+              )
+              const imageId = sceneImageId(null, scene.content.image_id, true)
+              if (!imageId) throw new Error('场景图片暂不可用')
+              return mediaAddress(cardId, imageId, version, false, renew)
+            },
+            renew
+          )
+        ).thumbnailSrc
     if (run === generation) src.value = value
   } catch {
     if (run === generation) {

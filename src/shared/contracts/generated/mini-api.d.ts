@@ -79,7 +79,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Detail */
+    /**
+     * Detail
+     * @description Read the authorized publication and its thumbnail, including direct detail entry.
+     */
     get: operations['detail_api_mini_v1_cards__card_id__get']
     put?: never
     post?: never
@@ -831,6 +834,8 @@ export interface components {
     PublishedDetail: {
       /** Audio Duration */
       audio_duration: number | null
+      /** Thumbnail Id */
+      thumbnail_id?: string | null
       /** Card Id */
       card_id: string
       /** Version Id */
@@ -1686,7 +1691,9 @@ export interface operations {
   }
   read_api_mini_v1_media__credential__get: {
     parameters: {
-      query?: never
+      query?: {
+        thumbnail?: 'list' | null
+      }
       header?: never
       path: {
         credential: string

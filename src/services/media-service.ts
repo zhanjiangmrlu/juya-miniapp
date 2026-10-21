@@ -4,11 +4,15 @@ import type { components } from '@/shared/contracts/generated/mini-api'
 import type { MediaAddressCacheEntry } from '@/shared/types/media'
 
 import { session } from './api'
+import { clearClientThumbnails } from './client-thumbnail'
 import { resourceURL } from './platform'
 
 const addresses = new Map<string, MediaAddressCacheEntry>()
 /** 账号退出或重新登录时清除旧会话签发的临时资源 */
-export const clearMediaAddresses = () => addresses.clear()
+export const clearMediaAddresses = () => {
+  addresses.clear()
+  clearClientThumbnails()
+}
 
 /** 为当前内容或本人历史缩略图获取短期受控地址
  * @param cardId 稳定卡片编号

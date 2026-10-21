@@ -24,8 +24,8 @@ const zoom = ref(IMAGE_MIN_SCALE),
   imageLoading = ref(false)
 let context: ImagePreviewContext | null = null,
   alive = true
-/** 复用详情原图下载，用户重试时重新获取同一版本的授权地址
- * @param reuse 是否复用详情页的临时文件或正在进行的下载
+/** 独立请求原图，用户重试时重新签发同一版本的授权地址
+ * @param reuse 是否复用本次查看已取得的原图文件或进行中的请求
  */
 const load = async (reuse = false) => {
   if (!context || busy.value) return
@@ -34,12 +34,11 @@ const load = async (reuse = false) => {
   src.value = ''
   imageLoading.value = true
   try {
-    const value =
-      reuse && context.loadSource
-        ? await context.loadSource()
-        : await prepareImagePreviewSource(
-            await mediaAddress(context.cardId, context.imageId, context.versionId, false, true)
-          )
+    const value = context.loadSource
+      ? await context.loadSource(!reuse)
+      : await prepareImagePreviewSource(
+          await mediaAddress(context.cardId, context.imageId, context.versionId, false, true)
+        )
     if (alive) src.value = value
   } catch (reason) {
     if (!alive) return
