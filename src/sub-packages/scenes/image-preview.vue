@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
+import AppLoading from '@/components/app-loading/app-loading.vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
 import { session } from '@/services/api'
 import { ApiError } from '@/services/errors'
@@ -29,16 +30,19 @@ const zoom = ref(IMAGE_MIN_SCALE),
   src = ref(''),
   error = ref(''),
   busy = ref(false),
-  imageLoading = ref(false)
+  imageLoading = ref(false),
+  imageGeneration = ref(0)
+const images = computed(() =>
+  src.value && !error.value ? [{ src: src.value, generation: imageGeneration.value }] : []
+)
 const browseOnly = runtimeMode.browseOnly,
   publicShare = createShareService({ send: sendPublicRequest, resource: resourceURL })
 let context: ImagePreviewContext | null = null,
   alive = true,
-  generation = 0,
   targetId = ''
 /** 模式收紧时同步撤销原图与在途结果，仅重新获取匿名摘要 */
 const restrict = () => {
-  generation++
+  imageGeneration.value++
   src.value = ''
   context = null
   discardImagePreview()
@@ -54,7 +58,7 @@ const restrict = () => {
 const load = async (reuse = false) => {
   if (runtimeMode.update()) return
   if (!context || busy.value) return
-  const run = ++generation
+  const run = ++imageGeneration.value
   busy.value = true
   error.value = ''
   src.value = ''
@@ -65,34 +69,36 @@ const load = async (reuse = false) => {
       : await prepareImagePreviewSource(
           await mediaAddress(context.cardId, context.imageId, context.versionId, false, true)
         )
-    if (alive && run === generation && !runtimeMode.update()) src.value = value
+    if (alive && run === imageGeneration.value && !runtimeMode.update()) src.value = value
   } catch (reason) {
-    if (!alive || run !== generation || runtimeMode.update()) return
+    if (!alive || run !== imageGeneration.value || runtimeMode.update()) return
     imageLoading.value = false
     if (reason instanceof ApiError && [401, 409, 410].includes(reason.status)) {
       context.onInvalid(reason)
       backTo(Routes.LEARNING)
     } else error.value = '大图暂未加载，点击重试'
   } finally {
-    if (alive && run === generation) busy.value = false
+    if (alive && run === imageGeneration.value) busy.value = false
   }
 }
-/** 图片本体失败后读取真实卡片状态，再决定重试或结束覆盖层 */
-const imageFailed = async () => {
-  if (runtimeMode.update()) return
+/** 图片本体失败后仅核对当前仍有效的原图，不让旧像素事件影响新图片
+ * @param run 发出该像素事件的原图请求代次
+ */
+const imageFailed = async (run: number) => {
+  if (!alive || run !== imageGeneration.value || runtimeMode.update()) return
   imageLoading.value = false
   error.value = '大图暂未加载，点击重试'
-  if (!context) return
-  const active = context,
-    run = generation
+  const active = context
+  if (!active) return
   try {
     await session.request(
-      `/api/mini/v1/cards/${context.cardId}?version_id=${encodeURIComponent(context.versionId)}`
+      `/api/mini/v1/cards/${active.cardId}?version_id=${encodeURIComponent(active.versionId)}`
     )
   } catch (reason) {
-    if (!alive || run !== generation || context !== active || runtimeMode.update()) return
+    if (!alive || run !== imageGeneration.value || context !== active || runtimeMode.update())
+      return
     if (reason instanceof ApiError && [401, 409, 410].includes(reason.status)) {
-      context.onInvalid(reason)
+      active.onInvalid(reason)
       backTo(Routes.LEARNING)
     }
   }
@@ -117,9 +123,9 @@ const setZoom = async (value: number) => {
   zoom.value = target
   scaleValue.value = target
 }
-/** 原图像素绘制完成后结束加载提示 */
-const imageLoaded = () => {
-  imageLoading.value = false
+/** 原图像素绘制完成后结束加载提示，run 为该原图的请求代次 */
+const imageLoaded = (run: number) => {
+  if (alive && run === imageGeneration.value) imageLoading.value = false
 }
 /** 关闭当前覆盖层，不退出原场景 */
 const close = () => backTo(Routes.LEARNING)
@@ -157,7 +163,7 @@ watch(
   { flush: 'sync' }
 )
 onUnload(() => {
-  generation++
+  imageGeneration.value++
   publicShare.clear()
   alive = false
   if (context) closeImagePreview(context)
@@ -181,7 +187,9 @@ onUnload(() => {
         <image src="/static/design/close.svg" mode="aspectFit" aria-hidden="true" /></button
       ><text>场景卡原图</text><view class="top-spacer"
     /></view>
-    <view v-if="(busy || imageLoading) && !error" class="overlay-message">正在加载原图…</view>
+    <view v-if="(busy || imageLoading) && !error" class="overlay-message"
+      ><AppLoading label="正在加载原图"
+    /></view>
     <view v-if="error" class="overlay-message"
       ><text>{{ error }}</text
       ><button :disabled="busy" @click="load()">重新加载</button
@@ -200,12 +208,14 @@ onUnload(() => {
         :out-of-bounds="false"
         @scale="scaleChanged"
         ><image
-          :src="src"
+          v-for="image in images"
+          :key="image.generation"
+          :src="image.src"
           mode="aspectFit"
           :webp="true"
           :alt="context?.title"
-          @load="imageLoaded"
-          @error="imageFailed" /></movable-view
+          @load="imageLoaded(image.generation)"
+          @error="imageFailed(image.generation)" /></movable-view
     ></movable-area>
     <view class="image-controls"
       ><button

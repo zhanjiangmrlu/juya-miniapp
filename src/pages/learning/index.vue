@@ -10,6 +10,7 @@ import {
 import { ref, watch } from 'vue'
 
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
+import AppLoading from '@/components/app-loading/app-loading.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { useNativeShare } from '@/composables/use-native-share'
@@ -19,7 +20,7 @@ import SceneCard from '@/features/learning/components/scene-card.vue'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import ShareSheet from '@/features/share/components/share-sheet.vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
-import { session } from '@/services/api'
+import { onSessionExpired, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
 import { runtimeMode } from '@/services/runtime-mode'
 import { homeShare } from '@/services/share-service'
@@ -45,14 +46,19 @@ const {
   moreBusy,
   error,
   moreError,
+  hasMore,
+  done,
   refresh,
   more: loadMore,
-  dispose
+  dispose,
+  reset
 } = useSceneList<CardBrief>({
   path: '/api/mini/v1/cards',
   request: session.request,
+  userId: session.userId,
   ensure: () => account.ensure(Routes.LEARNING)
 })
+const unsubscribe = onSessionExpired(reset)
 /** 统计单独失败时仍允许查看场景卡片 */
 const refreshStats = async () => {
   if (runtimeMode.update()) return
@@ -106,7 +112,7 @@ watch(
     if (restricted) {
       accessReady.value = false
       requiresIdentityCheck = true
-      dispose()
+      reset()
     }
     if (!restricted) void showPage()
   },
@@ -127,6 +133,7 @@ onReachBottom(() => {
 })
 onUnload(() => {
   dispose()
+  unsubscribe()
 })
 </script>
 <template>
@@ -152,7 +159,11 @@ onUnload(() => {
       </view>
       <text class="home-title">English, every day.</text>
       <LearningStatistics v-if="account.statistics" :statistics="account.statistics" />
-      <AppState v-else :busy="!statsError" :error="statsError" @retry="refreshStats" />
+      <AppState
+        v-else
+        :busy="!statsError"
+        :error="statsError && '统计暂未获取'"
+        @retry="refreshStats" />
       <view v-if="statsError && account.statistics" class="notice error">
         统计暂未更新 <button class="text-button" @click="refreshStats">重试</button>
       </view>
@@ -178,7 +189,7 @@ onUnload(() => {
       </view>
       <AppState
         :busy="busy && total === null"
-        :error="error"
+        :error="error && (total === null ? error : `列表暂未更新：${error}`)"
         :empty="total === 0"
         :title="publishedTotal > 0 ? '当前场景卡已全部学完' : '暂无可学习的场景卡'"
         :description="
@@ -200,9 +211,12 @@ onUnload(() => {
         :disabled="busy || moreBusy"
         @click="refresh"
       >
-        <image src="/static/design/refresh.svg" mode="aspectFit" aria-hidden="true" />{{
-          busy ? '正在刷新…' : '刷新列表'
-        }}
+        <AppLoading v-if="busy" compact label="正在刷新" icon-only /><image
+          v-else
+          src="/static/design/refresh.svg"
+          mode="aspectFit"
+          aria-hidden="true"
+        />{{ busy ? '正在刷新…' : '刷新列表' }}
       </button>
       <SceneCard
         v-for="(card, index) in cards"
@@ -213,8 +227,8 @@ onUnload(() => {
       <SceneListFooter
         :busy="moreBusy"
         :error="moreError"
-        :has-more="total !== null && cards.length < total"
-        :done="total !== null && total > 0 && cards.length >= total"
+        :has-more="hasMore"
+        :done="done"
         @more="loadMore" />
       <button class="share-entry text-button" @click="share.show">
         <image src="/static/design/share.svg" mode="aspectFit" aria-hidden="true" />分享学习页

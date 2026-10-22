@@ -16,7 +16,10 @@ vi.mock('@dcloudio/uni-app', () => ({
 vi.mock('@/services/feedback-service', () => ({
   feedbackInbox: { value: ref({ unread: true, count: 1 }), refresh: vi.fn() }
 }))
-vi.mock('@/services/api', () => ({ session: { request: vi.fn() } }))
+vi.mock('@/services/api', () => ({
+  session: { request: vi.fn(), userId: () => 'owner' },
+  onSessionExpired: () => () => undefined
+}))
 vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({ profile: { id: 'owner', nickname: '学习者' } })
 }))

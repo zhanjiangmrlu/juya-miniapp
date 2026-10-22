@@ -2,6 +2,7 @@
 import { onReachBottom, onShow, onUnload } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
+import AppLoading from '@/components/app-loading/app-loading.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { useSceneList } from '@/composables/use-scene-list'
@@ -20,6 +21,7 @@ const account = useAccountStore(),
 const list = useSceneList<FeedbackDetail>({
   path: '/api/mini/v1/feedback',
   request: session.request,
+  userId: session.userId,
   ensure: () => account.ensure(Routes.FEEDBACK)
 })
 /** 通用反馈入口保留当前列表实例与滚动位置 */
@@ -33,17 +35,13 @@ const detail = (id: string) =>
 const load = async () => {
   if (!(await account.ensure(Routes.FEEDBACK))) return
   if (owner.value !== session.userId()) {
-    list.dispose()
-    list.items.value = []
-    list.total.value = null
+    list.reset()
     owner.value = session.userId()
   }
   await Promise.allSettled([list.refresh(), feedbackInbox.refresh()])
 }
 const unsubscribe = onSessionExpired(() => {
-  list.dispose()
-  list.items.value = []
-  list.total.value = null
+  list.reset()
   owner.value = null
 })
 onShow(() => {
@@ -68,14 +66,20 @@ onUnload(() => {
     <text class="feedback-list-help">提交的问题和后续回复都会保存在这里。</text>
     <AppState
       :busy="list.busy.value && list.total.value === null"
-      :error="list.error.value"
+      :error="
+        list.error.value &&
+        (list.total.value === null ? list.error.value : `列表暂未更新：${list.error.value}`)
+      "
       @retry="load"
     />
+    <view v-if="list.busy.value && list.total.value !== null" class="refreshing"
+      ><AppLoading label="正在刷新"
+    /></view>
     <template v-if="owner && account.profile">
       <view v-if="list.total.value === 0 && !list.error.value" class="feedback-empty"
         ><view class="empty-icon"
           ><image src="/static/design/empty-book.svg" mode="aspectFit" aria-hidden="true" /></view
-        ><text class="empty-title">暂无反馈</text
+        ><text class="empty-title">还没有提交过反馈</text
         ><text class="empty-help">学习中遇到问题，可以随时告诉我们。</text
         ><button class="primary" @click="create">提交反馈</button></view
       >
@@ -110,18 +114,21 @@ onUnload(() => {
       <SceneListFooter
         :busy="list.moreBusy.value"
         :error="list.moreError.value"
-        :has-more="list.total.value !== null && list.items.value.length < list.total.value"
-        :done="
-          list.total.value !== null &&
-          list.total.value > 0 &&
-          list.items.value.length >= list.total.value
-        "
+        :has-more="list.hasMore.value"
+        :done="list.done.value"
         @more="list.more"
       />
     </template>
   </AppPage>
 </template>
 <style scoped lang="scss">
+.refreshing {
+  padding: 19.231rpx 0;
+  color: #586c5b;
+  font-size: 23.077rpx;
+  text-align: center;
+}
+
 .feedback-list-head {
   margin-top: 53.846rpx;
   min-height: 76.923rpx;

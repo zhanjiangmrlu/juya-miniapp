@@ -98,12 +98,13 @@ onLoad((query) => {
               <text>我已阅读并同意</text>
             </label>
           </checkbox-group>
-          <button class="privacy-link" @click="privacy = true">隐私说明</button>
+          <button class="privacy-link" hover-class="privacy-pressed" @click="privacy = true">
+            隐私说明
+          </button>
         </view>
         <button class="primary" :disabled="busy" :loading="busy" @click="login">
           {{ busy ? '登录中…' : '同意并登录' }}
         </button>
-        <text class="login-optional">联系方式可稍后选填，不影响学习</text>
       </view>
       <text class="login-bottom">{{
         '主动登录后创建或使用你的账号\n学习、收藏与打卡保存在同一账号'
@@ -260,6 +261,9 @@ onLoad((query) => {
   line-height: 42.31rpx;
 
   .privacy-link {
+    color: #41664d;
+    text-decoration: underline;
+    text-underline-offset: 7.692rpx;
     min-height: 84.62rpx;
     margin: 0;
     padding: 0 3.85rpx;
@@ -271,6 +275,12 @@ onLoad((query) => {
 
     &::after {
       border: 0;
+    }
+
+    &.privacy-pressed,
+    &:active {
+      background: #e4f0db;
+      color: #2b4438;
     }
   }
 }
@@ -292,15 +302,6 @@ onLoad((query) => {
     transform: scale(0.75);
     transform-origin: center;
   }
-}
-
-.login-optional {
-  display: block;
-  margin-top: 34.62rpx;
-  color: #586c5b;
-  font-size: 23.08rpx;
-  line-height: 42.31rpx;
-  text-align: center;
 }
 
 .login-bottom {

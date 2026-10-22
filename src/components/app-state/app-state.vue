@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AppLoading from '@/components/app-loading/app-loading.vue'
+
 defineProps<{
   busy?: boolean
   error?: string
@@ -12,7 +14,7 @@ defineEmits<{ retry: [] }>()
   <view v-if="error" class="notice error"
     ><text>{{ error }}</text
     ><button class="text-button" @click="$emit('retry')">重试</button></view
-  ><view v-if="busy" class="loading" aria-live="polite">正在加载…</view
+  ><view v-else-if="busy" class="loading"><AppLoading /></view
   ><view v-else-if="empty && !error" class="empty"
     ><view class="empty-mark"
       ><image
@@ -28,6 +30,7 @@ defineEmits<{ retry: [] }>()
 <style scoped lang="scss">
 .loading {
   padding: 40rpx 0;
+  text-align: center;
   color: #586c5b;
   font-size: 23.08rpx;
 }

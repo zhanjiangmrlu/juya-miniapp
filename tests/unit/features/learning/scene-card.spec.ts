@@ -103,3 +103,35 @@ it('does not request an original or generate a thumbnail for unavailable history
   expect(page.find('.thumbnail image').exists()).toBe(false)
   page.unmount()
 })
+
+it('keeps its image placeholder until pixels load, retries failed pixels in place, and ignores a replaced image', async () => {
+  const card = {
+    id: 'one',
+    version_id: 'v1',
+    name: '场景',
+    title_en: 'Scene',
+    thumbnail_id: 'thumb',
+    published_at: '',
+    vocabulary_count: 0,
+    chunk_count: 0,
+    state: { completed: false, today_completed: false, favorite: false, started: false }
+  }
+  const page = mount(SceneCard, { props: { card } })
+  await flushPromises()
+  expect(page.find('.image-loading').exists()).toBe(true)
+  const oldImage = page.get('.thumbnail image')
+  await oldImage.trigger('load')
+  expect(page.find('.image-loading').exists()).toBe(false)
+  await oldImage.trigger('error')
+  expect(page.get('.retry-image').text()).toContain('重试')
+  await page.get('.retry-image').trigger('click')
+  await flushPromises()
+  expect(page.find('.image-loading').exists()).toBe(true)
+  await page.get('.thumbnail image').trigger('load')
+  await page.setProps({ card: { ...card, id: 'two', thumbnail_id: 'thumb-two' } })
+  await flushPromises()
+  await oldImage.trigger('load')
+  expect(page.find('.image-loading').exists()).toBe(true)
+  expect(page.text()).toContain('场景')
+  page.unmount()
+})

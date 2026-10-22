@@ -104,6 +104,19 @@ it('loads only a real thumbnail on direct detail entry without preparing an orig
   page.unmount()
 })
 
+it('keeps detail image loading until pixels arrive while text remains usable', async () => {
+  const page = openDetail()
+  await flushPromises()
+  expect(page.find('.image-loading').exists()).toBe(true)
+  expect(page.text()).toContain('晨间慢慢活动身体')
+  await page.get('.scene-thumbnail image').trigger('load')
+  expect(page.find('.image-loading').exists()).toBe(false)
+  await page.get('.scene-thumbnail image').trigger('error')
+  expect(page.find('.image-loading').exists()).toBe(false)
+  expect(page.get('.image-retry').text()).toContain('重试')
+  page.unmount()
+})
+
 it('starts the original only in the viewer and shares concurrent requests without replacing the thumbnail', async () => {
   let finish: (url: string) => void = () => undefined
   ports.media.mockImplementation((_card: string, media: string) =>

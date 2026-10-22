@@ -19,6 +19,7 @@ vi.mock('@/services/api', () => ({ session: { request: ports.request } }))
 vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
 vi.mock('@/services/navigation', () => ({ backTo: ports.back }))
 
+import { ApiError } from '@/services/errors'
 import { registerImagePreview } from '@/services/image-preview'
 import { runtimeMode } from '@/services/runtime-mode'
 import ImagePreview from '@/sub-packages/scenes/image-preview.vue'
@@ -175,5 +176,39 @@ it('hides an already rendered full-resolution original immediately when browseOn
   await flushPromises()
   expect(page.find('.image-overlay').exists()).toBe(false)
   expect(page.find('[src="/private-original-visible"]').exists()).toBe(false)
+  page.unmount()
+})
+
+it('does not navigate or invalidate the parent when an image status check finishes after closing', async () => {
+  let reject: (reason: Error) => void = () => undefined
+  ports.request.mockImplementation(
+    () =>
+      new Promise((_, fail) => {
+        reject = fail
+      })
+  )
+  const { page, onInvalid } = openPreview()
+  await flushPromises()
+  await page.get('.zoom-image image').trigger('error')
+  ports.unload?.()
+  page.unmount()
+  reject(new ApiError('card_offline', '已下线', 410))
+  await flushPromises()
+  expect(ports.back).not.toHaveBeenCalled()
+  expect(onInvalid).not.toHaveBeenCalled()
+})
+
+it('keeps retry loading when the replaced original emits a late load event', async () => {
+  const { page } = openPreview()
+  await flushPromises()
+  const oldImage = page.get('.zoom-image image')
+  await oldImage.trigger('error')
+  await flushPromises()
+  await page.get('.overlay-message button').trigger('click')
+  await flushPromises()
+  await oldImage.trigger('load')
+  expect(page.text()).toContain('正在加载原图')
+  await page.get('.zoom-image image').trigger('load')
+  expect(page.text()).not.toContain('正在加载原图')
   page.unmount()
 })

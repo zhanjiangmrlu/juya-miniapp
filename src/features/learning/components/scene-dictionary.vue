@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import AppLoading from '@/components/app-loading/app-loading.vue'
 import { AudioStatus } from '@/shared/enums/audio'
 import { DictionarySource } from '@/shared/enums/dictionary'
 
@@ -83,7 +84,7 @@ const panelHeight = computed(() => {
             :class="{ 'after-lemma': hasLemma }"
             >{{ result.phonetic }}</text
           >
-          <view v-if="busy" class="dictionary-status" aria-live="polite">正在查询…</view>
+          <view v-if="busy" class="dictionary-status"><AppLoading label="正在查询" /></view>
           <template v-else-if="error"
             ><text class="dictionary-status">释义查询失败，请重试。</text
             ><text class="dictionary-detail-error" role="alert">{{ error }}</text
@@ -106,8 +107,13 @@ const panelHeight = computed(() => {
               :disabled="voiceStatus === AudioStatus.LOADING"
               @click="$emit('play')"
             >
-              <image
-                v-if="voiceStatus !== AudioStatus.LOADING"
+              <AppLoading
+                v-if="voiceStatus === AudioStatus.LOADING"
+                compact
+                label="正在准备发音"
+                icon-only
+              /><image
+                v-else
                 src="/static/design/dictionary-speaker.svg"
                 mode="aspectFit"
                 aria-hidden="true"

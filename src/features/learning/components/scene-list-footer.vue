@@ -1,13 +1,16 @@
 <script setup lang="ts">
+import AppLoading from '@/components/app-loading/app-loading.vue'
+
 import type { SceneListFooterProps } from '@/shared/types/learning-components'
 defineProps<SceneListFooterProps>()
 defineEmits<{ more: [] }>()
 </script>
 <template>
   <view class="list-footer" aria-live="polite"
-    ><text v-if="error" class="list-error">{{ error }}</text
-    ><button v-if="hasMore || error" class="text-button" :disabled="busy" @click="$emit('more')">
-      {{ busy ? '加载中…' : error ? '加载失败，点击重试' : '加载更多' }}</button
+    ><AppLoading v-if="busy" /><template v-else-if="error"
+      ><text class="list-error">{{ error }}</text
+      ><button class="text-button" @click="$emit('more')">加载失败，点击重试</button></template
+    ><button v-else-if="hasMore" class="text-button" @click="$emit('more')">加载更多</button
     ><text v-else-if="done">已全部加载</text></view
   >
 </template>

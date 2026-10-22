@@ -1,0 +1,18 @@
+{
+  "mode": "Playwright intercepted synthetic fixtures; no real API",
+  "viewport": "390x844",
+  "notes": [
+    "captured login-privacy",
+    "captured learning-loading",
+    "captured thumbnail-loading",
+    "captured thumbnail-error",
+    "captured all-learned",
+    "captured no-published",
+    "captured favorites-empty",
+    "captured feedback-empty",
+    "captured statistics-error",
+    "captured records-pagination-error",
+    "captured detail-image-loading",
+    "captured original-image-loading"
+  ]
+}

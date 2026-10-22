@@ -19,11 +19,14 @@ export interface SceneListPage<T> {
   items: T[]
   total: number
   published_total?: number
+  page?: number
+  limit?: number
 }
 export interface SceneListPorts {
   path: string
   request: import('./operations').OperationSession['request']
   ensure: () => Promise<boolean>
+  userId?: () => string | null
 }
 export type ReadingPosition = components['schemas']['ReadingPosition']
 export interface ReadingBlock {

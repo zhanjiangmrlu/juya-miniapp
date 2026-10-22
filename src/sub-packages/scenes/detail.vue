@@ -2,6 +2,7 @@
 import { onHide, onLoad, onPageScroll, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, ref, watch } from 'vue'
 
+import AppLoading from '@/components/app-loading/app-loading.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { useNativeShare } from '@/composables/use-native-share'
@@ -55,6 +56,7 @@ const account = useAccountStore(),
   imageSrc = ref(''),
   imageError = ref(''),
   imageLoading = ref(false),
+  imageKey = ref(0),
   busy = ref(false),
   error = ref(''),
   actionError = ref(''),
@@ -135,6 +137,9 @@ const dictionary = useSceneDictionary({
   },
   onFailure: (reason) => invalid(reason)
 })
+const images = computed(() =>
+  imageSrc.value && !imageError.value ? [{ src: imageSrc.value, generation: imageKey.value }] : []
+)
 const favorite = computed(
   () => card.value?.state.favorite || summary.value?.state.favorite || false
 )
@@ -356,6 +361,7 @@ const loadImage = async (renew = false) => {
   const run = ++imageGeneration,
     version = scene.version_id
   imageLoading.value = true
+  imageKey.value = run
   imageError.value = ''
   imageSrc.value = ''
   try {
@@ -378,11 +384,20 @@ const loadImage = async (renew = false) => {
     }
   } catch (reason) {
     if (!alive || run !== imageGeneration || card.value?.version_id !== version) return
+    imageLoading.value = false
     if (reason instanceof ApiError && [409, 410].includes(reason.status)) await invalid(reason)
     else imageError.value = '图片暂未加载，可重试'
-  } finally {
-    if (alive && run === imageGeneration) imageLoading.value = false
   }
+}
+/** 同一详情图片的像素完成，run 为该图片建立时的请求代次 */
+const imageLoaded = (run: number) => {
+  if (alive && run === imageGeneration) imageLoading.value = false
+}
+/** 同一详情图片的像素失败，run 为该图片建立时的请求代次 */
+const imageFailed = (run: number) => {
+  if (!alive || run !== imageGeneration) return
+  imageLoading.value = false
+  imageError.value = '图片暂未加载，可重试'
 }
 /** 读取当前不可变发布内容，草稿不会进入详情 */
 const load = async () => {
@@ -759,7 +774,8 @@ onUnload(() => {
               :aria-pressed="favorite"
               @click="toggleFavorite"
             >
-              <image
+              <AppLoading v-if="favoriteBusy" compact label="正在更新收藏" icon-only /><image
+                v-else
                 class="favorite-icon"
                 src="/static/design/heart.svg"
                 mode="aspectFit"
@@ -772,19 +788,24 @@ onUnload(() => {
           ><view class="scene-picture">
             <view class="scene-thumbnail" @click="previewImage">
               <image
-                v-if="imageSrc && !imageError"
-                :src="imageSrc"
+                v-for="image in images"
+                :key="image.generation"
+                :src="image.src"
                 mode="aspectFit"
                 :webp="true"
                 :alt="card.content.name"
-                @error="imageError = '图片暂未加载，可重试'"
+                @load="imageLoaded(image.generation)"
+                @error="imageFailed(image.generation)"
               />
-              <text v-else-if="!card.thumbnail_id && !card.content.image_id" class="image-retry"
+              <text v-if="!card.thumbnail_id && !card.content.image_id" class="image-retry"
                 >暂无场景图</text
               >
-              <button v-else class="image-retry" @click.stop="loadImage(true)">
-                {{ imageError || '正在加载场景图…' }}
+              <button v-else-if="imageError" class="image-retry" @click.stop="loadImage(true)">
+                {{ imageError }}
               </button>
+              <view v-if="imageLoading" class="image-loading"
+                ><AppLoading compact label="正在加载场景图"
+              /></view>
             </view>
             <view class="scene-prompt">
               <text class="prompt-title">Start with the scene.</text>
@@ -965,6 +986,7 @@ onUnload(() => {
   background: #fff;
 
   .scene-thumbnail {
+    position: relative;
     width: 176.923rpx;
     height: 269.231rpx;
     flex-shrink: 0;
@@ -987,6 +1009,22 @@ onUnload(() => {
     font-size: 21.154rpx;
     padding: 11.538rpx;
     line-height: 1.8;
+  }
+
+  .image-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #586c5b;
+    background: #e4f0db;
+    font-size: 21.154rpx;
+    text-align: center;
+
+    :deep(.app-loading) {
+      flex-direction: column;
+    }
   }
 
   .scene-prompt {

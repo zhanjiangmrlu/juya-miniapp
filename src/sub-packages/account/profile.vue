@@ -122,7 +122,11 @@ onShow(() => {
             mode="aspectFit"
             aria-hidden="true"
           /></button
-        ><button class="profile-link" @click="privacy = true">
+        ><button
+          class="profile-link privacy-link"
+          hover-class="privacy-pressed"
+          @click="privacy = true"
+        >
           <text>隐私说明</text
           ><image
             class="chevron"
@@ -144,6 +148,21 @@ onShow(() => {
   /></AppPage>
 </template>
 <style scoped lang="scss">
+.privacy-link {
+  color: #41664d;
+
+  > text {
+    text-decoration: underline;
+    text-underline-offset: 7.692rpx;
+  }
+
+  &.privacy-pressed,
+  &:active {
+    background: #e4f0db;
+    color: #2b4438;
+  }
+}
+
 .profile-summary {
   display: flex;
   align-items: center;

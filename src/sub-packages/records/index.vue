@@ -2,11 +2,13 @@
 import { onLoad, onPageScroll, onReachBottom, onShow, onUnload } from '@dcloudio/uni-app'
 import { nextTick, ref } from 'vue'
 
+import AppLoading from '@/components/app-loading/app-loading.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import LearningStatistics from '@/features/learning/components/learning-statistics.vue'
 import SceneCard from '@/features/learning/components/scene-card.vue'
-import { session } from '@/services/api'
+import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
+import { onSessionExpired, session } from '@/services/api'
 import { dateText } from '@/services/display'
 import { storage } from '@/services/platform'
 import { RECORDS_TAB_STORAGE_KEY } from '@/shared/constants/learning'
@@ -22,6 +24,10 @@ const account = useAccountStore(),
   learnedTotal = ref<number | null>(null),
   checkinTotal = ref<number | null>(null),
   busy = ref(false),
+  moreBusy = ref(false),
+  moreError = ref(''),
+  learnedDone = ref(false),
+  checkinDone = ref(false),
   error = ref(''),
   statsError = ref(''),
   expanded = ref(''),
@@ -31,19 +37,48 @@ const account = useAccountStore(),
 let learnedPages = 1,
   checkinPages = 1,
   generation = 0,
+  dayGeneration = 0,
+  owner = session.userId(),
   alive = true,
   currentScroll = 0,
   restoringScroll = false
 const positions = { learned: 0, checkins: 0 }
+/** 会话变化时清除私人记录、展开项和旧请求，不删除服务器成绩 */
+const reset = () => {
+  generation++
+  dayGeneration++
+  learned.value = []
+  checkins.value = []
+  learnedTotal.value = null
+  checkinTotal.value = null
+  learnedPages = 1
+  checkinPages = 1
+  learnedDone.value = false
+  checkinDone.value = false
+  busy.value = false
+  moreBusy.value = false
+  error.value = ''
+  moreError.value = ''
+  expanded.value = ''
+  day.value = null
+  dayBusy.value = false
+  dayError.value = ''
+  positions.learned = 0
+  positions.checkins = 0
+  owner = session.userId()
+}
+const unsubscribe = onSessionExpired(reset)
 /** 分别刷新两个标签已加载的范围，不修改任何成绩 */
 const load = async () => {
-  if (busy.value) return
+  if (owner !== session.userId()) reset()
+  if (busy.value || moreBusy.value) return
   busy.value = true
   error.value = ''
   const run = ++generation,
     view = tab.value
   try {
-    if (!(await account.ensure(Routes.RECORDS))) return
+    if (!(await account.ensure(Routes.RECORDS)) || !alive || run !== generation) return
+    owner = session.userId()
     if (view === RecordsTab.LEARNED) {
       const results = await Promise.all(
         Array.from({ length: learnedPages }, (_, index) =>
@@ -52,9 +87,16 @@ const load = async () => {
           )
         )
       )
-      if (alive && run === generation) {
-        learned.value = results.flatMap((result) => result.items)
-        learnedTotal.value = results[0]?.total || 0
+      if (alive && run === generation && owner === session.userId()) {
+        learned.value = [
+          ...new Map(
+            results.flatMap((result) => result.items).map((item) => [item.id, item])
+          ).values()
+        ]
+        learnedTotal.value = results[0]?.total ?? 0
+        const last = results.at(-1)
+        learnedDone.value = last ? last.page * last.limit >= last.total : false
+        moreError.value = ''
       }
     } else {
       const results = await Promise.all(
@@ -64,16 +106,23 @@ const load = async () => {
           )
         )
       )
-      if (alive && run === generation) {
-        checkins.value = results.flatMap((result) => result.items)
-        checkinTotal.value = results[0]?.total || 0
+      if (alive && run === generation && owner === session.userId()) {
+        checkins.value = [
+          ...new Map(
+            results.flatMap((result) => result.items).map((item) => [item.date, item])
+          ).values()
+        ]
+        checkinTotal.value = results[0]?.total ?? 0
+        const last = results.at(-1)
+        checkinDone.value = last ? last.page * last.limit >= last.total : false
+        moreError.value = ''
       }
     }
   } catch (reason) {
-    if (alive && run === generation)
+    if (alive && run === generation && owner === session.userId())
       error.value = reason instanceof Error ? reason.message : '记录暂未获取'
   } finally {
-    if (alive && run === generation) busy.value = false
+    if (alive && run === generation && owner === session.userId()) busy.value = false
   }
 }
 /** 统计日期由服务器给出，失败不填假零 */
@@ -95,8 +144,12 @@ const switchTab = async (value: RecordsTab) => {
   storage.set(RECORDS_TAB_STORAGE_KEY, value)
   generation++
   busy.value = false
+  moreBusy.value = false
+  moreError.value = ''
+  const run = generation
   await load()
   await nextTick()
+  if (!alive || tab.value !== value || generation !== run + 1) return
   restoringScroll = true
   uni.pageScrollTo({
     scrollTop: positions[value],
@@ -114,6 +167,8 @@ const expand = async (date: string) => {
     expanded.value = ''
     return
   }
+  const run = ++dayGeneration,
+    accountId = session.userId()
   expanded.value = date
   day.value = null
   dayBusy.value = true
@@ -122,25 +177,68 @@ const expand = async (date: string) => {
     const value = await session.request<components['schemas']['DailyRecords']>(
       `/api/mini/v1/me/checkins/${date}`
     )
-    if (alive && expanded.value === date) day.value = value
+    if (alive && run === dayGeneration && accountId === session.userId() && expanded.value === date)
+      day.value = value
   } catch (reason) {
-    if (alive && expanded.value === date)
+    if (alive && run === dayGeneration && accountId === session.userId() && expanded.value === date)
       dayError.value = reason instanceof Error ? reason.message : '当日记录暂未获取'
   } finally {
-    if (alive && expanded.value === date) dayBusy.value = false
+    if (alive && run === dayGeneration && accountId === session.userId() && expanded.value === date)
+      dayBusy.value = false
   }
 }
-/** 根据当前标签继续分页 */
+/** 只追加当前标签下一页，失败保留原位置并重试同一页 */
 const more = async () => {
-  if (busy.value) return
-  if (tab.value === RecordsTab.LEARNED) {
-    if (learnedTotal.value === null || learned.value.length >= learnedTotal.value) return
-    learnedPages++
-  } else {
-    if (checkinTotal.value === null || checkins.value.length >= checkinTotal.value) return
-    checkinPages++
+  if (owner !== session.userId()) {
+    reset()
+    return
   }
-  await load()
+  const view = tab.value,
+    isLearned = view === RecordsTab.LEARNED,
+    total = isLearned ? learnedTotal.value : checkinTotal.value
+  if (
+    busy.value ||
+    moreBusy.value ||
+    total === null ||
+    (isLearned ? learnedDone.value : checkinDone.value)
+  )
+    return
+  const page = (isLearned ? learnedPages : checkinPages) + 1,
+    run = generation,
+    accountId = session.userId()
+  moreBusy.value = true
+  moreError.value = ''
+  try {
+    if (!(await account.ensure(Routes.RECORDS)) || !alive || run !== generation) return
+    if (isLearned) {
+      const result = await session.request<components['schemas']['Page_LearningRecord_']>(
+        `/api/mini/v1/me/learning-records?page=${page}&limit=20`
+      )
+      if (!alive || run !== generation || accountId !== session.userId()) return
+      learned.value = [
+        ...new Map([...learned.value, ...result.items].map((item) => [item.id, item])).values()
+      ]
+      learnedTotal.value = result.total
+      learnedDone.value = result.page * result.limit >= result.total
+      learnedPages = page
+    } else {
+      const result = await session.request<components['schemas']['Page_CheckinRecord_']>(
+        `/api/mini/v1/me/checkins?page=${page}&limit=20`
+      )
+      if (!alive || run !== generation || accountId !== session.userId()) return
+      checkins.value = [
+        ...new Map([...checkins.value, ...result.items].map((item) => [item.date, item])).values()
+      ]
+      checkinTotal.value = result.total
+      checkinDone.value = result.page * result.limit >= result.total
+      checkinPages = page
+    }
+  } catch (reason) {
+    if (alive && run === generation && accountId === session.userId())
+      moreError.value = reason instanceof Error ? reason.message : '加载更多失败'
+  } finally {
+    if (alive && run === generation) moreBusy.value = false
+  }
 }
 /** 新用户可返回学习入口 */
 const learn = () => uni.switchTab({ url: Routes.LEARNING })
@@ -164,6 +262,8 @@ onPageScroll((event) => {
 onUnload(() => {
   alive = false
   generation++
+  dayGeneration++
+  unsubscribe()
 })
 </script>
 <template>
@@ -174,7 +274,10 @@ onUnload(() => {
       :show-units="false"
       :on-select="switchTab"
     />
-    <AppState v-else :busy="!statsError" :error="statsError" @retry="loadStats" />
+    <AppState v-else :busy="!statsError" :error="statsError && '统计暂未获取'" @retry="loadStats" />
+    <view v-if="statsError && account.statistics" class="notice error"
+      >统计暂未更新 <button class="text-button" @click="loadStats">重试</button></view
+    >
     <view class="tabs">
       <button
         :class="{ active: tab === RecordsTab.LEARNED }"
@@ -191,27 +294,29 @@ onUnload(() => {
     </view>
     <AppState
       :busy="busy && (tab === RecordsTab.LEARNED ? learnedTotal === null : checkinTotal === null)"
-      :error="error"
+      :error="
+        error &&
+        ((tab === RecordsTab.LEARNED ? learnedTotal : checkinTotal) === null
+          ? error
+          : `记录暂未更新：${error}`)
+      "
       :empty="tab === RecordsTab.LEARNED ? learnedTotal === 0 : checkinTotal === 0"
-      :title="tab === RecordsTab.LEARNED ? '还没有完成记录' : '从今天开始打卡'"
+      title="完成一张场景卡，开始记录学习"
       :description="
         tab === RecordsTab.LEARNED ? '学完场景卡后点击“已完成学习”。' : '完成任意场景卡，点亮今天。'
       "
       @retry="load"
       ><button class="primary" @click="learn">去学习</button></AppState
     >
+    <view
+      v-if="busy && (tab === RecordsTab.LEARNED ? learnedTotal !== null : checkinTotal !== null)"
+      class="refreshing"
+      ><AppLoading label="正在刷新"
+    /></view>
     <view v-show="tab === RecordsTab.LEARNED">
       <SceneCard v-for="card in learned" :key="card.id" :card="card" history source="records"
         ><text class="record-hint">已学过 · 点击复习</text></SceneCard
       >
-      <button
-        v-if="learnedTotal !== null && learned.length < learnedTotal"
-        class="text-button more"
-        :disabled="busy"
-        @click="more"
-      >
-        {{ busy ? '加载中…' : '加载更多' }}
-      </button>
     </view>
     <view v-show="tab === RecordsTab.CHECKINS">
       <view v-for="record in checkins" :key="record.date" class="checkin">
@@ -241,18 +346,32 @@ onUnload(() => {
           >
         </view>
       </view>
-      <button
-        v-if="checkinTotal !== null && checkins.length < checkinTotal"
-        class="text-button more"
-        :disabled="busy"
-        @click="more"
-      >
-        {{ busy ? '加载中…' : '加载更多' }}
-      </button>
     </view>
+    <SceneListFooter
+      :busy="moreBusy"
+      :error="moreError"
+      :has-more="
+        tab === RecordsTab.LEARNED
+          ? learnedTotal !== null && !learnedDone
+          : checkinTotal !== null && !checkinDone
+      "
+      :done="
+        tab === RecordsTab.LEARNED
+          ? learnedTotal !== null && learnedTotal > 0 && learnedDone
+          : checkinTotal !== null && checkinTotal > 0 && checkinDone
+      "
+      @more="more"
+    />
   </AppPage>
 </template>
 <style scoped lang="scss">
+.refreshing {
+  padding: 19.231rpx 0;
+  color: #586c5b;
+  font-size: 23.077rpx;
+  text-align: center;
+}
+
 .tabs {
   display: flex;
   border-bottom: 1px solid #dfe5d8;

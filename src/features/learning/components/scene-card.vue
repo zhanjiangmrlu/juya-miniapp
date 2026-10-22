@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
+import AppLoading from '@/components/app-loading/app-loading.vue'
 import { session } from '@/services/api'
 import { clientThumbnail } from '@/services/client-thumbnail'
 import { mediaAddress } from '@/services/media-service'
@@ -15,9 +16,14 @@ const props = withDefaults(defineProps<SceneCardProps>(), {
   compact: false
 })
 const src = ref(''),
-  imageError = ref(false)
+  imageError = ref(false),
+  imageLoading = ref(false),
+  imageKey = ref(0)
 let generation = 0
 const available = computed(() => !('available' in props.card) || props.card.available)
+const images = computed(() =>
+  src.value && !imageError.value ? [{ src: src.value, generation: imageKey.value }] : []
+)
 const completed = computed(() => 'state' in props.card && props.card.state.completed)
 const started = computed(
   () => 'state' in props.card && 'started' in props.card.state && props.card.state.started
@@ -38,11 +44,16 @@ const contentSummary = computed(() => {
  * @param renew 用户重试时是否重新签发图片地址
  */
 const loadImage = async (renew = false) => {
+  if (renew && imageLoading.value) return
   const run = ++generation
+  src.value = ''
   imageError.value = false
+  imageLoading.value = true
+  imageKey.value = run
   const thumbnailId = sceneImageId(props.card.thumbnail_id)
   if (!thumbnailId && (!available.value || !props.card.version_id)) {
     src.value = ''
+    imageLoading.value = false
     return
   }
   try {
@@ -70,9 +81,20 @@ const loadImage = async (renew = false) => {
   } catch {
     if (run === generation) {
       src.value = ''
+      imageLoading.value = false
       imageError.value = true
     }
   }
+}
+/** 本次缩略图像素加载完成，run 为该图片建立时的请求代次 */
+const imageLoaded = (run: number) => {
+  if (run === generation) imageLoading.value = false
+}
+/** 本次缩略图像素失败，run 为该图片建立时的请求代次 */
+const imageFailed = (run: number) => {
+  if (run !== generation) return
+  imageLoading.value = false
+  imageError.value = true
 }
 watch(
   () =>
@@ -93,14 +115,17 @@ onBeforeUnmount(() => {
     @click="openScene(card.id, available ? source : undefined, day)"
     ><view class="thumbnail"
       ><image
-        v-if="src && !imageError"
-        :src="src"
+        v-for="image in images"
+        :key="image.generation"
+        :src="image.src"
         mode="aspectFit"
         :webp="true"
-        @error="imageError = true"
-      /><button v-else-if="imageError" class="retry-image" @click.stop="loadImage(true)">
-        重试图片</button
-      ><text v-else class="image-placeholder">场景</text></view
+        @load="imageLoaded(image.generation)"
+        @error="imageFailed(image.generation)"
+      /><button v-if="imageError" class="retry-image" @click.stop="loadImage(true)">重试图片</button
+      ><view v-if="imageLoading" class="image-loading"
+        ><AppLoading compact stacked label="正在加载图片" /></view
+      ><text v-else-if="!src && !imageError" class="image-placeholder">暂无场景图</text></view
     ><view class="scene-copy"
       ><text v-if="card.title_en" class="scene-english">{{ card.title_en }}</text
       ><text class="scene-name">{{ card.name }}</text
@@ -128,6 +153,7 @@ onBeforeUnmount(() => {
   padding: 34.615rpx 0;
 
   .thumbnail {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -155,6 +181,18 @@ onBeforeUnmount(() => {
     .image-placeholder {
       font-size: 19.231rpx;
       color: #586c5b;
+    }
+
+    .image-loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #e4f0db;
+      color: #586c5b;
+      font-size: 19.231rpx;
+      text-align: center;
     }
   }
 

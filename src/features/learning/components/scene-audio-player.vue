@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
+import AppLoading from '@/components/app-loading/app-loading.vue'
 import { audioTime } from '@/features/learning/scene-model'
 import { PLAYBACK_RATES } from '@/shared/constants/audio'
 import { AudioStatus } from '@/shared/enums/audio'
@@ -44,12 +45,17 @@ const change = (event: SliderChangeEvent) => {
         :aria-label="state.status === AudioStatus.PLAYING ? '暂停完整音频' : '播放完整音频'"
         @click="emit('toggle')"
       >
-        <image
-          v-if="state.status !== AudioStatus.LOADING && state.status !== AudioStatus.PLAYING"
+        <AppLoading
+          v-if="state.status === AudioStatus.LOADING"
+          compact
+          label="正在加载音频"
+          icon-only
+        /><image
+          v-else-if="state.status !== AudioStatus.PLAYING"
           src="/static/design/play.svg"
           mode="aspectFit"
           aria-hidden="true"
-        /><text v-else>{{ state.status === AudioStatus.LOADING ? '…' : 'Ⅱ' }}</text>
+        /><text v-else>Ⅱ</text>
       </button>
       <view class="audio-copy"
         ><text class="audio-label">完整对话音频</text

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppLoading from '@/components/app-loading/app-loading.vue'
 import { useReadingAnchors } from '@/composables/use-reading-anchors'
 import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
 import { AudioStatus } from '@/shared/enums/audio'
@@ -44,8 +45,12 @@ const sourceLine = (lineId?: string) =>
           "
           @click="word.id && emit('play', word.id)"
         >
-          <text v-if="state.wordId === word.id && state.wordStatus === AudioStatus.LOADING">…</text
-          ><image v-else src="/static/design/speaker.svg" mode="aspectFit" aria-hidden="true" />
+          <AppLoading
+            v-if="state.wordId === word.id && state.wordStatus === AudioStatus.LOADING"
+            compact
+            label="正在加载发音"
+            icon-only
+          /><image v-else src="/static/design/speaker.svg" mode="aspectFit" aria-hidden="true" />
         </button>
       </view>
       <text v-if="word.meaning" class="meaning">{{ word.meaning }}</text>
