@@ -13,3 +13,9 @@
 
 - `src/static/design/refresh.svg`：Figma `lf1bnYzDAZt9eLtdLT0HM3`，U01-normal `275:645` 内刷新图标 `275:719`，经 `get_design_context` 提供的素材下载地址获取；20×20 SVG，用于学习列表“刷新列表”的20×20逻辑像素槽位
 - 独立学习记录入口复用现有 `calendar.svg`、`chevron.svg`；结束弹窗无新增静态图片。场景卡缩略图与详情图片继续由接口提供
+
+## 修订15批2
+
+- `src/static/design/dictionary-close.svg`：Figma `lf1bnYzDAZt9eLtdLT0HM3`，通用词典弹窗 `284:3679` 内关闭图标 `284:4072`，经设计上下文提供的SVG素材地址获取；20×20逻辑像素
+- `src/static/design/dictionary-speaker.svg`：同一弹窗内喇叭图标 `284:4081`，经设计上下文提供的SVG素材地址获取；20×20逻辑像素
+- 已对照本篇释义 `283:14119`、通用词典 `284:3679`、词形关联 `284:4086`、查无结果 `284:4495`、加载失败 `284:4900` 的设计上下文与截图实现居中弹窗；背景、字体、颜色复用现有设计变量，正文图片继续由接口提供

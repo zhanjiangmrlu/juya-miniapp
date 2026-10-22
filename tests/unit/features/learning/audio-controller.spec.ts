@@ -399,3 +399,26 @@ describe('single whole-audio player and word pronunciation', () => {
     expect(full.playing || word.playing).toBe(false)
   })
 })
+
+it('stops only the selected popup word and leaves full playback position rate and intent unchanged', async () => {
+  const { full, word, controller: player } = setup()
+  const plays = vi.spyOn(full, 'play')
+  await player.toggleFull(() => 'full')
+  full.currentTime = 8
+  full.callbacks.time?.()
+  player.setRate(1.5)
+  const before = { ...player.state }
+  player.stopWord('popup:other')
+  expect(player.state.status).toBe(before.status)
+  expect(player.state.position).toBe(8)
+  expect(player.state.rate).toBe(1.5)
+  await player.playWord('popup:one', () => 'word')
+  const count = plays.mock.calls.length
+  player.stopWord('popup:one')
+  expect(word.playing).toBe(false)
+  expect(player.state.wordStatus).toBe('idle')
+  expect(player.state.wordId).toBe(null)
+  expect(plays).toHaveBeenCalledTimes(count)
+  expect(player.state.status).toBe('paused')
+  player.dispose()
+})

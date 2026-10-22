@@ -305,6 +305,19 @@ export const createAudioController = (
       }
     }
   }
+  /** 只停止指定弹窗的词音轨，不改变完整音频的位置、倍率或播放意图
+   * @param id 要关闭或切换的弹窗受控目标编号
+   */
+  const stopWord = (id: string) => {
+    if (!alive || state.wordId !== id) return
+    wordGeneration++
+    wordSourceGeneration = 0
+    word.stop()
+    state.wordId = null
+    state.wordStatus = AudioStatus.IDLE
+    state.wordError = ''
+    notify()
+  }
   /** 拖动只改变位置，保留播放或暂停状态
    * @param seconds 用户选择的秒数
    */
@@ -328,5 +341,5 @@ export const createAudioController = (
     full.destroy()
     word.destroy()
   }
-  return { prepareFull, toggleFull, playWord, seekFull, setRate, dispose, state }
+  return { prepareFull, toggleFull, playWord, stopWord, seekFull, setRate, dispose, state }
 }

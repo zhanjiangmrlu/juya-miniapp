@@ -5,9 +5,11 @@ import { computed, ref, watch } from 'vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { useReadingPosition } from '@/composables/use-reading-position'
+import { useSceneDictionary } from '@/composables/use-scene-dictionary'
 import { createAudioController } from '@/features/learning/audio-controller'
 import SceneAudioPlayer from '@/features/learning/components/scene-audio-player.vue'
 import SceneDialogue from '@/features/learning/components/scene-dialogue.vue'
+import SceneDictionary from '@/features/learning/components/scene-dictionary.vue'
 import SceneQueueEnd from '@/features/learning/components/scene-queue-end.vue'
 import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
 import SceneUnavailable from '@/features/learning/components/scene-unavailable.vue'
@@ -15,6 +17,7 @@ import SceneVocabulary from '@/features/learning/components/scene-vocabulary.vue
 import { onSessionExpired, operations, session } from '@/services/api'
 import { createAudioPort } from '@/services/audio-port'
 import { clientThumbnail } from '@/services/client-thumbnail'
+import { createDictionarySpeech } from '@/services/dictionary-service'
 import { ApiError } from '@/services/errors'
 import { createFullAudioPreparation } from '@/services/full-audio-preparation'
 import { prepareImagePreviewSource, registerImagePreview } from '@/services/image-preview'
@@ -90,6 +93,23 @@ const reading = useReadingPosition({
   cardId: () => id,
   children: () => [dialogueView.value, vocabularyView.value]
 })
+const dictionary = useSceneDictionary({
+  context: () =>
+    card.value && alive && visible && !stale.value && session.userId()
+      ? { cardId: id, versionId: card.value.version_id, owner: session.userId()! }
+      : null,
+  request: session.request,
+  prepareSpeech: (selection, active) =>
+    createDictionarySpeech(selection, active, (reason) => {
+      void invalid(reason)
+    }),
+  stopSpeech: (key) => audio?.stopWord(key),
+  playSpeech: (key, load) => {
+    createAudio()
+    void audio?.playWord(key, load)
+  },
+  onFailure: (reason) => invalid(reason)
+})
 const favorite = computed(
   () => card.value?.state.favorite || summary.value?.state.favorite || false
 )
@@ -141,7 +161,10 @@ const createAudio = () => {
       if (alive) audioState.value = state
     },
     undefined,
-    (wordId) => wordAudio?.invalidate(wordId),
+    (wordId) => {
+      wordAudio?.invalidate(wordId)
+      dictionary.invalidateSpeech(wordId)
+    },
     () => fullAudio?.invalidate()
   )
   audio = player
@@ -205,6 +228,7 @@ const createAudio = () => {
 }
 /** 离开场景时先停止播放器，再取消准备任务和释放临时音频 */
 const stopAudio = () => {
+  dictionary.close()
   audio?.dispose()
   audio = null
   fullAudio?.dispose()
@@ -670,6 +694,7 @@ onUnload(() => {
         :dialogue="card.content.dialogue || []"
         :vocabulary="card.content.vocabulary || []"
         @layout="reading.refresh"
+        @lookup="dictionary.open"
       />
       <SceneVocabulary
         ref="vocabularyView"
@@ -700,7 +725,20 @@ onUnload(() => {
     ><view v-if="nextError" class="notice error" role="alert"
       >{{ nextError }}<button class="text-button" @click="advance">重试下一张</button
       ><button class="text-button" @click="returnSource">返回来源列表</button></view
-    ><SceneQueueEnd
+    ><SceneDictionary
+      v-if="dictionary.selection.value"
+      :selection="dictionary.selection.value"
+      :result="dictionary.result.value"
+      :busy="dictionary.busy.value"
+      :error="dictionary.error.value"
+      :voice-status="
+        audioState.wordId === dictionary.speechKey.value ? audioState.wordStatus : AudioStatus.IDLE
+      "
+      :voice-error="audioState.wordId === dictionary.speechKey.value ? audioState.wordError : ''"
+      @close="dictionary.close"
+      @retry="dictionary.retry"
+      @play="dictionary.play"
+    /><SceneQueueEnd
       v-if="queueEnd"
       :source="queueSource"
       @learn="learn"

@@ -3,26 +3,22 @@ import { ref } from 'vue'
 
 import { useReadingAnchors } from '@/composables/use-reading-anchors'
 import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
-import { highlightSegments } from '@/features/learning/scene-model'
+import { dictionaryGroups, dictionaryTokens } from '@/features/learning/scene-model'
 import { SCENE_HIGHLIGHT_COLORS } from '@/shared/constants/learning'
 
 import type { SceneDialogueProps } from '@/shared/types/learning-components'
-const props = defineProps<SceneDialogueProps>()
+defineProps<SceneDialogueProps>()
 const translated = ref(false)
-const emit = defineEmits<{ layout: [] }>()
+const emit = defineEmits<{
+  layout: []
+  lookup: [token: import('@/shared/types/dictionary').DictionaryToken]
+}>()
 const { measureReading } = useReadingAnchors()
 defineExpose({ measureReading })
 /** 展开全文译文后通知详情重新测量正文布局 */
 const toggleTranslation = () => {
   translated.value = !translated.value
   emit('layout')
-}
-/** 为词汇在对话中的高亮复用稳定的原型配色
- * @param quote 当前已确认来源的英文片段
- */
-const highlightColor = (quote: string) => {
-  const index = props.vocabulary.findIndex((word) => word.source?.quote === quote)
-  return SCENE_HIGHLIGHT_COLORS[Math.max(0, index) % SCENE_HIGHLIGHT_COLORS.length]
 }
 </script>
 <template>
@@ -38,11 +34,25 @@ const highlightColor = (quote: string) => {
       <text class="speaker">{{ line.speaker }}</text>
       <view class="english"
         ><text
-          v-for="(part, index) in highlightSegments(line, vocabulary)"
-          :key="index"
-          :class="{ highlight: part.highlight }"
-          :style="part.highlight ? { backgroundColor: highlightColor(part.text) } : undefined"
-          >{{ part.text }}</text
+          v-for="(group, groupIndex) in dictionaryGroups(dictionaryTokens(line, vocabulary))"
+          :key="groupIndex"
+          :class="{ highlight: group.highlight }"
+          :style="
+            group.highlight
+              ? {
+                  backgroundColor:
+                    SCENE_HIGHLIGHT_COLORS[group.colorIndex % SCENE_HIGHLIGHT_COLORS.length]
+                }
+              : undefined
+          "
+          ><text
+            v-for="part in group.tokens"
+            :key="part.start"
+            :class="{ 'dictionary-token': part.word }"
+            :role="part.word ? 'button' : undefined"
+            @click.stop="part.word && emit('lookup', part)"
+            >{{ part.text }}</text
+          ></text
         ></view
       >
     </view>

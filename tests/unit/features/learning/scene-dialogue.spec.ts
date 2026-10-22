@@ -23,3 +23,34 @@ it('keeps all English together and expands the complete ordered translation afte
   expect(page.findAll('.translation')).toHaveLength(0)
   page.unmount()
 })
+
+it('emits exact source positions for highlighted and ordinary English words while preserving translation', async () => {
+  const { default: SceneDialogue } =
+    await import('@/features/learning/components/scene-dialogue.vue')
+  const page = mount(SceneDialogue, {
+    props: {
+      dialogue: [{ id: 'line-1', speaker: 'A', english: 'Try mobile today.', chinese: '今天试试' }],
+      vocabulary: [
+        {
+          id: 'word',
+          english: 'mobile',
+          meaning: '活动自如的',
+          phonetic: '',
+          pronunciation_text: '',
+          pronunciation_issue: false,
+          source: { line_id: 'line-1', start: 4, end: 10, quote: 'mobile' }
+        }
+      ]
+    }
+  })
+  await page.get('.translation-toggle').trigger('click')
+  await page.findAll('.dictionary-token')[0]!.trigger('click')
+  await page.findAll('.dictionary-token')[1]!.trigger('click')
+  expect(page.emitted('lookup')?.map((event) => event[0])).toEqual([
+    expect.objectContaining({ text: 'Try', line_id: 'line-1', start: 0, end: 3 }),
+    expect.objectContaining({ text: 'mobile', line_id: 'line-1', start: 4, end: 10 })
+  ])
+  expect(page.find('.translation-section').exists()).toBe(true)
+  expect(page.findAll('.highlight').map((node) => node.text())).toEqual(['mobile'])
+  page.unmount()
+})

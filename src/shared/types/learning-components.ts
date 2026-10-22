@@ -46,3 +46,11 @@ export interface SceneListFooterProps {
 export interface SceneQueueEndProps {
   source: import('../enums/learning').QueueSource | null
 }
+export interface SceneDictionaryProps {
+  selection: import('./dictionary').DictionarySelection
+  result: import('./dictionary').DictionaryResult | null
+  busy: boolean
+  error: string
+  voiceStatus: import('../enums/audio').AudioStatus
+  voiceError: string
+}
