@@ -36,3 +36,15 @@ it('coalesces concurrent unauthenticated page redirects and preserves the login 
     vi.unstubAllGlobals()
   }
 })
+
+it('restores the validated scene feedback reference after login and strips unrelated personal parameters', () => {
+  expect(
+    safeTarget('/sub-packages/feedback/create?card_id=card-1&version_id=v-1&text=private')
+  ).toBe('/sub-packages/feedback/create?card_id=card-1&version_id=v-1')
+  expect(safeTarget('/sub-packages/feedback/create?card_id=card-1&version_id=%2Funsafe')).toBe(
+    '/sub-packages/feedback/index'
+  )
+  expect(safeTarget('/sub-packages/feedback/detail?id=feedback-1&reply=private')).toBe(
+    '/sub-packages/feedback/detail?id=feedback-1'
+  )
+})

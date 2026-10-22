@@ -75,6 +75,29 @@
           }
         }
       ]
+    },
+    {
+      "root": "sub-packages/feedback",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "create",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        }
+      ]
     }
   ],
   "globalStyle": {

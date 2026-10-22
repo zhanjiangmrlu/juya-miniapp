@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import { resetLearningAudioSession } from '@/features/learning/learning-audio-session'
 import { onSessionExpired, operations, session } from '@/services/api'
 import { ApiError } from '@/services/errors'
+import { clearFeedbackDrafts } from '@/services/feedback-service'
 import { clearMediaAddresses } from '@/services/media-service'
 import { openLogin } from '@/services/navigation'
 import { resourceURL } from '@/services/platform'
@@ -99,6 +100,7 @@ export const useAccountStore = defineStore('learner-account', () => {
   /** 主动确认退出后撤销服务器会话，再清理个人界面 */
   const logout = async () => {
     await session.logout()
+    clearFeedbackDrafts()
     clear()
     openLogin(Routes.LEARNING)
   }

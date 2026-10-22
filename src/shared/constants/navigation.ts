@@ -6,5 +6,8 @@ export const Routes = {
   RECORDS: '/sub-packages/records/index',
   PROFILE: '/sub-packages/account/profile',
   IDENTITY: '/sub-packages/account/identity-edit',
-  CONTACT: '/sub-packages/account/contact-edit'
+  CONTACT: '/sub-packages/account/contact-edit',
+  FEEDBACK: '/sub-packages/feedback/index',
+  FEEDBACK_CREATE: '/sub-packages/feedback/create',
+  FEEDBACK_DETAIL: '/sub-packages/feedback/detail'
 } as const

@@ -4,6 +4,7 @@ export interface OperationRecord {
   path: string
   method: string
   key: string
+  originalUnknown?: boolean
 }
 export interface OperationSession {
   userId: () => string | null

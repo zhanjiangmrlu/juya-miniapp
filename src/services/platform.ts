@@ -42,7 +42,7 @@ export const sendRequest = (request: HttpRequest): Promise<HttpResponse> =>
     const upload = request.body as
       { file_path?: string; progress?: (value: number) => void } | undefined
     if (
-      request.path === '/api/mini/v1/me/avatar' &&
+      ['/api/mini/v1/me/avatar', '/api/mini/v1/feedback/images'].includes(request.path) &&
       request.method === 'POST' &&
       upload?.file_path
     ) {

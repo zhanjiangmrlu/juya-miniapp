@@ -128,6 +128,13 @@ const completionLabel = computed(() => {
       : '前往学习页'
   return card.value?.state.completed ? '完成本次复习' : '已完成学习'
 })
+/** 反馈作为新的原生页面入栈，返回时保留当前译文和阅读实例 */
+const feedback = () => {
+  if (card.value && !stale.value)
+    uni.navigateTo({
+      url: `${Routes.FEEDBACK_CREATE}?card_id=${encodeURIComponent(id)}&version_id=${encodeURIComponent(card.value.version_id)}`
+    })
+}
 /** 返回建立本次快照的原生来源栈，无栈时回到相应列表 */
 const returnSource = () =>
   backTo(
@@ -713,6 +720,14 @@ onUnload(() => {
           ><text class="word-english">{{ chunk.english }}</text
           ><text class="meaning">{{ chunk.chinese }}</text></view
         ></view
+      ><view class="detail-tools"
+        ><button class="text-button" @click="feedback">
+          <image
+            src="/static/design/feedback-message.svg"
+            mode="aspectFit"
+            aria-hidden="true"
+          />反馈问题
+        </button></view
       ><view v-if="message" class="notice success"
         >{{ message
         }}<text v-if="completionStatistics">
@@ -760,6 +775,24 @@ onUnload(() => {
   >
 </template>
 <style scoped lang="scss">
+.detail-tools {
+  border-top: 1px solid #dfe5d8;
+  margin-top: 38.462rpx;
+  padding-top: 38.462rpx;
+
+  button {
+    min-height: 76.923rpx;
+    padding: 17.308rpx 11.538rpx;
+    gap: 13.462rpx;
+    font-size: 26.923rpx;
+  }
+
+  image {
+    width: 38.462rpx;
+    height: 38.462rpx;
+  }
+}
+
 .scene-title {
   align-items: flex-start;
   gap: 19.231rpx;

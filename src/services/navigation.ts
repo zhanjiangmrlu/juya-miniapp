@@ -12,7 +12,24 @@ export const safeTarget = (target: string) => {
   )
     return Routes.LEARNING
   const query = (target.split('?')[1] || '').split('#')[0]
-  if (path === Routes.SCENE) {
+  if (path === Routes.FEEDBACK_CREATE && query) {
+    try {
+      const values = ['card_id', 'version_id'].map((name) =>
+        decodeURIComponent(
+          query
+            .split('&')
+            .find((item) => item.startsWith(`${name}=`))
+            ?.slice(name.length + 1) || ''
+        )
+      )
+      return values.every((value) => /^[A-Za-z0-9-]{1,64}$/.test(value))
+        ? `${path}?card_id=${encodeURIComponent(values[0]!)}&version_id=${encodeURIComponent(values[1]!)}`
+        : Routes.FEEDBACK
+    } catch {
+      return Routes.FEEDBACK
+    }
+  }
+  if (path === Routes.SCENE || path === Routes.FEEDBACK_DETAIL) {
     const raw =
       query
         .split('&')

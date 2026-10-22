@@ -15,9 +15,13 @@ export class ApiError extends Error {
  */
 export const isUnconfirmedFailure = (reason: unknown) =>
   reason instanceof ApiError &&
-  (['network_unknown', 'response_unknown', 'operation_pending', 'operation_conflict'].includes(
-    reason.code
-  ) ||
+  ([
+    'network_unknown',
+    'response_unknown',
+    'operation_pending',
+    'operation_conflict',
+    'session_changed'
+  ].includes(reason.code) ||
     reason.status >= 500 ||
     reason.status === 408 ||
     reason.status === 429)

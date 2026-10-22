@@ -3,6 +3,9 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import { beforeEach, expect, it, vi } from 'vitest'
 
 const ports = vi.hoisted(() => ({ show: undefined as undefined | (() => void), request: vi.fn() }))
+vi.mock('@/services/feedback-service', () => ({
+  feedbackInbox: { value: { value: { unread: false, count: 0 } }, refresh: vi.fn() }
+}))
 vi.mock('@dcloudio/uni-app', () => ({
   onShow: (callback: typeof ports.show) => {
     ports.show = callback

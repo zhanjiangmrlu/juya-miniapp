@@ -10,6 +10,7 @@ import LearningStatistics from '@/features/learning/components/learning-statisti
 import SceneCard from '@/features/learning/components/scene-card.vue'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import { session } from '@/services/api'
+import { feedbackInbox } from '@/services/feedback-service'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
 
@@ -55,6 +56,7 @@ onShow(() => {
   uni.hideTabBar({ animation: false, fail: () => undefined })
   void refresh()
   void refreshStats()
+  void feedbackInbox.refresh()
 })
 onPullDownRefresh(async () => {
   await Promise.allSettled([refresh(), refreshStats()])
@@ -72,7 +74,12 @@ onUnload(() => {
     <view class="welcome between">
       <text class="greeting">{{ account.profile?.nickname || '学习者' }}，今天也学一点</text>
       <button class="account-link" aria-label="账号资料" @click="profile">
-        <text>账号</text>
+        <text>账号</text
+        ><text
+          v-if="feedbackInbox.value.value.unread"
+          class="feedback-dot"
+          aria-label="有未读反馈回复"
+        />
       </button>
     </view>
     <text class="home-title">English, every day.</text>
@@ -162,6 +169,9 @@ onUnload(() => {
   }
 
   .account-link {
+    display: flex;
+    align-items: center;
+    gap: 11.538rpx;
     min-height: 53.846rpx;
     padding: 7.692rpx 0 7.692rpx 28.846rpx;
     border: 0;
@@ -171,6 +181,13 @@ onUnload(() => {
     font-weight: 500;
     line-height: 38.462rpx;
     white-space: nowrap;
+
+    .feedback-dot {
+      width: 15.385rpx;
+      height: 15.385rpx;
+      border-radius: 50%;
+      background: #ad4f32;
+    }
   }
 }
 

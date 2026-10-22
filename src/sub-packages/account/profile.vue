@@ -8,6 +8,7 @@ import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vu
 import AppState from '@/components/app-state/app-state.vue'
 import ProfileLogoutDialog from '@/features/profile/components/profile-logout-dialog.vue'
 import { maskPhone } from '@/features/profile/contact-model'
+import { feedbackInbox } from '@/services/feedback-service'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
 const account = useAccountStore(),
@@ -37,6 +38,8 @@ const load = async () => {
 const editProfile = () => uni.navigateTo({ url: Routes.IDENTITY })
 /** 补充或修改选填的联系方式 */
 const editContact = () => uni.navigateTo({ url: Routes.CONTACT })
+/** 打开本人反馈列表，读取入口不清除未读 */
+const feedback = () => uni.navigateTo({ url: Routes.FEEDBACK })
 /** 打开新的退出确认，清除上次取消前的错误 */
 const openLogout = () => {
   logoutError.value = ''
@@ -58,6 +61,7 @@ const logout = async () => {
 }
 onShow(() => {
   void load()
+  void feedbackInbox.refresh()
 })
 </script>
 <template>
@@ -102,6 +106,22 @@ onShow(() => {
           >未填写联系方式</view
         ></view
       ><view class="profile-links"
+        ><button class="profile-link" @click="feedback">
+          <view class="feedback-entry"
+            ><image
+              src="/static/design/feedback-message.svg"
+              mode="aspectFit"
+              aria-hidden="true" /><text>我的反馈</text
+            ><text
+              v-if="feedbackInbox.value.value.unread"
+              class="feedback-dot"
+              aria-label="有未读反馈回复" /></view
+          ><image
+            class="chevron"
+            src="/static/design/profile-chevron.svg"
+            mode="aspectFit"
+            aria-hidden="true"
+          /></button
         ><button class="profile-link" @click="privacy = true">
           <text>隐私说明</text
           ><image
@@ -224,6 +244,26 @@ onShow(() => {
     color: #586c5b;
     font-size: 28.85rpx;
   }
+}
+
+.feedback-entry {
+  display: flex;
+  align-items: center;
+  gap: 7.692rpx;
+
+  image {
+    width: 38.462rpx;
+    height: 38.462rpx;
+  }
+}
+
+.feedback-dot {
+  display: inline-block;
+  width: 15.385rpx;
+  height: 15.385rpx;
+  margin-left: 15.385rpx;
+  border-radius: 50%;
+  background: #ad4f32;
 }
 
 .profile-links {

@@ -8,7 +8,8 @@ import { ApiError, isUnconfirmedFailure } from './errors'
  * @param ports 当前本人会话、元数据存储与随机操作键
  */
 export const createOperationService = (ports: OperationPorts) => {
-  const fingerprints = new Map<string, string>()
+  const fingerprints = new Map<string, string>(),
+    receiptMisses = new Map<string, string>()
   /** 取得当前账号范围及待确认元数据，不能读取其他账号结果 */
   const context = () => {
     const userId = ports.session.userId()
@@ -29,14 +30,36 @@ export const createOperationService = (ports: OperationPorts) => {
       records.filter((row) => row.action !== action)
     )
     fingerprints.delete(`${owner.userId}:${action}`)
+    receiptMisses.delete(`${owner.userId}:${action}`)
+  }
+  /** 重填事务的原请求仍未知时，任何后续正文失败都不能清除原键
+   * @param owner 原请求所属账号的元数据位置
+   * @param record 本次请求所用的固定操作记录
+   */
+  const retainsUnknown = (owner: ReturnType<typeof context>, record: OperationRecord) => {
+    const stored = ports.storage.get(owner.key)
+    const records = Array.isArray(stored) ? (stored as OperationRecord[]) : []
+    return (
+      record.originalUnknown === true ||
+      records.some(
+        (row) =>
+          row.action === record.action && row.key === record.key && row.originalUnknown === true
+      )
+    )
   }
   /** 先查询回执，未找到时用内存中的原正文和原键重试，不替换为页面新输入
    * @param action 本人待确认行为
+   * @param options 是否允许在回执未找到时重试原请求，重新登录后仅查询时关闭
    */
-  const recover = async <T>(action: string): Promise<T | null> => {
+  const recover = async <T>(
+    action: string,
+    options: { retry?: boolean } = {}
+  ): Promise<T | null> => {
     const state = context(),
       record = state.records.find((row) => row.action === action)
     if (!record) return null
+    const scope = `${state.userId}:${action}`
+    receiptMisses.delete(scope)
     let result: T
     try {
       const value = await ports.session.request<{ status: 'succeeded'; result: T }>(
@@ -44,11 +67,23 @@ export const createOperationService = (ports: OperationPorts) => {
       )
       result = value.result
     } catch (reason) {
+      if (
+        reason instanceof ApiError &&
+        reason.code === 'operation_unknown' &&
+        ports.session.userId() === state.userId
+      )
+        receiptMisses.set(scope, record.key)
       const frozen = fingerprints.get(`${state.userId}:${action}`)
-      if (!(reason instanceof ApiError) || reason.code !== 'operation_unknown' || !frozen)
+      if (
+        options.retry === false ||
+        !(reason instanceof ApiError) ||
+        reason.code !== 'operation_unknown' ||
+        !frozen
+      )
         throw reason
       if (ports.session.userId() !== state.userId)
         throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
+      receiptMisses.delete(scope)
       try {
         result = await ports.session.request<T>(record.path, {
           method: record.method,
@@ -56,14 +91,18 @@ export const createOperationService = (ports: OperationPorts) => {
           key: record.key
         })
       } catch (retryError) {
-        if (retryError instanceof ApiError && !isUnconfirmedFailure(retryError))
+        if (
+          retryError instanceof ApiError &&
+          !isUnconfirmedFailure(retryError) &&
+          !retainsUnknown(state, record)
+        )
           forget(action, state)
         throw retryError
       }
     }
-    forget(action, state)
     if (ports.session.userId() !== state.userId)
       throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
+    forget(action, state)
     return result
   }
   /** 同一次保存或学习操作始终复用同一键，未知结果前禁止改换正文
@@ -95,22 +134,47 @@ export const createOperationService = (ports: OperationPorts) => {
       ports.storage.set(state.key, state.records)
     }
     fingerprints.set(scope, fingerprint)
+    receiptMisses.delete(scope)
     try {
       const result = await ports.session.request<T>(path, { method, body, key: record.key })
-      forget(action, state)
       if (ports.session.userId() !== state.userId)
         throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
+      forget(action, state)
       return result
     } catch (reason) {
-      if (reason instanceof ApiError && !isUnconfirmedFailure(reason)) forget(action, state)
+      if (
+        reason instanceof ApiError &&
+        !isUnconfirmedFailure(reason) &&
+        !retainsUnknown(state, record)
+      )
+        forget(action, state)
       throw reason
     }
+  }
+  /** 丢失原文后仅在该账号和该键刚查无回执时重新填写，原路径、方法与键保持不变
+   * @param action 已查询为未知的本人操作
+   * @param body 用户明确重新填写并确认的正文
+   */
+  const rebind = async <T>(action: string, body: unknown): Promise<T> => {
+    const state = context(),
+      scope = `${state.userId}:${action}`,
+      record = state.records.find((row) => row.action === action)
+    if (!record || receiptMisses.get(scope) !== record.key)
+      throw new ApiError('operation_pending', '请先查询原提交结果，再确认重新填写')
+    record.originalUnknown = true
+    ports.storage.set(state.key, state.records)
+    fingerprints.delete(scope)
+    receiptMisses.delete(scope)
+    return run<T>(action, record.path, record.method, body)
   }
   /** 判断当前动作是否仍有待确认的服务端结果
    * @param action 页面动作
    */
   const pending = (action: string) => context().records.some((row) => row.action === action)
   /** 退出账号时立即释放含个人输入的内存 */
-  const clearMemory = () => fingerprints.clear()
-  return { run, recover, pending, clearMemory }
+  const clearMemory = () => {
+    fingerprints.clear()
+    receiptMisses.clear()
+  }
+  return { run, recover, rebind, pending, clearMemory }
 }

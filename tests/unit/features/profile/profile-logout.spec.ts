@@ -3,6 +3,9 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 const { logout } = vi.hoisted(() => ({ logout: vi.fn() }))
+vi.mock('@/services/feedback-service', () => ({
+  feedbackInbox: { value: { value: { unread: false, count: 0 } }, refresh: vi.fn() }
+}))
 vi.mock('@dcloudio/uni-app', () => ({ onShow: vi.fn() }))
 vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({
