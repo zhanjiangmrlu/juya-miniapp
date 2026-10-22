@@ -19,6 +19,9 @@ const src = ref(''),
 let generation = 0
 const available = computed(() => !('available' in props.card) || props.card.available)
 const completed = computed(() => 'state' in props.card && props.card.state.completed)
+const started = computed(
+  () => 'state' in props.card && 'started' in props.card.state && props.card.state.started
+)
 /** 仅展示当前发布版本的实际内容数量，缺少的统计不填入示例值 */
 const contentSummary = computed(() => {
   if (!available.value || !('vocabulary_count' in props.card)) return ''
@@ -54,7 +57,7 @@ const loadImage = async (renew = false) => {
             JSON.stringify([session.userId(), cardId, version]),
             async () => {
               const scene = await session.request<PublishedScene>(
-                `/api/mini/v1/cards/${encodeURIComponent(cardId)}?version_id=${encodeURIComponent(version!)}`
+                `/api/mini/v1/cards/${encodeURIComponent(cardId)}?version_id=${encodeURIComponent(version!)}&mark_started=false`
               )
               const imageId = sceneImageId(null, scene.content.image_id, true)
               if (!imageId) throw new Error('场景图片暂不可用')
@@ -87,7 +90,7 @@ onBeforeUnmount(() => {
   <view
     class="scene-row"
     :class="{ unavailable: !available, featured, compact }"
-    @click="openScene(card.id)"
+    @click="openScene(card.id, available ? source : undefined, day)"
     ><view class="thumbnail"
       ><image
         v-if="src && !imageError"
@@ -107,6 +110,9 @@ onBeforeUnmount(() => {
           : '已下线 · 当前不可用'
       }}</text
       ><text v-else-if="completed && !$slots.default" class="scene-hint">已学过 · 点击复习</text>
+      <text v-else-if="!$slots.default" class="scene-hint">{{
+        started ? '学习中 · 继续学习' : '未开始'
+      }}</text>
       <text v-if="contentSummary" class="scene-meta">{{ contentSummary }}</text>
       <slot v-if="available" /></view
     ><image class="arrow" src="/static/design/chevron.svg" mode="aspectFit" aria-hidden="true"

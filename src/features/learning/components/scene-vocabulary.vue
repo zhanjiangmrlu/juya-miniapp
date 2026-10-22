@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useReadingAnchors } from '@/composables/use-reading-anchors'
 import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
 import { AudioStatus } from '@/shared/enums/audio'
 
 import type { SceneVocabularyProps } from '@/shared/types/learning-components'
+const { measureReading } = useReadingAnchors()
+defineExpose({ measureReading })
 const props = defineProps<SceneVocabularyProps>()
 const emit = defineEmits<{ play: [id: string] }>()
 /** 展示已经确认的完整适用原句
@@ -15,7 +18,12 @@ const sourceLine = (lineId?: string) =>
   <view class="vocabulary-section">
     <SceneSectionHeading english="Words to keep" chinese="重点词汇" :count="vocabulary.length" />
     <text class="vocabulary-help">点击英文或喇叭听发音 · 中文为本句释义</text>
-    <view v-for="word in vocabulary" :key="word.id" class="word">
+    <view
+      v-for="word in vocabulary"
+      :key="word.id"
+      class="word reading-anchor"
+      :data-reading-anchor="word.id ? `vocabulary:${word.id}` : undefined"
+    >
       <view class="word-top">
         <button
           class="word-trigger"

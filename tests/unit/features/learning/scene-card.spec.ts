@@ -23,7 +23,7 @@ it('renders the published English title above Chinese and keeps its WebP thumbna
     published_at: '',
     vocabulary_count: 10,
     chunk_count: 5,
-    state: { completed: false, today_completed: false, favorite: false }
+    state: { completed: false, today_completed: false, favorite: false, started: false }
   }
   const page = mount(SceneCard, { props: { card } })
   await flushPromises()
@@ -61,12 +61,14 @@ it('generates the current publication thumbnail from its authorized original whe
         published_at: '',
         vocabulary_count: 0,
         chunk_count: 0,
-        state: { completed: false, today_completed: false, favorite: false }
+        state: { completed: false, today_completed: false, favorite: false, started: false }
       }
     }
   })
   await flushPromises()
-  expect(ports.request).toHaveBeenCalledExactlyOnceWith('/api/mini/v1/cards/missing?version_id=v1')
+  expect(ports.request).toHaveBeenCalledExactlyOnceWith(
+    '/api/mini/v1/cards/missing?version_id=v1&mark_started=false'
+  )
   expect(ports.media).toHaveBeenCalledExactlyOnceWith(
     'missing',
     'published-original',
@@ -90,7 +92,7 @@ it('does not request an original or generate a thumbnail for unavailable history
         thumbnail_id: null,
         available: false,
         unavailable_reason: 'offline',
-        state: { completed: false, today_completed: false, favorite: false }
+        state: { completed: false, today_completed: false, favorite: false, started: false }
       }
     }
   })

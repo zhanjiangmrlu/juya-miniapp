@@ -20,7 +20,7 @@ it('uses only the permitted summary thumbnail and returns to the original list',
         version_id: null,
         available: false,
         unavailable_reason: 'deleted',
-        state: { completed: true, today_completed: false, favorite: true }
+        state: { completed: true, today_completed: false, favorite: true, started: true }
       },
       favoriteBusy: false,
       message: ''

@@ -201,7 +201,7 @@ onUnload(() => {
       ><button class="primary" @click="learn">去学习</button></AppState
     >
     <view v-show="tab === RecordsTab.LEARNED">
-      <SceneCard v-for="card in learned" :key="card.id" :card="card" history
+      <SceneCard v-for="card in learned" :key="card.id" :card="card" history source="records"
         ><text class="record-hint">已学过 · 点击复习</text></SceneCard
       >
       <button
@@ -229,7 +229,14 @@ onUnload(() => {
         <text class="checkin-summary">当日完成 {{ record.card_count }} 张 · 每日只记一次打卡</text>
         <view v-if="expanded === record.date" class="day-cards">
           <AppState :busy="dayBusy" :error="dayError" @retry="expand(record.date)" />
-          <SceneCard v-for="card in day?.items" :key="card.id" :card="card" history compact
+          <SceneCard
+            v-for="card in day?.items"
+            :key="card.id"
+            :card="card"
+            history
+            compact
+            source="day"
+            :day="record.date"
             ><text class="daily-time">{{ dateText(card.completed_at) }}</text></SceneCard
           >
         </view>

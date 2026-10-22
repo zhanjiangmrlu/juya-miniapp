@@ -12,11 +12,12 @@ vi.mock('@dcloudio/uni-app', () => ({
   onLoad: (callback: typeof ports.load) => (ports.load = callback),
   onShow: vi.fn(),
   onHide: vi.fn(),
+  onPageScroll: vi.fn(),
   onUnload: (callback: typeof ports.unload) => (ports.unload = callback)
 }))
 vi.mock('@/services/api', () => ({
   session: { request: ports.request, userId: () => 'learner' },
-  operations: {},
+  operations: { pending: () => false },
   onSessionExpired: () => () => undefined
 }))
 vi.mock('@/services/audio-port', () => ({ createAudioPort: () => ({}) }))

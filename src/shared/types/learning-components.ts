@@ -22,6 +22,8 @@ export interface SceneCardProps {
   history?: boolean
   featured?: boolean
   compact?: boolean
+  source?: import('../enums/learning').QueueSource
+  day?: string
 }
 
 export interface SceneSectionHeadingProps {
@@ -34,4 +36,13 @@ export interface SceneUnavailableProps {
   summary: components['schemas']['PersonalSummary']
   favoriteBusy: boolean
   message: string
+}
+export interface SceneListFooterProps {
+  busy: boolean
+  error: string
+  hasMore: boolean
+  done: boolean
+}
+export interface SceneQueueEndProps {
+  source: import('../enums/learning').QueueSource | null
 }

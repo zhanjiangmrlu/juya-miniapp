@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
+import { onHide, onLoad, onPageScroll, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, ref, watch } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { useReadingPosition } from '@/composables/use-reading-position'
 import { createAudioController } from '@/features/learning/audio-controller'
 import SceneAudioPlayer from '@/features/learning/components/scene-audio-player.vue'
 import SceneDialogue from '@/features/learning/components/scene-dialogue.vue'
+import SceneQueueEnd from '@/features/learning/components/scene-queue-end.vue'
 import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
 import SceneUnavailable from '@/features/learning/components/scene-unavailable.vue'
 import SceneVocabulary from '@/features/learning/components/scene-vocabulary.vue'
@@ -17,13 +19,21 @@ import { ApiError } from '@/services/errors'
 import { createFullAudioPreparation } from '@/services/full-audio-preparation'
 import { prepareImagePreviewSource, registerImagePreview } from '@/services/image-preview'
 import { mediaAddress } from '@/services/media-service'
+import { backTo } from '@/services/navigation'
 import { operationKey, resourceURL } from '@/services/platform'
 import { loadPronunciation } from '@/services/pronunciation-service'
 import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
+import {
+  discardPreparedScene,
+  prepareSourceScene,
+  sourceQueue,
+  takePreparedScene
+} from '@/services/source-queue'
 import { prepareAudioCacheFile, prepareWordAudioFile } from '@/services/word-audio-file'
 import { createWordAudioPreparation, waitForWordAudio } from '@/services/word-audio-preparation'
 import { Routes } from '@/shared/constants/navigation'
 import { AudioStatus } from '@/shared/enums/audio'
+import { QueueSource } from '@/shared/enums/learning'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
@@ -43,7 +53,15 @@ const account = useAccountStore(),
   favoriteBusy = ref(false),
   completeBusy = ref(false),
   awaitingState = ref(false),
-  stale = ref(false)
+  stale = ref(false),
+  queueId = ref(''),
+  queueSource = ref<QueueSource | null>(null),
+  queueEnd = ref(false),
+  nextBusy = ref(false),
+  nextError = ref(''),
+  reviewOnEntry = ref(false),
+  dialogueView = ref<InstanceType<typeof SceneDialogue> | null>(null),
+  vocabularyView = ref<InstanceType<typeof SceneVocabulary> | null>(null)
 const audioState = ref<AudioState>({
   rate: 1,
   rateError: '',
@@ -67,16 +85,47 @@ let id = '',
   originalSrc = '',
   imageRequest: Promise<string> | null = null,
   releaseImage: (() => void) | null = null
+const reading = useReadingPosition({
+  scene: card,
+  cardId: () => id,
+  children: () => [dialogueView.value, vocabularyView.value]
+})
 const favorite = computed(
   () => card.value?.state.favorite || summary.value?.state.favorite || false
 )
-const completionLabel = computed(() =>
-  card.value?.state.today_completed
-    ? '今日已完成学习'
-    : card.value?.state.completed
-      ? '完成本次复习'
-      : '已完成学习'
+const canAdvance = computed(() =>
+  Boolean(
+    card.value?.state.today_completed ||
+    (queueSource.value === QueueSource.LEARNING && card.value?.state.completed)
+  )
 )
+const completionLabel = computed(() => {
+  if (canAdvance.value)
+    return queueSource.value
+      ? queueSource.value !== QueueSource.LEARNING && reviewOnEntry.value
+        ? '复习下一张'
+        : '继续学习下一张'
+      : '前往学习页'
+  return card.value?.state.completed ? '完成本次复习' : '已完成学习'
+})
+/** 返回建立本次快照的原生来源栈，无栈时回到相应列表 */
+const returnSource = () =>
+  backTo(
+    queueSource.value === QueueSource.FAVORITES
+      ? Routes.FAVORITES
+      : queueSource.value === QueueSource.RECORDS || queueSource.value === QueueSource.DAY
+        ? Routes.RECORDS
+        : Routes.LEARNING
+  )
+/** 结束或直接单卡完成后回到学习入口 */
+const learn = () => uni.switchTab({ url: Routes.LEARNING })
+/** 检查持久待确认完成，换页面或重新显示不能绕过原操作查询 */
+const checkPendingCompletion = () => {
+  const pending = operations.pending(`complete:${id}`)
+  awaitingState.value = pending
+  if (pending) actionError.value = '上次完成结果待确认，请先查询结果'
+  return pending
+}
 /** 进入当前场景时创建两路互斥音频，不自动播放 */
 const createAudio = () => {
   if (audio || !visible || !card.value || stale.value) return
@@ -189,7 +238,12 @@ const invalid = async (reason: unknown) => {
     available: false,
     version_id: null,
     unavailable_reason: reason.code === 'card_deleted' ? 'deleted' : 'offline',
-    state: previous?.state || { completed: false, today_completed: false, favorite: false }
+    state: previous?.state || {
+      completed: false,
+      today_completed: false,
+      favorite: false,
+      started: false
+    }
   }
   try {
     const value = await session.request<components['schemas']['PersonalSummary']>(
@@ -274,16 +328,22 @@ const loadImage = async (renew = false) => {
 const load = async () => {
   if (busy.value) return
   busy.value = true
+  message.value = ''
+  completionStatistics.value = null
   error.value = ''
   actionError.value = ''
   stale.value = false
   const run = ++generation
   try {
     if (!(await account.ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`))) return
-    const value = await session.request<PublishedScene>(`/api/mini/v1/cards/${id}`)
+    const value =
+      takePreparedScene(queueId.value, id) ||
+      (await session.request<PublishedScene>(`/api/mini/v1/cards/${id}`))
     if (!alive || run !== generation) return
     stopAudio()
     card.value = value
+    reviewOnEntry.value = value.state.completed
+    if (value.state.today_completed) message.value = '今日已完成学习'
     imageSrc.value = ''
     imageError.value = ''
     imageLoading.value = false
@@ -291,9 +351,10 @@ const load = async () => {
     originalSrc = ''
     imageRequest = null
     summary.value = null
-    awaitingState.value = false
+    checkPendingCompletion()
     createAudio()
     void loadImage()
+    void reading.restore(value)
   } catch (reason) {
     if (!alive || run !== generation) return
     if (reason instanceof ApiError && reason.status === 410) await invalid(reason)
@@ -311,7 +372,7 @@ const refreshState = async () => {
   )
   if (alive && card.value?.version_id === version) {
     card.value.state = value.state
-    awaitingState.value = false
+    checkPendingCompletion()
   }
 }
 /** 已准备好的完整音频同步播放，提前点击只等待受控地址 */
@@ -383,8 +444,22 @@ const toggleFavorite = async () => {
     favoriteBusy.value = false
   }
 }
+/** 完成查实后只预查后续资格，最后一张立即显示本次范围结束 */
+const probeQueueEnd = async () => {
+  if (!queueSource.value || !card.value || !canAdvance.value || awaitingState.value || !alive)
+    return
+  try {
+    if (!sourceQueue.matches(queueId.value, id))
+      throw new Error('本次来源已失效，请返回列表重新进入')
+    const candidate = await sourceQueue.next()
+    if (alive && !candidate) queueEnd.value = true
+  } catch (reason) {
+    if (alive) nextError.value = reason instanceof Error ? reason.message : '下一张暂未确认，请重试'
+  }
+}
 /** 主动确认完成或复习，服务器成功后再读取可信统计 */
 const complete = async () => {
+  if (checkPendingCompletion()) return
   if (
     !card.value ||
     card.value.state.today_completed ||
@@ -412,9 +487,10 @@ const complete = async () => {
     if (results[0].status === 'rejected') {
       await invalid(results[0].reason)
       actionError.value = '学习记录已保存，当前状态暂未更新，请刷新确认'
-    }
+    } else await probeQueueEnd()
   } catch (reason) {
     await invalid(reason)
+    awaitingState.value = operations.pending(`complete:${id}`)
     actionError.value = reason instanceof Error ? reason.message : '完成结果暂未确认，请查询或重试'
   } finally {
     completeBusy.value = false
@@ -429,13 +505,74 @@ const recover = async () => {
     }
     if (card.value) await refreshState()
     await account.refreshStatistics()
+    await probeQueueEnd()
   } catch (reason) {
     await invalid(reason)
     actionError.value = reason instanceof Error ? reason.message : '暂未确认结果，可重试原操作'
   }
 }
+/** 先核对当前真实状态再推进来源，分页失败保留当前详情 */
+const advance = async () => {
+  if (checkPendingCompletion()) return
+  if (nextBusy.value || completeBusy.value || awaitingState.value || stale.value || !card.value)
+    return
+  if (!queueSource.value) {
+    learn()
+    return
+  }
+  nextBusy.value = true
+  nextError.value = ''
+  try {
+    try {
+      await refreshState()
+    } catch (reason) {
+      await invalid(reason)
+      throw reason
+    }
+    if (!canAdvance.value || !alive) return
+    if (!sourceQueue.matches(queueId.value, id))
+      throw new Error('本次来源已失效，请返回列表重新进入')
+    const nextId = await sourceQueue.next()
+    if (!alive) return
+    if (!nextId) {
+      queueEnd.value = true
+      return
+    }
+    await reading.save()
+    const nextScene = await session.request<PublishedScene>(
+      `/api/mini/v1/cards/${encodeURIComponent(nextId)}`
+    )
+    if (!alive) return
+    const rollback = sourceQueue.commit(nextId)
+    prepareSourceScene(queueId.value, nextScene)
+    try {
+      await new Promise<void>((resolve, reject) =>
+        uni.redirectTo({
+          url: `${Routes.SCENE}?id=${encodeURIComponent(nextId)}&queue=${encodeURIComponent(queueId.value)}`,
+          success: () => resolve(),
+          fail: () => reject(new Error('下一张暂未打开，请重试'))
+        })
+      )
+    } catch (reason) {
+      rollback()
+      discardPreparedScene()
+      throw reason
+    }
+  } catch (reason) {
+    nextError.value = reason instanceof Error ? reason.message : '下一张暂未获取，请重试'
+  } finally {
+    nextBusy.value = false
+  }
+}
+/** 完成和导航各自只处理一次操作，今日已完成不重复提交 */
+const primaryAction = () => {
+  if (canAdvance.value) void advance()
+  else void complete()
+}
 onLoad((query) => {
   id = String(query?.id || '')
+  queueId.value = String(query?.queue || '')
+  if (sourceQueue.matches(queueId.value, id)) queueSource.value = sourceQueue.source()
   if (!/^[A-Za-z0-9-]{1,64}$/.test(id)) {
     error.value = '未找到这张场景卡'
     return
@@ -449,13 +586,17 @@ onShow(() => {
     void refreshState().catch(invalid)
   }
 })
+onPageScroll((event) => reading.scroll(event.scrollTop))
 onHide(() => {
+  void reading.save()
   if (!imageOpen) {
     visible = false
     stopAudio()
   }
 })
 onUnload(() => {
+  void reading.save()
+  reading.dispose()
   alive = false
   visible = false
   generation++
@@ -476,57 +617,62 @@ onUnload(() => {
       :message="message"
       @unfavorite="toggleFavorite"
     /><template v-else-if="card"
-      ><view class="scene-title between"
-        ><text class="title">{{ card.content.name }}</text
-        ><button
-          class="favorite"
-          :class="{ saved: favorite }"
-          :disabled="favoriteBusy"
-          :aria-pressed="favorite"
-          @click="toggleFavorite"
-        >
-          <image
-            class="favorite-icon"
-            src="/static/design/heart.svg"
-            mode="aspectFit"
-            aria-hidden="true"
-          /><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏整卡' }}</text>
-        </button></view
-      ><text v-if="card.content.title_en" class="scene-english">{{ card.content.title_en }}</text
-      ><view class="scene-picture">
-        <view class="scene-thumbnail" @click="previewImage">
-          <image
-            v-if="imageSrc && !imageError"
-            :src="imageSrc"
-            mode="aspectFit"
-            :webp="true"
-            :alt="card.content.name"
-            @error="imageError = '图片暂未加载，可重试'"
-          />
-          <text v-else-if="!card.thumbnail_id && !card.content.image_id" class="image-retry"
-            >暂无场景图</text
+      ><view v-if="reading.notice.value" class="notice">{{ reading.notice.value }}</view
+      ><view class="reading-anchor" data-reading-anchor="top"
+        ><view class="scene-title between"
+          ><text class="title">{{ card.content.name }}</text
+          ><button
+            class="favorite"
+            :class="{ saved: favorite }"
+            :disabled="favoriteBusy"
+            :aria-pressed="favorite"
+            @click="toggleFavorite"
           >
-          <button v-else class="image-retry" @click.stop="loadImage(true)">
-            {{ imageError || '正在加载场景图…' }}
-          </button>
+            <image
+              class="favorite-icon"
+              src="/static/design/heart.svg"
+              mode="aspectFit"
+              aria-hidden="true"
+            /><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏整卡' }}</text>
+          </button></view
+        ><text v-if="card.content.title_en" class="scene-english">{{ card.content.title_en }}</text
+        ><view class="scene-picture">
+          <view class="scene-thumbnail" @click="previewImage">
+            <image
+              v-if="imageSrc && !imageError"
+              :src="imageSrc"
+              mode="aspectFit"
+              :webp="true"
+              :alt="card.content.name"
+              @error="imageError = '图片暂未加载，可重试'"
+            />
+            <text v-else-if="!card.thumbnail_id && !card.content.image_id" class="image-retry"
+              >暂无场景图</text
+            >
+            <button v-else class="image-retry" @click.stop="loadImage(true)">
+              {{ imageError || '正在加载场景图…' }}
+            </button>
+          </view>
+          <view class="scene-prompt">
+            <text class="prompt-title">Start with the scene.</text>
+            <text class="prompt-description">点开场景卡，查看完整图片。</text>
+            <button class="expand-image" @click="previewImage">放大场景卡</button>
+          </view>
         </view>
-        <view class="scene-prompt">
-          <text class="prompt-title">Start with the scene.</text>
-          <text class="prompt-description">点开场景卡，查看完整图片。</text>
-          <button class="expand-image" @click="previewImage">放大场景卡</button>
-        </view>
-      </view>
-      <SceneAudioPlayer
-        :state="audioState"
-        @toggle="playFull"
-        @seek="audio?.seekFull($event)"
-        @rate="audio?.setRate($event)"
-      /><SceneDialogue
-        :key="card.version_id"
+        <SceneAudioPlayer
+          :state="audioState"
+          @toggle="playFull"
+          @seek="audio?.seekFull($event)"
+          @rate="audio?.setRate($event)" /></view
+      ><SceneDialogue
+        ref="dialogueView"
+        :key="`${id}:${card.version_id}`"
         :dialogue="card.content.dialogue || []"
         :vocabulary="card.content.vocabulary || []"
+        @layout="reading.refresh"
       />
       <SceneVocabulary
+        ref="vocabularyView"
         :vocabulary="card.content.vocabulary || []"
         :dialogue="card.content.dialogue || []"
         :state="audioState"
@@ -537,7 +683,8 @@ onUnload(() => {
         ><SceneSectionHeading english="Useful expressions" chinese="实用语块" /><view
           v-for="chunk in card.content.chunks"
           :key="chunk.id"
-          class="word"
+          class="word reading-anchor"
+          :data-reading-anchor="chunk.id ? `chunk:${chunk.id}` : undefined"
           ><text class="word-english">{{ chunk.english }}</text
           ><text class="meaning">{{ chunk.chinese }}</text></view
         ></view
@@ -550,15 +697,25 @@ onUnload(() => {
       ></template
     ><view v-if="actionError" class="notice error"
       >{{ actionError }}<button class="text-button" @click="recover">查询并刷新状态</button></view
-    ><template #footer
+    ><view v-if="nextError" class="notice error" role="alert"
+      >{{ nextError }}<button class="text-button" @click="advance">重试下一张</button
+      ><button class="text-button" @click="returnSource">返回来源列表</button></view
+    ><SceneQueueEnd
+      v-if="queueEnd"
+      :source="queueSource"
+      @learn="learn"
+      @stay="queueEnd = false"
+    /><template #footer
       ><view v-if="card && !stale" class="safe-footer"
         ><button
           class="primary"
-          :disabled="completeBusy || card.state.today_completed || awaitingState"
-          :loading="completeBusy"
-          @click="complete"
+          :disabled="completeBusy || nextBusy || awaitingState || busy"
+          :loading="completeBusy || nextBusy"
+          @click="primaryAction"
         >
-          {{ awaitingState ? '已记录，待刷新确认' : completionLabel }}
+          {{
+            nextBusy ? '正在加载下一张…' : awaitingState ? '结果待确认，请先查询' : completionLabel
+          }}
         </button></view
       ></template
     ></AppPage

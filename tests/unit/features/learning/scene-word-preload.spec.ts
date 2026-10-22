@@ -21,6 +21,7 @@ const ports = vi.hoisted(() => ({
   tracks: [] as { src: string; play: ReturnType<typeof vi.fn>; destroy: ReturnType<typeof vi.fn> }[]
 }))
 vi.mock('@dcloudio/uni-app', () => ({
+  onPageScroll: vi.fn(),
   onLoad: (callback: typeof ports.load) => {
     ports.load = callback
   },
@@ -38,7 +39,7 @@ vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => Object.assign(ports.account!, { ensure: ports.ensure })
 }))
 vi.mock('@/services/api', () => ({
-  operations: {},
+  operations: { pending: () => false },
   session: { request: ports.request, userId: () => ports.account?.profile?.id || null },
   onSessionExpired: (callback: () => void) => {
     ports.expired = callback

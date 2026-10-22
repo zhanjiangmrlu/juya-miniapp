@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+import { useReadingAnchors } from '@/composables/use-reading-anchors'
 import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
 import { highlightSegments } from '@/features/learning/scene-model'
 import { SCENE_HIGHLIGHT_COLORS } from '@/shared/constants/learning'
@@ -8,6 +9,14 @@ import { SCENE_HIGHLIGHT_COLORS } from '@/shared/constants/learning'
 import type { SceneDialogueProps } from '@/shared/types/learning-components'
 const props = defineProps<SceneDialogueProps>()
 const translated = ref(false)
+const emit = defineEmits<{ layout: [] }>()
+const { measureReading } = useReadingAnchors()
+defineExpose({ measureReading })
+/** 展开全文译文后通知详情重新测量正文布局 */
+const toggleTranslation = () => {
+  translated.value = !translated.value
+  emit('layout')
+}
 /** 为词汇在对话中的高亮复用稳定的原型配色
  * @param quote 当前已确认来源的英文片段
  */
@@ -22,7 +31,8 @@ const highlightColor = (quote: string) => {
     <view
       v-for="(line, lineIndex) in dialogue"
       :key="line.id"
-      class="dialogue"
+      class="dialogue reading-anchor"
+      :data-reading-anchor="`dialogue:${line.id}`"
       :class="{ 'long-speaker': line.speaker.length > 2, alternate: lineIndex % 2 === 1 }"
     >
       <text class="speaker">{{ line.speaker }}</text>
@@ -36,11 +46,7 @@ const highlightColor = (quote: string) => {
         ></view
       >
     </view>
-    <button
-      class="translation-toggle"
-      :aria-expanded="translated"
-      @click="translated = !translated"
-    >
+    <button class="translation-toggle" :aria-expanded="translated" @click="toggleTranslation">
       {{ translated ? '收起译文' : '显示译文'
       }}<image
         :src="translated ? '/static/design/translate-up.svg' : '/static/design/translate-down.svg'"

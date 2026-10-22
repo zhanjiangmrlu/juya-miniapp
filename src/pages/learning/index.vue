@@ -5,48 +5,33 @@ import { ref } from 'vue'
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { useSceneList } from '@/composables/use-scene-list'
 import LearningStatistics from '@/features/learning/components/learning-statistics.vue'
 import SceneCard from '@/features/learning/components/scene-card.vue'
+import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import { session } from '@/services/api'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
 
-import type { components } from '@/shared/contracts/generated/mini-api'
 import type { CardBrief } from '@/shared/types/learning'
 const account = useAccountStore(),
-  cards = ref<CardBrief[]>([]),
-  total = ref<number | null>(null),
-  busy = ref(false),
-  error = ref(''),
   statsError = ref('')
-let pages = 1,
-  generation = 0
-/** 刷新已加载范围，保留现有列表高度和来源滚动位置 */
-const refresh = async () => {
-  if (busy.value) return
-  busy.value = true
-  error.value = ''
-  const run = ++generation
-  try {
-    if (!(await account.ensure(Routes.LEARNING))) return
-    const results = await Promise.all(
-      Array.from({ length: pages }, (_, index) =>
-        session.request<components['schemas']['Page_CardBrief_']>(
-          `/api/mini/v1/cards?page=${index + 1}&limit=20`
-        )
-      )
-    )
-    if (run === generation) {
-      cards.value = results.flatMap((result) => result.items)
-      total.value = results[0]?.total || 0
-    }
-  } catch (reason) {
-    if (run === generation)
-      error.value = reason instanceof Error ? reason.message : '学习列表暂未获取'
-  } finally {
-    if (run === generation) busy.value = false
-  }
-}
+const {
+  items: cards,
+  total,
+  publishedTotal,
+  busy,
+  moreBusy,
+  error,
+  moreError,
+  refresh,
+  more: loadMore,
+  dispose
+} = useSceneList<CardBrief>({
+  path: '/api/mini/v1/cards',
+  request: session.request,
+  ensure: () => account.ensure(Routes.LEARNING)
+})
 /** 统计单独失败时仍允许查看场景卡片 */
 const refreshStats = async () => {
   statsError.value = ''
@@ -59,16 +44,12 @@ const refreshStats = async () => {
     statsError.value = reason instanceof Error ? reason.message : '学习统计暂未获取'
   }
 }
-/** 接续加载下一页，不重复重排已有卡片 */
-const loadMore = async () => {
-  if (busy.value || total.value === null || cards.value.length >= total.value) return
-  pages++
-  await refresh()
-}
 /** 打开账号只读资料页 */
 const profile = () => uni.navigateTo({ url: Routes.PROFILE })
 /** 从显式记录入口打开最近使用的标签 */
 const records = () => uni.navigateTo({ url: Routes.RECORDS })
+/** 当前场景全部学完后仍可从收藏选择复习 */
+const favorites = () => uni.switchTab({ url: Routes.FAVORITES })
 onShow(() => {
   // H5 直接刷新路由时可能尚未建立原生底栏，使用回调处理该状态
   uni.hideTabBar({ animation: false, fail: () => undefined })
@@ -83,7 +64,7 @@ onReachBottom(() => {
   void loadMore()
 })
 onUnload(() => {
-  generation++
+  dispose()
 })
 </script>
 <template>
@@ -100,54 +81,76 @@ onUnload(() => {
     <view v-if="statsError && account.statistics" class="notice error">
       统计暂未更新 <button class="text-button" @click="refreshStats">重试</button>
     </view>
-    <view class="today-line between">
-      <view class="today-label"
+    <button class="records-entry between" @click="records">
+      <view
         ><image src="/static/design/calendar.svg" mode="aspectFit" aria-hidden="true" /><text
-          class="today-status"
-          >{{
-            account.statistics
-              ? account.statistics.checked_in_today
-                ? '今日已打卡'
-                : '今日还未打卡'
-              : '今日状态暂未获取'
-          }}</text
+          >学习记录</text
         ></view
-      >
-      <button class="text-button" @click="records">
-        学习记录<image src="/static/design/record-arrow.svg" mode="aspectFit" aria-hidden="true" />
-      </button>
-    </view>
-    <text class="today-help">{{
-      account.statistics?.checked_in_today
-        ? '继续学习或复习，积累更多表达。'
-        : '完成任意一张场景卡，即可完成今日打卡。'
-    }}</text>
+      ><image src="/static/design/chevron.svg" mode="aspectFit" aria-hidden="true" />
+    </button>
+    <view class="today-line between"
+      ><image src="/static/design/calendar.svg" mode="aspectFit" aria-hidden="true" /><text>{{
+        account.statistics
+          ? account.statistics.checked_in_today
+            ? '今日已打卡'
+            : '今日还未打卡'
+          : '今日状态暂未获取'
+      }}</text></view
+    >
     <view class="catalog-heading between">
-      <text class="section-title">场景卡片</text>
+      <text class="section-title">待学场景</text>
       <text v-if="total !== null" class="catalog-count">{{ total }} 张</text>
     </view>
     <AppState
       :busy="busy && total === null"
       :error="error"
       :empty="total === 0"
-      title="场景卡正在准备中"
-      description="发布后会在这里展示。"
+      :title="publishedTotal > 0 ? '当前场景卡已全部学完' : '暂无可学习的场景卡'"
+      :description="
+        publishedTotal > 0
+          ? '可以到学习记录复习已学场景。'
+          : '场景卡发布后会在这里展示，历史学习记录会保留。'
+      "
       @retry="refresh"
-      ><button v-if="total === 0" class="text-button" @click="refresh">刷新看看</button></AppState
+      ><view v-if="total === 0 && publishedTotal > 0" class="empty-actions"
+        ><button class="primary" @click="records">查看学习记录</button
+        ><button @click="favorites">查看收藏</button></view
+      ><button v-else-if="total === 0" class="text-button" @click="refresh">
+        刷新看看
+      </button></AppState
     >
-    <SceneCard v-for="(card, index) in cards" :key="card.id" :card="card" :featured="index === 0" />
     <button
-      v-if="total !== null && cards.length < total"
-      class="text-button more"
-      :disabled="busy"
-      @click="loadMore"
+      v-if="total !== null && total > 0"
+      class="refresh-list text-button"
+      :disabled="busy || moreBusy"
+      @click="refresh"
     >
-      {{ busy ? '加载中…' : '加载更多' }}
+      <image src="/static/design/refresh.svg" mode="aspectFit" aria-hidden="true" />{{
+        busy ? '正在刷新…' : '刷新列表'
+      }}
     </button>
+    <SceneCard
+      v-for="(card, index) in cards"
+      :key="card.id"
+      :card="card"
+      :featured="index === 0"
+      source="learning" />
+    <SceneListFooter
+      :busy="moreBusy"
+      :error="moreError"
+      :has-more="total !== null && cards.length < total"
+      :done="total !== null && total > 0 && cards.length >= total"
+      @more="loadMore" />
     <AppBottomTabs active="learning"
   /></AppPage>
 </template>
 <style scoped lang="scss">
+.empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: 19.231rpx;
+}
+
 .welcome {
   min-height: 53.846rpx;
   margin-bottom: 15.385rpx;
@@ -181,39 +184,51 @@ onUnload(() => {
   letter-spacing: -0.025em;
 }
 
-.today-line {
-  min-height: 76.923rpx;
-  font-size: 25rpx;
-  line-height: 42.5rpx;
+.records-entry {
+  width: 100%;
+  min-height: 103.846rpx;
+  padding: 26.923rpx 32.692rpx;
+  border: 1px solid #dfe5d8;
+  border-radius: 19.231rpx;
+  background: #fff;
+  font-size: 30.769rpx;
+  line-height: 46.154rpx;
 
-  .today-label {
+  view {
     display: flex;
     align-items: center;
-    gap: 15.385rpx;
-    color: #ad4f32;
+    gap: 19.231rpx;
   }
 
   image {
+    width: 38.462rpx;
+    height: 38.462rpx;
     flex-shrink: 0;
-    width: 34.615rpx;
-    height: 34.615rpx;
-  }
-
-  button {
-    gap: 15.385rpx;
-    padding: 19.231rpx 0;
-    font-size: 23.077rpx;
-    line-height: 38.462rpx;
-    white-space: nowrap;
   }
 }
 
-.today-help {
-  display: block;
-  margin-top: 3.846rpx;
-  font-size: 21.154rpx;
-  line-height: 38.077rpx;
-  color: #586c5b;
+.today-line {
+  margin-top: 30.769rpx;
+  min-height: 42.5rpx;
+  font-size: 25rpx;
+  line-height: 42.5rpx;
+
+  image {
+    width: 34.615rpx;
+    height: 34.615rpx;
+  }
+}
+
+.refresh-list {
+  min-height: 76.923rpx;
+  padding: 15.385rpx 17.308rpx;
+  font-size: 23.077rpx;
+  gap: 13.462rpx;
+
+  image {
+    width: 38.462rpx;
+    height: 38.462rpx;
+  }
 }
 
 .catalog-heading {

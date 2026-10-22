@@ -65,6 +65,24 @@ export const backTo = (fallback: string = Routes.LEARNING) => {
 }
 /** 打开当前发布卡或本人历史摘要
  * @param id 稳定卡片编号
+ * @param source 点击卡片所在的来源列表
+ * @param day 打卡来源的日期
  */
-export const openScene = (id: string) =>
-  uni.navigateTo({ url: `${Routes.SCENE}?id=${encodeURIComponent(id)}` })
+export const openScene = async (
+  id: string,
+  source?: import('@/shared/enums/learning').QueueSource,
+  day?: string
+) => {
+  if (!source) {
+    uni.navigateTo({ url: `${Routes.SCENE}?id=${encodeURIComponent(id)}` })
+    return
+  }
+  try {
+    await (await import('@/services/source-queue')).openSourceScene(source, id, day)
+  } catch (reason) {
+    uni.showToast({
+      title: reason instanceof Error ? reason.message : '来源列表暂未获取，请重试',
+      icon: 'none'
+    })
+  }
+}

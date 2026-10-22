@@ -62,7 +62,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Listing */
+    /**
+     * Listing
+     * @description 先按本人完成记录过滤再分页，并独立返回当前发布总数
+     */
     get: operations['listing_api_mini_v1_cards_get']
     put?: never
     post?: never
@@ -81,7 +84,7 @@ export interface paths {
     }
     /**
      * Detail
-     * @description Read the authorized publication and its thumbnail, including direct detail entry.
+     * @description 读取卡片当前版本并仅为当前用户记录首次有效打开，不计成绩
      */
     get: operations['detail_api_mini_v1_cards__card_id__get']
     put?: never
@@ -484,6 +487,66 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/mini/v1/learning-queues': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Create
+     * @description 为当前用户的来源条件建立可幂等恢复的固定顺序快照
+     */
+    post: operations['create_api_mini_v1_learning_queues_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/mini/v1/learning-queues/{queue_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Read
+     * @description 读取本人快照索引，失效项保留位置，不能让分页移位
+     */
+    get: operations['read_api_mini_v1_learning_queues__queue_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/mini/v1/cards/{card_id}/reading-position': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /**
+     * Save
+     * @description 保存当前用户在卡片同版正文中的锚点和块内相对进度
+     */
+    put: operations['save_api_mini_v1_cards__card_id__reading_position_put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -544,6 +607,11 @@ export interface components {
       today_completed: boolean
       /** Favorite */
       favorite: boolean
+      /**
+       * Started
+       * @default false
+       */
+      started: boolean
     }
     /** CheckinRecord */
     CheckinRecord: {
@@ -597,6 +665,18 @@ export interface components {
       wechat_contact?: string | null
       /** Consent Version */
       consent_version: string
+    }
+    /** CreateLearningQueue */
+    CreateLearningQueue: {
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: 'learning' | 'favorites' | 'records' | 'day'
+      /** Card Id */
+      card_id: string
+      /** Day */
+      day?: string | null
     }
     /** CurrentVersion */
     CurrentVersion: {
@@ -680,6 +760,19 @@ export interface components {
       /** Favorite */
       favorite: boolean
     }
+    /** LearningCardPage */
+    LearningCardPage: {
+      /** Items */
+      items: components['schemas']['CardBrief'][]
+      /** Total */
+      total: number
+      /** Page */
+      page: number
+      /** Limit */
+      limit: number
+      /** Published Total */
+      published_total: number
+    }
     /** LearningRecord */
     LearningRecord: {
       /** Id */
@@ -755,17 +848,6 @@ export interface components {
       result: {
         [key: string]: unknown
       }
-    }
-    /** Page[CardBrief] */
-    Page_CardBrief_: {
-      /** Items */
-      items: components['schemas']['CardBrief'][]
-      /** Total */
-      total: number
-      /** Page */
-      page: number
-      /** Limit */
-      limit: number
     }
     /** Page[CheckinRecord] */
     Page_CheckinRecord_: {
@@ -844,6 +926,52 @@ export interface components {
       /** Published At */
       published_at: string
       state: components['schemas']['CardState']
+      reading_position?: components['schemas']['ReadingPosition'] | null
+      /**
+       * Reading Position Reset
+       * @default false
+       */
+      reading_position_reset: boolean
+    }
+    /** QueueCreated */
+    QueueCreated: {
+      /** Id */
+      id: string
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: 'learning' | 'favorites' | 'records' | 'day'
+      /** Total */
+      total: number
+    }
+    /** QueueItemView */
+    QueueItemView: {
+      /** Card Id */
+      card_id: string
+      state: components['schemas']['CardState']
+      /** Available */
+      available: boolean
+    }
+    /** QueuePage */
+    QueuePage: {
+      /** Items */
+      items: components['schemas']['QueueItemView'][]
+      /** Total */
+      total: number
+      /** Offset */
+      offset: number
+      /** Next Offset */
+      next_offset: number | null
+    }
+    /** ReadingPosition */
+    ReadingPosition: {
+      /** Version Id */
+      version_id: string
+      /** Anchor */
+      anchor: string
+      /** Progress */
+      progress: number
     }
     /** ResourceURL */
     ResourceURL: {
@@ -851,6 +979,15 @@ export interface components {
       url: string
       /** Expires At */
       expires_at: string
+    }
+    /** SaveReadingPosition */
+    SaveReadingPosition: {
+      /** Version Id */
+      version_id: string
+      /** Anchor */
+      anchor: string
+      /** Progress */
+      progress: number
     }
     /** SceneContent */
     SceneContent: {
@@ -1364,7 +1501,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['Page_CardBrief_']
+          'application/json': components['schemas']['LearningCardPage']
         }
       }
       /** @description Bad Request */
@@ -1463,6 +1600,7 @@ export interface operations {
     parameters: {
       query?: {
         version_id?: string | null
+        mark_started?: boolean
       }
       header?: never
       path: {
@@ -4193,6 +4331,351 @@ export interface operations {
         }
         content: {
           'application/json': unknown
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Gone */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
+  create_api_mini_v1_learning_queues_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateLearningQueue']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['QueueCreated']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Gone */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
+  read_api_mini_v1_learning_queues__queue_id__get: {
+    parameters: {
+      query?: {
+        offset?: number
+        limit?: number
+      }
+      header?: never
+      path: {
+        queue_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['QueuePage']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Gone */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
+  save_api_mini_v1_cards__card_id__reading_position_put: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        card_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SaveReadingPosition']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReadingPosition']
         }
       }
       /** @description Bad Request */
