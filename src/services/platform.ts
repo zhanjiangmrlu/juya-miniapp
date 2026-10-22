@@ -1,5 +1,7 @@
 import type { HttpRequest, HttpResponse, StoragePort } from '@/shared/types/runtime'
 
+import { runtimeMode } from './runtime-mode'
+
 export const storage: StoragePort = {
   get: (key) => uni.getStorageSync(key),
   set: (key, value) => uni.setStorageSync(key, value),
@@ -22,6 +24,7 @@ export const resourceURL = (path: string) => {
 /** 通过微信小程序能力取得临时code，只允许主动点击后调用 */
 export const wechatLogin = (): Promise<string> =>
   new Promise((resolve, reject) => {
+    runtimeMode.assertPrivate()
     // #ifdef MP-WEIXIN
     uni.login({
       provider: 'weixin',
@@ -37,7 +40,7 @@ export const wechatLogin = (): Promise<string> =>
 /** 使用平台HTTP边界，上传头像也通过同一业务Token和错误处理
  * @param request 仅包含小程序业务路径与明确请求数据
  */
-export const sendRequest = (request: HttpRequest): Promise<HttpResponse> =>
+const transportRequest = (request: HttpRequest): Promise<HttpResponse> =>
   new Promise((resolve, reject) => {
     const upload = request.body as
       { file_path?: string; progress?: (value: number) => void } | undefined
@@ -76,3 +79,25 @@ export const sendRequest = (request: HttpRequest): Promise<HttpResponse> =>
       fail: () => reject(new Error('网络响应未知'))
     })
   })
+
+/** 私有 HTTP 与上传在平台边界再次检查模式，缓存身份不能越过限制
+ * @param request 本人业务请求
+ */
+export const sendRequest = async (request: HttpRequest): Promise<HttpResponse> => {
+  runtimeMode.assertPrivate()
+  return transportRequest(request)
+}
+
+/** 公开摘要边界只发送白名单 GET/HEAD，丢弃传入的身份与业务请求头
+ * @param request 公开摘要或派生分享封面的请求
+ */
+export const sendPublicRequest = async (request: HttpRequest): Promise<HttpResponse> => {
+  if (
+    !['GET', 'HEAD'].includes(request.method) ||
+    !/^\/api\/mini\/v1\/public\/cards\/[A-Za-z0-9-]{1,64}\/share(?:\/images\/[A-Za-z0-9-]{1,64}\/(?:friends|timeline))?$/.test(
+      request.path
+    )
+  )
+    throw new Error('公开摘要地址暂不可用')
+  return transportRequest({ path: request.path, method: request.method, headers: {} })
+}

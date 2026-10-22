@@ -7,6 +7,10 @@ vi.mock('@/services/feedback-service', () => ({
   feedbackInbox: { value: { value: { unread: false, count: 0 } }, refresh: vi.fn() }
 }))
 vi.mock('@dcloudio/uni-app', () => ({
+  onLoad: vi.fn(),
+  onHide: vi.fn(),
+  onShareAppMessage: vi.fn(),
+  onShareTimeline: vi.fn(),
   onShow: (callback: typeof ports.show) => {
     ports.show = callback
   },
@@ -18,12 +22,14 @@ vi.mock('@/services/api', () => ({ session: { request: ports.request } }))
 vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({
     ensure: async () => true,
+    restore: async () => ({ id: 'owner' }),
     refreshStatistics: async () => undefined,
     refreshAvatar: async () => undefined,
     statistics: { checked_in_today: false }
   })
 }))
 import LearningPage from '@/pages/learning/index.vue'
+import { runtimeMode } from '@/services/runtime-mode'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -69,4 +75,31 @@ it('distinguishes all learned from no published cards and exposes the full learn
       .some((state) => state.props('title') === '暂无可学习的场景卡')
   ).toBe(true)
   empty.unmount()
+})
+
+it('invalidates a pending private list when browseOnly starts so full mode can refresh the current list', async () => {
+  let finish: (value: unknown) => void = () => undefined
+  ports.request
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    )
+    .mockResolvedValue({ items: [], total: 0, published_total: 2 })
+  const page = shallowMount(LearningPage, {
+    global: { stubs: { AppPage: { template: '<view><slot /></view>' } } }
+  })
+  ports.show?.()
+  await flushPromises()
+  expect(ports.request).toHaveBeenCalledTimes(1)
+  runtimeMode.update({ apiCategory: 'browseOnly' })
+  await flushPromises()
+  runtimeMode.update({ apiCategory: 'default' })
+  await flushPromises()
+  expect(ports.request).toHaveBeenCalledTimes(2)
+  finish({ items: [{ id: 'old', name: '过期列表' }], total: 1, published_total: 1 })
+  await flushPromises()
+  expect(page.findAllComponents({ name: 'SceneCard' })).toHaveLength(0)
+  page.unmount()
 })

@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { useNativeShare } from '@/composables/use-native-share'
 import { useReadingPosition } from '@/composables/use-reading-position'
 import { useSceneDictionary } from '@/composables/use-scene-dictionary'
 import { createAudioController } from '@/features/learning/audio-controller'
@@ -14,6 +15,8 @@ import SceneQueueEnd from '@/features/learning/components/scene-queue-end.vue'
 import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
 import SceneUnavailable from '@/features/learning/components/scene-unavailable.vue'
 import SceneVocabulary from '@/features/learning/components/scene-vocabulary.vue'
+import ShareSheet from '@/features/share/components/share-sheet.vue'
+import ShareSummary from '@/features/share/components/share-summary.vue'
 import { onSessionExpired, operations, session } from '@/services/api'
 import { createAudioPort } from '@/services/audio-port'
 import { clientThumbnail } from '@/services/client-thumbnail'
@@ -23,9 +26,12 @@ import { createFullAudioPreparation } from '@/services/full-audio-preparation'
 import { prepareImagePreviewSource, registerImagePreview } from '@/services/image-preview'
 import { mediaAddress } from '@/services/media-service'
 import { backTo } from '@/services/navigation'
-import { operationKey, resourceURL } from '@/services/platform'
+import { operationKey, resourceURL, sendPublicRequest } from '@/services/platform'
 import { loadPronunciation } from '@/services/pronunciation-service'
+import { runtimeMode } from '@/services/runtime-mode'
 import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
+import { prepareShareCover } from '@/services/share-cover-file'
+import { createShareService, parseShareTarget, shareTargetURL } from '@/services/share-service'
 import {
   discardPreparedScene,
   prepareSourceScene,
@@ -37,6 +43,7 @@ import { createWordAudioPreparation, waitForWordAudio } from '@/services/word-au
 import { Routes } from '@/shared/constants/navigation'
 import { AudioStatus } from '@/shared/enums/audio'
 import { QueueSource } from '@/shared/enums/learning'
+import { ShareTarget } from '@/shared/enums/share'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
@@ -65,6 +72,24 @@ const account = useAccountStore(),
   reviewOnEntry = ref(false),
   dialogueView = ref<InstanceType<typeof SceneDialogue> | null>(null),
   vocabularyView = ref<InstanceType<typeof SceneVocabulary> | null>(null)
+const browseOnly = runtimeMode.browseOnly,
+  publicShare = createShareService({
+    send: sendPublicRequest,
+    resource: resourceURL,
+    prepareImage: prepareShareCover
+  }),
+  share = useNativeShare(publicShare.friends, publicShare.timeline),
+  shareAttempted = ref(false),
+  homeSummary = ref(false)
+let sharedEntry = false,
+  requiresIdentityCheck = browseOnly.value
+/** 点击分享前再次核对当前公开摘要，不把私有原图当成封面 */
+const openShare = async () => {
+  if (runtimeMode.update() || !card.value || stale.value) return
+  shareAttempted.value = true
+  await publicShare.prepare(id)
+  if (publicShare.ready.value) share.show()
+}
 const audioState = ref<AudioState>({
   rate: 1,
   rateError: '',
@@ -95,7 +120,7 @@ const reading = useReadingPosition({
 })
 const dictionary = useSceneDictionary({
   context: () =>
-    card.value && alive && visible && !stale.value && session.userId()
+    !browseOnly.value && card.value && alive && visible && !stale.value && session.userId()
       ? { cardId: id, versionId: card.value.version_id, owner: session.userId()! }
       : null,
   request: session.request,
@@ -155,7 +180,7 @@ const checkPendingCompletion = () => {
 }
 /** 进入当前场景时创建两路互斥音频，不自动播放 */
 const createAudio = () => {
-  if (audio || !visible || !card.value || stale.value) return
+  if (runtimeMode.update() || audio || !visible || !card.value || stale.value) return
   const current = card.value,
     owner = account.profile,
     userId = session.userId()
@@ -251,12 +276,16 @@ watch(() => account.profile, stopAudio)
 const invalid = async (reason: unknown) => {
   if (!(reason instanceof ApiError)) return
   if (reason.status === 409) {
+    publicShare.clear()
+    share.hide()
     stale.value = true
     stopAudio()
     actionError.value = '内容已更新，请刷新后继续'
     return
   }
   if (reason.status !== 410) return
+  publicShare.clear()
+  share.hide()
   const previous = card.value
   card.value = null
   imageSrc.value = ''
@@ -357,6 +386,10 @@ const loadImage = async (renew = false) => {
 }
 /** 读取当前不可变发布内容，草稿不会进入详情 */
 const load = async () => {
+  if (runtimeMode.update()) {
+    if (!homeSummary.value) await publicShare.prepare(id)
+    return
+  }
   if (busy.value) return
   busy.value = true
   message.value = ''
@@ -366,12 +399,18 @@ const load = async () => {
   stale.value = false
   const run = ++generation
   try {
-    if (!(await account.ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`))) return
+    const target = sharedEntry
+      ? shareTargetURL({ target: ShareTarget.SCENE, id })
+      : `${Routes.SCENE}?id=${encodeURIComponent(id)}`
+    if (!(await account.ensure(target))) return
+    const revalidate = sharedEntry || requiresIdentityCheck
+    if (revalidate && !(await account.restore())) return
     const value =
-      takePreparedScene(queueId.value, id) ||
+      (!requiresIdentityCheck && takePreparedScene(queueId.value, id)) ||
       (await session.request<PublishedScene>(`/api/mini/v1/cards/${id}`))
     if (!alive || run !== generation) return
     stopAudio()
+    requiresIdentityCheck = false
     card.value = value
     reviewOnEntry.value = value.state.completed
     if (value.state.today_completed) message.value = '今日已完成学习'
@@ -386,6 +425,7 @@ const load = async () => {
     createAudio()
     void loadImage()
     void reading.restore(value)
+    void publicShare.prepare(id)
   } catch (reason) {
     if (!alive || run !== generation) return
     if (reason instanceof ApiError && reason.status === 410) await invalid(reason)
@@ -396,6 +436,7 @@ const load = async () => {
 }
 /** 请求操作后的当前日期状态，不把午夜前的重放结果当成今天完成 */
 const refreshState = async () => {
+  if (runtimeMode.update()) return
   if (!card.value) return
   const version = card.value.version_id
   const value = await session.request<PublishedScene>(
@@ -408,6 +449,7 @@ const refreshState = async () => {
 }
 /** 已准备好的完整音频同步播放，提前点击只等待受控地址 */
 const playFull = () => {
+  if (runtimeMode.update()) return
   if (!card.value || stale.value) return
   createAudio()
   const prepared = fullAudio
@@ -417,6 +459,7 @@ const playFull = () => {
  * @param wordId 当前发布版本中的词汇编号
  */
 const playWord = (wordId: string) => {
+  if (runtimeMode.update()) return
   if (!card.value || stale.value) return
   createAudio()
   const prepared = wordAudio
@@ -424,6 +467,7 @@ const playWord = (wordId: string) => {
 }
 /** 原图作为全屏覆盖页进入原生栈，系统返回只关闭覆盖层 */
 const previewImage = () => {
+  if (runtimeMode.update()) return
   if (!card.value?.content.image_id || stale.value) return
   imageOpen = true
   releaseImage?.()
@@ -451,6 +495,7 @@ const previewImage = () => {
 }
 /** 收藏或取消只改变整卡关联，未知响应保留原状态 */
 const toggleFavorite = async () => {
+  if (runtimeMode.update()) return
   if (favoriteBusy.value || stale.value) return
   favoriteBusy.value = true
   actionError.value = ''
@@ -490,6 +535,7 @@ const probeQueueEnd = async () => {
 }
 /** 主动确认完成或复习，服务器成功后再读取可信统计 */
 const complete = async () => {
+  if (runtimeMode.update()) return
   if (checkPendingCompletion()) return
   if (
     !card.value ||
@@ -529,6 +575,7 @@ const complete = async () => {
 }
 /** 查询本人待确认操作，成功后刷新当前状态，不能自行补记日期 */
 const recover = async () => {
+  if (runtimeMode.update()) return
   actionError.value = ''
   try {
     for (const action of [`complete:${id}`, `favorite:${id}`]) {
@@ -544,6 +591,7 @@ const recover = async () => {
 }
 /** 先核对当前真实状态再推进来源，分页失败保留当前详情 */
 const advance = async () => {
+  if (runtimeMode.update()) return
   if (checkPendingCompletion()) return
   if (nextBusy.value || completeBusy.value || awaitingState.value || stale.value || !card.value)
     return
@@ -601,8 +649,16 @@ const primaryAction = () => {
   else void complete()
 }
 onLoad((query) => {
+  runtimeMode.update()
+  const target = parseShareTarget(query || {})
+  if (query?.target && (!target || target.target === ShareTarget.LEARNING)) {
+    homeSummary.value = true
+    if (!browseOnly.value) learn()
+    return
+  }
+  sharedEntry = target?.target === ShareTarget.SCENE
   id = String(query?.id || '')
-  queueId.value = String(query?.queue || '')
+  queueId.value = sharedEntry ? '' : String(query?.queue || '')
   if (sourceQueue.matches(queueId.value, id)) queueSource.value = sourceQueue.source()
   if (!/^[A-Za-z0-9-]{1,64}$/.test(id)) {
     error.value = '未找到这张场景卡'
@@ -612,21 +668,47 @@ onLoad((query) => {
 })
 onShow(() => {
   visible = true
+  if (runtimeMode.update()) return
   if (card.value) {
     createAudio()
     void refreshState().catch(invalid)
+    void publicShare.prepare(id)
   }
 })
+watch(
+  browseOnly,
+  (restricted) => {
+    share.hide()
+    if (restricted) {
+      requiresIdentityCheck = true
+      generation++
+      imageGeneration++
+      reading.dispose()
+      stopAudio()
+      card.value = null
+      summary.value = null
+      imageSrc.value = ''
+      originalSrc = ''
+      busy.value = false
+      if (!homeSummary.value && id) void publicShare.prepare(id)
+    } else if (homeSummary.value) learn()
+    else if (id) void load()
+  },
+  { flush: 'sync' }
+)
 onPageScroll((event) => reading.scroll(event.scrollTop))
 onHide(() => {
-  void reading.save()
+  share.hide()
+  if (!runtimeMode.update()) void reading.save()
   if (!imageOpen) {
     visible = false
     stopAudio()
   }
 })
 onUnload(() => {
-  void reading.save()
+  share.hide()
+  publicShare.clear()
+  if (!runtimeMode.update()) void reading.save()
   reading.dispose()
   alive = false
   visible = false
@@ -637,128 +719,159 @@ onUnload(() => {
 })
 </script>
 <template>
-  <AppPage :title="summary ? '场景卡暂不可用' : '场景学习'" back footer
-    ><AppState :busy="busy && !card" :error="error" @retry="load" /><template v-if="stale"
-      ><view class="notice">内容已更新，请重新获取后继续学习</view
-      ><button class="primary" @click="load">刷新内容</button></template
-    ><SceneUnavailable
-      v-else-if="summary"
-      :summary="summary"
-      :favorite-busy="favoriteBusy"
-      :message="message"
-      @unfavorite="toggleFavorite"
-    /><template v-else-if="card"
-      ><view v-if="reading.notice.value" class="notice">{{ reading.notice.value }}</view
-      ><view class="reading-anchor" data-reading-anchor="top"
-        ><view class="scene-title between"
-          ><text class="title">{{ card.content.name }}</text
-          ><button
-            class="favorite"
-            :class="{ saved: favorite }"
-            :disabled="favoriteBusy"
-            :aria-pressed="favorite"
-            @click="toggleFavorite"
-          >
+  <AppPage
+    :title="summary ? '场景卡暂不可用' : '场景学习'"
+    :back="!browseOnly"
+    :footer="!browseOnly"
+    public-summary
+    :shareable="!browseOnly && Boolean(card) && !stale && publicShare.ready.value"
+    ><ShareSummary
+      v-if="browseOnly"
+      :summary="homeSummary ? null : publicShare.summary.value"
+      :image="
+        homeSummary || !publicShare.summary.value
+          ? ''
+          : resourceURL(publicShare.summary.value.images.timeline.url)
+      "
+      :busy="!homeSummary && publicShare.busy.value"
+      :error="homeSummary ? '' : publicShare.error.value || error"
+      @retry="load"
+    />
+    <template v-else
+      ><AppState :busy="busy && !card" :error="error" @retry="load" /><template v-if="stale"
+        ><view class="notice">内容已更新，请重新获取后继续学习</view
+        ><button class="primary" @click="load">刷新内容</button></template
+      ><SceneUnavailable
+        v-else-if="summary"
+        :summary="summary"
+        :favorite-busy="favoriteBusy"
+        :message="message"
+        :shared-entry="sharedEntry"
+        @unfavorite="toggleFavorite" /><template v-else-if="card"
+        ><view v-if="reading.notice.value" class="notice">{{ reading.notice.value }}</view
+        ><view class="reading-anchor" data-reading-anchor="top"
+          ><view class="scene-title between"
+            ><text class="title">{{ card.content.name }}</text
+            ><button
+              class="favorite"
+              :class="{ saved: favorite }"
+              :disabled="favoriteBusy"
+              :aria-pressed="favorite"
+              @click="toggleFavorite"
+            >
+              <image
+                class="favorite-icon"
+                src="/static/design/heart.svg"
+                mode="aspectFit"
+                aria-hidden="true"
+              /><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏整卡' }}</text>
+            </button></view
+          ><text v-if="card.content.title_en" class="scene-english">{{
+            card.content.title_en
+          }}</text
+          ><view class="scene-picture">
+            <view class="scene-thumbnail" @click="previewImage">
+              <image
+                v-if="imageSrc && !imageError"
+                :src="imageSrc"
+                mode="aspectFit"
+                :webp="true"
+                :alt="card.content.name"
+                @error="imageError = '图片暂未加载，可重试'"
+              />
+              <text v-else-if="!card.thumbnail_id && !card.content.image_id" class="image-retry"
+                >暂无场景图</text
+              >
+              <button v-else class="image-retry" @click.stop="loadImage(true)">
+                {{ imageError || '正在加载场景图…' }}
+              </button>
+            </view>
+            <view class="scene-prompt">
+              <text class="prompt-title">Start with the scene.</text>
+              <text class="prompt-description">点开场景卡，查看完整图片。</text>
+              <button class="expand-image" @click="previewImage">放大场景卡</button>
+            </view>
+          </view>
+          <SceneAudioPlayer
+            :state="audioState"
+            @toggle="playFull"
+            @seek="audio?.seekFull($event)"
+            @rate="audio?.setRate($event)" /></view
+        ><SceneDialogue
+          ref="dialogueView"
+          :key="`${id}:${card.version_id}`"
+          :dialogue="card.content.dialogue || []"
+          :vocabulary="card.content.vocabulary || []"
+          @layout="reading.refresh"
+          @lookup="dictionary.open"
+        />
+        <SceneVocabulary
+          ref="vocabularyView"
+          :vocabulary="card.content.vocabulary || []"
+          :dialogue="card.content.dialogue || []"
+          :state="audioState"
+          :disabled="stale"
+          @play="playWord"
+        />
+        <view v-if="card.content.chunks?.length" class="chunks-section"
+          ><SceneSectionHeading english="Useful expressions" chinese="实用语块" /><view
+            v-for="chunk in card.content.chunks"
+            :key="chunk.id"
+            class="word reading-anchor"
+            :data-reading-anchor="chunk.id ? `chunk:${chunk.id}` : undefined"
+            ><text class="word-english">{{ chunk.english }}</text
+            ><text class="meaning">{{ chunk.chinese }}</text></view
+          ></view
+        ><view class="detail-tools"
+          ><button class="text-button" @click="feedback">
             <image
-              class="favorite-icon"
-              src="/static/design/heart.svg"
+              src="/static/design/feedback-message.svg"
               mode="aspectFit"
               aria-hidden="true"
-            /><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏整卡' }}</text>
+            />反馈问题</button
+          ><button class="text-button" :disabled="publicShare.busy.value" @click="openShare">
+            <image src="/static/design/share.svg" mode="aspectFit" aria-hidden="true" />分享场景
           </button></view
-        ><text v-if="card.content.title_en" class="scene-english">{{ card.content.title_en }}</text
-        ><view class="scene-picture">
-          <view class="scene-thumbnail" @click="previewImage">
-            <image
-              v-if="imageSrc && !imageError"
-              :src="imageSrc"
-              mode="aspectFit"
-              :webp="true"
-              :alt="card.content.name"
-              @error="imageError = '图片暂未加载，可重试'"
-            />
-            <text v-else-if="!card.thumbnail_id && !card.content.image_id" class="image-retry"
-              >暂无场景图</text
-            >
-            <button v-else class="image-retry" @click.stop="loadImage(true)">
-              {{ imageError || '正在加载场景图…' }}
-            </button>
-          </view>
-          <view class="scene-prompt">
-            <text class="prompt-title">Start with the scene.</text>
-            <text class="prompt-description">点开场景卡，查看完整图片。</text>
-            <button class="expand-image" @click="previewImage">放大场景卡</button>
-          </view>
-        </view>
-        <SceneAudioPlayer
-          :state="audioState"
-          @toggle="playFull"
-          @seek="audio?.seekFull($event)"
-          @rate="audio?.setRate($event)" /></view
-      ><SceneDialogue
-        ref="dialogueView"
-        :key="`${id}:${card.version_id}`"
-        :dialogue="card.content.dialogue || []"
-        :vocabulary="card.content.vocabulary || []"
-        @layout="reading.refresh"
-        @lookup="dictionary.open"
-      />
-      <SceneVocabulary
-        ref="vocabularyView"
-        :vocabulary="card.content.vocabulary || []"
-        :dialogue="card.content.dialogue || []"
-        :state="audioState"
-        :disabled="stale"
-        @play="playWord"
-      />
-      <view v-if="card.content.chunks?.length" class="chunks-section"
-        ><SceneSectionHeading english="Useful expressions" chinese="实用语块" /><view
-          v-for="chunk in card.content.chunks"
-          :key="chunk.id"
-          class="word reading-anchor"
-          :data-reading-anchor="chunk.id ? `chunk:${chunk.id}` : undefined"
-          ><text class="word-english">{{ chunk.english }}</text
-          ><text class="meaning">{{ chunk.chinese }}</text></view
-        ></view
-      ><view class="detail-tools"
-        ><button class="text-button" @click="feedback">
-          <image
-            src="/static/design/feedback-message.svg"
-            mode="aspectFit"
-            aria-hidden="true"
-          />反馈问题
-        </button></view
-      ><view v-if="message" class="notice success"
-        >{{ message
-        }}<text v-if="completionStatistics">
-          · 已学 {{ completionStatistics.completed_cards }} 张，连续
-          {{ completionStatistics.current_streak }} 天</text
-        ></view
-      ></template
-    ><view v-if="actionError" class="notice error"
-      >{{ actionError }}<button class="text-button" @click="recover">查询并刷新状态</button></view
-    ><view v-if="nextError" class="notice error" role="alert"
-      >{{ nextError }}<button class="text-button" @click="advance">重试下一张</button
-      ><button class="text-button" @click="returnSource">返回来源列表</button></view
-    ><SceneDictionary
-      v-if="dictionary.selection.value"
-      :selection="dictionary.selection.value"
-      :result="dictionary.result.value"
-      :busy="dictionary.busy.value"
-      :error="dictionary.error.value"
-      :voice-status="
-        audioState.wordId === dictionary.speechKey.value ? audioState.wordStatus : AudioStatus.IDLE
-      "
-      :voice-error="audioState.wordId === dictionary.speechKey.value ? audioState.wordError : ''"
-      @close="dictionary.close"
-      @retry="dictionary.retry"
-      @play="dictionary.play"
-    /><SceneQueueEnd
-      v-if="queueEnd"
-      :source="queueSource"
-      @learn="learn"
-      @stay="queueEnd = false"
-    /><template #footer
+        ><view v-if="shareAttempted && publicShare.error.value" class="notice error" role="alert"
+          >{{ publicShare.error.value
+          }}<button class="text-button" @click="openShare">重试分享</button></view
+        ><view v-if="message" class="notice success"
+          >{{ message
+          }}<text v-if="completionStatistics">
+            · 已学 {{ completionStatistics.completed_cards }} 张，连续
+            {{ completionStatistics.current_streak }} 天</text
+          ></view
+        ></template
+      ><view v-if="actionError" class="notice error"
+        >{{ actionError }}<button class="text-button" @click="recover">查询并刷新状态</button></view
+      ><view v-if="nextError" class="notice error" role="alert"
+        >{{ nextError }}<button class="text-button" @click="advance">重试下一张</button
+        ><button class="text-button" @click="returnSource">返回来源列表</button></view
+      ><SceneDictionary
+        v-if="dictionary.selection.value"
+        :selection="dictionary.selection.value"
+        :result="dictionary.result.value"
+        :busy="dictionary.busy.value"
+        :error="dictionary.error.value"
+        :voice-status="
+          audioState.wordId === dictionary.speechKey.value
+            ? audioState.wordStatus
+            : AudioStatus.IDLE
+        "
+        :voice-error="audioState.wordId === dictionary.speechKey.value ? audioState.wordError : ''"
+        @close="dictionary.close"
+        @retry="dictionary.retry"
+        @play="dictionary.play" /><SceneQueueEnd
+        v-if="queueEnd"
+        :source="queueSource"
+        @learn="learn"
+        @stay="queueEnd = false" /><ShareSheet
+        v-if="share.open.value && publicShare.ready.value"
+        scene
+        :friends="publicShare.friends()"
+        :timeline="publicShare.timeline()"
+        @close="share.hide" /></template
+    ><template #footer
       ><view v-if="card && !stale" class="safe-footer"
         ><button
           class="primary"
@@ -776,6 +889,8 @@ onUnload(() => {
 </template>
 <style scoped lang="scss">
 .detail-tools {
+  display: flex;
+  justify-content: space-between;
   border-top: 1px solid #dfe5d8;
   margin-top: 38.462rpx;
   padding-top: 38.462rpx;

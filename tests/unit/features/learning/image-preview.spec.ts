@@ -18,6 +18,7 @@ const ports = vi.hoisted(() => ({
   }
 }))
 vi.mock('@dcloudio/uni-app', () => ({
+  onShow: vi.fn(),
   onLoad: (cb: typeof ports.load) => {
     ports.load = cb
   },
@@ -30,6 +31,7 @@ vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
 vi.mock('@/services/navigation', () => ({ backTo: vi.fn() }))
 vi.mock('@/services/image-preview', () => ({
   activeImagePreview: () => ports.context,
+  discardImagePreview: vi.fn(),
   closeImagePreview: vi.fn(),
   prepareImagePreviewSource: (url: string) => Promise.resolve(url)
 }))

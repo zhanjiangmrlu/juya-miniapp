@@ -8,6 +8,7 @@ import { clearFeedbackDrafts } from '@/services/feedback-service'
 import { clearMediaAddresses } from '@/services/media-service'
 import { openLogin } from '@/services/navigation'
 import { resourceURL } from '@/services/platform'
+import { runtimeMode } from '@/services/runtime-mode'
 import { Routes } from '@/shared/constants/navigation'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
@@ -53,6 +54,7 @@ export const useAccountStore = defineStore('learner-account', () => {
    * @param returnTarget 会话失效后的安全返回路径
    */
   const ensure = async (returnTarget: string) => {
+    if (runtimeMode.update()) return false
     target = returnTarget
     try {
       const value = profile.value || (await restore())

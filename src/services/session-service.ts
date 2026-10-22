@@ -4,6 +4,7 @@ import type { AccountProfile, LoginResult, StoredSession } from '@/shared/types/
 import type { HttpRequest, SessionPorts } from '@/shared/types/runtime'
 
 import { ApiError, isUnconfirmedFailure } from './errors'
+import { runtimeMode } from './runtime-mode'
 
 /** 创建主动登录与可撤销业务会话，不自动向微信重新索取身份
  * @param ports 平台存储、HTTP、微信登录及界面通知端口
@@ -34,6 +35,8 @@ export const createSessionService = (ports: SessionPorts) => {
    * @param authenticated 是否使用本人业务Token
    */
   const send = async <T>(input: HttpRequest, authenticated: boolean): Promise<T> => {
+    runtimeMode.assertPrivate()
+    const modeRevision = runtimeMode.revision.value
     if (authenticated && !current) {
       ports.onExpired()
       throw new ApiError('unauthenticated', '请先同意并登录')
@@ -51,6 +54,8 @@ export const createSessionService = (ports: SessionPorts) => {
     } catch {
       throw new ApiError('network_unknown', '网络连接中断，请重试以确认结果')
     }
+    if (runtimeMode.update() || modeRevision !== runtimeMode.revision.value)
+      throw new ApiError('session_changed', '运行模式已变化，请重新确认当前操作结果')
     if (authenticated && current?.access_token !== credential)
       throw new ApiError('session_changed', '账号状态已变化，请重新登录')
     const result = response.data as {
@@ -74,6 +79,7 @@ export const createSessionService = (ports: SessionPorts) => {
   }
   /** 使用已有业务Token恢复资料，不依据设备时间重新创建账号 */
   const restore = async (): Promise<AccountProfile | null> => {
+    runtimeMode.assertPrivate()
     current = read()
     if (!current) return null
     const expectedId = current.user_id
@@ -92,6 +98,7 @@ export const createSessionService = (ports: SessionPorts) => {
    * @param agreed 用户主动勾选的同意状态
    */
   const login = async (agreed: boolean): Promise<LoginResult> => {
+    runtimeMode.assertPrivate()
     if (!agreed) throw new ApiError('consent_required', '请先阅读并同意隐私及用途说明')
     const generation = loginGeneration
     if (!pendingLogin) {

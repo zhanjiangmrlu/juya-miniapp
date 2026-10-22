@@ -1,5 +1,8 @@
 import { Routes } from '@/shared/constants/navigation'
 
+import { runtimeMode } from './runtime-mode'
+import { parseShareTarget, shareTargetURL } from './share-service'
+
 /** 将登录返回目标限制在本期页面，资料编辑失效后回到只读资料
  * @param target 本站页面路径
  */
@@ -12,6 +15,19 @@ export const safeTarget = (target: string) => {
   )
     return Routes.LEARNING
   const query = (target.split('?')[1] || '').split('#')[0]
+  if (path === Routes.SCENE || path === Routes.LEARNING) {
+    const values: Record<string, string> = {}
+    try {
+      for (const item of query.split('&')) {
+        const [key, value = ''] = item.split('=')
+        if (key === 'target' || key === 'id') values[key] = decodeURIComponent(value)
+      }
+    } catch {
+      return Routes.LEARNING
+    }
+    const shared = parseShareTarget(values)
+    if (shared) return shareTargetURL(shared)
+  }
   if (path === Routes.FEEDBACK_CREATE && query) {
     try {
       const values = ['card_id', 'version_id'].map((name) =>
@@ -54,7 +70,8 @@ export const safeTarget = (target: string) => {
  */
 export const openTarget = (target: string) => {
   const safe = safeTarget(target)
-  if (safe === Routes.LEARNING || safe === Routes.FAVORITES) uni.switchTab({ url: safe })
+  if (safe.split('?')[0] === Routes.LEARNING || safe === Routes.FAVORITES)
+    uni.switchTab({ url: safe.split('?')[0]! })
   else uni.reLaunch({ url: safe })
 }
 let loginNavigationPending = false
@@ -63,6 +80,7 @@ let loginNavigationPending = false
  * @param target 重新登录后的安全页面
  */
 export const openLogin = (target: string) => {
+  if (runtimeMode.update()) return
   const pages = getCurrentPages()
   if (loginNavigationPending || pages[pages.length - 1]?.route === Routes.LOGIN.slice(1)) return
   loginNavigationPending = true

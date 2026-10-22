@@ -94,6 +94,7 @@ export const createOperationService = (ports: OperationPorts) => {
         if (
           retryError instanceof ApiError &&
           !isUnconfirmedFailure(retryError) &&
+          retryError.code !== 'browse_only' &&
           !retainsUnknown(state, record)
         )
           forget(action, state)
@@ -121,6 +122,8 @@ export const createOperationService = (ports: OperationPorts) => {
       scope = `${state.userId}:${action}`,
       fingerprint = JSON.stringify({ path, method, body })
     let record = state.records.find((row) => row.action === action)
+    // 本次未发出不代表先前未知事务未提交，旧记录被平台模式阻止时必须保留原键
+    const wasPending = Boolean(record)
     if (
       record &&
       (record.path !== path ||
@@ -145,6 +148,7 @@ export const createOperationService = (ports: OperationPorts) => {
       if (
         reason instanceof ApiError &&
         !isUnconfirmedFailure(reason) &&
+        !(wasPending && reason.code === 'browse_only') &&
         !retainsUnknown(state, record)
       )
         forget(action, state)

@@ -2,10 +2,18 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, expect, it, vi } from 'vitest'
 
+const ports = vi.hoisted(() => ({ load: null as null | ((query: Record<string, string>) => void) }))
 const { login, openTarget } = vi.hoisted(() => ({ login: vi.fn(), openTarget: vi.fn() }))
-vi.mock('@dcloudio/uni-app', () => ({ onLoad: vi.fn() }))
+vi.mock('@dcloudio/uni-app', () => ({
+  onLoad: (callback: typeof ports.load) => {
+    ports.load = callback
+  }
+}))
 vi.mock('@/stores/account-store', () => ({ useAccountStore: () => ({ login }) }))
-vi.mock('@/services/navigation', () => ({ openTarget }))
+vi.mock('@/services/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/navigation')>()),
+  openTarget
+}))
 import LoginPage from '@/pages/login/index.vue'
 
 /** 挂载真实登录操作，布局及说明弹窗独立隔离 */
@@ -48,5 +56,25 @@ it('keeps the login screen and a retry message when identity login fails', async
   await flushPromises()
   expect(wrapper.text()).toContain('微信登录暂未成功')
   expect(openTarget).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('keeps the stable shared target after failed login and restores it on an explicit retry without the sender queue', async () => {
+  login.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(undefined)
+  const wrapper = page()
+  ports.load?.({
+    return: encodeURIComponent(
+      '/sub-packages/scenes/detail?target=scene&id=card-1&queue=foreign&token=secret'
+    )
+  })
+  expect(wrapper.find('input').attributes('checked')).toBeUndefined()
+  await wrapper.get('.checkbox-group').trigger('change', { detail: { value: ['agree'] } })
+  await wrapper.get('button.primary').trigger('click')
+  await flushPromises()
+  expect(wrapper.text()).toContain('登录未成功，分享目标已保留，请重试')
+  expect(openTarget).not.toHaveBeenCalled()
+  await wrapper.get('button.primary').trigger('click')
+  await flushPromises()
+  expect(openTarget).toHaveBeenCalledWith('/sub-packages/scenes/detail?target=scene&id=card-1')
   wrapper.unmount()
 })

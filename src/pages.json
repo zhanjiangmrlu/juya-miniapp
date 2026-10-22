@@ -4,6 +4,8 @@
       "path": "pages/learning/index",
       "style": {
         "navigationStyle": "custom",
+        "enableShareAppMessage": true,
+        "enableShareTimeline": true,
         "enablePullDownRefresh": true
       }
     },
@@ -28,7 +30,9 @@
         {
           "path": "detail",
           "style": {
-            "navigationStyle": "custom"
+            "navigationStyle": "custom",
+            "enableShareAppMessage": true,
+            "enableShareTimeline": true
           }
         },
         {

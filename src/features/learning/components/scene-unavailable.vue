@@ -4,6 +4,7 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { mediaAddress } from '@/services/media-service'
 import { backTo } from '@/services/navigation'
 import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
+import { Routes } from '@/shared/constants/navigation'
 
 import type { SceneUnavailableProps } from '@/shared/types/learning-components'
 const props = defineProps<SceneUnavailableProps>()
@@ -26,7 +27,7 @@ const loadThumbnail = async () => {
   }
 }
 /** 返回实际来源列表，保留该列表的标签和位置 */
-const returnToList = () => backTo()
+const returnToList = () => (props.sharedEntry ? uni.switchTab({ url: Routes.LEARNING }) : backTo())
 watch(() => [props.summary.id, props.summary.thumbnail_id], loadThumbnail, { immediate: true })
 onBeforeUnmount(() => {
   generation++
@@ -56,7 +57,9 @@ onBeforeUnmount(() => {
     <button v-if="summary.state.favorite" :disabled="favoriteBusy" @click="emit('unfavorite')">
       {{ favoriteBusy ? '处理中…' : '取消整卡收藏' }}
     </button>
-    <button class="primary" @click="returnToList">返回列表</button>
+    <button class="primary" @click="returnToList">
+      {{ sharedEntry ? '返回学习页' : '返回列表' }}
+    </button>
     <text v-if="message" class="description">{{ message }}</text>
   </view>
 </template>

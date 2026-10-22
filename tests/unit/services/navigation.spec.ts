@@ -48,3 +48,14 @@ it('restores the validated scene feedback reference after login and strips unrel
     '/sub-packages/feedback/detail?id=feedback-1'
   )
 })
+
+it('retains only the stable shared-card target across login, without restoring a foreign queue', () => {
+  expect(
+    safeTarget(
+      '/sub-packages/scenes/detail?target=scene&id=card-1&queue=foreign&version_id=old&sender=someone'
+    )
+  ).toBe('/sub-packages/scenes/detail?target=scene&id=card-1')
+  expect(safeTarget('/pages/learning/index?target=learning&token=private')).toBe(
+    '/pages/learning/index?target=learning'
+  )
+})

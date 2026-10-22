@@ -4,7 +4,7 @@ import { ref } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vue'
-import { openTarget } from '@/services/navigation'
+import { openTarget, safeTarget } from '@/services/navigation'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
 
@@ -28,7 +28,11 @@ const login = async () => {
     await account.login(agreed.value)
     openTarget(target)
   } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : '登录暂未成功，请重试'
+    error.value = target.includes('target=')
+      ? '登录未成功，分享目标已保留，请重试。'
+      : reason instanceof Error
+        ? reason.message
+        : '登录暂未成功，请重试'
   } finally {
     busy.value = false
   }
@@ -42,7 +46,7 @@ const consent = (event: ConsentChangeEvent) => {
 onLoad((query) => {
   if (query?.return) {
     try {
-      target = decodeURIComponent(String(query.return))
+      target = safeTarget(decodeURIComponent(String(query.return)))
     } catch {
       target = Routes.LEARNING
     }

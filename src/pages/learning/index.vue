@@ -1,22 +1,42 @@
 <script setup lang="ts">
-import { onPullDownRefresh, onReachBottom, onShow, onUnload } from '@dcloudio/uni-app'
-import { ref } from 'vue'
+import {
+  onHide,
+  onLoad,
+  onPullDownRefresh,
+  onReachBottom,
+  onShow,
+  onUnload
+} from '@dcloudio/uni-app'
+import { ref, watch } from 'vue'
 
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { useNativeShare } from '@/composables/use-native-share'
 import { useSceneList } from '@/composables/use-scene-list'
 import LearningStatistics from '@/features/learning/components/learning-statistics.vue'
 import SceneCard from '@/features/learning/components/scene-card.vue'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
+import ShareSheet from '@/features/share/components/share-sheet.vue'
+import ShareSummary from '@/features/share/components/share-summary.vue'
 import { session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
+import { runtimeMode } from '@/services/runtime-mode'
+import { homeShare } from '@/services/share-service'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { CardBrief } from '@/shared/types/learning'
 const account = useAccountStore(),
   statsError = ref('')
+const browseOnly = runtimeMode.browseOnly,
+  accessReady = ref(!browseOnly.value),
+  share = useNativeShare(
+    () => homeShare.friends,
+    () => homeShare.timeline
+  )
+let sharedEntry = false,
+  requiresIdentityCheck = browseOnly.value
 const {
   items: cards,
   total,
@@ -35,6 +55,7 @@ const {
 })
 /** 统计单独失败时仍允许查看场景卡片 */
 const refreshStats = async () => {
+  if (runtimeMode.update()) return
   statsError.value = ''
   try {
     if (await account.ensure(Routes.LEARNING)) {
@@ -51,18 +72,57 @@ const profile = () => uni.navigateTo({ url: Routes.PROFILE })
 const records = () => uni.navigateTo({ url: Routes.RECORDS })
 /** 当前场景全部学完后仍可从收藏选择复习 */
 const favorites = () => uni.switchTab({ url: Routes.FAVORITES })
-onShow(() => {
+/** 分享进入时先重验本人会话，再读取私人列表和统计 */
+const showPage = async () => {
+  if (runtimeMode.update()) return
   // H5 直接刷新路由时可能尚未建立原生底栏，使用回调处理该状态
   uni.hideTabBar({ animation: false, fail: () => undefined })
-  void refresh()
-  void refreshStats()
-  void feedbackInbox.refresh()
+  if (sharedEntry || requiresIdentityCheck) {
+    try {
+      if (
+        !(await account.ensure(`${Routes.LEARNING}?target=learning`)) ||
+        !(await account.restore())
+      )
+        return
+    } catch (reason) {
+      statsError.value = reason instanceof Error ? reason.message : '会话暂未确认，请重试'
+      return
+    }
+  }
+  if (runtimeMode.update()) return
+  requiresIdentityCheck = false
+  await Promise.allSettled([refresh(), refreshStats(), feedbackInbox.refresh()])
+  if (!runtimeMode.update()) accessReady.value = true
+}
+onShow(showPage)
+onLoad((query) => {
+  sharedEntry = query?.target === 'learning'
+  if (sharedEntry) accessReady.value = false
 })
+watch(
+  browseOnly,
+  (restricted) => {
+    share.hide()
+    if (restricted) {
+      accessReady.value = false
+      requiresIdentityCheck = true
+      dispose()
+    }
+    if (!restricted) void showPage()
+  },
+  { flush: 'sync' }
+)
+onHide(share.hide)
 onPullDownRefresh(async () => {
+  if (runtimeMode.update()) {
+    uni.stopPullDownRefresh()
+    return
+  }
   await Promise.allSettled([refresh(), refreshStats()])
   uni.stopPullDownRefresh()
 })
 onReachBottom(() => {
+  if (runtimeMode.update()) return
   void loadMore()
 })
 onUnload(() => {
@@ -70,88 +130,118 @@ onUnload(() => {
 })
 </script>
 <template>
-  <AppPage title="句芽英语" footer>
-    <view class="welcome between">
-      <text class="greeting">{{ account.profile?.nickname || '学习者' }}，今天也学一点</text>
-      <button class="account-link" aria-label="账号资料" @click="profile">
-        <text>账号</text
-        ><text
-          v-if="feedbackInbox.value.value.unread"
-          class="feedback-dot"
-          aria-label="有未读反馈回复"
-        />
+  <AppPage
+    title="句芽英语"
+    :footer="!browseOnly"
+    public-summary
+    :shareable="!browseOnly && Boolean(account.profile)"
+  >
+    <ShareSummary v-if="browseOnly" />
+    <AppState v-else-if="!accessReady" :busy="!statsError" :error="statsError" @retry="showPage" />
+    <template v-else>
+      <view class="welcome between">
+        <text class="greeting">{{ account.profile?.nickname || '学习者' }}，今天也学一点</text>
+        <button class="account-link" aria-label="账号资料" @click="profile">
+          <text>账号</text
+          ><text
+            v-if="feedbackInbox.value.value.unread"
+            class="feedback-dot"
+            aria-label="有未读反馈回复"
+          />
+        </button>
+      </view>
+      <text class="home-title">English, every day.</text>
+      <LearningStatistics v-if="account.statistics" :statistics="account.statistics" />
+      <AppState v-else :busy="!statsError" :error="statsError" @retry="refreshStats" />
+      <view v-if="statsError && account.statistics" class="notice error">
+        统计暂未更新 <button class="text-button" @click="refreshStats">重试</button>
+      </view>
+      <button class="records-entry between" @click="records">
+        <view
+          ><image src="/static/design/calendar.svg" mode="aspectFit" aria-hidden="true" /><text
+            >学习记录</text
+          ></view
+        ><image src="/static/design/chevron.svg" mode="aspectFit" aria-hidden="true" />
       </button>
-    </view>
-    <text class="home-title">English, every day.</text>
-    <LearningStatistics v-if="account.statistics" :statistics="account.statistics" />
-    <AppState v-else :busy="!statsError" :error="statsError" @retry="refreshStats" />
-    <view v-if="statsError && account.statistics" class="notice error">
-      统计暂未更新 <button class="text-button" @click="refreshStats">重试</button>
-    </view>
-    <button class="records-entry between" @click="records">
-      <view
-        ><image src="/static/design/calendar.svg" mode="aspectFit" aria-hidden="true" /><text
-          >学习记录</text
-        ></view
-      ><image src="/static/design/chevron.svg" mode="aspectFit" aria-hidden="true" />
-    </button>
-    <view class="today-line between"
-      ><image src="/static/design/calendar.svg" mode="aspectFit" aria-hidden="true" /><text>{{
-        account.statistics
-          ? account.statistics.checked_in_today
-            ? '今日已打卡'
-            : '今日还未打卡'
-          : '今日状态暂未获取'
-      }}</text></view
-    >
-    <view class="catalog-heading between">
-      <text class="section-title">待学场景</text>
-      <text v-if="total !== null" class="catalog-count">{{ total }} 张</text>
-    </view>
-    <AppState
-      :busy="busy && total === null"
-      :error="error"
-      :empty="total === 0"
-      :title="publishedTotal > 0 ? '当前场景卡已全部学完' : '暂无可学习的场景卡'"
-      :description="
-        publishedTotal > 0
-          ? '可以到学习记录复习已学场景。'
-          : '场景卡发布后会在这里展示，历史学习记录会保留。'
-      "
-      @retry="refresh"
-      ><view v-if="total === 0 && publishedTotal > 0" class="empty-actions"
-        ><button class="primary" @click="records">查看学习记录</button
-        ><button @click="favorites">查看收藏</button></view
-      ><button v-else-if="total === 0" class="text-button" @click="refresh">
-        刷新看看
-      </button></AppState
-    >
-    <button
-      v-if="total !== null && total > 0"
-      class="refresh-list text-button"
-      :disabled="busy || moreBusy"
-      @click="refresh"
-    >
-      <image src="/static/design/refresh.svg" mode="aspectFit" aria-hidden="true" />{{
-        busy ? '正在刷新…' : '刷新列表'
-      }}
-    </button>
-    <SceneCard
-      v-for="(card, index) in cards"
-      :key="card.id"
-      :card="card"
-      :featured="index === 0"
-      source="learning" />
-    <SceneListFooter
-      :busy="moreBusy"
-      :error="moreError"
-      :has-more="total !== null && cards.length < total"
-      :done="total !== null && total > 0 && cards.length >= total"
-      @more="loadMore" />
-    <AppBottomTabs active="learning"
-  /></AppPage>
+      <view class="today-line between"
+        ><image src="/static/design/calendar.svg" mode="aspectFit" aria-hidden="true" /><text>{{
+          account.statistics
+            ? account.statistics.checked_in_today
+              ? '今日已打卡'
+              : '今日还未打卡'
+            : '今日状态暂未获取'
+        }}</text></view
+      >
+      <view class="catalog-heading between">
+        <text class="section-title">待学场景</text>
+        <text v-if="total !== null" class="catalog-count">{{ total }} 张</text>
+      </view>
+      <AppState
+        :busy="busy && total === null"
+        :error="error"
+        :empty="total === 0"
+        :title="publishedTotal > 0 ? '当前场景卡已全部学完' : '暂无可学习的场景卡'"
+        :description="
+          publishedTotal > 0
+            ? '可以到学习记录复习已学场景。'
+            : '场景卡发布后会在这里展示，历史学习记录会保留。'
+        "
+        @retry="refresh"
+        ><view v-if="total === 0 && publishedTotal > 0" class="empty-actions"
+          ><button class="primary" @click="records">查看学习记录</button
+          ><button @click="favorites">查看收藏</button></view
+        ><button v-else-if="total === 0" class="text-button" @click="refresh">
+          刷新看看
+        </button></AppState
+      >
+      <button
+        v-if="total !== null && total > 0"
+        class="refresh-list text-button"
+        :disabled="busy || moreBusy"
+        @click="refresh"
+      >
+        <image src="/static/design/refresh.svg" mode="aspectFit" aria-hidden="true" />{{
+          busy ? '正在刷新…' : '刷新列表'
+        }}
+      </button>
+      <SceneCard
+        v-for="(card, index) in cards"
+        :key="card.id"
+        :card="card"
+        :featured="index === 0"
+        source="learning" />
+      <SceneListFooter
+        :busy="moreBusy"
+        :error="moreError"
+        :has-more="total !== null && cards.length < total"
+        :done="total !== null && total > 0 && cards.length >= total"
+        @more="loadMore" />
+      <button class="share-entry text-button" @click="share.show">
+        <image src="/static/design/share.svg" mode="aspectFit" aria-hidden="true" />分享学习页
+      </button>
+      <ShareSheet
+        v-if="share.open.value"
+        :friends="homeShare.friends"
+        :timeline="homeShare.timeline"
+        @close="share.hide" />
+      <AppBottomTabs active="learning"
+    /></template>
+  </AppPage>
 </template>
 <style scoped lang="scss">
+.share-entry {
+  margin: 34.615rpx auto 0;
+  min-height: 76.923rpx;
+  padding: 17.308rpx 11.538rpx;
+  gap: 13.462rpx;
+  font-size: 26.923rpx;
+
+  image {
+    width: 38.462rpx;
+    height: 38.462rpx;
+  }
+}
+
 .empty-actions {
   display: flex;
   justify-content: center;

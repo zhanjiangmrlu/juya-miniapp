@@ -4,6 +4,7 @@ let current: ImagePreviewContext | null = null
  * @param url 当前发布版本已授权的原图地址
  */
 export const prepareImagePreviewSource = async (url: string): Promise<string> => {
+  runtimeMode.assertPrivate()
   // #ifdef MP-WEIXIN
   return new Promise((resolve) => {
     uni.getImageInfo({
@@ -34,6 +35,10 @@ export const registerImagePreview = (context: ImagePreviewContext) => {
 }
 /** 只允许由当前详情页传入的图片上下文 */
 export const activeImagePreview = () => current
+/** 清除分享摘要模式不再允许展示的原图上下文 */
+export const discardImagePreview = () => {
+  if (current) closeImagePreview(current)
+}
 /** 关闭覆盖层时通知父页，保留其译文、音频与滚动状态
  * @param context 被关闭的覆盖层上下文
  */
@@ -43,3 +48,4 @@ export const closeImagePreview = (context: ImagePreviewContext) => {
     context.onClose()
   }
 }
+import { runtimeMode } from './runtime-mode'

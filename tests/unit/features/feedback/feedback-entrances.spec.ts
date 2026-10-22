@@ -4,6 +4,10 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 const ports = vi.hoisted(() => ({ navigate: vi.fn() }))
 vi.mock('@dcloudio/uni-app', () => ({
+  onLoad: vi.fn(),
+  onHide: vi.fn(),
+  onShareAppMessage: vi.fn(),
+  onShareTimeline: vi.fn(),
   onShow: vi.fn(),
   onUnload: vi.fn(),
   onReachBottom: vi.fn(),

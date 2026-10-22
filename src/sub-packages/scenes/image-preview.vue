@@ -1,18 +1,26 @@
 <script setup lang="ts">
-import { onLoad, onUnload } from '@dcloudio/uni-app'
-import { nextTick, ref } from 'vue'
+import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
+import { nextTick, ref, watch } from 'vue'
 
+import ShareSummary from '@/features/share/components/share-summary.vue'
 import { session } from '@/services/api'
 import { ApiError } from '@/services/errors'
 import {
   activeImagePreview,
   closeImagePreview,
+  discardImagePreview,
   prepareImagePreviewSource
 } from '@/services/image-preview'
 import { mediaAddress } from '@/services/media-service'
+import { setShareMenu } from '@/services/native-share'
 import { backTo } from '@/services/navigation'
+import { resourceURL, sendPublicRequest } from '@/services/platform'
+import { runtimeMode } from '@/services/runtime-mode'
+import { createShareService, shareTargetURL } from '@/services/share-service'
 import { IMAGE_MAX_SCALE, IMAGE_MIN_SCALE } from '@/shared/constants/media'
 import { Routes } from '@/shared/constants/navigation'
+import { SHARE_ID_PATTERN } from '@/shared/constants/share'
+import { ShareTarget } from '@/shared/enums/share'
 
 import type { ImagePreviewContext, ImageScaleEvent } from '@/shared/types/image-preview'
 const zoom = ref(IMAGE_MIN_SCALE),
@@ -22,13 +30,31 @@ const zoom = ref(IMAGE_MIN_SCALE),
   error = ref(''),
   busy = ref(false),
   imageLoading = ref(false)
+const browseOnly = runtimeMode.browseOnly,
+  publicShare = createShareService({ send: sendPublicRequest, resource: resourceURL })
 let context: ImagePreviewContext | null = null,
-  alive = true
+  alive = true,
+  generation = 0,
+  targetId = ''
+/** 模式收紧时同步撤销原图与在途结果，仅重新获取匿名摘要 */
+const restrict = () => {
+  generation++
+  src.value = ''
+  context = null
+  discardImagePreview()
+  imageLoading.value = false
+  busy.value = false
+  error.value = ''
+  setShareMenu(false)
+  if (SHARE_ID_PATTERN.test(targetId)) void publicShare.prepare(targetId)
+}
 /** 独立请求原图，用户重试时重新签发同一版本的授权地址
  * @param reuse 是否复用本次查看已取得的原图文件或进行中的请求
  */
 const load = async (reuse = false) => {
+  if (runtimeMode.update()) return
   if (!context || busy.value) return
+  const run = ++generation
   busy.value = true
   error.value = ''
   src.value = ''
@@ -39,28 +65,32 @@ const load = async (reuse = false) => {
       : await prepareImagePreviewSource(
           await mediaAddress(context.cardId, context.imageId, context.versionId, false, true)
         )
-    if (alive) src.value = value
+    if (alive && run === generation && !runtimeMode.update()) src.value = value
   } catch (reason) {
-    if (!alive) return
+    if (!alive || run !== generation || runtimeMode.update()) return
     imageLoading.value = false
     if (reason instanceof ApiError && [401, 409, 410].includes(reason.status)) {
       context.onInvalid(reason)
       backTo(Routes.LEARNING)
     } else error.value = '大图暂未加载，点击重试'
   } finally {
-    if (alive) busy.value = false
+    if (alive && run === generation) busy.value = false
   }
 }
 /** 图片本体失败后读取真实卡片状态，再决定重试或结束覆盖层 */
 const imageFailed = async () => {
+  if (runtimeMode.update()) return
   imageLoading.value = false
   error.value = '大图暂未加载，点击重试'
   if (!context) return
+  const active = context,
+    run = generation
   try {
     await session.request(
       `/api/mini/v1/cards/${context.cardId}?version_id=${encodeURIComponent(context.versionId)}`
     )
   } catch (reason) {
+    if (!alive || run !== generation || context !== active || runtimeMode.update()) return
     if (reason instanceof ApiError && [401, 409, 410].includes(reason.status)) {
       context.onInvalid(reason)
       backTo(Routes.LEARNING)
@@ -94,6 +124,12 @@ const imageLoaded = () => {
 /** 关闭当前覆盖层，不退出原场景 */
 const close = () => backTo(Routes.LEARNING)
 onLoad((query) => {
+  targetId = typeof query?.id === 'string' && SHARE_ID_PATTERN.test(query.id) ? query.id : ''
+  setShareMenu(false)
+  if (runtimeMode.update()) {
+    restrict()
+    return
+  }
   const info = uni.getWindowInfo?.() || uni.getSystemInfoSync?.()
   topInset.value = info?.statusBarHeight || 0
   context = activeImagePreview()
@@ -107,13 +143,39 @@ onLoad((query) => {
     imageLoading.value = true
   } else void load()
 })
+onShow(() => {
+  setShareMenu(false)
+  if (runtimeMode.update()) restrict()
+})
+watch(
+  browseOnly,
+  (restricted) => {
+    if (restricted) restrict()
+    else if (targetId)
+      uni.redirectTo({ url: shareTargetURL({ target: ShareTarget.SCENE, id: targetId }) })
+  },
+  { flush: 'sync' }
+)
 onUnload(() => {
+  generation++
+  publicShare.clear()
   alive = false
   if (context) closeImagePreview(context)
 })
 </script>
 <template>
-  <view class="image-overlay" :style="{ '--viewer-top': `${topInset}px` }">
+  <view v-if="browseOnly" class="summary-overlay"
+    ><text class="summary-heading">分享摘要</text
+    ><ShareSummary
+      :summary="publicShare.summary.value"
+      :image="
+        publicShare.summary.value ? resourceURL(publicShare.summary.value.images.timeline.url) : ''
+      "
+      :busy="publicShare.busy.value"
+      :error="publicShare.error.value"
+      @retry="restrict"
+  /></view>
+  <view v-else class="image-overlay" :style="{ '--viewer-top': `${topInset}px` }">
     <view class="image-top"
       ><button class="close-image" aria-label="关闭大图" @click="close">
         <image src="/static/design/close.svg" mode="aspectFit" aria-hidden="true" /></button
@@ -164,6 +226,20 @@ onUnload(() => {
   </view>
 </template>
 <style scoped lang="scss">
+.summary-overlay {
+  min-height: 100vh;
+  padding: calc(46.154rpx + env(safe-area-inset-top)) 46.154rpx;
+  background: #fffcf5;
+
+  .summary-heading {
+    display: block;
+    margin-bottom: 46.154rpx;
+    color: #2b4438;
+    font-size: 28.846rpx;
+    line-height: 44.712rpx;
+  }
+}
+
 .image-overlay {
   position: fixed;
   inset: 0;

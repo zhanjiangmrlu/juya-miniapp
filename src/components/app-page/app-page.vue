@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { onHide, onShow } from '@dcloudio/uni-app'
+import { computed, watch } from 'vue'
 
+import ShareSummary from '@/features/share/components/share-summary.vue'
+import { setShareMenu } from '@/services/native-share'
 import { backTo } from '@/services/navigation'
+import { runtimeMode } from '@/services/runtime-mode'
 const props = withDefaults(
   defineProps<{
     title: string
@@ -9,10 +13,28 @@ const props = withDefaults(
     footer?: boolean
     fallback?: string
     customBack?: boolean
+    shareable?: boolean
+    publicSummary?: boolean
   }>(),
   { back: false, footer: false, fallback: undefined, customBack: false }
 )
 const emit = defineEmits<{ back: [] }>()
+const browseOnly = runtimeMode.browseOnly
+let visible = false
+onShow(() => {
+  visible = true
+  setShareMenu(Boolean(props.shareable))
+})
+onHide(() => {
+  visible = false
+  setShareMenu(false)
+})
+watch(
+  () => [props.shareable, browseOnly.value],
+  () => {
+    if (visible) setShareMenu(Boolean(props.shareable))
+  }
+)
 const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync()
 let top = 32,
   right = 0,
@@ -40,13 +62,15 @@ const goBack = () => {
     :class="{ 'has-footer': footer }"
     :style="{ '--page-header-height': `${top + nav}px` }"
     ><view class="page-nav" :style="headingStyle"
-      ><button v-if="back" class="back-button" aria-label="返回" @click="goBack">
+      ><button v-if="back && !browseOnly" class="back-button" aria-label="返回" @click="goBack">
         <image src="/static/design/back.svg" mode="aspectFit" aria-hidden="true" /></button
-      ><view v-if="title === '句芽英语'" class="nav-brand"
+      ><view v-if="title === '句芽英语' && !browseOnly" class="nav-brand"
         ><text class="nav-wordmark">juya</text><text>句芽英语</text></view
-      ><text v-else class="nav-title">{{ title }}</text
-      ><view class="nav-action"><slot name="action" /></view></view
-    ><view class="page-body"><slot /></view><slot name="footer"
+      ><text v-else class="nav-title">{{ browseOnly ? '分享摘要' : title }}</text
+      ><view v-if="!browseOnly" class="nav-action"><slot name="action" /></view></view
+    ><view class="page-body"
+      ><ShareSummary v-if="browseOnly && !publicSummary" /><slot v-else /></view
+    ><slot v-if="!browseOnly" name="footer"
   /></view>
 </template>
 <style scoped lang="scss">

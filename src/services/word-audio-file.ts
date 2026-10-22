@@ -4,6 +4,7 @@ import type { AudioCacheFile, AudioPreparationCancellation } from '@/shared/type
 import type { WordAudioCancellation, WordAudioFile } from '@/shared/types/pronunciation'
 
 import { ApiError } from './errors'
+import { runtimeMode } from './runtime-mode'
 
 let lastSweep = Number.NEGATIVE_INFINITY
 
@@ -79,6 +80,7 @@ export const downloadWordAudio = (
   task: WordAudioCancellation
 ): Promise<WordAudioFile> =>
   new Promise((resolve, reject) => {
+    runtimeMode.assertPrivate()
     if (!task.active()) {
       reject(new Error('试听已取消'))
       return
@@ -146,6 +148,7 @@ export const prepareAudioCacheFile = (
   url: string,
   task: AudioPreparationCancellation
 ): Promise<AudioCacheFile> => {
+  runtimeMode.assertPrivate()
   // #ifdef MP-WEIXIN
   return downloadWordAudio(url, task)
   // #endif

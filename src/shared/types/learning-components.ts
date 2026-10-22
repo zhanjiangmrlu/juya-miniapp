@@ -36,6 +36,7 @@ export interface SceneUnavailableProps {
   summary: components['schemas']['PersonalSummary']
   favoriteBusy: boolean
   message: string
+  sharedEntry?: boolean
 }
 export interface SceneListFooterProps {
   busy: boolean

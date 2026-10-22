@@ -1,5 +1,7 @@
 import type { AudioPort } from '@/shared/types/audio'
 
+import { runtimeMode } from './runtime-mode'
+
 // #ifdef H5
 /** 浏览器直接使用媒体元素，弥补 uni H5 上下文未透传倍率的限制 */
 const browserAudioPort = (): AudioPort => {
@@ -98,6 +100,7 @@ const browserAudioPort = (): AudioPort => {
 
 /** 为当前平台创建同一控制器使用的音轨，不创建额外播放器 */
 export const createAudioPort = (): AudioPort => {
+  runtimeMode.assertPrivate()
   // #ifdef H5
   return browserAudioPort()
   // #endif

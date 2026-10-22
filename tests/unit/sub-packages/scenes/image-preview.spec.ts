@@ -11,6 +11,7 @@ const ports = vi.hoisted(() => ({
   back: vi.fn()
 }))
 vi.mock('@dcloudio/uni-app', () => ({
+  onShow: vi.fn(),
   onLoad: (callback: typeof ports.load) => (ports.load = callback),
   onUnload: (callback: typeof ports.unload) => (ports.unload = callback)
 }))
@@ -19,9 +20,11 @@ vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
 vi.mock('@/services/navigation', () => ({ backTo: ports.back }))
 
 import { registerImagePreview } from '@/services/image-preview'
+import { runtimeMode } from '@/services/runtime-mode'
 import ImagePreview from '@/sub-packages/scenes/image-preview.vue'
 
 beforeEach(() => {
+  runtimeMode.update({ apiCategory: 'default' })
   vi.clearAllMocks()
   ports.media.mockResolvedValue('/fresh-original')
   ports.request.mockResolvedValue({})
@@ -30,7 +33,10 @@ beforeEach(() => {
     getImageInfo: vi.fn(({ src, success }) => success({ path: src }))
   })
 })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  runtimeMode.update({ apiCategory: 'default' })
+  vi.unstubAllGlobals()
+})
 
 /** 用原生标签承接容器事件，tag 是小程序移动或缩放容器标签 */
 const nativeContainer = (tag: string) =>
@@ -121,5 +127,53 @@ it('renews the original URL on explicit retry after cached pixels fail', async (
   await flushPromises()
   expect(loadSource.mock.calls).toEqual([[false], [true]])
   expect(page.get('.zoom-image image').attributes('src')).toBe('/fresh-original')
+  page.unmount()
+})
+
+it('removes a rendered private original and invalidates an in-flight retry when the official mode becomes browseOnly', async () => {
+  let finish: (value: string) => void = () => undefined
+  const loadSource = vi
+    .fn()
+    .mockResolvedValueOnce('/private-full-resolution-file')
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    )
+  const { page, onClose } = openPreview(loadSource)
+  await flushPromises()
+  expect(page.get('.zoom-image image').attributes('src')).toBe('/private-full-resolution-file')
+  await page.get('.zoom-image image').trigger('error')
+  await page.get('.overlay-message button').trigger('click')
+  runtimeMode.update({ apiCategory: 'browseOnly' })
+  await flushPromises()
+  expect(page.find('.zoom-image image').exists()).toBe(false)
+  expect(onClose).toHaveBeenCalledOnce()
+  finish('/late-private-original')
+  await flushPromises()
+  expect(page.find('[src="/late-private-original"]').exists()).toBe(false)
+  page.unmount()
+})
+
+it('does not read or load the registered private context when the overlay is opened cold in browseOnly', async () => {
+  runtimeMode.update({ apiCategory: 'browseOnly' })
+  const loadSource = vi.fn(async () => '/private-file')
+  const { page } = openPreview(loadSource)
+  await flushPromises()
+  expect(loadSource).not.toHaveBeenCalled()
+  expect(ports.media).not.toHaveBeenCalled()
+  expect(page.find('.zoom-image image').exists()).toBe(false)
+  page.unmount()
+})
+
+it('hides an already rendered full-resolution original immediately when browseOnly is reported', async () => {
+  const { page } = openPreview(async () => '/private-original-visible')
+  await flushPromises()
+  expect(page.get('.zoom-image image').attributes('src')).toBe('/private-original-visible')
+  runtimeMode.update({ apiCategory: 'browseOnly' })
+  await flushPromises()
+  expect(page.find('.image-overlay').exists()).toBe(false)
+  expect(page.find('[src="/private-original-visible"]').exists()).toBe(false)
   page.unmount()
 })

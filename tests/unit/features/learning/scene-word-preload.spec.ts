@@ -21,6 +21,8 @@ const ports = vi.hoisted(() => ({
   tracks: [] as { src: string; play: ReturnType<typeof vi.fn>; destroy: ReturnType<typeof vi.fn> }[]
 }))
 vi.mock('@dcloudio/uni-app', () => ({
+  onShareAppMessage: vi.fn(),
+  onShareTimeline: vi.fn(),
   onPageScroll: vi.fn(),
   onLoad: (callback: typeof ports.load) => {
     ports.load = callback
@@ -47,6 +49,7 @@ vi.mock('@/services/api', () => ({
   }
 }))
 vi.mock('@/services/platform', () => ({
+  sendPublicRequest: vi.fn(async () => ({ status: 503, data: {} })),
   operationKey: () => 'key',
   resourceURL: (url: string) => url
 }))
