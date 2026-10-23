@@ -2,6 +2,10 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, expect, it, vi } from 'vitest'
 
+vi.hoisted(() => {
+  vi.stubGlobal('uni', { getStorageSync: () => undefined })
+})
+
 const ports = vi.hoisted(() => ({ load: null as null | ((query: Record<string, string>) => void) }))
 const { login, openTarget } = vi.hoisted(() => ({ login: vi.fn(), openTarget: vi.fn() }))
 vi.mock('@dcloudio/uni-app', () => ({

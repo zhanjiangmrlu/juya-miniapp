@@ -1,4 +1,8 @@
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
+
+vi.hoisted(() => {
+  vi.stubGlobal('uni', { getStorageSync: () => undefined })
+})
 
 import { safeTarget } from '@/services/navigation'
 it('only restores known pages and approved non-sensitive parameters', () => {

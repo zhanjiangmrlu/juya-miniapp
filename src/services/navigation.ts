@@ -1,7 +1,10 @@
 import { Routes } from '@/shared/constants/navigation'
 
+import type { QueueSource } from '@/shared/enums/learning'
+
 import { runtimeMode } from './runtime-mode'
 import { parseShareTarget, shareTargetURL } from './share-service'
+import { openSourceScene } from './source-queue'
 
 /** 将登录返回目标限制在本期页面，资料编辑失效后回到只读资料
  * @param target 本站页面路径
@@ -103,17 +106,13 @@ export const backTo = (fallback: string = Routes.LEARNING) => {
  * @param source 点击卡片所在的来源列表
  * @param day 打卡来源的日期
  */
-export const openScene = async (
-  id: string,
-  source?: import('@/shared/enums/learning').QueueSource,
-  day?: string
-) => {
+export const openScene = async (id: string, source?: QueueSource, day?: string) => {
   if (!source) {
     uni.navigateTo({ url: `${Routes.SCENE}?id=${encodeURIComponent(id)}` })
     return
   }
   try {
-    await (await import('@/services/source-queue')).openSourceScene(source, id, day)
+    await openSourceScene(source, id, day)
   } catch (reason) {
     uni.showToast({
       title: reason instanceof Error ? reason.message : '来源列表暂未获取，请重试',

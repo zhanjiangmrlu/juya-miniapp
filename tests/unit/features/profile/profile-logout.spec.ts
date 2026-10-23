@@ -2,6 +2,10 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
+vi.hoisted(() => {
+  vi.stubGlobal('uni', { getStorageSync: () => undefined })
+})
+
 const { logout } = vi.hoisted(() => ({ logout: vi.fn() }))
 vi.mock('@/services/feedback-service', () => ({
   feedbackInbox: { value: { value: { unread: false, count: 0 } }, refresh: vi.fn() }
