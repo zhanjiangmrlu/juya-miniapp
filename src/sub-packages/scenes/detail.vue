@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { onHide, onLoad, onPageScroll, onShow, onUnload } from '@dcloudio/uni-app'
+import {
+  onHide,
+  onLoad,
+  onPageScroll,
+  onShareAppMessage,
+  onShareTimeline,
+  onShow,
+  onUnload
+} from '@dcloudio/uni-app'
 import { computed, ref, watch } from 'vue'
 
 import AppLoading from '@/components/app-loading/app-loading.vue'
@@ -81,8 +89,11 @@ const browseOnly = runtimeMode.browseOnly,
     resource: resourceURL,
     prepareImage: prepareShareCover
   }),
-  share = useNativeShare(publicShare.friends, publicShare.timeline),
+  share = useNativeShare(),
   homeSummary = ref(false)
+// 原生分享属于编译期可选生命周期，必须直接在页面声明
+onShareAppMessage(() => ({ ...publicShare.friends() }))
+onShareTimeline(() => ({ ...publicShare.timeline() }))
 let sharedEntry = false,
   requiresIdentityCheck = browseOnly.value
 /** 点击后立即打开准备状态，复用当前场景和版本的公开分享请求 */

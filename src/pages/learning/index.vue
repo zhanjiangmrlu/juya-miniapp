@@ -5,6 +5,8 @@ import {
   onPageScroll,
   onPullDownRefresh,
   onReachBottom,
+  onShareAppMessage,
+  onShareTimeline,
   onShow,
   onUnload
 } from '@dcloudio/uni-app'
@@ -33,10 +35,10 @@ const account = useAccountStore(),
   statsError = ref('')
 const browseOnly = runtimeMode.browseOnly,
   accessReady = ref(!browseOnly.value),
-  share = useNativeShare(
-    () => homeShare.friends,
-    () => homeShare.timeline
-  )
+  share = useNativeShare()
+// 原生分享属于编译期可选生命周期，必须直接在页面声明
+onShareAppMessage(() => ({ ...homeShare.friends }))
+onShareTimeline(() => ({ ...homeShare.timeline }))
 let sharedEntry = false,
   requiresIdentityCheck = browseOnly.value
 const {

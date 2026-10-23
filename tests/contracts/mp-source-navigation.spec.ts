@@ -136,3 +136,35 @@ it.each([
     }
   ])
 })
+
+it.each(['pages/learning/index', 'sub-packages/scenes/detail'])(
+  'exposes both native share lifecycles in the compiled WeChat page %s',
+  (page) => {
+    let pageOptions: { __runtimeHooks?: number } = {}
+    const vendor = {
+      defineComponent: (options: unknown) => options,
+      _export_sfc: (options: unknown) => options
+    }
+    runInNewContext(readFileSync(path.join(output, `${page}.js`), 'utf8'), {
+      require: (specifier: string) => (specifier.endsWith('/common/vendor.js') ? vendor : {}),
+      wx: {
+        createPage: (options: typeof pageOptions) => {
+          pageOptions = options
+        }
+      },
+      exports: {}
+    })
+    // uni-mp-weixin only exposes these optional native callbacks when the compiler sets their flags
+    expect(
+      (pageOptions.__runtimeHooks || 0) & 2,
+      'onShareAppMessage must reach the native page'
+    ).toBe(2)
+    expect(
+      (pageOptions.__runtimeHooks || 0) & 4,
+      'onShareTimeline must reach the native page'
+    ).toBe(4)
+    const configuration = JSON.parse(readFileSync(path.join(output, `${page}.json`), 'utf8'))
+    expect(configuration).not.toHaveProperty('enableShareAppMessage')
+    expect(configuration).not.toHaveProperty('enableShareTimeline')
+  }
+)
