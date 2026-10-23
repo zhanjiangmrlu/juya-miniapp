@@ -1,0 +1,62 @@
+{
+  "fonts": [
+    {
+      "font_index": 0,
+      "original_bytes": 49528,
+      "optimized_bytes": 47924,
+      "original_cmap_count": 95,
+      "optimized_cmap_count": 95,
+      "normal_tables_byte_equal_except_checksum": true,
+      "raster_cases": 20,
+      "weights": [400, 500, 600, 700],
+      "sizes": [14, 16, 22, 30, 40],
+      "all_raster_pixels_equal": true,
+      "woff_sha256": "19b2ba846548029c4fe0bb423de90d84a90473aae241db54296638b35720fc0a"
+    },
+    {
+      "font_index": 1,
+      "original_bytes": 90584,
+      "optimized_bytes": 88448,
+      "original_cmap_count": 95,
+      "optimized_cmap_count": 95,
+      "normal_tables_byte_equal_except_checksum": true,
+      "raster_cases": 20,
+      "weights": [400, 500, 600, 700],
+      "sizes": [14, 16, 22, 30, 40],
+      "all_raster_pixels_equal": true,
+      "woff_sha256": "1a07e715bff9af0269c13d8cd49226c50c8c649d39ba6f3477d0b0d2136e9000"
+    },
+    {
+      "font_index": 2,
+      "original_bytes": 116108,
+      "optimized_bytes": 12640,
+      "original_cmap_count": 95,
+      "optimized_cmap_count": 21,
+      "normal_tables_byte_equal_except_checksum": false,
+      "raster_cases": 20,
+      "weights": [400, 500, 600, 700],
+      "sizes": [14, 16, 22, 30, 40],
+      "all_raster_pixels_equal": true,
+      "woff_sha256": "0e42d420e3d2e1f55aac75f2ffb3d4b4732b4637c80422959d9982a4c9edda2f"
+    },
+    {
+      "font_index": 3,
+      "original_bytes": 159984,
+      "optimized_bytes": 157260,
+      "original_cmap_count": 502,
+      "optimized_cmap_count": 502,
+      "normal_tables_byte_equal_except_checksum": true,
+      "raster_cases": 20,
+      "weights": [400, 500, 600, 700],
+      "sizes": [14, 16, 22, 30, 40],
+      "all_raster_pixels_equal": true,
+      "woff_sha256": "2de0b76bda1d0a672e6eea56ab31daf06a08b67db6bd076d5501d3b7cf4115ed"
+    }
+  ],
+  "png": {
+    "width": 1170,
+    "height": 780,
+    "all_rgba_pixels_equal": true,
+    "rgba_sha256": "ab9fbe51bd3ed107ee96ef9efbd963bd2b8281815dcd9bb49896fd6098ed9e19"
+  }
+}

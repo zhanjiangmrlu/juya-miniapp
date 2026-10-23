@@ -11,8 +11,8 @@
   "scripts": {
     "build": "pnpm build:mp-weixin",
     "build:h5": "uni build -p h5",
-    "build:mp-weixin": "uni build -p mp-weixin && node scripts/verify-mp-page-meta.mjs",
-    "build:mp-weixin:test": "uni build -p mp-weixin --mode test && node scripts/verify-mp-page-meta.mjs",
+    "build:mp-weixin": "uni build -p mp-weixin && node scripts/verify-mp-page-meta.mjs && node scripts/verify-mp-package-budget.mjs",
+    "build:mp-weixin:test": "uni build -p mp-weixin --mode test && node scripts/verify-mp-page-meta.mjs && node scripts/verify-mp-package-budget.mjs",
     "build:mp-weixin:local": "uni build -p mp-weixin --mode development && node scripts/verify-mp-page-meta.mjs",
     "build:mp-weixin:local-share": "node scripts/build-local-share.mjs",
     "check": "pnpm format:check && pnpm lint && pnpm lint:style && pnpm typecheck",

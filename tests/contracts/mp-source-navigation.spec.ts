@@ -32,6 +32,19 @@ beforeAll(() => {
 
 afterAll(() => rmSync(output, { recursive: true, force: true }))
 
+it('keeps 100KB below the main-package limit after 20 percent WeChat conversion expansion', () => {
+  const result = spawnSync(
+    process.execPath,
+    [path.join(root, 'scripts/verify-mp-package-budget.mjs')],
+    {
+      cwd: root,
+      env: { ...process.env, UNI_OUTPUT_DIR: output },
+      encoding: 'utf8'
+    }
+  )
+  expect(result.status, result.stdout + result.stderr).toBe(0)
+})
+
 /** 执行真实微信CommonJS产物，只替换原生界面及业务网络边界 */
 const nativeRuntime = () => {
   const opened: string[] = [],
