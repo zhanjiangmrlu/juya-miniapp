@@ -6,6 +6,8 @@ import ShareSummary from '@/features/share/components/share-summary.vue'
 import { setShareMenu } from '@/services/native-share'
 import { backTo } from '@/services/navigation'
 import { runtimeMode } from '@/services/runtime-mode'
+
+import type { ShareMenuChannels } from '@/shared/types/share'
 const props = withDefaults(
   defineProps<{
     title: string
@@ -14,25 +16,31 @@ const props = withDefaults(
     fallback?: string
     customBack?: boolean
     shareable?: boolean
+    shareChannels?: ShareMenuChannels
     publicSummary?: boolean
   }>(),
-  { back: false, footer: false, fallback: undefined, customBack: false }
+  { back: false, footer: false, fallback: undefined, customBack: false, shareChannels: undefined }
 )
 const emit = defineEmits<{ back: [] }>()
 const browseOnly = runtimeMode.browseOnly
 let visible = false
 onShow(() => {
   visible = true
-  setShareMenu(Boolean(props.shareable))
+  setShareMenu(props.shareable ? props.shareChannels || true : false)
 })
 onHide(() => {
   visible = false
   setShareMenu(false)
 })
 watch(
-  () => [props.shareable, browseOnly.value],
+  () => [
+    props.shareable,
+    props.shareChannels?.friends,
+    props.shareChannels?.timeline,
+    browseOnly.value
+  ],
   () => {
-    if (visible) setShareMenu(Boolean(props.shareable))
+    if (visible) setShareMenu(props.shareable ? props.shareChannels || true : false)
   }
 )
 const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync()

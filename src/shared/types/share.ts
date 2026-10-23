@@ -17,6 +17,11 @@ export interface TimelineShare {
   query: string
   imageUrl: string
 }
+export interface ShareChannelState {
+  ready: boolean
+  busy: boolean
+  error: string
+}
 export interface SharePorts {
   send: SendRequest
   resource: (path: string) => string
@@ -36,6 +41,10 @@ export interface NativeCategoryAPI {
 export interface NativeShareMenuAPI {
   showShareMenu?: (options: { withShareTicket: boolean; menus: string[] }) => unknown
   hideShareMenu?: (options: { menus: string[] }) => unknown
+}
+export interface ShareMenuChannels {
+  friends: boolean
+  timeline: boolean
 }
 export interface SharePresentation {
   summary: Ref<PublicSceneShare | null>

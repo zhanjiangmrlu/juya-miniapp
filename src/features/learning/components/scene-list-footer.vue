@@ -3,11 +3,14 @@ import AppLoading from '@/components/app-loading/app-loading.vue'
 
 import type { SceneListFooterProps } from '@/shared/types/learning-components'
 defineProps<SceneListFooterProps>()
-defineEmits<{ more: [] }>()
+defineEmits<{ more: []; refresh: [] }>()
 </script>
 <template>
   <view class="list-footer" aria-live="polite"
-    ><AppLoading v-if="busy" /><template v-else-if="error"
+    ><AppLoading v-if="refreshing" label="正在刷新" /><template v-else-if="refreshError"
+      ><text class="list-error">列表暂未更新：{{ refreshError }}</text
+      ><button class="text-button" @click="$emit('refresh')">刷新失败，点击重试</button></template
+    ><AppLoading v-else-if="busy" /><template v-else-if="error"
       ><text class="list-error">{{ error }}</text
       ><button class="text-button" @click="$emit('more')">加载失败，点击重试</button></template
     ><button v-else-if="hasMore" class="text-button" @click="$emit('more')">加载更多</button

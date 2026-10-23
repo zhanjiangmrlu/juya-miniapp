@@ -24,3 +24,12 @@ it('hides both menus on private/unready pages and in browseOnly despite cached r
   expect(showShareMenu).toHaveBeenCalledTimes(1)
   expect(hideShareMenu).toHaveBeenCalledTimes(2)
 })
+
+it('exposes only the channel whose public cover is ready', () => {
+  const showShareMenu = vi.fn(),
+    hideShareMenu = vi.fn()
+  vi.stubGlobal('uni', { showShareMenu, hideShareMenu })
+  setShareMenu({ friends: true, timeline: false })
+  expect(showShareMenu).toHaveBeenCalledWith({ withShareTicket: false, menus: ['shareAppMessage'] })
+  expect(hideShareMenu).toHaveBeenCalledWith({ menus: ['shareTimeline'] })
+})

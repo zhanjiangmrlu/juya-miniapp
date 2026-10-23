@@ -11,6 +11,7 @@ const ports = vi.hoisted(() => ({
   timeline: null as null | (() => unknown),
   request: vi.fn(),
   publicRequest: vi.fn(),
+  cover: vi.fn(),
   ensure: vi.fn(async () => true),
   restore: vi.fn(async () => ({ id: 'owner' })),
   audio: vi.fn(),
@@ -56,7 +57,7 @@ vi.mock('@/stores/account-store', () => ({
   })
 }))
 vi.mock('@/services/audio-port', () => ({ createAudioPort: ports.audio }))
-vi.mock('@/services/share-cover-file', () => ({ prepareShareCover: async (path: string) => path }))
+vi.mock('@/services/share-cover-file', () => ({ prepareShareCover: ports.cover }))
 vi.mock('@/features/learning/audio-controller', () => ({
   createAudioController: () => ({ state: {}, dispose: ports.disposeAudio })
 }))
@@ -114,6 +115,7 @@ const open = (
 beforeEach(() => {
   vi.clearAllMocks()
   runtimeMode.update({ apiCategory: 'default' })
+  ports.cover.mockImplementation(async (path: string) => path)
   ports.publicRequest.mockResolvedValue({ status: 200, data: summary })
   ports.request.mockResolvedValue({
     card_id: 'card-1',
@@ -231,5 +233,85 @@ it('retains the safe target without reading private body or preparing audio when
   expect(ports.ensure).toHaveBeenCalledWith('/sub-packages/scenes/detail?target=scene&id=card-1')
   expect(ports.request).not.toHaveBeenCalled()
   expect(ports.audio).not.toHaveBeenCalled()
+  page.unmount()
+})
+
+it('opens the sheet immediately while pending and merges load/show/repeated click requests', async () => {
+  let finish: (value: unknown) => void = () => undefined
+  ports.publicRequest.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      })
+  )
+  const page = open()
+  await flushPromises()
+  const entry = page
+    .findAll('.detail-tools button')
+    .find((button) => button.text().includes('分享场景'))!
+  expect(entry.attributes('disabled')).toBeUndefined()
+  await entry.trigger('click')
+  expect(page.find('[role="dialog"]').exists()).toBe(true)
+  expect(page.get('[role="dialog"]').text()).toContain('正在准备')
+  await entry.trigger('click')
+  ports.show?.()
+  await flushPromises()
+  expect(ports.publicRequest).toHaveBeenCalledTimes(1)
+  finish({ status: 200, data: summary })
+  await flushPromises()
+  expect(page.find('[open-type="share"]').exists()).toBe(true)
+  ports.unload?.()
+  page.unmount()
+})
+
+it('rejects late share files after hide and never reopens the old sheet or menu', async () => {
+  const finishes: ((value: string) => void)[] = []
+  ports.cover.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finishes.push(resolve)
+      })
+  )
+  const page = open()
+  await flushPromises()
+  await page
+    .findAll('.detail-tools button')
+    .find((button) => button.text().includes('分享场景'))!
+    .trigger('click')
+  ports.hide?.()
+  for (const finish of finishes) finish('/late-file')
+  await flushPromises()
+  expect(page.find('[role="dialog"]').exists()).toBe(false)
+  expect(ports.friends?.()).toMatchObject({
+    path: '/sub-packages/scenes/detail?target=scene&id=card-1',
+    imageUrl: '/static/brand/brand-share.png'
+  })
+  ports.unload?.()
+  page.unmount()
+})
+
+it('keeps friend sharing usable and offers timeline-only retry when that cover fails', async () => {
+  ports.cover.mockImplementation(async (path: string) => {
+    if (path.endsWith('/timeline')) throw new Error('朋友圈封面下载失败')
+    return '/friend-ready'
+  })
+  const page = open()
+  await flushPromises()
+  await page
+    .findAll('.detail-tools button')
+    .find((button) => button.text().includes('分享场景'))!
+    .trigger('click')
+  await flushPromises()
+  expect(page.find('[open-type="share"]').exists()).toBe(true)
+  await page.findAll('.channel-button')[1]!.trigger('click')
+  expect(page.get('[role="dialog"]').text()).toContain('朋友圈封面下载失败')
+  ports.cover.mockResolvedValue('/timeline-ready')
+  await page.get('.share-retry').trigger('click')
+  await flushPromises()
+  expect(ports.cover).toHaveBeenCalledTimes(3)
+  expect(ports.publicRequest).toHaveBeenCalledOnce()
+  expect(ports.friends?.()).toMatchObject({ imageUrl: '/friend-ready' })
+  expect(ports.timeline?.()).toMatchObject({ imageUrl: '/timeline-ready' })
+  ports.unload?.()
   page.unmount()
 })

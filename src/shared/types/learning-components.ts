@@ -39,6 +39,8 @@ export interface SceneUnavailableProps {
   sharedEntry?: boolean
 }
 export interface SceneListFooterProps {
+  refreshing?: boolean
+  refreshError?: string
   busy: boolean
   error: string
   hasMore: boolean

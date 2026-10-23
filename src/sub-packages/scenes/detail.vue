@@ -32,7 +32,7 @@ import { loadPronunciation } from '@/services/pronunciation-service'
 import { runtimeMode } from '@/services/runtime-mode'
 import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
 import { prepareShareCover } from '@/services/share-cover-file'
-import { createShareService, parseShareTarget, shareTargetURL } from '@/services/share-service'
+import { parseShareTarget, shareTargetURL } from '@/services/share-service'
 import {
   discardPreparedScene,
   prepareSourceScene,
@@ -46,6 +46,7 @@ import { AudioStatus } from '@/shared/enums/audio'
 import { QueueSource } from '@/shared/enums/learning'
 import { ShareTarget } from '@/shared/enums/share'
 import { useAccountStore } from '@/stores/account-store'
+import { createShareService } from '@/sub-packages/scenes/scene-share-service'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { AudioState } from '@/shared/types/audio'
@@ -81,16 +82,14 @@ const browseOnly = runtimeMode.browseOnly,
     prepareImage: prepareShareCover
   }),
   share = useNativeShare(publicShare.friends, publicShare.timeline),
-  shareAttempted = ref(false),
   homeSummary = ref(false)
 let sharedEntry = false,
   requiresIdentityCheck = browseOnly.value
-/** 点击分享前再次核对当前公开摘要，不把私有原图当成封面 */
-const openShare = async () => {
-  if (runtimeMode.update() || !card.value || stale.value) return
-  shareAttempted.value = true
-  await publicShare.prepare(id)
-  if (publicShare.ready.value) share.show()
+/** 点击后立即打开准备状态，复用当前场景和版本的公开分享请求 */
+const openShare = () => {
+  if (runtimeMode.update() || !visible || !card.value || stale.value) return
+  share.show()
+  void publicShare.prepare(id, card.value.version_id)
 }
 const audioState = ref<AudioState>({
   rate: 1,
@@ -406,6 +405,8 @@ const load = async () => {
     return
   }
   if (busy.value) return
+  publicShare.clear()
+  share.close()
   busy.value = true
   message.value = ''
   completionStatistics.value = null
@@ -440,7 +441,7 @@ const load = async () => {
     createAudio()
     void loadImage()
     void reading.restore(value)
-    void publicShare.prepare(id)
+    if (visible) void publicShare.prepare(id, value.version_id)
   } catch (reason) {
     if (!alive || run !== generation) return
     if (reason instanceof ApiError && reason.status === 410) await invalid(reason)
@@ -683,17 +684,21 @@ onLoad((query) => {
 })
 onShow(() => {
   visible = true
-  if (runtimeMode.update()) return
+  if (runtimeMode.update()) {
+    if (visible && !homeSummary.value && id) void publicShare.prepare(id)
+    return
+  }
   if (card.value) {
     createAudio()
     void refreshState().catch(invalid)
-    void publicShare.prepare(id)
+    void publicShare.prepare(id, card.value.version_id, true)
   }
 })
 watch(
   browseOnly,
   (restricted) => {
     share.hide()
+    publicShare.clear()
     if (restricted) {
       requiresIdentityCheck = true
       generation++
@@ -705,7 +710,7 @@ watch(
       imageSrc.value = ''
       originalSrc = ''
       busy.value = false
-      if (!homeSummary.value && id) void publicShare.prepare(id)
+      if (visible && !homeSummary.value && id) void publicShare.prepare(id)
     } else if (homeSummary.value) learn()
     else if (id) void load()
   },
@@ -713,10 +718,11 @@ watch(
 )
 onPageScroll((event) => reading.scroll(event.scrollTop))
 onHide(() => {
+  visible = false
   share.hide()
+  publicShare.clear()
   if (!runtimeMode.update()) void reading.save()
   if (!imageOpen) {
-    visible = false
     stopAudio()
   }
 })
@@ -740,13 +746,15 @@ onUnload(() => {
     :footer="!browseOnly"
     public-summary
     :shareable="!browseOnly && Boolean(card) && !stale && publicShare.ready.value"
+    :share-channels="{
+      friends: publicShare.channels.friends.ready,
+      timeline: publicShare.channels.timeline.ready
+    }"
     ><ShareSummary
       v-if="browseOnly"
       :summary="homeSummary ? null : publicShare.summary.value"
       :image="
-        homeSummary || !publicShare.summary.value
-          ? ''
-          : resourceURL(publicShare.summary.value.images.timeline.url)
+        homeSummary || !publicShare.channels.timeline.ready ? '' : publicShare.timeline().imageUrl
       "
       :busy="!homeSummary && publicShare.busy.value"
       :error="homeSummary ? '' : publicShare.error.value || error"
@@ -850,12 +858,9 @@ onUnload(() => {
               mode="aspectFit"
               aria-hidden="true"
             />反馈问题</button
-          ><button class="text-button" :disabled="publicShare.busy.value" @click="openShare">
+          ><button class="text-button" :disabled="stale" @click="openShare">
             <image src="/static/design/share.svg" mode="aspectFit" aria-hidden="true" />分享场景
           </button></view
-        ><view v-if="shareAttempted && publicShare.error.value" class="notice error" role="alert"
-          >{{ publicShare.error.value
-          }}<button class="text-button" @click="openShare">重试分享</button></view
         ><view v-if="message" class="notice success"
           >{{ message
           }}<text v-if="completionStatistics">
@@ -887,11 +892,15 @@ onUnload(() => {
         :source="queueSource"
         @learn="learn"
         @stay="queueEnd = false" /><ShareSheet
-        v-if="share.open.value && publicShare.ready.value"
+        v-if="share.open.value"
         scene
         :friends="publicShare.friends()"
         :timeline="publicShare.timeline()"
-        @close="share.hide" /></template
+        :channels="publicShare.channels"
+        :summary-busy="publicShare.summaryBusy.value"
+        :error="publicShare.error.value"
+        @retry="publicShare.retry"
+        @close="share.close" /></template
     ><template #footer
       ><view v-if="card && !stale" class="safe-footer"
         ><button

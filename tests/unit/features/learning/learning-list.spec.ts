@@ -8,6 +8,7 @@ vi.mock('@/services/feedback-service', () => ({
 }))
 vi.mock('@dcloudio/uni-app', () => ({
   onLoad: vi.fn(),
+  onPageScroll: vi.fn(),
   onHide: vi.fn(),
   onShareAppMessage: vi.fn(),
   onShareTimeline: vi.fn(),
@@ -104,5 +105,13 @@ it('invalidates a pending private list when browseOnly starts so full mode can r
   finish({ items: [{ id: 'old', name: '过期列表' }], total: 1, published_total: 1 })
   await flushPromises()
   expect(page.findAllComponents({ name: 'SceneCard' })).toHaveLength(0)
+  page.unmount()
+})
+
+it('removes the in-list refresh and home sharing sheet entries', async () => {
+  const page = await open(2)
+  expect(page.find('.share-entry').exists()).toBe(false)
+  expect(page.findComponent({ name: 'ShareSheet' }).exists()).toBe(false)
+  expect(page.find('.refresh-list').exists()).toBe(false)
   page.unmount()
 })

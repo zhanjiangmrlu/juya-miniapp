@@ -3,15 +3,28 @@ import { computed, ref } from 'vue'
 
 import { ShareChannel } from '@/shared/enums/share'
 
-import type { FriendsShare, TimelineShare } from '@/shared/types/share'
+import type { FriendsShare, ShareChannelState, TimelineShare } from '@/shared/types/share'
 
-const props = defineProps<{ friends: FriendsShare; timeline: TimelineShare; scene?: boolean }>()
-defineEmits<{ close: [] }>()
+const props = defineProps<{
+  friends: FriendsShare
+  timeline: TimelineShare
+  scene?: boolean
+  channels?: Record<ShareChannel, ShareChannelState>
+  summaryBusy?: boolean
+  error?: string
+}>()
+defineEmits<{ close: []; retry: [channel: ShareChannel] }>()
 const channel = ref<ShareChannel>(ShareChannel.FRIENDS),
   guidance = ref(false)
 const preview = computed(() =>
   channel.value === ShareChannel.FRIENDS ? props.friends : props.timeline
 )
+const state = computed(
+    () => props.channels?.[channel.value] || { ready: true, busy: false, error: '' }
+  ),
+  preparing = computed(() => props.summaryBusy || state.value.busy),
+  failure = computed(() => props.error || state.value.error),
+  available = computed(() => state.value.ready && !props.summaryBusy && !failure.value)
 /** 切换原生分享渠道并收起上一渠道的操作说明
  * @param value 用户当前选择的好友或朋友圈渠道
  */
@@ -53,7 +66,7 @@ const selectChannel = (value: ShareChannel) => {
           朋友圈
         </button></view
       >
-      <view class="share-preview"
+      <view v-if="available" class="share-preview"
         ><image
           class="preview-image"
           :class="{ square: channel === ShareChannel.TIMELINE }"
@@ -62,25 +75,36 @@ const selectChannel = (value: ShareChannel) => {
           alt="公开分享封面"
         /><text>{{ preview.title }}</text></view
       >
-      <text class="share-help">{{
-        channel === ShareChannel.FRIENDS
-          ? '使用微信原生分享菜单发送给好友或群。'
-          : '朋友圈先展示摘要，打开完整小程序后继续。'
-      }}</text>
-      <!-- #ifdef MP-WEIXIN -->
-      <button v-if="channel === ShareChannel.FRIENDS" class="primary" open-type="share">
-        发送给好友或群
-      </button>
-      <button v-else class="primary" @click="guidance = true">从右上角菜单分享</button>
-      <!-- #endif -->
-      <!-- #ifndef MP-WEIXIN -->
-      <button class="primary" @click="guidance = true">在微信小程序内分享</button>
-      <!-- #endif -->
-      <text v-if="guidance" class="share-help" role="status"
-        >请在微信小程序中点击右上角“…”菜单，选择{{
-          channel === ShareChannel.TIMELINE ? '“分享到朋友圈”' : '“转发”'
-        }}。可用入口以当前微信版本为准。</text
+      <text v-if="preparing" class="share-help" role="status"
+        >正在准备{{ channel === ShareChannel.FRIENDS ? '好友' : '朋友圈' }}分享…</text
       >
+      <view v-else-if="failure" class="share-help" role="alert"
+        ><text>{{ failure }}</text
+        ><button class="share-retry text-button" @click="$emit('retry', channel)">
+          重新准备
+        </button></view
+      >
+      <template v-if="available">
+        <text class="share-help">{{
+          channel === ShareChannel.FRIENDS
+            ? '使用微信原生分享菜单发送给好友或群。'
+            : '朋友圈先展示摘要，打开完整小程序后继续。'
+        }}</text>
+        <!-- #ifdef MP-WEIXIN -->
+        <button v-if="channel === ShareChannel.FRIENDS" class="primary" open-type="share">
+          发送给好友或群
+        </button>
+        <button v-else class="primary" @click="guidance = true">从右上角菜单分享</button>
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
+        <button class="primary" @click="guidance = true">在微信小程序内分享</button>
+        <!-- #endif -->
+        <text v-if="guidance" class="share-help" role="status"
+          >请在微信小程序中点击右上角“…”菜单，选择{{
+            channel === ShareChannel.TIMELINE ? '“分享到朋友圈”' : '“转发”'
+          }}。可用入口以当前微信版本为准。</text
+        >
+      </template>
     </view>
   </view>
 </template>

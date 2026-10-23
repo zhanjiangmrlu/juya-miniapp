@@ -2,6 +2,7 @@
 import {
   onHide,
   onLoad,
+  onPageScroll,
   onPullDownRefresh,
   onReachBottom,
   onShow,
@@ -10,18 +11,18 @@ import {
 import { ref, watch } from 'vue'
 
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
-import AppLoading from '@/components/app-loading/app-loading.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { useListPosition } from '@/composables/use-list-position'
 import { useNativeShare } from '@/composables/use-native-share'
 import { useSceneList } from '@/composables/use-scene-list'
 import LearningStatistics from '@/features/learning/components/learning-statistics.vue'
 import SceneCard from '@/features/learning/components/scene-card.vue'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
-import ShareSheet from '@/features/share/components/share-sheet.vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
 import { onSessionExpired, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
+import { listPageSize } from '@/services/list-page-size'
 import { runtimeMode } from '@/services/runtime-mode'
 import { homeShare } from '@/services/share-service'
 import { Routes } from '@/shared/constants/navigation'
@@ -48,16 +49,33 @@ const {
   moreError,
   hasMore,
   done,
-  refresh,
+  refresh: refreshList,
+  restart: restartList,
   more: loadMore,
   dispose,
-  reset
+  reset: resetList
 } = useSceneList<CardBrief>({
   path: '/api/mini/v1/cards',
+  pageSize: () => listPageSize(268.577, 1050),
   request: session.request,
   userId: session.userId,
   ensure: () => account.ensure(Routes.LEARNING)
 })
+const position = useListPosition(session.userId)
+/** 保留详情返回前的滚动位置和已读页 */
+const refresh = () => position.preserve(refreshList)
+/** 主动下拉成功后清除旧阅读位置，新轮次失败仍保留可信内容 */
+const restart = async () => {
+  const owner = session.userId()
+  await restartList()
+  if (owner === session.userId() && !error.value) position.reset()
+}
+/** 账号切换同时清除上一账号的列表和位置 */
+const reset = () => {
+  resetList()
+  position.reset()
+}
+onPageScroll((event) => position.scroll(event.scrollTop))
 const unsubscribe = onSessionExpired(reset)
 /** 统计单独失败时仍允许查看场景卡片 */
 const refreshStats = async () => {
@@ -118,13 +136,16 @@ watch(
   },
   { flush: 'sync' }
 )
-onHide(share.hide)
+onHide(() => {
+  share.hide()
+  position.dispose()
+})
 onPullDownRefresh(async () => {
   if (runtimeMode.update()) {
     uni.stopPullDownRefresh()
     return
   }
-  await Promise.allSettled([refresh(), refreshStats()])
+  await Promise.allSettled([restart(), refreshStats()])
   uni.stopPullDownRefresh()
 })
 onReachBottom(() => {
@@ -133,6 +154,7 @@ onReachBottom(() => {
 })
 onUnload(() => {
   dispose()
+  position.dispose()
   unsubscribe()
 })
 </script>
@@ -189,7 +211,7 @@ onUnload(() => {
       </view>
       <AppState
         :busy="busy && total === null"
-        :error="error && (total === null ? error : `列表暂未更新：${error}`)"
+        :error="total === null ? error : ''"
         :empty="total === 0"
         :title="publishedTotal > 0 ? '当前场景卡已全部学完' : '暂无可学习的场景卡'"
         :description="
@@ -201,23 +223,8 @@ onUnload(() => {
         ><view v-if="total === 0 && publishedTotal > 0" class="empty-actions"
           ><button class="primary" @click="records">查看学习记录</button
           ><button @click="favorites">查看收藏</button></view
-        ><button v-else-if="total === 0" class="text-button" @click="refresh">
-          刷新看看
-        </button></AppState
+        ></AppState
       >
-      <button
-        v-if="total !== null && total > 0"
-        class="refresh-list text-button"
-        :disabled="busy || moreBusy"
-        @click="refresh"
-      >
-        <AppLoading v-if="busy" compact label="正在刷新" icon-only /><image
-          v-else
-          src="/static/design/refresh.svg"
-          mode="aspectFit"
-          aria-hidden="true"
-        />{{ busy ? '正在刷新…' : '刷新列表' }}
-      </button>
       <SceneCard
         v-for="(card, index) in cards"
         :key="card.id"
@@ -226,36 +233,18 @@ onUnload(() => {
         source="learning" />
       <SceneListFooter
         :busy="moreBusy"
+        :refreshing="busy && total !== null"
+        :refresh-error="total !== null ? error : ''"
         :error="moreError"
         :has-more="hasMore"
         :done="done"
+        @refresh="refresh"
         @more="loadMore" />
-      <button class="share-entry text-button" @click="share.show">
-        <image src="/static/design/share.svg" mode="aspectFit" aria-hidden="true" />分享学习页
-      </button>
-      <ShareSheet
-        v-if="share.open.value"
-        :friends="homeShare.friends"
-        :timeline="homeShare.timeline"
-        @close="share.hide" />
       <AppBottomTabs active="learning"
     /></template>
   </AppPage>
 </template>
 <style scoped lang="scss">
-.share-entry {
-  margin: 34.615rpx auto 0;
-  min-height: 76.923rpx;
-  padding: 17.308rpx 11.538rpx;
-  gap: 13.462rpx;
-  font-size: 26.923rpx;
-
-  image {
-    width: 38.462rpx;
-    height: 38.462rpx;
-  }
-}
-
 .empty-actions {
   display: flex;
   justify-content: center;
@@ -337,18 +326,6 @@ onUnload(() => {
   image {
     width: 34.615rpx;
     height: 34.615rpx;
-  }
-}
-
-.refresh-list {
-  min-height: 76.923rpx;
-  padding: 15.385rpx 17.308rpx;
-  font-size: 23.077rpx;
-  gap: 13.462rpx;
-
-  image {
-    width: 38.462rpx;
-    height: 38.462rpx;
   }
 }
 

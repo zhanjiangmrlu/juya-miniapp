@@ -17,11 +17,12 @@ import { setShareMenu } from '@/services/native-share'
 import { backTo } from '@/services/navigation'
 import { resourceURL, sendPublicRequest } from '@/services/platform'
 import { runtimeMode } from '@/services/runtime-mode'
-import { createShareService, shareTargetURL } from '@/services/share-service'
+import { shareTargetURL } from '@/services/share-service'
 import { IMAGE_MAX_SCALE, IMAGE_MIN_SCALE } from '@/shared/constants/media'
 import { Routes } from '@/shared/constants/navigation'
 import { SHARE_ID_PATTERN } from '@/shared/constants/share'
 import { ShareTarget } from '@/shared/enums/share'
+import { createShareService } from '@/sub-packages/scenes/scene-share-service'
 
 import type { ImagePreviewContext, ImageScaleEvent } from '@/shared/types/image-preview'
 const zoom = ref(IMAGE_MIN_SCALE),
@@ -174,9 +175,7 @@ onUnload(() => {
     ><text class="summary-heading">分享摘要</text
     ><ShareSummary
       :summary="publicShare.summary.value"
-      :image="
-        publicShare.summary.value ? resourceURL(publicShare.summary.value.images.timeline.url) : ''
-      "
+      :image="publicShare.channels.timeline.ready ? publicShare.timeline().imageUrl : ''"
       :busy="publicShare.busy.value"
       :error="publicShare.error.value"
       @retry="restrict"

@@ -1,15 +1,24 @@
 <script setup lang="ts">
-import { onLoad, onPageScroll, onReachBottom, onShow, onUnload } from '@dcloudio/uni-app'
-import { nextTick, ref } from 'vue'
+import {
+  onHide,
+  onLoad,
+  onPageScroll,
+  onPullDownRefresh,
+  onReachBottom,
+  onShow,
+  onUnload
+} from '@dcloudio/uni-app'
+import { computed, nextTick, ref } from 'vue'
 
-import AppLoading from '@/components/app-loading/app-loading.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { useSceneList } from '@/composables/use-scene-list'
 import LearningStatistics from '@/features/learning/components/learning-statistics.vue'
 import SceneCard from '@/features/learning/components/scene-card.vue'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import { onSessionExpired, session } from '@/services/api'
 import { dateText } from '@/services/display'
+import { listPageSize } from '@/services/list-page-size'
 import { storage } from '@/services/platform'
 import { RECORDS_TAB_STORAGE_KEY } from '@/shared/constants/learning'
 import { Routes } from '@/shared/constants/navigation'
@@ -19,113 +28,83 @@ import { useAccountStore } from '@/stores/account-store'
 import type { components } from '@/shared/contracts/generated/mini-api'
 const account = useAccountStore(),
   tab = ref<RecordsTab>(RecordsTab.LEARNED),
-  learned = ref<components['schemas']['LearningRecord'][]>([]),
-  checkins = ref<components['schemas']['CheckinRecord'][]>([]),
-  learnedTotal = ref<number | null>(null),
-  checkinTotal = ref<number | null>(null),
-  busy = ref(false),
-  moreBusy = ref(false),
-  moreError = ref(''),
-  learnedDone = ref(false),
-  checkinDone = ref(false),
-  error = ref(''),
   statsError = ref(''),
   expanded = ref(''),
   day = ref<components['schemas']['DailyRecords'] | null>(null),
   dayBusy = ref(false),
   dayError = ref('')
-let learnedPages = 1,
-  checkinPages = 1,
-  generation = 0,
-  dayGeneration = 0,
+const learnedList = useSceneList<components['schemas']['LearningRecord']>({
+    path: '/api/mini/v1/me/learning-records',
+    request: session.request,
+    ensure: () => account.ensure(Routes.RECORDS),
+    userId: session.userId,
+    pageSize: () => listPageSize(268.577, 650)
+  }),
+  checkinList = useSceneList<components['schemas']['CheckinRecord']>({
+    path: '/api/mini/v1/me/checkins',
+    request: session.request,
+    ensure: () => account.ensure(Routes.RECORDS),
+    userId: session.userId,
+    pageSize: () => listPageSize(190, 650),
+    key: (item) => item.date
+  })
+const { items: learned, total: learnedTotal } = learnedList,
+  { items: checkins, total: checkinTotal } = checkinList,
+  activeList = computed(() => (tab.value === RecordsTab.LEARNED ? learnedList : checkinList)),
+  busy = computed(() => activeList.value.busy.value),
+  moreBusy = computed(() => activeList.value.moreBusy.value),
+  moreError = computed(() => activeList.value.moreError.value),
+  error = computed(() => activeList.value.error.value)
+let dayGeneration = 0,
+  viewGeneration = 0,
   owner = session.userId(),
   alive = true,
   currentScroll = 0,
   restoringScroll = false
 const positions = { learned: 0, checkins: 0 }
-/** 会话变化时清除私人记录、展开项和旧请求，不删除服务器成绩 */
+/** 会话变化时清除私人记录、展开项和旧位置，保留服务器历史成绩 */
 const reset = () => {
-  generation++
+  learnedList.reset()
+  checkinList.reset()
   dayGeneration++
-  learned.value = []
-  checkins.value = []
-  learnedTotal.value = null
-  checkinTotal.value = null
-  learnedPages = 1
-  checkinPages = 1
-  learnedDone.value = false
-  checkinDone.value = false
-  busy.value = false
-  moreBusy.value = false
-  error.value = ''
-  moreError.value = ''
+  viewGeneration++
   expanded.value = ''
   day.value = null
   dayBusy.value = false
   dayError.value = ''
   positions.learned = 0
   positions.checkins = 0
+  currentScroll = 0
   owner = session.userId()
 }
 const unsubscribe = onSessionExpired(reset)
-/** 分别刷新两个标签已加载的范围，不修改任何成绩 */
+/** 刷新当前标签的已读页，并保持展开日期和页面高度 */
 const load = async () => {
   if (owner !== session.userId()) reset()
-  if (busy.value || moreBusy.value) return
-  busy.value = true
-  error.value = ''
-  const run = ++generation,
-    view = tab.value
-  try {
-    if (!(await account.ensure(Routes.RECORDS)) || !alive || run !== generation) return
-    owner = session.userId()
-    if (view === RecordsTab.LEARNED) {
-      const results = await Promise.all(
-        Array.from({ length: learnedPages }, (_, index) =>
-          session.request<components['schemas']['Page_LearningRecord_']>(
-            `/api/mini/v1/me/learning-records?page=${index + 1}&limit=20`
-          )
-        )
-      )
-      if (alive && run === generation && owner === session.userId()) {
-        learned.value = [
-          ...new Map(
-            results.flatMap((result) => result.items).map((item) => [item.id, item])
-          ).values()
-        ]
-        learnedTotal.value = results[0]?.total ?? 0
-        const last = results.at(-1)
-        learnedDone.value = last ? last.page * last.limit >= last.total : false
-        moreError.value = ''
-      }
-    } else {
-      const results = await Promise.all(
-        Array.from({ length: checkinPages }, (_, index) =>
-          session.request<components['schemas']['Page_CheckinRecord_']>(
-            `/api/mini/v1/me/checkins?page=${index + 1}&limit=20`
-          )
-        )
-      )
-      if (alive && run === generation && owner === session.userId()) {
-        checkins.value = [
-          ...new Map(
-            results.flatMap((result) => result.items).map((item) => [item.date, item])
-          ).values()
-        ]
-        checkinTotal.value = results[0]?.total ?? 0
-        const last = results.at(-1)
-        checkinDone.value = last ? last.page * last.limit >= last.total : false
-        moreError.value = ''
-      }
+  const run = ++viewGeneration,
+    view = tab.value,
+    accountId = owner,
+    target = positions[view]
+  await Promise.all([
+    activeList.value.refresh(),
+    expanded.value ? loadDay(expanded.value) : Promise.resolve()
+  ])
+  await nextTick()
+  if (!alive || run !== viewGeneration || view !== tab.value || accountId !== session.userId())
+    return
+  if (target === 0 && currentScroll === 0) return
+  // 原生滚动事件在恢复期间会被忽略，先同步本页位置避免写入另一个标签
+  currentScroll = target
+  restoringScroll = true
+  uni.pageScrollTo?.({
+    scrollTop: target,
+    duration: 0,
+    complete: () => {
+      if (run === viewGeneration) restoringScroll = false
     }
-  } catch (reason) {
-    if (alive && run === generation && owner === session.userId())
-      error.value = reason instanceof Error ? reason.message : '记录暂未获取'
-  } finally {
-    if (alive && run === generation && owner === session.userId()) busy.value = false
-  }
+  })
 }
-/** 统计日期由服务器给出，失败不填假零 */
+/** 统计日期由服务器给出，保留已删除卡片对应的历史成绩和打卡天数 */
 const loadStats = async () => {
   statsError.value = ''
   try {
@@ -142,35 +121,14 @@ const switchTab = async (value: RecordsTab) => {
   positions[tab.value] = currentScroll
   tab.value = value
   storage.set(RECORDS_TAB_STORAGE_KEY, value)
-  generation++
-  busy.value = false
-  moreBusy.value = false
-  moreError.value = ''
-  const run = generation
   await load()
-  await nextTick()
-  if (!alive || tab.value !== value || generation !== run + 1) return
-  restoringScroll = true
-  uni.pageScrollTo({
-    scrollTop: positions[value],
-    duration: 0,
-    complete: () => {
-      restoringScroll = false
-    }
-  })
 }
-/** 展开该北京时间日期中的真实卡片来源
- * @param date 已存在的打卡日期
+/** 读取该北京时间日期的可展示卡片，迟到结果不覆盖其他日期
+ * @param date 当前展开的打卡日期
  */
-const expand = async (date: string) => {
-  if (expanded.value === date && !dayError.value) {
-    expanded.value = ''
-    return
-  }
+const loadDay = async (date: string) => {
   const run = ++dayGeneration,
     accountId = session.userId()
-  expanded.value = date
-  day.value = null
   dayBusy.value = true
   dayError.value = ''
   try {
@@ -183,62 +141,30 @@ const expand = async (date: string) => {
     if (alive && run === dayGeneration && accountId === session.userId() && expanded.value === date)
       dayError.value = reason instanceof Error ? reason.message : '当日记录暂未获取'
   } finally {
-    if (alive && run === dayGeneration && accountId === session.userId() && expanded.value === date)
-      dayBusy.value = false
+    if (alive && run === dayGeneration && accountId === session.userId()) dayBusy.value = false
   }
 }
-/** 只追加当前标签下一页，失败保留原位置并重试同一页 */
+/** 展开或收起日期，刷新失败保留已展示的日期卡片
+ * @param date 用户选择的打卡日期
+ */
+const expand = async (date: string) => {
+  if (expanded.value === date && !dayError.value) {
+    expanded.value = ''
+    dayGeneration++
+    dayBusy.value = false
+    return
+  }
+  if (expanded.value !== date) day.value = null
+  expanded.value = date
+  await loadDay(date)
+}
+/** 仅追加当前标签下一屏，错误提示留在底部 */
 const more = async () => {
   if (owner !== session.userId()) {
     reset()
     return
   }
-  const view = tab.value,
-    isLearned = view === RecordsTab.LEARNED,
-    total = isLearned ? learnedTotal.value : checkinTotal.value
-  if (
-    busy.value ||
-    moreBusy.value ||
-    total === null ||
-    (isLearned ? learnedDone.value : checkinDone.value)
-  )
-    return
-  const page = (isLearned ? learnedPages : checkinPages) + 1,
-    run = generation,
-    accountId = session.userId()
-  moreBusy.value = true
-  moreError.value = ''
-  try {
-    if (!(await account.ensure(Routes.RECORDS)) || !alive || run !== generation) return
-    if (isLearned) {
-      const result = await session.request<components['schemas']['Page_LearningRecord_']>(
-        `/api/mini/v1/me/learning-records?page=${page}&limit=20`
-      )
-      if (!alive || run !== generation || accountId !== session.userId()) return
-      learned.value = [
-        ...new Map([...learned.value, ...result.items].map((item) => [item.id, item])).values()
-      ]
-      learnedTotal.value = result.total
-      learnedDone.value = result.page * result.limit >= result.total
-      learnedPages = page
-    } else {
-      const result = await session.request<components['schemas']['Page_CheckinRecord_']>(
-        `/api/mini/v1/me/checkins?page=${page}&limit=20`
-      )
-      if (!alive || run !== generation || accountId !== session.userId()) return
-      checkins.value = [
-        ...new Map([...checkins.value, ...result.items].map((item) => [item.date, item])).values()
-      ]
-      checkinTotal.value = result.total
-      checkinDone.value = result.page * result.limit >= result.total
-      checkinPages = page
-    }
-  } catch (reason) {
-    if (alive && run === generation && accountId === session.userId())
-      moreError.value = reason instanceof Error ? reason.message : '加载更多失败'
-  } finally {
-    if (alive && run === generation) moreBusy.value = false
-  }
+  await activeList.value.more()
 }
 /** 新用户可返回学习入口 */
 const learn = () => uni.switchTab({ url: Routes.LEARNING })
@@ -253,16 +179,52 @@ onShow(() => {
   void load()
   void loadStats()
 })
+onHide(() => {
+  viewGeneration++
+})
+onPullDownRefresh(async () => {
+  if (owner !== session.userId()) reset()
+  const run = ++viewGeneration,
+    view = tab.value,
+    accountId = owner,
+    list = activeList.value
+  try {
+    await Promise.allSettled([list.restart(), loadStats()])
+    if (
+      alive &&
+      run === viewGeneration &&
+      view === tab.value &&
+      accountId === session.userId() &&
+      !list.error.value
+    ) {
+      positions[view] = 0
+      currentScroll = 0
+      restoringScroll = false
+      dayGeneration++
+      expanded.value = ''
+      day.value = null
+      dayBusy.value = false
+      dayError.value = ''
+    }
+  } finally {
+    uni.stopPullDownRefresh()
+  }
+})
 onReachBottom(() => {
   void more()
 })
 onPageScroll((event) => {
-  if (!restoringScroll) currentScroll = event.scrollTop
+  if (!restoringScroll) {
+    currentScroll = event.scrollTop
+    positions[tab.value] = currentScroll
+  }
 })
 onUnload(() => {
   alive = false
-  generation++
+  viewGeneration++
   dayGeneration++
+  learnedList.dispose()
+  checkinList.dispose()
   unsubscribe()
 })
 </script>
@@ -283,7 +245,7 @@ onUnload(() => {
         :class="{ active: tab === RecordsTab.LEARNED }"
         @click="switchTab(RecordsTab.LEARNED)"
       >
-        已学卡片 {{ learnedTotal ?? account.statistics?.completed_cards ?? '' }}
+        已学卡片 {{ learnedTotal ?? '' }}
       </button>
       <button
         :class="{ active: tab === RecordsTab.CHECKINS }"
@@ -294,25 +256,23 @@ onUnload(() => {
     </view>
     <AppState
       :busy="busy && (tab === RecordsTab.LEARNED ? learnedTotal === null : checkinTotal === null)"
-      :error="
-        error &&
-        ((tab === RecordsTab.LEARNED ? learnedTotal : checkinTotal) === null
-          ? error
-          : `记录暂未更新：${error}`)
-      "
+      :error="(tab === RecordsTab.LEARNED ? learnedTotal : checkinTotal) === null ? error : ''"
       :empty="tab === RecordsTab.LEARNED ? learnedTotal === 0 : checkinTotal === 0"
-      title="完成一张场景卡，开始记录学习"
+      :title="
+        tab === RecordsTab.LEARNED && account.statistics && account.statistics.completed_cards > 0
+          ? '暂无可展示的已学卡片'
+          : '完成一张场景卡，开始记录学习'
+      "
       :description="
-        tab === RecordsTab.LEARNED ? '学完场景卡后点击“已完成学习”。' : '完成任意场景卡，点亮今天。'
+        tab === RecordsTab.LEARNED
+          ? account.statistics && account.statistics.completed_cards > 0
+            ? '学习成绩和打卡记录会保留，可返回学习页查看其他场景。'
+            : '学完场景卡后点击“已完成学习”。'
+          : '完成任意场景卡，点亮今天。'
       "
       @retry="load"
       ><button class="primary" @click="learn">去学习</button></AppState
     >
-    <view
-      v-if="busy && (tab === RecordsTab.LEARNED ? learnedTotal !== null : checkinTotal !== null)"
-      class="refreshing"
-      ><AppLoading label="正在刷新"
-    /></view>
     <view v-show="tab === RecordsTab.LEARNED">
       <SceneCard v-for="card in learned" :key="card.id" :card="card" history source="records"
         ><text class="record-hint">已学过 · 点击复习</text></SceneCard
@@ -349,29 +309,21 @@ onUnload(() => {
     </view>
     <SceneListFooter
       :busy="moreBusy"
+      :refreshing="
+        busy && (tab === RecordsTab.LEARNED ? learnedTotal !== null : checkinTotal !== null)
+      "
+      :refresh-error="
+        (tab === RecordsTab.LEARNED ? learnedTotal : checkinTotal) !== null ? error : ''
+      "
       :error="moreError"
-      :has-more="
-        tab === RecordsTab.LEARNED
-          ? learnedTotal !== null && !learnedDone
-          : checkinTotal !== null && !checkinDone
-      "
-      :done="
-        tab === RecordsTab.LEARNED
-          ? learnedTotal !== null && learnedTotal > 0 && learnedDone
-          : checkinTotal !== null && checkinTotal > 0 && checkinDone
-      "
+      :has-more="activeList.hasMore.value"
+      :done="activeList.done.value"
+      @refresh="load"
       @more="more"
     />
   </AppPage>
 </template>
 <style scoped lang="scss">
-.refreshing {
-  padding: 19.231rpx 0;
-  color: #586c5b;
-  font-size: 23.077rpx;
-  text-align: center;
-}
-
 .tabs {
   display: flex;
   border-bottom: 1px solid #dfe5d8;

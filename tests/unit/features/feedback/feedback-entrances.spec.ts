@@ -5,6 +5,7 @@ import { ref } from 'vue'
 const ports = vi.hoisted(() => ({ navigate: vi.fn() }))
 vi.mock('@dcloudio/uni-app', () => ({
   onLoad: vi.fn(),
+  onPageScroll: vi.fn(),
   onHide: vi.fn(),
   onShareAppMessage: vi.fn(),
   onShareTimeline: vi.fn(),

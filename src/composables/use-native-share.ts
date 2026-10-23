@@ -18,10 +18,14 @@ export const useNativeShare = (friends: () => FriendsShare, timeline: () => Time
   const show = () => {
     if (!runtimeMode.update()) open.value = true
   }
+  /** 关闭弹层时保留已备齐渠道的顶部原生菜单 */
+  const close = () => {
+    open.value = false
+  }
   /** 隐藏页面时同时关闭预览和原生菜单 */
   const hide = () => {
     open.value = false
     setShareMenu(false)
   }
-  return { open, show, hide }
+  return { open, show, close, hide }
 }
