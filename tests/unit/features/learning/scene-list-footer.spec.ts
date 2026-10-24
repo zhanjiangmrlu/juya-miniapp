@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 import { mount } from '@vue/test-utils'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
+
+vi.mock('@dcloudio/uni-app', () => ({ onShow: vi.fn(), onHide: vi.fn() }))
 
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 

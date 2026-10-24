@@ -21,7 +21,11 @@ vi.mock('@dcloudio/uni-app', () => ({
   },
   onUnload: vi.fn(),
   onShow: (callback: typeof ports.show) => {
-    ports.show = callback
+    const previous = ports.show
+    ports.show = () => {
+      previous?.()
+      callback?.()
+    }
   },
   onReachBottom: (callback: typeof ports.more) => {
     ports.more = callback
@@ -44,6 +48,7 @@ import RecordsPage from '@/sub-packages/records/index.vue'
 beforeEach(() => {
   vi.resetAllMocks()
   ports.statistics = null
+  ports.show = undefined
   vi.stubGlobal('uni', { switchTab: vi.fn() })
 })
 

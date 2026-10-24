@@ -17,10 +17,18 @@ vi.mock('@dcloudio/uni-app', () => ({
   onShareAppMessage: vi.fn(),
   onShareTimeline: vi.fn(),
   onShow: (callback: typeof ports.show) => {
-    ports.show = callback
+    const previous = ports.show
+    ports.show = () => {
+      previous?.()
+      callback?.()
+    }
   },
   onHide: (callback: typeof ports.hide) => {
-    ports.hide = callback
+    const previous = ports.hide
+    ports.hide = () => {
+      previous?.()
+      callback?.()
+    }
   },
   onPullDownRefresh: (callback: typeof ports.pull) => {
     ports.pull = callback
@@ -54,6 +62,8 @@ import LearningPage from '@/pages/learning/index.vue'
 beforeEach(() => {
   vi.resetAllMocks()
   ports.owner = 'owner'
+  ports.show = undefined
+  ports.hide = undefined
   vi.stubGlobal('uni', {
     hideTabBar: vi.fn(),
     getWindowInfo: () => ({ windowWidth: 375, windowHeight: 812 }),
