@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -43,6 +43,15 @@ it('keeps 100KB below the main-package limit after 20 percent WeChat conversion 
     }
   )
   expect(result.status, result.stdout + result.stderr).toBe(0)
+})
+
+it('excludes remote login artwork from the package and keeps native tab icons available', () => {
+  expect(existsSync(path.join(output, 'static/brand/u00-botanical-watercolor@3x.png'))).toBe(false)
+  const configuration = JSON.parse(readFileSync(path.join(output, 'app.json'), 'utf8'))
+  for (const tab of configuration.tabBar.list) {
+    expect(existsSync(path.join(output, tab.iconPath))).toBe(true)
+    expect(existsSync(path.join(output, tab.selectedIconPath))).toBe(true)
+  }
 })
 
 /** 执行真实微信CommonJS产物，只替换原生界面及业务网络边界 */

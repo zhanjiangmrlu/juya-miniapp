@@ -45,6 +45,10 @@ export const measureMainPackage = (root) => {
 export const verifyMainPackage = (root) => {
   const report = measureMainPackage(root)
   assert.ok(
+    !report.files.some((file) => file.path === 'static/brand/u00-botanical-watercolor@3x.png'),
+    'OSS login artwork must stay outside the Mini Program package'
+  )
+  assert.ok(
     report.remainingBytes >= report.reserveBytes,
     `Main package budget exceeded: source=${report.sourceBytes}B, with20percentConversion=${report.estimatedBytes}B, remaining=${report.remainingBytes}B, requiredReserve=${report.reserveBytes}B, platformLimit=${report.limitBytes}B`
   )

@@ -1,5 +1,8 @@
 /// <reference types="@dcloudio/types" />
 /// <reference types="vite/client" />
+interface ImportMetaEnv {
+  readonly VITE_STATIC_ASSET_BASE_URL?: string
+}
 interface Uni {
   readonly env: { readonly USER_DATA_PATH: string }
 }

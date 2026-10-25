@@ -39,3 +39,10 @@
 - 植物PNG再次无损重压缩，1170×780完整RGBA数据保持相同，文件减少79,908字节
 - DM Sans、Fraunces正体与中文WOFF仅无损重压缩，原字体表及全部原有字符映射保持；Fraunces斜体仅按固定导航字标与十进制统计数字裁剪，动态英文正文和标题的正体字形保留完整原子集
 - 来源使用点、字体表及80组逐像素核对见 [包体修复验证](../verification/revision15-package-budget.md)，字体许可继续保留原文件
+
+## 2026-10-25 登录背景 OSS 迁移
+
+- 登录植物 PNG 原文件迁至 `resources/oss/brand/u00-botanical-watercolor@3x.png`，不再放在会整体复制到应用包的 `src/static` 中。文件仍为 894,101 字节，SHA256 为 `bbab68ffff925bab6e8b3cbe2ccb6e0c0a5d6a8eaa582dc00c65007d933c06d0`，未重采样、压缩或修改像素
+- 页面通过 `VITE_STATIC_ASSET_BASE_URL` 读取已上传的 `brand/u00-botanical-watercolor@3x.png`，测试与开发使用 `juya-test/miniapp/static`，生产使用 `juya/miniapp/static`。其他品牌图、分享图、导航图标与内嵌字体继续本地打包
+- 测试桶中用户已上传的图片为 417,598 字节的调色板 PNG，仍为 1170×780，SHA256 为 `9700e8b314e1926625de6caf5333f0b0a827e89a1b9f29a45a69cf48fdc19d45`。它与仓库原图并非字节或像素完全相同，本次按“复用已上传文件”的要求直接引用该版本，没有覆盖或重新上传任何图片
+- 装饰图请求失败时只隐藏该图片，布局、品牌文字、隐私说明和登录操作保持可用。远程图片访问及包体实测见 [OSS 静态资源验证](../verification/oss-static-assets.md)

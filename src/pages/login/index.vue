@@ -5,6 +5,7 @@ import { ref } from 'vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vue'
 import { openTarget, safeTarget } from '@/services/navigation'
+import { LOGIN_BOTANICAL_IMAGE_URL } from '@/shared/constants/brand'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
 
@@ -13,7 +14,8 @@ const account = useAccountStore(),
   agreed = ref(false),
   busy = ref(false),
   error = ref(''),
-  privacy = ref(false)
+  privacy = ref(false),
+  botanicalVisible = ref(Boolean(LOGIN_BOTANICAL_IMAGE_URL))
 let target: string = Routes.LEARNING
 /** 用户主动同意后登录，失败不改变页面身份 */
 const login = async () => {
@@ -58,10 +60,12 @@ onLoad((query) => {
     <view class="login-layout">
       <view class="login-brand">
         <image
+          v-if="botanicalVisible"
           class="login-botanical"
-          src="/static/brand/u00-botanical-watercolor@3x.png"
+          :src="LOGIN_BOTANICAL_IMAGE_URL"
           mode="aspectFit"
           aria-hidden="true"
+          @error="botanicalVisible = false"
         />
         <image
           class="login-wordmark"

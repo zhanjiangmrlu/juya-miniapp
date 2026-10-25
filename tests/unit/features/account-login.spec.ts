@@ -38,6 +38,31 @@ beforeEach(() => {
   vi.clearAllMocks()
   login.mockResolvedValue(undefined)
 })
+it('loads decorative artwork from OSS while keeping the brand wordmark local', () => {
+  const wrapper = page()
+  expect(wrapper.get('.login-botanical').attributes('src')).toBe(
+    'https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/brand/u00-botanical-watercolor@3x.png'
+  )
+  expect(wrapper.get('.login-wordmark').attributes('src')).toBe(
+    '/static/brand/juya-wordmark@3x.png'
+  )
+  wrapper.unmount()
+})
+
+it('hides failed decorative artwork without blocking consent or login', async () => {
+  const wrapper = page()
+  expect(wrapper.get('button.primary').attributes('disabled')).toBeUndefined()
+  await wrapper.get('.login-botanical').trigger('error')
+  expect(wrapper.find('.login-botanical').exists()).toBe(false)
+  expect(wrapper.find('.login-wordmark').exists()).toBe(true)
+  await wrapper.get('.checkbox-group').trigger('change', { detail: { value: ['agree'] } })
+  await wrapper.get('button.primary').trigger('click')
+  await flushPromises()
+  expect(login).toHaveBeenCalledExactlyOnceWith(true)
+  expect(openTarget).toHaveBeenCalledOnce()
+  wrapper.unmount()
+})
+
 it('requires explicit consent before any account login and keeps the agreed state after reading privacy', async () => {
   const wrapper = page()
   await wrapper.get('button.primary').trigger('click')
