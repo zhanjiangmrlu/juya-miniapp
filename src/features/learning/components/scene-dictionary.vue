@@ -200,7 +200,7 @@ const panelHeight = computed(() => {
   .dictionary-word {
     display: block;
     margin-top: 34.615rpx;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--app-latin-font, 'DM Sans', sans-serif);
     font-size: 57.692rpx;
     font-weight: 700;
     line-height: 75rpx;
@@ -243,7 +243,7 @@ const panelHeight = computed(() => {
     overflow-wrap: anywhere;
 
     .part-of-speech {
-      font-family: 'DM Sans', sans-serif;
+      font-family: var(--app-latin-font, 'DM Sans', sans-serif);
       font-size: 25rpx;
     }
   }

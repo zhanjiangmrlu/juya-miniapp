@@ -379,7 +379,7 @@ onUnload(() => {
 
   .checkin-date {
     flex: 1;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--app-latin-font, 'DM Sans', sans-serif);
     font-size: 28.846rpx;
     font-weight: 500;
   }

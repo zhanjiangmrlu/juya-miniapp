@@ -111,7 +111,7 @@ const sourceLine = (lineId?: string) =>
     justify-content: flex-start;
     text-align: left;
     color: #2b4438;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--app-latin-font, 'DM Sans', sans-serif);
     font-size: 38.462rpx;
     font-weight: 500;
     line-height: 1.5;

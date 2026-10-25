@@ -49,7 +49,7 @@ const guidance = ref(false)
 
   .summary-english {
     display: block;
-    font-family: Fraunces, Georgia, serif;
+    font-family: var(--app-serif-font, Fraunces, Georgia, serif);
     font-size: 42.308rpx;
     line-height: 60.077rpx;
     letter-spacing: -0.02em;

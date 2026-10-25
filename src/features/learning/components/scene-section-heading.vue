@@ -18,7 +18,7 @@ defineProps<SceneSectionHeadingProps>()
   margin-bottom: 34.615rpx;
 
   .heading-english {
-    font-family: Fraunces, Georgia, serif;
+    font-family: var(--app-serif-font, Fraunces, Georgia, serif);
     font-size: 44.231rpx;
     line-height: 1.4;
     letter-spacing: -0.02em;

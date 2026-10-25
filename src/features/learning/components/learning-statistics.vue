@@ -55,7 +55,7 @@ const records = (tab: RecordsTab) => {
       width: 100%;
       text-align: center;
       padding-bottom: 7.692rpx;
-      font-family: Fraunces, Georgia, serif;
+      font-family: var(--app-serif-italic-font, Fraunces, Georgia, serif);
       font-style: italic;
       font-size: 57.692rpx;
       font-weight: 400;

@@ -46,3 +46,9 @@
 - 页面通过 `VITE_STATIC_ASSET_BASE_URL` 读取已上传的 `brand/u00-botanical-watercolor@3x.png`，测试与开发使用 `juya-test/miniapp/static`，生产使用 `juya/miniapp/static`。其他品牌图、分享图、导航图标与内嵌字体继续本地打包
 - 测试桶中用户已上传的图片为 417,598 字节的调色板 PNG，仍为 1170×780，SHA256 为 `9700e8b314e1926625de6caf5333f0b0a827e89a1b9f29a45a69cf48fdc19d45`。它与仓库原图并非字节或像素完全相同，本次按“复用已上传文件”的要求直接引用该版本，没有覆盖或重新上传任何图片
 - 装饰图请求失败时只隐藏该图片，布局、品牌文字、隐私说明和登录操作保持可用。远程图片访问及包体实测见 [OSS 静态资源验证](../verification/oss-static-assets.md)
+
+## 2026-10-25 测试环境 OSS 字体迁移
+
+- 从现有内嵌字体提取 DM Sans、Fraunces 正体、Fraunces 斜体与中文子集四份 WOFF，原样保存到 `resources/oss/fonts/`，通过带 SHA256 前缀的文件名引用，字体许可与字符覆盖不变
+- 测试、开发和本地分享环境改为异步读取 `juya-test/miniapp/static/fonts/`，字体成功前及加载失败时使用系统字体；英文正体与斜体独立判断加载状态。生产环境继续内嵌原字体
+- 字节核验、包体、自动检查和成功/失败页面截图见 [OSS 字体验证](../verification/oss-fonts.md)

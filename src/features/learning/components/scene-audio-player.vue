@@ -130,7 +130,7 @@ const change = (event: SliderChangeEvent) => {
 
   .audio-english {
     display: block;
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--app-latin-font, 'DM Sans', sans-serif);
     font-size: 17.308rpx;
     font-weight: 500;
     letter-spacing: 0.08em;
@@ -193,7 +193,7 @@ const change = (event: SliderChangeEvent) => {
       border: 1px solid transparent;
       border-radius: 15.385rpx;
       padding: 7.692rpx 0;
-      font-family: 'DM Sans', sans-serif;
+      font-family: var(--app-latin-font, 'DM Sans', sans-serif);
       font-size: 25rpx;
       background: #fffcf5;
     }

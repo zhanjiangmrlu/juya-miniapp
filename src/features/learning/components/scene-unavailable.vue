@@ -99,7 +99,7 @@ onBeforeUnmount(() => {
 
   .english-title {
     display: block;
-    font-family: Fraunces, Georgia, serif;
+    font-family: var(--app-serif-font, Fraunces, Georgia, serif);
     font-size: 34.615rpx;
     line-height: 1.5;
     overflow-wrap: anywhere;

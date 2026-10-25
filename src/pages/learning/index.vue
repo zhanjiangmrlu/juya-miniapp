@@ -313,7 +313,7 @@ onUnload(() => {
 .home-title {
   display: block;
   margin-bottom: 38.462rpx;
-  font-family: Fraunces, Georgia, serif;
+  font-family: var(--app-serif-font, Fraunces, Georgia, serif);
   font-size: 51.923rpx;
   font-weight: 400;
   line-height: 72.692rpx;

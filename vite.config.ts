@@ -12,6 +12,13 @@ export default defineConfig(({ mode }) => {
     plugins: [uniPlugin(), ...(localShareH5 ? [localShareH5Plugin()] : [])],
     cacheDir: localShareH5 ? 'node_modules/.vite-local-share-h5' : undefined,
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+    css: {
+      preprocessorOptions: {
+        scss: {
+          additionalData: `$use-remote-fonts: ${env.VITE_REMOTE_FONTS === 'true'};`
+        }
+      }
+    },
     server: {
       host: '127.0.0.1',
       port: localShareH5 ? 4174 : 5174,

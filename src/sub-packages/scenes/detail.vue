@@ -1179,7 +1179,7 @@ onUnload(() => {
 
 .scene-english {
   display: block;
-  font-family: Fraunces, Georgia, serif;
+  font-family: var(--app-serif-font, Fraunces, Georgia, serif);
   font-size: 42.308rpx;
   line-height: 1.42;
   margin-bottom: 53.846rpx;
@@ -1244,7 +1244,7 @@ onUnload(() => {
 
   .prompt-title {
     display: block;
-    font-family: Fraunces, Georgia, serif;
+    font-family: var(--app-serif-font, Fraunces, Georgia, serif);
     font-size: 38.462rpx;
     line-height: 1.35;
     font-weight: 400;

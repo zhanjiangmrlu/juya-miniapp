@@ -1,6 +1,7 @@
 /// <reference types="@dcloudio/types" />
 /// <reference types="vite/client" />
 interface ImportMetaEnv {
+  readonly VITE_REMOTE_FONTS?: string
   readonly VITE_STATIC_ASSET_BASE_URL?: string
 }
 interface Uni {

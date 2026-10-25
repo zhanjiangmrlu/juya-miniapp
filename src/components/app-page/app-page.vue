@@ -5,6 +5,7 @@ import { computed, watch } from 'vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
 import { setShareMenu } from '@/services/native-share'
 import { backTo } from '@/services/navigation'
+import { remoteFontStyles } from '@/services/remote-fonts'
 import { runtimeMode } from '@/services/runtime-mode'
 
 import type { ShareMenuChannels } from '@/shared/types/share'
@@ -68,7 +69,7 @@ const goBack = () => {
   <view
     class="app-page"
     :class="{ 'has-footer': footer }"
-    :style="{ '--page-header-height': `${top + nav}px` }"
+    :style="{ ...remoteFontStyles, '--page-header-height': `${top + nav}px` }"
     ><view class="page-nav" :style="headingStyle"
       ><button v-if="back && !browseOnly" class="back-button" aria-label="返回" @click="goBack">
         <image src="/static/design/back.svg" mode="aspectFit" aria-hidden="true" /></button
@@ -110,7 +111,7 @@ const goBack = () => {
   }
 
   .nav-wordmark {
-    font-family: Fraunces, Georgia, serif;
+    font-family: var(--app-serif-italic-font, Fraunces, Georgia, serif);
     font-size: 51.923rpx;
     font-style: italic;
     font-weight: 400;
