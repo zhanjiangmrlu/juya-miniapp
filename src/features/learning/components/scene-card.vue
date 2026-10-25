@@ -20,6 +20,15 @@ const src = ref(''),
   imageLoading = ref(false),
   imageKey = ref(0)
 let generation = 0
+const locked = computed(() => props.card.access?.can_learn === false)
+/** 受限场景只提示授权，不建立来源队列或预取正文 */
+const open = () => {
+  if (locked.value) {
+    uni.showModal({ title: '学习授权提示', content: '此场景需学习授权', showCancel: false })
+    return
+  }
+  void openScene(props.card.id, available.value ? props.source : undefined, props.day)
+}
 const available = computed(() => !('available' in props.card) || props.card.available)
 const images = computed(() =>
   src.value && !imageError.value ? [{ src: src.value, generation: imageKey.value }] : []
@@ -51,7 +60,7 @@ const loadImage = async (renew = false) => {
   imageLoading.value = true
   imageKey.value = run
   const thumbnailId = sceneImageId(props.card.thumbnail_id)
-  if (!thumbnailId && (!available.value || !props.card.version_id)) {
+  if (!thumbnailId && (!available.value || locked.value || !props.card.version_id)) {
     src.value = ''
     imageLoading.value = false
     return
@@ -60,7 +69,7 @@ const loadImage = async (renew = false) => {
     const cardId = props.card.id,
       version = props.card.version_id
     const value = thumbnailId
-      ? await mediaAddress(cardId, thumbnailId, version, props.history, renew).then(
+      ? await mediaAddress(cardId, thumbnailId, version, props.history || locked.value, renew).then(
           sceneThumbnailURL
         )
       : (
@@ -109,10 +118,7 @@ onBeforeUnmount(() => {
 })
 </script>
 <template>
-  <view
-    class="scene-row"
-    :class="{ unavailable: !available, featured, compact }"
-    @click="openScene(card.id, available ? source : undefined, day)"
+  <view class="scene-row" :class="{ unavailable: !available, featured, compact }" @click="open"
     ><view class="thumbnail"
       ><image
         v-for="image in images"
@@ -134,7 +140,9 @@ onBeforeUnmount(() => {
           ? '已删除 · 当前不可用'
           : '已下线 · 当前不可用'
       }}</text
-      ><text v-else-if="completed && !$slots.default" class="scene-hint">已学过 · 点击复习</text>
+      ><text v-else-if="locked" class="availability">需学习授权</text>
+      <text v-else-if="card.access?.is_free" class="scene-hint">免费开放</text>
+      <text v-else-if="completed && !$slots.default" class="scene-hint">已学过 · 点击复习</text>
       <text v-else-if="!$slots.default" class="scene-hint">{{
         started ? '学习中 · 继续学习' : '未开始'
       }}</text>

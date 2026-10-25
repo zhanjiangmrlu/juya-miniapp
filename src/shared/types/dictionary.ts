@@ -19,6 +19,7 @@ export interface DictionaryScope {
   cardId: string
   versionId: string
   owner: string
+  accessVersion?: string
 }
 export interface DictionarySpeechPreparation {
   load: () => string | Promise<string>

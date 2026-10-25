@@ -28,6 +28,7 @@ import { listPageSize } from '@/services/list-page-size'
 import { runtimeMode } from '@/services/runtime-mode'
 import { homeShare } from '@/services/share-service'
 import { Routes } from '@/shared/constants/navigation'
+import { LearningAuthorizationStatus } from '@/shared/enums/learning-access'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { CardBrief } from '@/shared/types/learning'
@@ -45,6 +46,8 @@ const {
   items: cards,
   total,
   publishedTotal,
+  accessContext,
+  freeRemaining,
   busy,
   moreBusy,
   error,
@@ -211,6 +214,20 @@ onUnload(() => {
         <text class="section-title">待学场景</text>
         <text v-if="total !== null" class="catalog-count">{{ total }} 张</text>
       </view>
+      <view
+        v-if="
+          accessContext?.enabled &&
+          accessContext.authorization.status !== LearningAuthorizationStatus.ACTIVE
+        "
+        class="access-notice"
+        >{{
+          freeRemaining === 0 && total
+            ? '当前免费场景已学完'
+            : accessContext.free_count === 0
+              ? '当前暂无免费开放场景'
+              : `免费开放 ${accessContext.free_count} 张，其余场景需学习授权`
+        }}</view
+      >
       <AppState
         :busy="busy && total === null"
         :error="total === null ? error : ''"
@@ -247,6 +264,13 @@ onUnload(() => {
   </AppPage>
 </template>
 <style scoped lang="scss">
+.access-notice {
+  margin: 24rpx 0;
+  color: #586c5b;
+  font-size: 24rpx;
+  line-height: 1.8;
+}
+
 .empty-actions {
   display: flex;
   justify-content: center;

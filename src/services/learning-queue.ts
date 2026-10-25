@@ -9,12 +9,14 @@ export const createLearningQueue = (ports: LearningQueuePorts) => {
     current = '',
     offset: number | null = 0,
     generation = 0,
+    endReason: 'round_complete' | 'free_complete' = 'round_complete',
     pending: { id: string; nextOffset: number | null } | null = null
   const visited = new Set<string>()
   /** 结束会话或单卡进入时释放来源，不能把旧队列带给分享接收者 */
   const clear = () => {
     generation++
     queue = null
+    endReason = 'round_complete'
     owner = null
     current = ''
     offset = 0
@@ -67,6 +69,7 @@ export const createLearningQueue = (ports: LearningQueuePorts) => {
         throw new Error('账号或来源已变化，请重新进入来源列表')
       if (page.next_offset !== null && page.next_offset <= cursor)
         throw new Error('来源列表暂未更新，请重试')
+      endReason = page.end_reason || 'round_complete'
       cursor = page.next_offset
       const candidate = page.items.find((item) => item.available && !visited.has(item.card_id))
       if (candidate) {
@@ -101,5 +104,5 @@ export const createLearningQueue = (ports: LearningQueuePorts) => {
   }
   /** 读取原始来源用于完成按钮和结束说明 */
   const source = () => queue?.source || null
-  return { attach, matches, next, commit, clear, source }
+  return { attach, matches, next, commit, clear, source, endReason: () => endReason }
 }

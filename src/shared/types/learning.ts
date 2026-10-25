@@ -19,6 +19,8 @@ export interface SceneListPage<T> {
   items: T[]
   total: number
   published_total?: number
+  free_uncompleted_total?: number
+  learning_access?: components['schemas']['CurrentAccess'] | null
   page?: number
   limit?: number
 }

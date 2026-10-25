@@ -22,8 +22,10 @@ import { IMAGE_MAX_SCALE, IMAGE_MIN_SCALE } from '@/shared/constants/media'
 import { Routes } from '@/shared/constants/navigation'
 import { SHARE_ID_PATTERN } from '@/shared/constants/share'
 import { ShareTarget } from '@/shared/enums/share'
+import { createAccessMonitor } from '@/sub-packages/scenes/access-monitor'
 import { createShareService } from '@/sub-packages/scenes/scene-share-service'
 
+import type { components } from '@/shared/contracts/generated/mini-api'
 import type { ImagePreviewContext, ImageScaleEvent } from '@/shared/types/image-preview'
 const zoom = ref(IMAGE_MIN_SCALE),
   scaleValue = ref(IMAGE_MIN_SCALE),
@@ -41,6 +43,27 @@ const browseOnly = runtimeMode.browseOnly,
 let context: ImagePreviewContext | null = null,
   alive = true,
   targetId = ''
+const accessMonitor = createAccessMonitor(
+  () =>
+    session.request<components['schemas']['CardAccessView']>(
+      `/api/mini/v1/cards/${encodeURIComponent(targetId)}/access`
+    ),
+  (value) => {
+    if (!value.access.can_learn && context) {
+      imageGeneration.value++
+      src.value = ''
+      context.onInvalid(new ApiError('learning_authorization_required', '此场景需学习授权', 403))
+      close()
+    }
+  },
+  () => {
+    imageGeneration.value++
+    src.value = ''
+    imageLoading.value = false
+    busy.value = false
+    error.value = '权限暂未获取，请重试'
+  }
+)
 /** 模式收紧时同步撤销原图与在途结果，仅重新获取匿名摘要 */
 const restrict = () => {
   imageGeneration.value++
@@ -65,6 +88,7 @@ const load = async (reuse = false) => {
   src.value = ''
   imageLoading.value = true
   try {
+    if (context.access && !(await accessMonitor.refresh())) return
     const value = context.loadSource
       ? await context.loadSource(!reuse)
       : await prepareImagePreviewSource(
@@ -74,7 +98,7 @@ const load = async (reuse = false) => {
   } catch (reason) {
     if (!alive || run !== imageGeneration.value || runtimeMode.update()) return
     imageLoading.value = false
-    if (reason instanceof ApiError && [401, 409, 410].includes(reason.status)) {
+    if (reason instanceof ApiError && [401, 403, 409, 410].includes(reason.status)) {
       context.onInvalid(reason)
       backTo(Routes.LEARNING)
     } else error.value = '大图暂未加载，点击重试'
@@ -98,7 +122,7 @@ const imageFailed = async (run: number) => {
   } catch (reason) {
     if (!alive || run !== imageGeneration.value || context !== active || runtimeMode.update())
       return
-    if (reason instanceof ApiError && [401, 409, 410].includes(reason.status)) {
+    if (reason instanceof ApiError && [401, 403, 409, 410].includes(reason.status)) {
       active.onInvalid(reason)
       backTo(Routes.LEARNING)
     }
@@ -153,6 +177,7 @@ onLoad((query) => {
 onShow(() => {
   setShareMenu(false)
   if (runtimeMode.update()) restrict()
+  else if (context?.access) void accessMonitor.refresh()
 })
 watch(
   browseOnly,
@@ -164,6 +189,7 @@ watch(
   { flush: 'sync' }
 )
 onUnload(() => {
+  accessMonitor.dispose()
   imageGeneration.value++
   publicShare.clear()
   alive = false

@@ -1,4 +1,5 @@
 export interface ImagePreviewContext {
+  access?: import('./learning').PublishedScene['access']
   cardId: string
   versionId: string
   imageId: string

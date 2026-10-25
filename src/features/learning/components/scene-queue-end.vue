@@ -14,11 +14,13 @@ defineEmits<{ learn: []; stay: [] }>()
     @touchmove.stop.prevent
     ><view class="queue-dialog"
       ><text class="dialog-title">{{
-        source === QueueSource.FAVORITES
-          ? '本次收藏列表学习已完成'
-          : source === QueueSource.RECORDS || source === QueueSource.DAY
-            ? '本次复习已完成'
-            : '本次学习已完成'
+        freeComplete
+          ? '当前免费场景已学完'
+          : source === QueueSource.FAVORITES
+            ? '本次收藏列表学习已完成'
+            : source === QueueSource.RECORDS || source === QueueSource.DAY
+              ? '本次复习已完成'
+              : '本次学习已完成'
       }}</text
       ><text class="dialog-copy">本次列表已走到最后，可以返回学习页或留在当前详情。</text
       ><view class="dialog-actions"

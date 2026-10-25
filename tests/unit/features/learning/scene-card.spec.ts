@@ -135,3 +135,35 @@ it('keeps its image placeholder until pixels load, retries failed pixels in plac
   expect(page.text()).toContain('场景')
   page.unmount()
 })
+
+it('keeps a locked card visible without requesting protected detail to generate a missing thumbnail', async () => {
+  const page = mount(SceneCard, {
+    props: {
+      card: {
+        id: 'locked',
+        vocabulary_count: 0,
+        chunk_count: 0,
+        version_id: 'v1',
+        name: '受限场景',
+        title_en: 'Locked',
+        thumbnail_id: null,
+        published_at: '',
+        state: { completed: false, today_completed: false, favorite: false, started: false },
+        access: {
+          can_learn: false,
+          can_lookup: false,
+          is_free: false,
+          reason: 'learning_authorization_required',
+          version: '1',
+          server_now: '2026-10-25T00:00:00Z',
+          expires_at: null
+        }
+      }
+    }
+  })
+  await flushPromises()
+  expect(page.text()).toContain('需学习授权')
+  expect(ports.request).not.toHaveBeenCalled()
+  expect(ports.thumbnail).not.toHaveBeenCalled()
+  page.unmount()
+})

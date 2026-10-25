@@ -8,9 +8,24 @@ import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vu
 import AppState from '@/components/app-state/app-state.vue'
 import ProfileLogoutDialog from '@/features/profile/components/profile-logout-dialog.vue'
 import { maskPhone } from '@/features/profile/contact-model'
+import { session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
 import { Routes } from '@/shared/constants/navigation'
+import { LearningAuthorizationStatus } from '@/shared/enums/learning-access'
 import { useAccountStore } from '@/stores/account-store'
+
+import type { components } from '@/shared/contracts/generated/mini-api'
+const authorization = ref<components['schemas']['CurrentAccess'] | null>(null),
+  authorizationError = ref('')
+/** 读取本人学习授权，失败不显示为未授权 */
+const loadAuthorization = async () => {
+  try {
+    authorization.value = await session.request('/api/mini/v1/learning-access')
+    authorizationError.value = ''
+  } catch {
+    authorizationError.value = '学习授权暂未获取，请重试'
+  }
+}
 const account = useAccountStore(),
   busy = ref(false),
   error = ref(''),
@@ -27,6 +42,7 @@ const load = async () => {
     if (await account.ensure(Routes.PROFILE)) {
       await account.restore()
       await account.refreshAvatar()
+      await loadAuthorization()
     }
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : '资料暂未获取'
@@ -105,6 +121,23 @@ onShow(() => {
         ><view v-if="!account.profile.phone && !account.profile.wechat_contact" class="no-contact"
           >未填写联系方式</view
         ></view
+      ><view class="profile-section"
+        ><view class="between"
+          ><text class="section-title">学习授权</text
+          ><text>{{
+            authorization?.authorization?.status === LearningAuthorizationStatus.ACTIVE
+              ? '授权有效'
+              : authorization?.authorization?.status === LearningAuthorizationStatus.EXPIRED
+                ? '已到期'
+                : authorization?.authorization
+                  ? '未授权'
+                  : '暂未获取'
+          }}</text></view
+        ><text v-if="authorization?.authorization?.status === LearningAuthorizationStatus.ACTIVE"
+          >到期日期：{{ authorization.authorization.expires_on }}</text
+        ><button v-if="authorizationError" @click="loadAuthorization">
+          {{ authorizationError }}
+        </button></view
       ><view class="profile-links"
         ><button class="profile-link" @click="feedback">
           <view class="feedback-entry"

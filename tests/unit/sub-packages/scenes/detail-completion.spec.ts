@@ -35,6 +35,7 @@ vi.mock('@/services/api', () => ({
 }))
 vi.mock('@/services/source-queue', () => ({
   sourceQueue: {
+    endReason: () => 'round_complete',
     next: ports.next,
     matches: ports.matches,
     source: ports.source,

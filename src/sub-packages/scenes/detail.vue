@@ -33,7 +33,7 @@ import { createDictionarySpeech } from '@/services/dictionary-service'
 import { ApiError } from '@/services/errors'
 import { createFullAudioPreparation } from '@/services/full-audio-preparation'
 import { prepareImagePreviewSource, registerImagePreview } from '@/services/image-preview'
-import { mediaAddress } from '@/services/media-service'
+import { clearMediaAddresses, mediaAddress } from '@/services/media-service'
 import { backTo } from '@/services/navigation'
 import { operationKey, resourceURL, sendPublicRequest } from '@/services/platform'
 import { loadPronunciation } from '@/services/pronunciation-service'
@@ -52,14 +52,18 @@ import { createWordAudioPreparation, waitForWordAudio } from '@/services/word-au
 import { Routes } from '@/shared/constants/navigation'
 import { AudioStatus } from '@/shared/enums/audio'
 import { QueueSource } from '@/shared/enums/learning'
+import { LearningAccessReason } from '@/shared/enums/learning-access'
 import { ShareTarget } from '@/shared/enums/share'
 import { useAccountStore } from '@/stores/account-store'
+import { createAccessMonitor } from '@/sub-packages/scenes/access-monitor'
 import { createShareService } from '@/sub-packages/scenes/scene-share-service'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { AudioState } from '@/shared/types/audio'
+import type { DictionaryToken } from '@/shared/types/dictionary'
 import type { PublishedScene } from '@/shared/types/learning'
 const account = useAccountStore(),
+  accessError = ref(''),
   card = ref<PublishedScene | null>(null),
   summary = ref<components['schemas']['PersonalSummary'] | null>(null),
   imageSrc = ref(''),
@@ -132,8 +136,20 @@ const reading = useReadingPosition({
 })
 const dictionary = useSceneDictionary({
   context: () =>
-    !browseOnly.value && card.value && alive && visible && !stale.value && session.userId()
-      ? { cardId: id, versionId: card.value.version_id, owner: session.userId()! }
+    !browseOnly.value &&
+    card.value &&
+    card.value.access?.can_lookup !== false &&
+    !accessError.value &&
+    alive &&
+    visible &&
+    !stale.value &&
+    session.userId()
+      ? {
+          cardId: id,
+          versionId: card.value.version_id,
+          owner: session.userId()!,
+          accessVersion: card.value.access?.version
+        }
       : null,
   request: session.request,
   prepareSpeech: (selection, active) =>
@@ -283,6 +299,102 @@ const stopAudio = () => {
   wordAudio?.dispose()
   wordAudio = null
 }
+/** 只应用最新的本人权限，当前仍免费时保留完整音轨和译文
+ * @param value 当前场景的服务端安全摘要及权限
+ */
+const applyAccess = (value: components['schemas']['CardAccessView']) => {
+  accessError.value = ''
+  const previous = card.value
+  if (previous?.access?.version !== value.access.version) {
+    clearMediaAddresses()
+    discardPreparedScene()
+  }
+  if (!value.access.can_lookup) dictionary.close()
+  if (value.access.can_learn && previous) {
+    if (value.summary.version_id && value.summary.version_id !== previous.version_id) {
+      stale.value = true
+      stopAudio()
+      imageGeneration++
+      imageSrc.value = ''
+      originalSrc = ''
+      publicShare.clear()
+      share.hide()
+      return
+    }
+    previous.access = value.access
+    previous.state = value.summary.state
+    if (!previous.state.today_completed && message.value === '今日已完成学习') message.value = ''
+    checkPendingCompletion()
+    return
+  }
+  if (!value.access.can_learn) {
+    generation++
+    imageGeneration++
+    stopAudio()
+    releaseImage?.()
+    originalSrc = ''
+    imageSrc.value = ''
+    imageRequest = null
+    card.value = null
+    busy.value = false
+    summary.value = { ...value.summary, access: value.access }
+  }
+}
+const accessMonitor = createAccessMonitor(
+  async () => {
+    const owner = session.userId(),
+      target = id
+    const value = await session.request<components['schemas']['CardAccessView']>(
+      `/api/mini/v1/cards/${encodeURIComponent(target)}/access`
+    )
+    if (!alive || owner !== session.userId() || target !== id)
+      throw new ApiError('session_changed', '账号或页面已变化')
+    return value
+  },
+  applyAccess,
+  (reason) => {
+    accessError.value = '权限暂未获取，请重试'
+    stopAudio()
+    if (reason instanceof ApiError && [409, 410].includes(reason.status)) void invalid(reason)
+  }
+)
+/** 当前受控操作执行前重新核对权限 */
+const checkAccess = async () => {
+  const allowed = await accessMonitor.refresh()
+  return allowed && !stale.value && !accessError.value
+}
+/** 播放缓存的弹窗发音前仍核对当前权限，不复用失效授权 */
+const playDictionary = async () => {
+  if (card.value?.access && (!(await checkAccess()) || !card.value?.access?.can_lookup)) return
+  dictionary.play()
+}
+/** 拖动完整音频前核对当前场景权限
+ * @param value 用户选择的播放位置
+ */
+const seekFull = async (value: number) => {
+  if (card.value?.access && !(await checkAccess())) return
+  audio?.seekFull(value)
+}
+/** 调整倍速前核对当前场景权限
+ * @param value 用户选择的播放倍速
+ */
+const setRate = async (value: number) => {
+  if (card.value?.access && !(await checkAccess())) return
+  audio?.setRate(value)
+}
+/** 点词限制只显示提示，不能请求词典或暂停完整音频
+ * @param token 用户点击的完整英文词元
+ */
+const lookup = async (token: DictionaryToken) => {
+  if (card.value?.access) {
+    if (!(await checkAccess())) return
+    if (!card.value?.access?.can_lookup) {
+      uni.showModal({ title: '学习授权提示', content: '点词查询需学习授权', showCancel: false })
+      return
+    }
+  }
+  await dictionary.open(token)
+}
 const releaseAudioSession = onSessionExpired(stopAudio)
 watch(() => account.profile, stopAudio)
 /** 真实下线、删除或版本变化后关闭可操作正文
@@ -290,6 +402,15 @@ watch(() => account.profile, stopAudio)
  */
 const invalid = async (reason: unknown) => {
   if (!(reason instanceof ApiError)) return
+  if (
+    reason.status === 403 &&
+    [LearningAccessReason.REQUIRED, LearningAccessReason.LOOKUP_REQUIRED].some(
+      (code) => code === reason.code
+    )
+  ) {
+    await checkAccess()
+    return
+  }
   if (reason.status === 409) {
     publicShare.clear()
     share.hide()
@@ -432,13 +553,16 @@ const load = async () => {
     if (!(await account.ensure(target))) return
     const revalidate = sharedEntry || requiresIdentityCheck
     if (revalidate && !(await account.restore())) return
+    const prepared = !requiresIdentityCheck && takePreparedScene(queueId.value, id)
     const value =
-      (!requiresIdentityCheck && takePreparedScene(queueId.value, id)) ||
+      (prepared && !prepared.access && prepared) ||
       (await session.request<PublishedScene>(`/api/mini/v1/cards/${id}`))
     if (!alive || run !== generation) return
     stopAudio()
     requiresIdentityCheck = false
+    accessError.value = ''
     card.value = value
+    if (value.access) void checkAccess()
     reviewOnEntry.value = value.state.completed
     if (value.state.today_completed) message.value = '今日已完成学习'
     imageSrc.value = ''
@@ -455,7 +579,7 @@ const load = async () => {
     if (visible) void publicShare.prepare(id, value.version_id)
   } catch (reason) {
     if (!alive || run !== generation) return
-    if (reason instanceof ApiError && reason.status === 410) await invalid(reason)
+    if (reason instanceof ApiError && [403, 410].includes(reason.status)) await invalid(reason)
     else error.value = reason instanceof Error ? reason.message : '场景暂未获取'
   } finally {
     if (alive && run === generation) busy.value = false
@@ -471,11 +595,26 @@ const refreshState = async () => {
   )
   if (alive && card.value?.version_id === version) {
     card.value.state = value.state
+    if (value.access)
+      applyAccess({
+        summary: {
+          id,
+          name: value.content.name,
+          title_en: value.content.title_en || '',
+          thumbnail_id: value.thumbnail_id || null,
+          available: true,
+          unavailable_reason: null,
+          version_id: value.version_id,
+          state: value.state
+        },
+        access: value.access
+      })
     checkPendingCompletion()
   }
 }
 /** 已准备好的完整音频同步播放，提前点击只等待受控地址 */
-const playFull = () => {
+const playFull = async () => {
+  if (card.value?.access && !(await checkAccess())) return
   if (runtimeMode.update()) return
   if (!card.value || stale.value) return
   createAudio()
@@ -485,7 +624,8 @@ const playFull = () => {
 /** 已准备的词汇同步从本地播放，未完成时复用当前任务
  * @param wordId 当前发布版本中的词汇编号
  */
-const playWord = (wordId: string) => {
+const playWord = async (wordId: string) => {
+  if (card.value?.access && !(await checkAccess())) return
   if (runtimeMode.update()) return
   if (!card.value || stale.value) return
   createAudio()
@@ -493,13 +633,15 @@ const playWord = (wordId: string) => {
   if (prepared) void audio?.playWord(wordId, () => prepared.load(wordId))
 }
 /** 原图作为全屏覆盖页进入原生栈，系统返回只关闭覆盖层 */
-const previewImage = () => {
+const previewImage = async () => {
+  if (card.value?.access && !(await checkAccess())) return
   if (runtimeMode.update()) return
   if (!card.value?.content.image_id || stale.value) return
   imageOpen = true
   releaseImage?.()
   releaseImage = registerImagePreview({
     cardId: id,
+    access: card.value.access,
     versionId: card.value.version_id,
     imageId: card.value.content.image_id,
     title: card.value.content.name,
@@ -522,6 +664,7 @@ const previewImage = () => {
 }
 /** 收藏或取消只改变整卡关联，未知响应保留原状态 */
 const toggleFavorite = async () => {
+  if (!favorite.value && card.value?.access && !(await checkAccess())) return
   if (runtimeMode.update()) return
   if (favoriteBusy.value || stale.value) return
   favoriteBusy.value = true
@@ -563,6 +706,8 @@ const probeQueueEnd = async () => {
 /** 主动确认完成或复习，服务器成功后再读取可信统计 */
 const complete = async () => {
   if (runtimeMode.update()) return
+  if (card.value?.access && !(await checkAccess())) return
+  if (accessError.value) return
   if (checkPendingCompletion()) return
   if (
     !card.value ||
@@ -700,6 +845,15 @@ onShow(() => {
     return
   }
   if (card.value) {
+    if (card.value.access) {
+      void checkAccess().then((allowed) => {
+        if (allowed && card.value && !stale.value) {
+          createAudio()
+          void publicShare.prepare(id, card.value.version_id, true)
+        }
+      })
+      return
+    }
     createAudio()
     void refreshState().catch(invalid)
     void publicShare.prepare(id, card.value.version_id, true)
@@ -730,6 +884,7 @@ watch(
 onPageScroll((event) => reading.scroll(event.scrollTop))
 onHide(() => {
   visible = false
+  accessMonitor.suspend()
   share.hide()
   publicShare.clear()
   if (!runtimeMode.update()) void reading.save()
@@ -742,6 +897,7 @@ onUnload(() => {
   publicShare.clear()
   if (!runtimeMode.update()) void reading.save()
   reading.dispose()
+  accessMonitor.dispose()
   alive = false
   visible = false
   generation++
@@ -752,7 +908,13 @@ onUnload(() => {
 </script>
 <template>
   <AppPage
-    :title="summary ? '场景卡暂不可用' : '场景学习'"
+    :title="
+      summary?.access?.reason === LearningAccessReason.REQUIRED
+        ? '学习授权提示'
+        : summary
+          ? '场景卡暂不可用'
+          : '场景学习'
+    "
     :back="!browseOnly"
     :footer="!browseOnly"
     public-summary
@@ -772,7 +934,11 @@ onUnload(() => {
       @retry="load"
     />
     <template v-else
-      ><AppState :busy="busy && !card" :error="error" @retry="load" /><template v-if="stale"
+      ><AppState :busy="busy && !card" :error="error" @retry="load" /><view
+        v-if="accessError"
+        class="notice error"
+        >{{ accessError }}<button @click="checkAccess">重试权限</button></view
+      ><template v-if="stale"
         ><view class="notice">内容已更新，请重新获取后继续学习</view
         ><button class="primary" @click="load">刷新内容</button></template
       ><SceneUnavailable
@@ -781,7 +947,7 @@ onUnload(() => {
         :favorite-busy="favoriteBusy"
         :message="message"
         :shared-entry="sharedEntry"
-        @unfavorite="toggleFavorite" /><template v-else-if="card"
+        @unfavorite="toggleFavorite" /><template v-else-if="card && !accessError"
         ><view v-if="reading.notice.value" class="notice">{{ reading.notice.value }}</view
         ><view class="reading-anchor" data-reading-anchor="top"
           ><view class="scene-title between"
@@ -801,6 +967,11 @@ onUnload(() => {
                 aria-hidden="true"
               /><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏整卡' }}</text>
             </button></view
+          ><view v-if="card.access" class="between"
+            ><text>{{ card.access.is_free ? '免费开放' : '授权有效' }}</text
+            ><text v-if="!card.access.can_lookup" class="access-hint"
+              >点词查询需学习授权</text
+            ></view
           ><text v-if="card.content.title_en" class="scene-english">{{
             card.content.title_en
           }}</text
@@ -835,15 +1006,15 @@ onUnload(() => {
           <SceneAudioPlayer
             :state="audioState"
             @toggle="playFull"
-            @seek="audio?.seekFull($event)"
-            @rate="audio?.setRate($event)" /></view
+            @seek="seekFull"
+            @rate="setRate" /></view
         ><SceneDialogue
           ref="dialogueView"
           :key="`${id}:${card.version_id}`"
           :dialogue="card.content.dialogue || []"
           :vocabulary="card.content.vocabulary || []"
           @layout="reading.refresh"
-          @lookup="dictionary.open"
+          @lookup="lookup"
         />
         <SceneVocabulary
           ref="vocabularyView"
@@ -898,9 +1069,10 @@ onUnload(() => {
         :voice-error="audioState.wordId === dictionary.speechKey.value ? audioState.wordError : ''"
         @close="dictionary.close"
         @retry="dictionary.retry"
-        @play="dictionary.play" /><SceneQueueEnd
+        @play="playDictionary" /><SceneQueueEnd
         v-if="queueEnd"
         :source="queueSource"
+        :free-complete="sourceQueue.endReason() === 'free_complete'"
         @learn="learn"
         @stay="queueEnd = false" /><ShareSheet
         v-if="share.open.value"
@@ -913,7 +1085,7 @@ onUnload(() => {
         @retry="publicShare.retry"
         @close="share.close" /></template
     ><template #footer
-      ><view v-if="card && !stale" class="safe-footer"
+      ><view v-if="card && !stale && !accessError" class="safe-footer"
         ><button
           class="primary"
           :disabled="completeBusy || nextBusy || awaitingState || busy"
@@ -929,6 +1101,24 @@ onUnload(() => {
   >
 </template>
 <style scoped lang="scss">
+.access-banner {
+  padding: 20rpx 0 28rpx;
+  margin: 12rpx 0 28rpx;
+  border-bottom: 1px solid #dfe5d8;
+
+  .access-badge {
+    padding: 6rpx 20rpx;
+    border-radius: 10rpx;
+    background: #e4f0db;
+    font-size: 24rpx;
+  }
+
+  .access-hint {
+    color: #586c5b;
+    font-size: 24rpx;
+  }
+}
+
 .detail-tools {
   display: flex;
   justify-content: space-between;

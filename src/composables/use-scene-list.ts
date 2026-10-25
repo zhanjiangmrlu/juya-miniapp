@@ -11,6 +11,8 @@ export const useSceneList = <T>(ports: SceneListPorts<T>) => {
   const items = shallowRef<T[]>([]),
     total = ref<number | null>(null),
     publishedTotal = ref(0),
+    accessContext = shallowRef<SceneListPage<T>['learning_access']>(null),
+    freeRemaining = ref<number | null>(null),
     busy = ref(false),
     moreBusy = ref(false),
     error = ref(''),
@@ -53,6 +55,8 @@ export const useSceneList = <T>(ports: SceneListPorts<T>) => {
     items.value = []
     total.value = null
     publishedTotal.value = 0
+    accessContext.value = null
+    freeRemaining.value = null
     busy.value = false
     moreBusy.value = false
     error.value = ''
@@ -93,6 +97,8 @@ export const useSceneList = <T>(ports: SceneListPorts<T>) => {
       items.value = unique(results.flatMap((page) => page.items))
       total.value = results[0]?.total ?? 0
       publishedTotal.value = results[0]?.published_total ?? 0
+      accessContext.value = results[0]?.learning_access || null
+      freeRemaining.value = results[0]?.free_uncompleted_total ?? null
       moreError.value = ''
       const last = results.at(-1)
       if (last) acceptBoundary(last)
@@ -148,6 +154,8 @@ export const useSceneList = <T>(ports: SceneListPorts<T>) => {
       items.value = unique([...items.value, ...result.items])
       total.value = result.total
       publishedTotal.value = result.published_total ?? publishedTotal.value
+      accessContext.value = result.learning_access ?? accessContext.value
+      freeRemaining.value = result.free_uncompleted_total ?? freeRemaining.value
       pages = page
       acceptBoundary(result)
     } catch (reason) {
@@ -182,6 +190,8 @@ export const useSceneList = <T>(ports: SceneListPorts<T>) => {
     items,
     total,
     publishedTotal,
+    accessContext,
+    freeRemaining,
     busy,
     moreBusy,
     error,

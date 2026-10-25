@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+  '/api/mini/v1/learning-access': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Current */
+    get: operations['current_api_mini_v1_learning_access_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/mini/v1/cards/{card_id}/access': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Card Access */
+    get: operations['card_access_api_mini_v1_cards__card_id__access_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/mini/v1/auth/wechat': {
     parameters: {
       query?: never
@@ -774,6 +808,22 @@ export interface paths {
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    /** AuthorizationView */
+    AuthorizationView: {
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'none' | 'active' | 'expired'
+      /** Starts On */
+      starts_on: string | null
+      /** Expires On */
+      expires_on: string | null
+      /** Expires At */
+      expires_at: string | null
+      /** Revision */
+      revision: number
+    }
     /** AvatarURL */
     AvatarURL: {
       /** Url */
@@ -798,8 +848,14 @@ export interface components {
       /** File */
       file: string
     }
+    /** CardAccessView */
+    CardAccessView: {
+      summary: components['schemas']['PersonalSummary']
+      access: components['schemas']['LearningPermission']
+    }
     /** CardBrief */
     CardBrief: {
+      access?: components['schemas']['LearningPermission'] | null
       /** Id */
       id: string
       /** Name */
@@ -927,6 +983,18 @@ export interface components {
       /** Day */
       day?: string | null
     }
+    /** CurrentAccess */
+    CurrentAccess: {
+      /** Enabled */
+      enabled: boolean
+      /** Free Count */
+      free_count: number | null
+      /** Revision */
+      revision: number
+      authorization: components['schemas']['AuthorizationView']
+      /** Server Now */
+      server_now: string
+    }
     /** CurrentVersion */
     CurrentVersion: {
       /** Version Id */
@@ -934,6 +1002,7 @@ export interface components {
     }
     /** DailyRecord */
     DailyRecord: {
+      access?: components['schemas']['LearningPermission'] | null
       /** Id */
       id: string
       /** Name */
@@ -1174,11 +1243,35 @@ export interface components {
       page: number
       /** Limit */
       limit: number
+      learning_access?: components['schemas']['CurrentAccess'] | null
+      /**
+       * Free Uncompleted Total
+       * @default 0
+       */
+      free_uncompleted_total: number
       /** Published Total */
       published_total: number
     }
+    /** LearningPermission */
+    LearningPermission: {
+      /** Can Learn */
+      can_learn: boolean
+      /** Can Lookup */
+      can_lookup: boolean
+      /** Is Free */
+      is_free: boolean
+      /** Reason */
+      reason: string | null
+      /** Version */
+      version: string
+      /** Server Now */
+      server_now: string
+      /** Expires At */
+      expires_at: string | null
+    }
     /** LearningRecord */
     LearningRecord: {
+      access?: components['schemas']['LearningPermission'] | null
       /** Id */
       id: string
       /** Name */
@@ -1288,6 +1381,7 @@ export interface components {
     }
     /** PersonalSummary */
     PersonalSummary: {
+      access?: components['schemas']['LearningPermission'] | null
       /** Id */
       id: string
       /** Name */
@@ -1347,6 +1441,7 @@ export interface components {
     }
     /** PublishedDetail */
     PublishedDetail: {
+      access?: components['schemas']['LearningPermission'] | null
       /** Audio Duration */
       audio_duration: number | null
       /** Thumbnail Id */
@@ -1388,6 +1483,12 @@ export interface components {
     }
     /** QueuePage */
     QueuePage: {
+      /**
+       * End Reason
+       * @default round_complete
+       * @enum {string}
+       */
+      end_reason: 'round_complete' | 'free_complete'
       /** Items */
       items: components['schemas']['QueueItemView'][]
       /** Total */
@@ -1594,6 +1695,228 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  current_api_mini_v1_learning_access_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CurrentAccess']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Gone */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
+  card_access_api_mini_v1_cards__card_id__access_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        card_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CardAccessView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Gone */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
   login_api_mini_v1_auth_wechat_post: {
     parameters: {
       query?: never

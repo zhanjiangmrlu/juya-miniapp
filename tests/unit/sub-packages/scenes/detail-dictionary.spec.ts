@@ -5,6 +5,8 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import type { AudioPort } from '@/shared/types/audio'
 const ports = vi.hoisted(() => ({
   load: undefined as undefined | ((query: { id: string }) => void),
+  show: undefined as undefined | (() => void),
+  run: vi.fn(),
   request: vi.fn(),
   invalidate: vi.fn()
 }))
@@ -14,14 +16,16 @@ vi.mock('@dcloudio/uni-app', () => ({
   onLoad: (callback: typeof ports.load) => {
     ports.load = callback
   },
-  onShow: vi.fn(),
+  onShow: (callback: typeof ports.show) => {
+    ports.show = callback
+  },
   onHide: vi.fn(),
   onUnload: vi.fn(),
   onPageScroll: vi.fn()
 }))
 vi.mock('@/services/api', () => ({
   session: { request: ports.request, userId: () => 'owner' },
-  operations: { pending: () => false },
+  operations: { pending: () => false, run: ports.run },
   onSessionExpired: () => () => undefined
 }))
 vi.mock('@/stores/account-store', () => ({
@@ -174,5 +178,130 @@ it('closes the popup and stops both restricted tracks when a lookup confirms tha
   expect(page.findComponent({ name: 'SceneUnavailable' }).exists()).toBe(true)
   expect(tracks.every((track) => !track.playing)).toBe(true)
   expect(tracks.every((track) => vi.mocked(track.destroy).mock.calls.length === 1)).toBe(true)
+  page.unmount()
+})
+
+it('free scene blocks all body lookup before network and preserves full audio and translation', async () => {
+  const access = {
+    can_learn: true,
+    can_lookup: false,
+    is_free: true,
+    reason: null,
+    version: '1',
+    server_now: '2026-10-25T00:00:00Z',
+    expires_at: null
+  }
+  ports.request.mockImplementation(async (path: string) =>
+    path.endsWith('/access')
+      ? { summary: { id: 'card', state: scene.state }, access }
+      : { ...scene, access }
+  )
+  const modal = vi.fn()
+  vi.stubGlobal('uni', {
+    showModal: modal,
+    pageScrollTo: ({ complete }: { complete?: () => void }) => complete?.()
+  })
+  const page = await open()
+  page.findComponent({ name: 'SceneAudioPlayer' }).vm.$emit('toggle')
+  await flushPromises()
+  await page.get('.translation-toggle').trigger('click')
+  await page.findAll('.dictionary-token')[1]!.trigger('click')
+  await flushPromises()
+  expect(modal).toHaveBeenCalledWith(expect.objectContaining({ content: '点词查询需学习授权' }))
+  expect(ports.request.mock.calls.some(([path]) => path.includes('/dictionary'))).toBe(false)
+  expect(tracks[0]!.playing).toBe(true)
+  expect(page.find('.translation-section').exists()).toBe(true)
+  page.unmount()
+})
+
+it('rechecks a cached dictionary pronunciation after revocation and preserves audio on a still-free scene', async () => {
+  const access = {
+    can_learn: true,
+    can_lookup: true,
+    is_free: true,
+    reason: null,
+    version: 'active',
+    server_now: '2026-10-25T00:00:00Z',
+    expires_at: null
+  }
+  let current = access
+  ports.request.mockImplementation(async (path: string) =>
+    path.endsWith('/access')
+      ? { summary: { id: 'card', version_id: 'v1', state: scene.state }, access: current }
+      : path.includes('/dictionary?')
+        ? meaning
+        : { ...scene, access }
+  )
+  const page = await open()
+  page.findComponent({ name: 'SceneAudioPlayer' }).vm.$emit('toggle')
+  await flushPromises()
+  await page.findAll('.dictionary-token')[1]!.trigger('click')
+  await flushPromises()
+  page.findComponent({ name: 'SceneDictionary' }).vm.$emit('play')
+  await flushPromises()
+  current = { ...access, can_lookup: false, version: 'revoked' }
+  page.findComponent({ name: 'SceneDictionary' }).vm.$emit('play')
+  await flushPromises()
+  expect(page.findComponent({ name: 'SceneDictionary' }).exists()).toBe(false)
+  expect(tracks[1]!.playing).toBe(false)
+  page.unmount()
+})
+
+it('masks stale authorization and does not submit new completion while permission is unknown', async () => {
+  const access = {
+    can_learn: true,
+    can_lookup: true,
+    is_free: false,
+    reason: null,
+    version: 'active',
+    server_now: '2026-10-25T00:00:00Z',
+    expires_at: null
+  }
+  let offline = false
+  ports.request.mockImplementation(async (path: string) => {
+    if (path.endsWith('/access')) {
+      if (offline) throw new Error('offline')
+      return { summary: { id: 'card', version_id: 'v1', state: scene.state }, access }
+    }
+    return { ...scene, access }
+  })
+  const page = await open()
+  offline = true
+  ports.show?.()
+  await flushPromises()
+  expect(page.text()).toContain('权限暂未获取')
+  expect(page.find('.scene-title').exists()).toBe(false)
+  expect(page.find('.safe-footer').exists()).toBe(false)
+  expect(ports.run).not.toHaveBeenCalled()
+  page.unmount()
+})
+
+it('refreshes today completion on foreground and flags a republished version before showing old content', async () => {
+  const access = {
+    can_learn: true,
+    can_lookup: true,
+    is_free: false,
+    reason: null,
+    version: 'active',
+    server_now: '2026-10-25T00:00:00Z',
+    expires_at: null
+  }
+  let state = { ...scene.state, completed: true, today_completed: true },
+    version = 'v1'
+  ports.request.mockImplementation(async (path: string) =>
+    path.endsWith('/access')
+      ? { summary: { id: 'card', version_id: version, state }, access }
+      : { ...scene, state, access }
+  )
+  const page = await open()
+  state = { ...state, today_completed: false }
+  ports.show?.()
+  await flushPromises()
+  expect(page.get('.safe-footer button').text()).toContain('完成本次复习')
+  version = 'v2'
+  ports.show?.()
+  await flushPromises()
+  expect(page.text()).toContain('内容已更新')
+  expect(page.find('.scene-title').exists()).toBe(false)
   page.unmount()
 })

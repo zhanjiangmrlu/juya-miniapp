@@ -1,0 +1,1 @@
+export const MAX_ACCESS_TIMER_MS = 2147483647

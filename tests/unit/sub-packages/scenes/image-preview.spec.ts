@@ -5,13 +5,14 @@ import { defineComponent, h } from 'vue'
 
 const ports = vi.hoisted(() => ({
   load: undefined as undefined | ((query: { id: string }) => void),
+  show: undefined as undefined | (() => void),
   unload: undefined as undefined | (() => void),
   media: vi.fn(),
   request: vi.fn(),
   back: vi.fn()
 }))
 vi.mock('@dcloudio/uni-app', () => ({
-  onShow: vi.fn(),
+  onShow: (callback: typeof ports.show) => (ports.show = callback),
   onLoad: (callback: typeof ports.load) => (ports.load = callback),
   onUnload: (callback: typeof ports.unload) => (ports.unload = callback)
 }))
@@ -49,10 +50,14 @@ const nativeContainer = (tag: string) =>
   })
 
 /** 从同一版本详情页打开大图，loadSource 接收是否重新签发原图地址 */
-const openPreview = (loadSource?: (renew?: boolean) => Promise<string>) => {
+const openPreview = (
+  loadSource?: (renew?: boolean) => Promise<string>,
+  access?: import('@/shared/contracts/generated/mini-api').components['schemas']['LearningPermission']
+) => {
   const onInvalid = vi.fn(),
     onClose = vi.fn()
   registerImagePreview({
+    access,
     cardId: 'scene-1',
     versionId: 'version-1',
     imageId: 'image-1',
@@ -210,5 +215,33 @@ it('keeps retry loading when the replaced original emits a late load event', asy
   expect(page.text()).toContain('正在加载原图')
   await page.get('.zoom-image image').trigger('load')
   expect(page.text()).not.toContain('正在加载原图')
+  page.unmount()
+})
+
+it('shares the normal onLoad/onShow permission check and loads the original after it resolves', async () => {
+  const access = {
+    can_learn: true,
+    can_lookup: false,
+    is_free: true,
+    reason: null,
+    version: '1',
+    server_now: '2026-10-25T00:00:00Z',
+    expires_at: null
+  }
+  let finish!: (value: { access: typeof access }) => void
+  ports.request.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      })
+  )
+  const source = vi.fn().mockResolvedValue('/verified-original')
+  const { page } = openPreview(source, access)
+  ports.show?.()
+  expect(ports.request).toHaveBeenCalledTimes(1)
+  finish({ access })
+  await flushPromises()
+  expect(source).toHaveBeenCalledTimes(1)
+  expect(page.get('.zoom-image image').attributes('src')).toBe('/verified-original')
   page.unmount()
 })

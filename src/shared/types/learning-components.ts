@@ -47,6 +47,7 @@ export interface SceneListFooterProps {
   done: boolean
 }
 export interface SceneQueueEndProps {
+  freeComplete?: boolean
   source: import('../enums/learning').QueueSource | null
 }
 export interface SceneDictionaryProps {

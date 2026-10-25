@@ -59,7 +59,8 @@ export const useSceneDictionary = (ports: DictionaryPorts) => {
         run === generation &&
         value?.owner === scope.owner &&
         value?.cardId === scope.cardId &&
-        value?.versionId === scope.versionId
+        value?.versionId === scope.versionId &&
+        value?.accessVersion === scope.accessVersion
       )
     }
     speech = ports.prepareSpeech(current, active)
