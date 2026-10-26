@@ -9,6 +9,7 @@ export interface DictionaryToken {
   line_id: string
   highlight: boolean
   colorIndex: number
+  lookup?: { word: string; start: number; end: number }
 }
 export type DictionaryReference = components['schemas']['DictionaryReference']
 export interface DictionarySelection extends DictionaryReference {

@@ -2,6 +2,58 @@ import { expect, it } from 'vitest'
 
 import { dictionaryTokens } from '@/features/learning/scene-model'
 
+it('splits overlapping manual ranges by vocabulary priority while retaining complete lookup words', () => {
+  const line = { id: 'one', speaker: 'A', english: '😀 indoor exercise!', chinese: '' }
+  const sources = [
+    { line_id: 'one', start: 6, end: 12, quote: 'oor ex' },
+    { line_id: 'one', start: 3, end: 9, quote: 'indoor' }
+  ]
+  const tokens = dictionaryTokens(
+    line,
+    sources.map((source, index) => ({
+      id: `word-${index}`,
+      english: source.quote,
+      meaning: '',
+      phonetic: '',
+      pronunciation_text: '',
+      pronunciation_issue: false,
+      source
+    }))
+  )
+  expect(tokens.map((token) => token.text).join('')).toBe(line.english)
+  expect(
+    tokens
+      .filter((token) => token.highlight)
+      .map((token) => token.text)
+      .join('')
+  ).toBe('indoor ex')
+  expect(
+    tokens.filter((token) => token.highlight).map((token) => [token.text, token.colorIndex])
+  ).toEqual([
+    ['ind', 1],
+    ['oor', 0],
+    [' ', 0],
+    ['ex', 0]
+  ])
+  expect(
+    tokens
+      .filter((token) => token.word)
+      .map(
+        (token) =>
+          token.lookup || {
+            word: token.text,
+            start: token.start,
+            end: token.end
+          }
+      )
+  ).toEqual([
+    { word: 'indoor', start: 3, end: 9 },
+    { word: 'indoor', start: 3, end: 9 },
+    { word: 'exercise', start: 10, end: 18 },
+    { word: 'exercise', start: 10, end: 18 }
+  ])
+})
+
 it('keeps abbreviations contractions hyphens and UTF16 offsets intact while leaving punctuation and alphanumeric fragments inert', () => {
   const line = {
     id: 'line-1',

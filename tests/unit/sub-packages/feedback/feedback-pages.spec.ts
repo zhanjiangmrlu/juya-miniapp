@@ -53,6 +53,7 @@ import FeedbackDetailPage from '@/sub-packages/feedback/detail.vue'
 const original: FeedbackDetail = {
   id: 'feedback-1',
   user_id: 'owner',
+  user_code: 'Juya001',
   category: 'content',
   status: 'resolved',
   summary: '原说明',
