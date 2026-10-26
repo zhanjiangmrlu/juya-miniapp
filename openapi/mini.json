@@ -7525,6 +7525,10 @@
             "type": "string",
             "title": "User Id"
           },
+          "user_code": {
+            "type": "string",
+            "title": "User Code"
+          },
           "category": {
             "type": "string",
             "enum": ["content", "pronunciation", "display", "function"],
@@ -7625,6 +7629,7 @@
         "required": [
           "id",
           "user_id",
+          "user_code",
           "category",
           "status",
           "summary",

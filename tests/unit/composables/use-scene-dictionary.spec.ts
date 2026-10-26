@@ -56,6 +56,23 @@ it('queries exact clicked source without playing and preserves original word sep
   dictionary.close()
 })
 
+it('queries the complete word when the displayed highlight fragment ends inside it', async () => {
+  const { dictionary, request } = setup()
+  request.mockResolvedValue(result('indoor'))
+  await dictionary.open({
+    ...token,
+    text: 'oor',
+    start: 6,
+    end: 9,
+    lookup: { word: 'indoor', start: 3, end: 9 }
+  })
+  expect(dictionary.selection.value).toMatchObject({ word: 'indoor', start: 3, end: 9 })
+  expect(new URL(request.mock.calls[0]![0], 'https://example.test').searchParams.get('word')).toBe(
+    'indoor'
+  )
+  dictionary.close()
+})
+
 it('rejects late results after switching words and stops only the previous popup speech on close', async () => {
   const { dictionary, request, stopSpeech, dispose } = setup()
   let finish: (value: ReturnType<typeof result>) => void = () => undefined

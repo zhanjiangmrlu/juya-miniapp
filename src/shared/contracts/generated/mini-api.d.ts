@@ -1130,6 +1130,8 @@ export interface components {
       id: string
       /** User Id */
       user_id: string
+      /** User Code */
+      user_code: string
       /**
        * Category
        * @enum {string}

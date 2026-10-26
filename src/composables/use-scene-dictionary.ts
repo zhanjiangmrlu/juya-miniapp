@@ -45,10 +45,10 @@ export const useSceneDictionary = (ports: DictionaryPorts) => {
     const current: DictionarySelection = {
       cardId: scope.cardId,
       version_id: scope.versionId,
-      word: token.text,
+      word: token.lookup?.word ?? token.text,
       line_id: token.line_id,
-      start: token.start,
-      end: token.end
+      start: token.lookup?.start ?? token.start,
+      end: token.lookup?.end ?? token.end
     }
     selection.value = current
     busy.value = true
