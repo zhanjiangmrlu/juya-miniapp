@@ -212,3 +212,77 @@ describe('scene word audio preparation', () => {
     await expect(service.load('one')).rejects.toThrow('试听已取消')
   })
 })
+
+it('switches an already-resolved slow download to streaming exactly 500ms after a click and cleans late files', async () => {
+  const { service, download, release } = setup()
+  const file = deferred<WordAudioFile>()
+  const aborted = vi.fn()
+  download.mockImplementationOnce((_url, task) => {
+    task.onCancel(aborted)
+    return file.promise
+  })
+  service.prefetch(['one'])
+  await flushPromises()
+  const selected = service.load('one')
+  const done = vi.fn()
+  void Promise.resolve(selected).then(done)
+  await vi.advanceTimersByTimeAsync(499)
+  expect(done).not.toHaveBeenCalled()
+  await vi.advanceTimersByTimeAsync(1)
+  expect(await selected).toBe('/remote/one')
+  expect(aborted).toHaveBeenCalledOnce()
+  file.resolve({ src: '/late-one.mp3', release })
+  await flushPromises()
+  expect(release).toHaveBeenCalledOnce()
+  expect(service.peek('one')).toBe('/remote/one')
+  service.dispose()
+})
+
+it('does not fall back to a signed audio URL after a forbidden download', async () => {
+  const { service, download, onFailure } = setup()
+  const denied = new ApiError('learning_access_required', '需学习授权', 403)
+  download.mockRejectedValueOnce(denied)
+  await expect(service.load('one')).rejects.toBe(denied)
+  expect(service.peek('one')).toBeNull()
+  expect(onFailure).toHaveBeenCalledWith(denied)
+  service.dispose()
+})
+
+it('does not start queued background work while a foreground selection is still resolving', async () => {
+  const { service, resolve } = setup()
+  const background = deferred<string>(),
+    foreground = deferred<string>()
+  resolve.mockImplementation((id) =>
+    id === 'one'
+      ? background.promise
+      : id === 'selected'
+        ? foreground.promise
+        : Promise.resolve(`/remote/${id}`)
+  )
+  service.prefetch(['one', 'queued'])
+  const selected = service.load('selected')
+  background.resolve('/remote/one')
+  await flushPromises()
+  expect(resolve.mock.calls.map(([id]) => id)).toEqual(['one', 'selected'])
+  foreground.resolve('/remote/selected')
+  await selected
+  await flushPromises()
+  expect(resolve.mock.calls.map(([id]) => id)).toEqual(['one', 'selected', 'queued'])
+  service.dispose()
+})
+
+it('cancels only the current foreground selection when another audio preparation service takes over', async () => {
+  const { service, resolve } = setup()
+  const stopped = vi.fn()
+  resolve.mockImplementationOnce(async (_id, task) => {
+    task.onCancel(stopped)
+    return new Promise<string>(() => {})
+  })
+  const pending = service.load('selected')
+  const rejected = expect(pending).rejects.toThrow('试听已取消')
+  service.cancelSelection()
+  await rejected
+  expect(stopped).toHaveBeenCalledOnce()
+  expect(await service.load('another')).toBe('/local/another')
+  service.dispose()
+})

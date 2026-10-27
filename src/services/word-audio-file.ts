@@ -5,6 +5,7 @@ import type { WordAudioCancellation, WordAudioFile } from '@/shared/types/pronun
 
 import { ApiError } from './errors'
 import { runtimeMode } from './runtime-mode'
+import { recordWordAudio } from './word-audio-diagnostics'
 
 let lastSweep = Number.NEGATIVE_INFINITY
 
@@ -65,7 +66,7 @@ const playableAudioFile = (src: string): WordAudioFile => {
     header[9] === 0x41 &&
     header[10] === 0x56 &&
     header[11] === 0x45
-  if (!mp3 && !wav) throw new Error('音频文件格式暂不可用')
+  if (!mp3 && !wav) throw new ApiError('word_audio_format_invalid', '音频文件格式暂不可用')
   const path = `${src}.${mp3 ? 'mp3' : 'wav'}`
   fs.renameSync(src, path)
   return temporaryWordAudio(path)
@@ -86,6 +87,7 @@ export const downloadWordAudio = (
       return
     }
     sweepExpiredWordAudio()
+    const started = Date.now()
     // 微信默认下载临时目录只读，指定自有缓存路径才可以在到期或离页后清理
     const filePath = `${uni.env.USER_DATA_PATH}/${WORD_AUDIO_FILE_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2)}`
     let settled = false,
@@ -95,6 +97,7 @@ export const downloadWordAudio = (
       if (settled) return
       settled = true
       unsubscribe()
+      recordWordAudio('download', started, 'cancelled')
       reject(new Error('试听已取消'))
       download?.abort()
       temporaryWordAudio(filePath).release()
@@ -117,15 +120,42 @@ export const downloadWordAudio = (
         settled = true
         unsubscribe()
         if (result.statusCode !== 200) {
+          let code = 'word_audio_download_failed'
+          try {
+            const fs = uni.getFileSystemManager()
+            const info = fs.statSync(filePath)
+            const size = 'size' in info ? info.size : 0
+            if (size <= 0 || size > 4096) throw new Error('unreadable error response')
+            const body = JSON.parse(String(fs.readFileSync(filePath, 'utf8', 0, size))) as {
+              error?: { code?: string }
+            }
+            if (body.error?.code && /^[a-z0-9_]{1,64}$/.test(body.error.code))
+              code = body.error.code
+          } catch {
+            /* 非 JSON 的网关响应不记录原文 */
+          }
+          const reason = new ApiError(code, '发音暂不可用', result.statusCode)
+          recordWordAudio('download', started, 'error', reason)
           file.release()
-          reject(new ApiError('word_audio_download_failed', '发音暂不可用', result.statusCode))
+          reject(reason)
         } else {
+          recordWordAudio('download', started, 'ready')
+          const formatStarted = Date.now()
           try {
             // 保留实际格式对应的扩展名，供 iPhone 原生播放器识别本地音源
-            resolve(playableAudioFile(filePath))
+            const playable = playableAudioFile(filePath)
+            recordWordAudio('format', formatStarted, 'ready', undefined, {
+              format: playable.src.endsWith('.mp3') ? 'mp3' : 'wav'
+            })
+            resolve(playable)
           } catch (reason) {
+            const failure =
+              reason instanceof ApiError
+                ? reason
+                : new ApiError('word_audio_format_invalid', '音频文件暂不可用')
+            recordWordAudio('format', formatStarted, 'error', failure)
             file.release()
-            reject(reason)
+            reject(failure)
           }
         }
       },
@@ -134,7 +164,9 @@ export const downloadWordAudio = (
         settled = true
         unsubscribe()
         temporaryWordAudio(filePath).release()
-        reject(new Error('音频下载暂未成功'))
+        const reason = new ApiError('word_audio_network', '音频下载暂未成功')
+        recordWordAudio('download', started, 'error', reason)
+        reject(reason)
       }
     })
     if (!settled) unsubscribe = task.onCancel(cancel)

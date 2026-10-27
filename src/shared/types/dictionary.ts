@@ -26,6 +26,7 @@ export interface DictionarySpeechPreparation {
   load: () => string | Promise<string>
   dispose: () => void
   invalidate: () => void
+  cancelSelection?: () => void
 }
 export interface DictionaryPorts {
   context: () => DictionaryScope | null

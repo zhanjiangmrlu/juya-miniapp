@@ -117,3 +117,25 @@ it('removes only expired owned audio after a previous interrupted session', asyn
   expect(unlink.mock.calls[0]![0].filePath).toBe(`wxfile://usr/${old}`)
   file.release()
 })
+
+it('preserves a signed grant expiration code separately from an expired login', async () => {
+  const body = JSON.stringify({ error: { code: 'speech_grant_expired', message: '重新试听' } })
+  vi.stubGlobal('uni', {
+    env: { USER_DATA_PATH: 'wxfile://usr' },
+    downloadFile: vi.fn((options) => {
+      options.success({ statusCode: 401 })
+      return { abort: vi.fn() }
+    }),
+    getFileSystemManager: () => ({
+      unlink: vi.fn(),
+      statSync: () => ({ size: new TextEncoder().encode(body).length }),
+      readFileSync: (_path: string, _encoding: string, _position: number, length: number) => {
+        if (length > new TextEncoder().encode(body).length) throw new Error('invalid length')
+        return body
+      }
+    })
+  })
+  await expect(
+    downloadWordAudio('https://api.example/audio', cancellation().task)
+  ).rejects.toMatchObject({ status: 401, code: 'speech_grant_expired' })
+})

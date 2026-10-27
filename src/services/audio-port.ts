@@ -1,6 +1,7 @@
 import type { AudioPort } from '@/shared/types/audio'
 
 import { runtimeMode } from './runtime-mode'
+import { createWordAudioPort } from './word-audio-port'
 
 // #ifdef H5
 /** 浏览器直接使用媒体元素，弥补 uni H5 上下文未透传倍率的限制 */
@@ -98,9 +99,12 @@ const browserAudioPort = (): AudioPort => {
 }
 // #endif
 
-/** 为当前平台创建同一控制器使用的音轨，不创建额外播放器 */
-export const createAudioPort = (): AudioPort => {
+/** 为当前平台创建音轨，词汇独立隔离每次切源的迟到回调
+ * @param isolateSources 仅词汇音轨启用上下文隔离，整篇音轨保持原行为
+ */
+export const createAudioPort = (isolateSources = false): AudioPort => {
   runtimeMode.assertPrivate()
+  if (isolateSources) return createWordAudioPort(() => createAudioPort())
   // #ifdef H5
   return browserAudioPort()
   // #endif

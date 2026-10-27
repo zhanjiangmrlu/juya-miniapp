@@ -1,4 +1,4 @@
-import { WORD_ADDRESS_LIFETIME_MS } from '@/shared/constants/media'
+import { WORD_ADDRESS_LIFETIME_MS, WORD_AUDIO_CLICK_WAIT_MS } from '@/shared/constants/media'
 
 import type {
   PreparedWordAudio,
@@ -96,11 +96,21 @@ export const createWordAudioPreparation = (ports: WordAudioPreparationPorts) => 
   }
   /** 同一个词汇只启动一次合成与下载，不延长服务端签发时间
    * @param id 当前页面中的词汇编号
+   * @param background 是否为唯一后台通道中的原始任务
    */
-  const start = (id: string) => {
+  const start = (id: string, background = false) => {
     const callbacks = new Set<() => void>()
     let cancelled = false,
+      selected = false,
+      downloadActive = true,
+      url = '',
+      clickTimer: ReturnType<typeof setTimeout> | undefined,
+      stream!: (file: WordAudioFile) => void,
       rejectCancellation!: (reason: Error) => void
+    const downloadCallbacks = new Set<() => void>()
+    const streaming = new Promise<WordAudioFile>((resolve) => {
+      stream = resolve
+    })
     const task: WordAudioCancellation = {
       active: () => !cancelled && active(),
       onCancel: (callback) => {
@@ -112,14 +122,45 @@ export const createWordAudioPreparation = (ports: WordAudioPreparationPorts) => 
     const cancellation = new Promise<never>((_resolve, reject) => {
       rejectCancellation = reject
     })
+    /** 点击只等待当前下载短暂完成，随后使用同一有效地址而不重复取址 */
+    const promote = () => {
+      selected = true
+      if (!url || clickTimer || !task.active()) return
+      clickTimer = setTimeout(() => {
+        if (!task.active()) return
+        downloadActive = false
+        // 先完成回退，再取消下载，避免同步 abort 回调覆盖当前选择
+        stream({ src: url, release: () => undefined })
+        for (const callback of downloadCallbacks) callback()
+        downloadCallbacks.clear()
+      }, WORD_AUDIO_CLICK_WAIT_MS)
+    }
+    const downloadTask: WordAudioCancellation = {
+      active: () => downloadActive && task.active(),
+      onCancel: (callback) => {
+        if (!downloadTask.active()) callback()
+        else downloadCallbacks.add(callback)
+        return () => downloadCallbacks.delete(callback)
+      }
+    }
     const job: WordAudioPreparationJob = {
+      background,
       promise: Promise.resolve(''),
+      promote,
+      demote: () => {
+        selected = false
+        clearTimeout(clickTimer)
+        clickTimer = undefined
+      },
       cancel: () => {
         if (cancelled) return
         cancelled = true
         if (pending.get(id) === job) pending.delete(id)
         if (foreground === job) foreground = null
         rejectCancellation(new Error('试听已取消'))
+        clearTimeout(clickTimer)
+        for (const callback of downloadCallbacks) callback()
+        downloadCallbacks.clear()
         for (const callback of callbacks) callback()
         callbacks.clear()
       }
@@ -127,14 +168,27 @@ export const createWordAudioPreparation = (ports: WordAudioPreparationPorts) => 
     pending.set(id, job)
     const work = async () => {
       const expires = Date.now() + WORD_ADDRESS_LIFETIME_MS
-      const url = await ports.resolve(id, task)
+      url = await ports.resolve(id, task)
       if (!task.active()) throw new Error('试听已取消')
+      if (selected) promote()
       let file: WordAudioFile
       try {
-        file = await ports.download(url, task)
+        const downloading = ports.download(url, downloadTask).then((value) => {
+          if (!downloadTask.active()) {
+            value.release()
+            throw new Error('试听已取消')
+          }
+          return value
+        })
+        file = await Promise.race([downloading, streaming])
       } catch (reason) {
         if (!task.active()) throw new Error('试听已取消')
-        if (reason instanceof ApiError && [401, 409, 410].includes(reason.status || 0)) throw reason
+        if (
+          reason instanceof ApiError &&
+          ((reason.status >= 400 && reason.status < 500) ||
+            reason.code === 'word_audio_format_invalid')
+        )
+          throw reason
         file = { src: url, release: () => undefined }
       }
       if (!task.active() || expires <= Date.now()) {
@@ -155,11 +209,20 @@ export const createWordAudioPreparation = (ports: WordAudioPreparationPorts) => 
         throw reason
       })
       .finally(() => {
+        clearTimeout(clickTimer)
         callbacks.clear()
+        downloadCallbacks.clear()
         if (pending.get(id) === job) pending.delete(id)
         if (foreground === job) foreground = null
       })
     return job
+  }
+  /** 释放当前点击占用的前台通道，原有后台预取可继续且保留已就绪缓存 */
+  const cancelSelection = () => {
+    const selection = foreground
+    foreground = null
+    if (selection?.background) selection.demote()
+    else selection?.cancel()
   }
   /** 点击直接复用已准备或进行中的词汇，不排在其他后台词汇后面
    * @param id 用户当前选择的词汇编号
@@ -167,11 +230,16 @@ export const createWordAudioPreparation = (ports: WordAudioPreparationPorts) => 
   const load = (id: string): string | Promise<string> => {
     if (!active()) return Promise.reject(new Error('试听已取消'))
     const existing = pending.get(id)
-    if (foreground && foreground !== existing) foreground.cancel()
+    if (foreground && foreground !== existing && !foreground.background) foreground.cancel()
     const cached = peek(id)
     if (cached) return cached
-    if (existing) return existing.promise
+    if (existing) {
+      foreground = existing
+      existing.promote()
+      return existing.promise
+    }
     foreground = start(id)
+    foreground.promote()
     return foreground.promise
   }
   /** 串行准备当前卡片词汇，后台失败不打断正文或阻止下个词汇 */
@@ -180,9 +248,13 @@ export const createWordAudioPreparation = (ports: WordAudioPreparationPorts) => 
     backgroundRunning = true
     try {
       while (queue.length && active()) {
+        if (foreground) {
+          await foreground.promise.catch(() => undefined)
+          continue
+        }
         const id = queue.shift()!
         if (peek(id)) continue
-        await (pending.get(id) || start(id)).promise.catch(() => undefined)
+        await (pending.get(id) || start(id, true)).promise.catch(() => undefined)
       }
     } finally {
       backgroundRunning = false
@@ -196,5 +268,5 @@ export const createWordAudioPreparation = (ports: WordAudioPreparationPorts) => 
     for (const id of ids) if (!queue.includes(id) && !peek(id)) queue.push(id)
     void pump()
   }
-  return { peek, load, prefetch, invalidate, dispose }
+  return { peek, load, prefetch, invalidate, cancelSelection, dispose }
 }

@@ -244,3 +244,68 @@ it('discards prepared audio after the server reports a changed publication', asy
   ports.unload?.()
   page.unmount()
 })
+
+/** 使用真实权限结构打开页面，音源预加载不替代每次点击验权 */
+const permittedScene = () => ({
+  ...scene(),
+  access: {
+    can_learn: true,
+    can_lookup: true,
+    is_free: false,
+    reason: null,
+    version: 'access-v1',
+    server_now: '2026-10-27T12:00:00Z',
+    expires_at: null
+  }
+})
+
+it('shows word loading immediately while the real permission response is pending and plays only after it succeeds', async () => {
+  const current = permittedScene()
+  ports.request.mockImplementation(async (path: string) =>
+    path.endsWith('/access')
+      ? { access: current.access, summary: current }
+      : path.includes('/pronunciation')
+        ? { state: 'ready', url: '/api/mini/v1/pronunciation/ticket' }
+        : current
+  )
+  const page = await open()
+  let finish!: (result: unknown) => void
+  ports.request.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      })
+  )
+  page.getComponent({ name: 'scene-vocabulary' }).vm.$emit('play', 'one')
+  await page.vm.$nextTick()
+  expect(page.getComponent({ name: 'scene-vocabulary' }).props('state').wordStatus).toBe('loading')
+  expect(ports.tracks[1]!.play).not.toHaveBeenCalled()
+  finish({ access: current.access, summary: current })
+  await flushPromises()
+  expect(ports.tracks[1]!.play).toHaveBeenCalledOnce()
+  expect(ports.file).toHaveBeenCalledTimes(2)
+  ports.unload?.()
+  page.unmount()
+})
+
+it('does not play a downloaded word after the click permission is revoked', async () => {
+  const current = permittedScene()
+  ports.request.mockImplementation(async (path: string) =>
+    path.endsWith('/access')
+      ? { access: current.access, summary: current }
+      : path.includes('/pronunciation')
+        ? { state: 'ready', url: '/api/mini/v1/pronunciation/ticket' }
+        : current
+  )
+  const page = await open()
+  ports.request.mockResolvedValueOnce({
+    access: { ...current.access, version: 'revoked', can_learn: false, can_lookup: false },
+    summary: current
+  })
+  page.getComponent({ name: 'scene-vocabulary' }).vm.$emit('play', 'one')
+  await flushPromises()
+  expect(ports.tracks.every((value) => value.play.mock.calls.length === 0)).toBe(true)
+  expect(ports.release).toHaveBeenCalledTimes(2)
+  ports.unload?.()
+  page.unmount()
+})

@@ -50,6 +50,7 @@ export const createDictionarySpeech = (
   return {
     load: () => prepared.load('dictionary'),
     dispose: prepared.dispose,
-    invalidate: () => prepared.invalidate('dictionary')
+    invalidate: () => prepared.invalidate('dictionary'),
+    cancelSelection: prepared.cancelSelection
   }
 }

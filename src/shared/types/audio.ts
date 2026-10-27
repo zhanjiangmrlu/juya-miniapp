@@ -1,6 +1,19 @@
 import type { PLAYBACK_RATES } from '@/shared/constants/audio'
 import type { AudioStatus } from '@/shared/enums/audio'
 export type PlaybackRate = (typeof PLAYBACK_RATES)[number]
+export interface AudioFailure {
+  errCode?: number | string
+  errMsg?: string
+}
+export interface WordAudioDiagnostic {
+  stage: 'resolve' | 'download' | 'format' | 'permission' | 'native'
+  outcome: 'ready' | 'error' | 'cancelled'
+  elapsed: number
+  code?: string
+  status?: number
+  source?: 'local' | 'remote'
+  format?: 'mp3' | 'wav'
+}
 export interface LearningAudioSession {
   rate: PlaybackRate
 }
@@ -18,7 +31,7 @@ export interface AudioPort {
   onPlay: (callback: () => void) => void
   onPause: (callback: () => void) => void
   onEnded: (callback: () => void) => void
-  onError: (callback: () => void) => void
+  onError: (callback: (reason?: AudioFailure) => void) => void
   onTimeUpdate: (callback: () => void) => void
 }
 export interface AudioPreparationCancellation {

@@ -1,4 +1,7 @@
+import { wordAudioRecovery } from '@/services/errors'
+import { recordWordAudio } from '@/services/word-audio-diagnostics'
 import { DEFAULT_PLAYBACK_RATE, PLAYBACK_RATES } from '@/shared/constants/audio'
+import { WORD_AUDIO_RECOVERY_DELAYS } from '@/shared/constants/media'
 import { AudioStatus } from '@/shared/enums/audio'
 
 import type {
@@ -17,6 +20,7 @@ import { learningAudioSession } from './learning-audio-session'
  * @param speedSession 本轮学习共享的内存倍速
  * @param wordFailed 原生播放失败时清除对应词汇的预加载资源
  * @param fullFailed 完整音频播放失败时清除缓存并重新签发地址
+ * @param wordCancelled 切换音轨时释放列表与弹窗共用的前台准备通道
  */
 export const createAudioController = (
   full: AudioPort,
@@ -24,7 +28,8 @@ export const createAudioController = (
   changed: (state: AudioState) => void = () => {},
   speedSession: LearningAudioSession = learningAudioSession,
   wordFailed: (id: string) => void = () => {},
-  fullFailed: () => void = () => {}
+  fullFailed: () => void = () => {},
+  wordCancelled: () => void = () => {}
 ) => {
   const state: AudioState = {
     rate: speedSession.rate,
@@ -46,7 +51,15 @@ export const createAudioController = (
     fullIntent = false,
     fullStarting = false,
     ratePausing = false,
-    pendingRate: PlaybackRate | null = null
+    pendingRate: PlaybackRate | null = null,
+    wordRecover: ((reason: unknown) => void) | null = null,
+    wordRetryTimer: ReturnType<typeof setTimeout> | undefined,
+    wordStarted = 0
+  /** 取消本次点读恢复任务，离页或切词后不再启动旧音源 */
+  const cancelWordRecovery = () => {
+    clearTimeout(wordRetryTimer)
+    wordRecover = null
+  }
   /** 输出当前可信音频状态 */
   const notify = () => {
     if (alive) changed({ ...state })
@@ -193,23 +206,24 @@ export const createAudioController = (
     notify()
   })
   word.onPlay(() => {
-    if (!alive || wordSourceGeneration !== wordGeneration) return
+    if (!alive || !wordSourceGeneration || wordSourceGeneration !== wordGeneration) return
+    recordWordAudio('native', wordStarted, 'ready')
     state.wordStatus = AudioStatus.PLAYING
     state.wordError = ''
     notify()
   })
   word.onEnded(() => {
-    if (!alive || wordSourceGeneration !== wordGeneration) return
+    if (!alive || !wordSourceGeneration || wordSourceGeneration !== wordGeneration) return
+    cancelWordRecovery()
+    wordSourceGeneration = 0
     state.wordStatus = AudioStatus.IDLE
     state.wordError = ''
     notify()
   })
-  word.onError(() => {
-    if (!alive || wordSourceGeneration !== wordGeneration) return
-    state.wordStatus = AudioStatus.ERROR
-    if (state.wordId) wordFailed(state.wordId)
-    state.wordError = '发音暂不可用，点击重试'
-    notify()
+  word.onError((reason) => {
+    if (!alive || !wordSourceGeneration || wordSourceGeneration !== wordGeneration) return
+    recordWordAudio('native', wordStarted, 'error', reason)
+    wordRecover?.(reason)
   })
   /** 空闲时提前绑定完整音源，播放或暂停后的资源不接受后台替换
    * @param src 当前场景已经准备好的音源
@@ -231,7 +245,10 @@ export const createAudioController = (
       full.pause()
       return
     }
+    if (state.wordId) wordCancelled()
+    cancelWordRecovery()
     wordGeneration++
+    wordSourceGeneration = 0
     word.stop()
     state.wordStatus = AudioStatus.IDLE
     state.wordId = null
@@ -265,11 +282,16 @@ export const createAudioController = (
       }
     }
   }
-  /** 播放受控词汇，立即暂停完整音频并忽略旧词汇的异步响应
+  /** 播放受控词汇，准备与逐次验权并行，当前授权确认后才启动音轨
    * @param id 当前版本的词汇引用
    * @param load 获取该词汇的受控发音地址
+   * @param authorize 当前点击及恢复前的联网权限核对
    */
-  const playWord = async (id: string, load: () => string | Promise<string>) => {
+  const playWord = async (
+    id: string,
+    load: () => string | Promise<string>,
+    authorize?: () => Promise<boolean>
+  ) => {
     if (!alive) return
     fullGeneration++
     const cancelFull = fullIntent || fullStarting || ratePausing
@@ -282,6 +304,8 @@ export const createAudioController = (
       full.pause()
       state.status = AudioStatus.PAUSED
     }
+    if (state.wordId && state.wordId !== id) wordCancelled()
+    cancelWordRecovery()
     const generation = ++wordGeneration
     wordSourceGeneration = 0
     word.stop()
@@ -289,27 +313,99 @@ export const createAudioController = (
     state.wordStatus = AudioStatus.LOADING
     state.wordError = ''
     notify()
-    try {
-      const source = load()
-      const url = typeof source === 'string' ? source : await source
-      if (!alive || generation !== wordGeneration) return
-      wordSourceGeneration = generation
-      word.src = url
-      if (typeof word.playbackRate === 'number') word.playbackRate = DEFAULT_PLAYBACK_RATE
-      word.play()
-    } catch {
-      if (alive && generation === wordGeneration) {
+    let retries = 0,
+      fileRetried = false,
+      source = '',
+      attemptGeneration = 0
+    /** 确认异步准备与原生恢复仍属于用户最后一次点击 */
+    const active = () => alive && generation === wordGeneration && state.wordId === id
+    /** 按单次点击的统一预算恢复，权限与永久错误直接显示重试
+     * @param reason 当前阶段的已知失败
+     * @param run 本次点击中准备尝试的代次
+     */
+    const failed = (reason: unknown, run: number) => {
+      if (!active() || run !== attemptGeneration) return
+      attemptGeneration++
+      wordSourceGeneration = 0
+      word.stop()
+      wordFailed(id)
+      const kind = wordAudioRecovery(reason, Boolean(source && !/^https?:/.test(source)))
+      const retry =
+        kind && retries < WORD_AUDIO_RECOVERY_DELAYS.length && (kind !== 'file' || !fileRetried)
+      if (!retry) {
+        cancelWordRecovery()
         state.wordStatus = AudioStatus.ERROR
         state.wordError = '发音暂不可用，点击重试'
         notify()
+        return
+      }
+      if (kind === 'file') fileRetried = true
+      const delay = WORD_AUDIO_RECOVERY_DELAYS[retries++]!
+      state.wordStatus = AudioStatus.LOADING
+      state.wordError = ''
+      notify()
+      wordRetryTimer = setTimeout(() => {
+        if (active()) void attempt()
+      }, delay)
+    }
+    /** 同时准备音源和核对权限，旧选择与权限拒绝均不能触发播放 */
+    const attempt = async () => {
+      if (!active()) return
+      const run = ++attemptGeneration
+      const current = () => active() && run === attemptGeneration
+      wordRecover = (reason) => failed(reason, run)
+      const started = Date.now()
+      /** 权限拒绝只关闭本次有效尝试，不影响已经切换的目标 */
+      const denied = () => {
+        if (!current()) return
+        cancelWordRecovery()
+        wordFailed(id)
+        state.wordStatus = AudioStatus.IDLE
+        state.wordError = ''
+        notify()
+      }
+      const permission =
+        authorize &&
+        Promise.resolve()
+          .then(authorize)
+          .then((allowed) => {
+            recordWordAudio('permission', started, allowed ? 'ready' : 'error')
+            if (!allowed) denied()
+            return allowed
+          })
+      // 先订阅权限拒绝，避免音源同步抛错留下未处理的并行拒绝
+      const checked = permission?.catch((reason: unknown) => {
+        recordWordAudio('permission', started, 'error', reason)
+        denied()
+        return false
+      })
+      try {
+        const value = load()
+        let allowed = true
+        if (checked) {
+          const result = await Promise.all([checked, value])
+          allowed = result[0]
+          source = result[1]
+        } else source = typeof value === 'string' ? value : await value
+        if (!current() || !allowed) return
+        wordStarted = Date.now()
+        wordSourceGeneration = generation
+        word.src = source
+        if (typeof word.playbackRate === 'number') word.playbackRate = DEFAULT_PLAYBACK_RATE
+        if (wordSourceGeneration === generation) word.play()
+      } catch (reason) {
+        failed(reason, run)
       }
     }
+    await attempt()
   }
   /** 只停止指定弹窗的词音轨，不改变完整音频的位置、倍率或播放意图
    * @param id 要关闭或切换的弹窗受控目标编号
    */
   const stopWord = (id: string) => {
     if (!alive || state.wordId !== id) return
+    wordCancelled()
+    cancelWordRecovery()
     wordGeneration++
     wordSourceGeneration = 0
     word.stop()
@@ -332,6 +428,8 @@ export const createAudioController = (
   const dispose = () => {
     if (!alive) return
     alive = false
+    wordCancelled()
+    cancelWordRecovery()
     fullIntent = false
     pendingRate = null
     fullGeneration++

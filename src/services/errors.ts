@@ -25,3 +25,26 @@ export const isUnconfirmedFailure = (reason: unknown) =>
     reason.status >= 500 ||
     reason.status === 408 ||
     reason.status === 429)
+
+/** 只恢复已知临时错误或本地文件错误，权限与永久合成失败不自动循环
+ * @param reason 本次准备或原生播放的错误
+ * @param localSource 当前是否使用下载后的本地文件
+ */
+export const wordAudioRecovery = (reason: unknown, localSource: boolean) => {
+  if (reason instanceof ApiError) {
+    if (reason.code === 'word_audio_format_invalid') return 'file'
+    if (reason.code === 'speech_grant_expired' || reason.code === 'speech_grant_invalid')
+      return 'temporary'
+    if (
+      ['network_unknown', 'word_audio_network'].includes(reason.code) ||
+      reason.status === 408 ||
+      reason.status >= 500
+    )
+      return 'temporary'
+    return null
+  }
+  const code = Number((reason as { errCode?: unknown } | undefined)?.errCode)
+  if (code === 10002) return 'temporary'
+  if (localSource && [10003, 10004].includes(code)) return 'file'
+  return null
+}

@@ -159,7 +159,13 @@ const dictionary = useSceneDictionary({
   stopSpeech: (key) => audio?.stopWord(key),
   playSpeech: (key, load) => {
     createAudio()
-    void audio?.playWord(key, load)
+    void audio?.playWord(
+      key,
+      load,
+      card.value?.access
+        ? async () => (await checkAccess()) && Boolean(card.value?.access?.can_lookup)
+        : undefined
+    )
   },
   onFailure: (reason) => invalid(reason)
 })
@@ -216,7 +222,7 @@ const createAudio = () => {
     owner = account.profile,
     userId = session.userId()
   const full = createAudioPort(),
-    word = createAudioPort()
+    word = createAudioPort(true)
   const player = createAudioController(
     full,
     word,
@@ -228,7 +234,11 @@ const createAudio = () => {
       wordAudio?.invalidate(wordId)
       dictionary.invalidateSpeech(wordId)
     },
-    () => fullAudio?.invalidate()
+    () => fullAudio?.invalidate(),
+    () => {
+      wordAudio?.cancelSelection?.()
+      dictionary.cancelSpeech()
+    }
   )
   audio = player
   /** 确认两个准备任务仍属于当前页面、会话和发布版本 */
@@ -243,6 +253,11 @@ const createAudio = () => {
    * @param reason 地址请求或下载得到的访问错误
    */
   const onFailure = (reason: unknown) => {
+    if (
+      reason instanceof ApiError &&
+      ['speech_grant_expired', 'speech_grant_invalid'].includes(reason.code)
+    )
+      return
     if (reason instanceof ApiError && reason.status === 401) {
       stopAudio()
       void account.restore().catch(() => undefined)
@@ -363,9 +378,9 @@ const checkAccess = async () => {
   const allowed = await accessMonitor.refresh()
   return allowed && !stale.value && !accessError.value
 }
-/** 播放缓存的弹窗发音前仍核对当前权限，不复用失效授权 */
-const playDictionary = async () => {
-  if (card.value?.access && (!(await checkAccess()) || !card.value?.access?.can_lookup)) return
+/** 点击弹窗喇叭立即显示准备状态，由播放控制器并行核对当前权限 */
+const playDictionary = () => {
+  if (runtimeMode.update() || !visible || stale.value) return
   dictionary.play()
 }
 /** 拖动完整音频前核对当前场景权限
@@ -624,13 +639,17 @@ const playFull = async () => {
 /** 已准备的词汇同步从本地播放，未完成时复用当前任务
  * @param wordId 当前发布版本中的词汇编号
  */
-const playWord = async (wordId: string) => {
-  if (card.value?.access && !(await checkAccess())) return
+const playWord = (wordId: string) => {
   if (runtimeMode.update()) return
   if (!card.value || stale.value) return
   createAudio()
   const prepared = wordAudio
-  if (prepared) void audio?.playWord(wordId, () => prepared.load(wordId))
+  if (prepared)
+    void audio?.playWord(
+      wordId,
+      () => prepared.load(wordId),
+      card.value.access ? checkAccess : undefined
+    )
 }
 /** 原图作为全屏覆盖页进入原生栈，系统返回只关闭覆盖层 */
 const previewImage = async () => {

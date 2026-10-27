@@ -109,5 +109,19 @@ export const useSceneDictionary = (ports: DictionaryPorts) => {
   const invalidateSpeech = (key: string) => {
     if (key === speechKey.value) speech?.invalidate()
   }
-  return { selection, result, busy, error, speechKey, open, close, retry, play, invalidateSpeech }
+  /** 其他音轨接管后只取消当前准备任务，保留弹窗结果和可复用音频 */
+  const cancelSpeech = () => speech?.cancelSelection?.()
+  return {
+    selection,
+    result,
+    busy,
+    error,
+    speechKey,
+    open,
+    close,
+    retry,
+    play,
+    invalidateSpeech,
+    cancelSpeech
+  }
 }

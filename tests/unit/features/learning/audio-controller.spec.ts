@@ -163,6 +163,8 @@ describe('single whole-audio player and word pronunciation', () => {
     word.callbacks.error?.()
     expect(controller.state.wordError).toBeTruthy()
     word.callbacks.play?.()
+    expect(controller.state.wordStatus).toBe('error')
+    await controller.playWord('one', async () => '/renewed-word')
     expect(controller.state.wordStatus).toBe('playing')
     expect(controller.state.wordError).toBe('')
     controller.dispose()

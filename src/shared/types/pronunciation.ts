@@ -26,6 +26,9 @@ export interface PreparedWordAudio {
   timer: ReturnType<typeof setTimeout>
 }
 export interface WordAudioPreparationJob {
+  background: boolean
   promise: Promise<string>
   cancel: () => void
+  promote: () => void
+  demote: () => void
 }
