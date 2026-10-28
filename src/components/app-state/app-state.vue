@@ -13,7 +13,7 @@ defineEmits<{ retry: [] }>()
 <template>
   <view v-if="error" class="notice error"
     ><text>{{ error }}</text
-    ><button class="text-button" @click="$emit('retry')">重试</button></view
+    ><button class="text-button notice-retry" @click="$emit('retry')">重试</button></view
   ><view v-else-if="busy" class="loading"><AppLoading /></view
   ><view v-else-if="empty && !error" class="empty"
     ><view class="empty-mark"
@@ -71,7 +71,7 @@ defineEmits<{ retry: [] }>()
     line-height: 1.9;
   }
 
-  button {
+  .notice-retry {
     margin-top: 36rpx;
   }
 }

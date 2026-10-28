@@ -58,3 +58,12 @@ export interface SceneDictionaryProps {
   voiceStatus: import('../enums/audio').AudioStatus
   voiceError: string
 }
+
+/** 微信原生组件的可见性监听作用域 */
+export interface NativeObserverScope {
+  $scope?: {
+    createIntersectionObserver: (options: {
+      nativeMode: boolean
+    }) => UniNamespace.IntersectionObserver
+  }
+}

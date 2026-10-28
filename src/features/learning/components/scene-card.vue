@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import AppLoading from '@/components/app-loading/app-loading.vue'
 import { session } from '@/services/api'
 import { clientThumbnail } from '@/services/client-thumbnail'
+import { localImageSource } from '@/services/local-image'
 import { mediaAddress } from '@/services/media-service'
 import { openScene } from '@/services/navigation'
 import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
@@ -86,7 +87,8 @@ const loadImage = async (renew = false) => {
             renew
           )
         ).thumbnailSrc
-    if (run === generation) src.value = value
+    const displaySource = await localImageSource(value)
+    if (run === generation) src.value = displaySource
   } catch {
     if (run === generation) {
       src.value = ''
@@ -123,6 +125,7 @@ onBeforeUnmount(() => {
       ><image
         v-for="image in images"
         :key="image.generation"
+        class="thumbnail-image"
         :src="image.src"
         mode="aspectFit"
         :webp="true"
@@ -173,7 +176,7 @@ onBeforeUnmount(() => {
     background: #fff;
     overflow: hidden;
 
-    image {
+    .thumbnail-image {
       width: 100%;
       height: 100%;
     }

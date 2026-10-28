@@ -10,14 +10,28 @@ const switchTab = (target: string) => uni.switchTab({ url: target })
 </script>
 <template>
   <view class="bottom-tabs" role="navigation" aria-label="主导航">
-    <button :class="{ active: active === 'home' }" @click="switchTab(Routes.HOME)">
-      <image src="/static/design/home.svg" mode="aspectFit" /><text>首页</text>
+    <button
+      class="tab-button"
+      :class="{ active: active === 'home' }"
+      @click="switchTab(Routes.HOME)"
+    >
+      <image class="tab-icon" src="/static/design/home.svg" mode="aspectFit" /><text>首页</text>
     </button>
-    <button :class="{ active: active === 'records' }" @click="switchTab(Routes.RECORDS)">
-      <image src="/static/design/records.svg" mode="aspectFit" /><text>学习记录</text>
+    <button
+      class="tab-button"
+      :class="{ active: active === 'records' }"
+      @click="switchTab(Routes.RECORDS)"
+    >
+      <image class="tab-icon" src="/static/design/records.svg" mode="aspectFit" /><text
+        >学习记录</text
+      >
     </button>
-    <button :class="{ active: active === 'profile' }" @click="switchTab(Routes.PROFILE)">
-      <image src="/static/design/account.svg" mode="aspectFit" /><text>账号</text>
+    <button
+      class="tab-button"
+      :class="{ active: active === 'profile' }"
+      @click="switchTab(Routes.PROFILE)"
+    >
+      <image class="tab-icon" src="/static/design/account.svg" mode="aspectFit" /><text>账号</text>
     </button>
   </view>
 </template>
@@ -34,7 +48,7 @@ const switchTab = (target: string) => uni.switchTab({ url: target })
   border-top: 1px solid #dfe5d8;
   background: #fffcf5;
 
-  button {
+  .tab-button {
     display: flex;
     flex: 1;
     flex-direction: column;
@@ -60,7 +74,7 @@ const switchTab = (target: string) => uni.switchTab({ url: target })
     }
   }
 
-  image {
+  .tab-icon {
     width: 38rpx;
     height: 38rpx;
   }

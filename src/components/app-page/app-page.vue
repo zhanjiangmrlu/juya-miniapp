@@ -72,7 +72,12 @@ const goBack = () => {
     :style="{ ...remoteFontStyles, '--page-header-height': `${top + nav}px` }"
     ><view class="page-nav" :style="headingStyle"
       ><button v-if="back && !browseOnly" class="back-button" aria-label="返回" @click="goBack">
-        <image src="/static/design/back.svg" mode="aspectFit" aria-hidden="true" /></button
+        <image
+          class="back-icon"
+          src="/static/design/back.svg"
+          mode="aspectFit"
+          aria-hidden="true"
+        /></button
       ><view v-if="title === '句芽英语' && !browseOnly" class="nav-brand"
         ><text class="nav-wordmark">juya</text><text>句芽英语</text></view
       ><text v-else class="nav-title">{{ browseOnly ? '分享摘要' : title }}</text
@@ -133,7 +138,7 @@ const goBack = () => {
     border: 0;
     background: none;
 
-    image {
+    .back-icon {
       width: 42.308rpx;
       height: 42.308rpx;
     }

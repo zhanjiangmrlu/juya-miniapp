@@ -4,7 +4,7 @@ import { computed, getCurrentInstance, nextTick, onMounted, onUnmounted, watch }
 
 import AppLoading from '@/components/app-loading/app-loading.vue'
 
-import type { SceneListFooterProps } from '@/shared/types/learning-components'
+import type { NativeObserverScope, SceneListFooterProps } from '@/shared/types/learning-components'
 const props = defineProps<SceneListFooterProps>(),
   emit = defineEmits<{ more: []; refresh: [] }>(),
   instance = getCurrentInstance(),
@@ -41,8 +41,12 @@ const observe = async () => {
     typeof uni.createIntersectionObserver !== 'function'
   )
     return
-  observer = uni.createIntersectionObserver(instance?.proxy)
-  observer.relativeToViewport({ bottom: 80 }).observe('.list-footer', (entry) => {
+  // 微信使用原生组件作用域，H5 沿用 Uni 的组件范围监听
+  const scope = (instance?.proxy as NativeObserverScope | undefined)?.$scope
+  observer = scope
+    ? scope.createIntersectionObserver({ nativeMode: true })
+    : uni.createIntersectionObserver(instance?.proxy)
+  observer?.relativeToViewport({ bottom: 80 }).observe('.list-footer', (entry) => {
     // 一个可见周期只触发一次；下一页完成后用新位置决定是否继续
     if (run !== generation || !visible || !ready.value || entry.intersectionRatio <= 0) return
     stop()
@@ -72,10 +76,14 @@ onUnmounted(() => {
   <view class="list-footer" aria-live="polite"
     ><AppLoading v-if="refreshing" label="正在刷新" /><template v-else-if="refreshError"
       ><text class="list-error">列表暂未更新：{{ refreshError }}</text
-      ><button class="text-button" @click="$emit('refresh')">刷新失败，点击重试</button></template
+      ><button class="text-button footer-retry" @click="$emit('refresh')">
+        刷新失败，点击重试
+      </button></template
     ><AppLoading v-else-if="busy" /><template v-else-if="error"
       ><text class="list-error">{{ error }}</text
-      ><button class="text-button" @click="$emit('more')">加载失败，点击重试</button></template
+      ><button class="text-button footer-retry" @click="$emit('more')">
+        加载失败，点击重试
+      </button></template
     ><text v-else-if="hasMore">继续滑动加载更多</text><text v-else-if="done">已全部加载</text></view
   >
 </template>
@@ -87,7 +95,7 @@ onUnmounted(() => {
   font-size: 23.077rpx;
   line-height: 1.8;
 
-  button {
+  .footer-retry {
     width: 100%;
   }
 

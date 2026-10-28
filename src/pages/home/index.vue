@@ -6,10 +6,12 @@ import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { getListeningHome } from '@/features/listening/listening-service'
+import { STATIC_ASSET_BASE_URL } from '@/shared/constants/brand'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { ListeningHome } from '@/shared/types/listening'
+const homeBackgroundUrl = `${STATIC_ASSET_BASE_URL}/static/listening/home-watercolor@3x.jpg`
 const account = useAccountStore(),
   home = ref<ListeningHome | null>(null),
   busy = ref(false),
@@ -39,7 +41,8 @@ onShow(() => {
 </script>
 <template>
   <AppPage title="句芽英语" class="home-page" footer
-    ><view class="hero"
+    ><image class="home-background" :src="homeBackgroundUrl" mode="widthFix" aria-hidden="true" />
+    <view class="hero"
       ><text class="hello">{{ account.profile?.nickname || '学习者' }}，今天也学一点</text
       ><text class="welcome">今天，想学些什么？</text
       ><text class="intro">从真实场景，到连贯阅读。</text></view
@@ -75,15 +78,30 @@ onShow(() => {
           }}</text
         ><text>开始听读 →</text></view
       ></button
-    ><text v-if="home" class="home-note"
-      >连续打卡{{ home.statistics.current_streak }}天 ·
-      {{ home.statistics.checked_in_today ? '今日已打卡' : '今日待打卡' }}</text
+    ><view v-if="home" class="home-note"
+      ><image src="/static/design/home-checkin.svg" mode="aspectFit" aria-hidden="true" /><text
+        >连续打卡{{ home.statistics.current_streak }}天 ·
+        {{ home.statistics.checked_in_today ? '今日已打卡' : '今日待打卡' }}</text
+      ></view
     ><AppBottomTabs active="home"
   /></AppPage>
 </template>
 <style scoped lang="scss">
 .home-page {
-  background: #fffcf5 url('/static/listening/home-watercolor@3x.jpg') center top/100% auto no-repeat;
+  background: #fffcf5;
+
+  .home-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    pointer-events: none;
+  }
+
+  .hero,
+  .home-note {
+    position: relative;
+  }
 
   :deep(.page-nav) {
     background: transparent;
@@ -176,10 +194,19 @@ onShow(() => {
   }
 
   .home-note {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15.385rpx;
     margin-top: 34rpx;
     color: #586c5b;
     font-size: 23rpx;
+
+    image {
+      flex: none;
+      width: 15px;
+      height: 15px;
+    }
   }
 }
 </style>
