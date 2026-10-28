@@ -24,8 +24,8 @@ vi.mock('@/services/api', () => ({
 vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({ profile: { id: 'owner', nickname: '学习者' } })
 }))
+import Profile from '@/features/profile/components/profile-page-view.vue'
 import Learning from '@/pages/learning/index.vue'
-import Profile from '@/sub-packages/account/profile.vue'
 beforeEach(() =>
   vi.stubGlobal('uni', { navigateTo: ports.navigate, getWindowInfo: () => ({ windowWidth: 390 }) })
 )

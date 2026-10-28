@@ -12,7 +12,6 @@ import {
 } from '@dcloudio/uni-app'
 import { ref, watch } from 'vue'
 
-import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { useListPosition } from '@/composables/use-list-position'
@@ -96,11 +95,11 @@ const refreshStats = async () => {
   }
 }
 /** 打开账号只读资料页 */
-const profile = () => uni.navigateTo({ url: Routes.PROFILE })
+const profile = () => uni.switchTab({ url: Routes.PROFILE })
 /** 从显式记录入口打开最近使用的标签 */
-const records = () => uni.navigateTo({ url: Routes.RECORDS })
+const records = () => uni.switchTab({ url: Routes.RECORDS })
 /** 当前场景全部学完后仍可从收藏选择复习 */
-const favorites = () => uni.switchTab({ url: Routes.FAVORITES })
+const favorites = () => uni.navigateTo({ url: Routes.FAVORITES })
 /** 分享进入时先重验本人会话，再读取私人列表和统计 */
 const showPage = async () => {
   if (runtimeMode.update()) return
@@ -165,7 +164,8 @@ onUnload(() => {
 </script>
 <template>
   <AppPage
-    title="句芽英语"
+    title="场景学习"
+    back
     :footer="!browseOnly"
     public-summary
     :shareable="!browseOnly && Boolean(account.profile)"
@@ -190,7 +190,8 @@ onUnload(() => {
         v-else
         :busy="!statsError"
         :error="statsError && '统计暂未获取'"
-        @retry="refreshStats" />
+        @retry="refreshStats"
+      />
       <view v-if="statsError && account.statistics" class="notice error">
         统计暂未更新 <button class="text-button" @click="refreshStats">重试</button>
       </view>
@@ -249,7 +250,8 @@ onUnload(() => {
         :key="card.id"
         :card="card"
         :featured="index === 0"
-        source="learning" />
+        source="learning"
+      />
       <SceneListFooter
         :busy="moreBusy"
         :refreshing="busy && total !== null"
@@ -258,9 +260,9 @@ onUnload(() => {
         :has-more="hasMore"
         :done="done"
         @refresh="refresh"
-        @more="loadMore" />
-      <AppBottomTabs active="learning"
-    /></template>
+        @more="loadMore"
+      />
+    </template>
   </AppPage>
 </template>
 <style scoped lang="scss">

@@ -16,7 +16,7 @@ export const safeTarget = (target: string) => {
     !Object.values(Routes).includes(path as (typeof Routes)[keyof typeof Routes]) ||
     path === Routes.LOGIN
   )
-    return Routes.LEARNING
+    return Routes.HOME
   const query = (target.split('?')[1] || '').split('#')[0]
   if (path === Routes.SCENE || path === Routes.LEARNING) {
     const values: Record<string, string> = {}
@@ -26,7 +26,7 @@ export const safeTarget = (target: string) => {
         if (key === 'target' || key === 'id') values[key] = decodeURIComponent(value)
       }
     } catch {
-      return Routes.LEARNING
+      return Routes.HOME
     }
     const shared = parseShareTarget(values)
     if (shared) return shareTargetURL(shared)
@@ -48,7 +48,12 @@ export const safeTarget = (target: string) => {
       return Routes.FEEDBACK
     }
   }
-  if (path === Routes.SCENE || path === Routes.FEEDBACK_DETAIL) {
+  if (
+    path === Routes.SCENE ||
+    path === Routes.ARTICLE ||
+    path === Routes.TOPIC ||
+    path === Routes.FEEDBACK_DETAIL
+  ) {
     const raw =
       query
         .split('&')
@@ -58,7 +63,7 @@ export const safeTarget = (target: string) => {
     try {
       id = decodeURIComponent(raw)
     } catch {
-      return Routes.LEARNING
+      return Routes.HOME
     }
     return /^[A-Za-z0-9-]{1,64}$/.test(id)
       ? `${path}?id=${encodeURIComponent(id)}`
@@ -73,7 +78,9 @@ export const safeTarget = (target: string) => {
  */
 export const openTarget = (target: string) => {
   const safe = safeTarget(target)
-  if (safe.split('?')[0] === Routes.LEARNING || safe === Routes.FAVORITES)
+  if (
+    [Routes.HOME, Routes.RECORDS, Routes.PROFILE].includes(safe.split('?')[0] as typeof Routes.HOME)
+  )
     uni.switchTab({ url: safe.split('?')[0]! })
   else uni.reLaunch({ url: safe })
 }
@@ -97,7 +104,7 @@ export const openLogin = (target: string) => {
 /** 二级页面返回其原生页面栈，无来源则回到指定入口
  * @param fallback 没有来源栈时的安全入口
  */
-export const backTo = (fallback: string = Routes.LEARNING) => {
+export const backTo = (fallback: string = Routes.HOME) => {
   if (getCurrentPages().length > 1) uni.navigateBack()
   else openTarget(fallback)
 }

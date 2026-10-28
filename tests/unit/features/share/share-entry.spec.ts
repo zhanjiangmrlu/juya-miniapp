@@ -127,7 +127,9 @@ beforeEach(() => {
     pageScrollTo: vi.fn(),
     hideShareMenu: vi.fn(),
     showShareMenu: vi.fn(),
-    switchTab: vi.fn()
+    switchTab: vi.fn(),
+    navigateTo: vi.fn(),
+    reLaunch: vi.fn()
   })
 })
 afterEach(() => {
@@ -193,7 +195,7 @@ it('keeps invalid incoming targets out of the private detail boundary', async ()
   await flushPromises()
   expect(ports.request).not.toHaveBeenCalled()
   expect(ports.audio).not.toHaveBeenCalled()
-  expect(uni.switchTab).toHaveBeenCalledWith({ url: '/pages/learning/index' })
+  expect(uni.reLaunch).toHaveBeenCalledWith({ url: '/pages/learning/index' })
   page.unmount()
 })
 
@@ -220,7 +222,7 @@ it('revalidates identity and the current publication before leaving a public sum
   expect(page.find('.safe-footer').exists()).toBe(false)
   expect(page.text()).toContain('返回学习页')
   await page.get('.unavailable .primary').trigger('click')
-  expect(uni.switchTab).toHaveBeenCalledWith({ url: '/pages/learning/index' })
+  expect(uni.reLaunch).toHaveBeenCalledWith({ url: '/pages/learning/index' })
   expect(ports.audio).not.toHaveBeenCalled()
   ports.unload?.()
   page.unmount()

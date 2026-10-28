@@ -61,7 +61,7 @@ let dayGeneration = 0,
   alive = true,
   currentScroll = 0,
   restoringScroll = false
-const positions = { learned: 0, checkins: 0 }
+const positions = { learned: 0, checkins: 0, listening: 0 }
 /** 会话变化时清除私人记录、展开项和旧位置，保留服务器历史成绩 */
 const reset = () => {
   learnedList.reset()
@@ -167,7 +167,7 @@ const more = async () => {
   await activeList.value.more()
 }
 /** 新用户可返回学习入口 */
-const learn = () => uni.switchTab({ url: Routes.LEARNING })
+const learn = () => uni.navigateTo({ url: Routes.LEARNING })
 onLoad((query) => {
   tab.value =
     query?.tab === RecordsTab.CHECKINS ||

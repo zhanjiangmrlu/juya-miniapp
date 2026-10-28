@@ -73,7 +73,7 @@ export const createOperationService = (ports: OperationPorts) => {
         ports.session.userId() === state.userId
       )
         receiptMisses.set(scope, record.key)
-      const frozen = fingerprints.get(`${state.userId}:${action}`)
+      const frozen = fingerprints.get(`${state.userId}:${action}`) || record.frozenRequest
       if (
         options.retry === false ||
         !(reason instanceof ApiError) ||
@@ -111,12 +111,14 @@ export const createOperationService = (ports: OperationPorts) => {
    * @param path 实际本人接口路径
    * @param method 写方法
    * @param body 固定提交正文
+   * @param options 是否持久保留已核对不含个人输入的固定请求
    */
   const run = async <T>(
     action: string,
     path: string,
     method: string,
-    body?: unknown
+    body?: unknown,
+    options: { persistBody?: boolean } = {}
   ): Promise<T> => {
     const state = context(),
       scope = `${state.userId}:${action}`,
@@ -128,11 +130,18 @@ export const createOperationService = (ports: OperationPorts) => {
       record &&
       (record.path !== path ||
         record.method !== method ||
-        (fingerprints.has(scope) && fingerprints.get(scope) !== fingerprint))
+        ((fingerprints.get(scope) || record.frozenRequest) &&
+          (fingerprints.get(scope) || record.frozenRequest) !== fingerprint))
     )
       throw new ApiError('operation_pending', '请先查询或重试上次操作，再提交新的修改')
     if (!record) {
-      record = { action, path, method, key: ports.key() }
+      record = {
+        action,
+        path,
+        method,
+        key: ports.key(),
+        ...(options.persistBody ? { frozenRequest: fingerprint } : {})
+      }
       state.records.push(record)
       ports.storage.set(state.key, state.records)
     }

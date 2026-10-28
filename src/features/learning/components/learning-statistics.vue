@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RECORDS_TAB_STORAGE_KEY } from '@/shared/constants/learning'
 import { Routes } from '@/shared/constants/navigation'
 import { RecordsTab } from '@/shared/enums/learning'
 
@@ -9,7 +10,10 @@ const props = withDefaults(defineProps<LearningStatisticsProps>(), { showUnits: 
  */
 const records = (tab: RecordsTab) => {
   if (props.onSelect) props.onSelect(tab)
-  else uni.navigateTo({ url: `${Routes.RECORDS}?tab=${tab}` })
+  else {
+    uni.setStorageSync(RECORDS_TAB_STORAGE_KEY, tab)
+    uni.switchTab({ url: Routes.RECORDS })
+  }
 }
 </script>
 <template>

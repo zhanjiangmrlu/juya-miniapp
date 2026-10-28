@@ -21,7 +21,10 @@ it('switches records in the current page when a selection handler is provided', 
           checked_in_today: true,
           today_completed_cards: 1,
           last_studied_at: null,
-          favorite_count: 1
+          favorite_count: 1,
+          completed_articles: 0,
+          today_completed_articles: 0,
+          listening_favorite_count: 0
         },
         onSelect: select
       }

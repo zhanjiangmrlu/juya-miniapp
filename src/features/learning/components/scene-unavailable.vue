@@ -28,7 +28,7 @@ const loadThumbnail = async () => {
   }
 }
 /** 返回实际来源列表，保留该列表的标签和位置 */
-const returnToList = () => (props.sharedEntry ? uni.switchTab({ url: Routes.LEARNING }) : backTo())
+const returnToList = () => (props.sharedEntry ? uni.reLaunch({ url: Routes.LEARNING }) : backTo())
 watch(() => [props.summary.id, props.summary.thumbnail_id], loadThumbnail, { immediate: true })
 onBeforeUnmount(() => {
   generation++

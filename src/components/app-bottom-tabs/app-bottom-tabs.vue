@@ -2,42 +2,22 @@
 import { Routes } from '@/shared/constants/navigation'
 
 import type { BottomTabsProps } from '@/shared/types/ui-components'
-
 defineProps<BottomTabsProps>()
-/** 切换既有一级页面，不新增业务入口
- * @param target 已注册的学习或收藏页面
+/** 切换三项一级页面，场景与收藏保留二级入口
+ * @param target 当前需求注册的首页、记录或账号路径
  */
 const switchTab = (target: string) => uni.switchTab({ url: target })
 </script>
 <template>
-  <view class="bottom-tabs" role="navigation" aria-label="学习与收藏">
-    <button
-      :class="{ active: active === 'learning' }"
-      :aria-current="active === 'learning' ? 'page' : undefined"
-      @click="switchTab(Routes.LEARNING)"
-    >
-      <image
-        :src="
-          active === 'learning' ? '/static/design/book-active.svg' : '/static/design/book-muted.svg'
-        "
-        mode="aspectFit"
-        aria-hidden="true"
-      /><text>学习</text>
+  <view class="bottom-tabs" role="navigation" aria-label="主导航">
+    <button :class="{ active: active === 'home' }" @click="switchTab(Routes.HOME)">
+      <image src="/static/design/home.svg" mode="aspectFit" /><text>首页</text>
     </button>
-    <button
-      :class="{ active: active === 'favorites' }"
-      :aria-current="active === 'favorites' ? 'page' : undefined"
-      @click="switchTab(Routes.FAVORITES)"
-    >
-      <image
-        :src="
-          active === 'favorites'
-            ? '/static/design/heart-active.svg'
-            : '/static/design/heart-muted.svg'
-        "
-        mode="aspectFit"
-        aria-hidden="true"
-      /><text>收藏</text>
+    <button :class="{ active: active === 'records' }" @click="switchTab(Routes.RECORDS)">
+      <image src="/static/design/records.svg" mode="aspectFit" /><text>学习记录</text>
+    </button>
+    <button :class="{ active: active === 'profile' }" @click="switchTab(Routes.PROFILE)">
+      <image src="/static/design/account.svg" mode="aspectFit" /><text>账号</text>
     </button>
   </view>
 </template>
@@ -49,25 +29,25 @@ const switchTab = (target: string) => uni.switchTab({ url: target })
   bottom: 0;
   left: 0;
   display: flex;
-  gap: 34.62rpx;
-  padding: 19.23rpx 46.15rpx max(53.85rpx, env(safe-area-inset-bottom));
+  gap: 16rpx;
+  padding: 18rpx 30rpx max(34rpx, env(safe-area-inset-bottom));
   border-top: 1px solid #dfe5d8;
-  background: #fff;
+  background: #fffcf5;
 
   button {
     display: flex;
     flex: 1;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 17.31rpx;
-    min-height: 82.692rpx;
-    margin: 0;
-    padding: 15.38rpx 19.23rpx;
+    gap: 8rpx;
+    min-height: 100rpx;
+    padding: 12rpx 0;
     border: 0;
-    border-radius: 25rpx;
-    background: none;
+    border-radius: 20rpx;
+    background: transparent;
     color: #586c5b;
-    font-size: 26.92rpx;
+    font-size: 23rpx;
     line-height: 1.5;
 
     &::after {
@@ -77,13 +57,12 @@ const switchTab = (target: string) => uni.switchTab({ url: target })
     &.active {
       background: #e4f0db;
       color: #2b4438;
-      font-weight: 400;
     }
   }
 
   image {
-    width: 44.23rpx;
-    height: 44.23rpx;
+    width: 38rpx;
+    height: 38rpx;
   }
 }
 </style>

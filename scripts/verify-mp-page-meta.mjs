@@ -9,8 +9,9 @@ const configuration = JSON.parse(readFileSync(path.join(root, 'app.json'), 'utf8
 assert.deepEqual(
   configuration.tabBar.list.map((item) => [item.text, item.pagePath]),
   [
-    ['学习', 'pages/learning/index'],
-    ['收藏', 'pages/favorites/index']
+    ['首页', 'pages/home/index'],
+    ['学习记录', 'pages/records/index'],
+    ['账号', 'pages/profile/index']
   ]
 )
 const pages = [
@@ -28,4 +29,4 @@ for (const page of pages) {
     `Unexpected native header: ${page}`
   )
 }
-console.info(`Verified ${pages.length} page configurations and two bottom tabs`)
+console.info(`Verified ${pages.length} page configurations and three bottom tabs`)

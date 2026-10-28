@@ -16,7 +16,7 @@ const account = useAccountStore(),
   error = ref(''),
   privacy = ref(false),
   botanicalVisible = ref(Boolean(LOGIN_BOTANICAL_IMAGE_URL))
-let target: string = Routes.LEARNING
+let target: string = Routes.HOME
 /** 用户主动同意后登录，失败不改变页面身份 */
 const login = async () => {
   if (busy.value) return
@@ -50,7 +50,7 @@ onLoad((query) => {
     try {
       target = safeTarget(decodeURIComponent(String(query.return)))
     } catch {
-      target = Routes.LEARNING
+      target = Routes.HOME
     }
   }
 })

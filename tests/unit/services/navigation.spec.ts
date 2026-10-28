@@ -6,13 +6,11 @@ vi.hoisted(() => {
 
 import { safeTarget } from '@/services/navigation'
 it('only restores known pages and approved non-sensitive parameters', () => {
-  expect(safeTarget('//outside.example/anything')).toBe('/pages/learning/index')
+  expect(safeTarget('//outside.example/anything')).toBe('/pages/home/index')
   expect(safeTarget('/sub-packages/account/contact-edit?phone=13800138000')).toBe(
-    '/sub-packages/account/profile'
+    '/pages/profile/index'
   )
-  expect(safeTarget('/sub-packages/account/profile?phone=13800138000')).toBe(
-    '/sub-packages/account/profile'
-  )
+  expect(safeTarget('/pages/profile/index?phone=13800138000')).toBe('/pages/profile/index')
   expect(safeTarget('/sub-packages/scenes/detail?id=card-1&phone=13800138000')).toBe(
     '/sub-packages/scenes/detail?id=card-1'
   )

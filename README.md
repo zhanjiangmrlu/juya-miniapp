@@ -2,12 +2,12 @@
 
 基于 Vue 3、TypeScript、Vite 和 uni-app 的微信小程序工程。
 
-当前 `main` 分支实现 V1.3 用户端：首页、学习目录、场景正文、点读与音频、词汇/语块、逐句跟读、收藏复习、学习历史、个人档案、联系资料、学习权益、站内消息、问题反馈、数据清理和账号注销。
+当前工作区按 V1.5 整合04增补02、修订17实现：首页／学习记录／账号三Tab，场景学习＋主题听读双模块，双类收藏和已学成绩、共用打卡。场景授权、主动微信登录、分享、反馈入口保留。本轮提交推送远程`test`用于MacBook接续，仍只使用本地数据库，未部署；先读[交接入口](HANDOFF.md)。
 
 ## 环境要求
 
 - Node.js 22.22.0
-- pnpm 11.22.0
+- pnpm 11.25.0
 
 ## 常用命令
 
@@ -25,43 +25,37 @@ pnpm build:mp-weixin:local
 
 ## 运行配置
 
-- `VITE_API_BASE_URL`：用户端 API 地址。
-- `VITE_CLIENT_VERSION`：请求头中的客户端版本，默认 `1.3.0`。
-- `VITE_USE_MOCK_API=true`：仅在本地开发或视觉验收时显式启用契约 mock；生产构建不要开启。
-- `VITE_LOCAL_DEV_MODE=false`：默认关闭；设为 `true` 时，H5 开发模式使用本地登录代码，仍通过 HTTP 访问配置的后端。它不切换为 MockTransport，也不使普通生产构建或微信小程序跳过真实微信登录。
+实际请求经 `src/services/api.ts` 的会话层及 `src/services/platform.ts` 平台边界访问 `/api/mini/v1`；听读新增 `/api/mini/v1/listening`。本轮本地小程序API为 `http://127.0.0.1:8002`，管理API为8001，业务数据库由后端配置为本地MySQL `juya_local`，不连接测试／生产数据。
 
-H5 本地登录可在私有 `.env.development.local` 中配置 `VITE_LOCAL_DEV_MODE=true`，同时保持 `VITE_USE_MOCK_API=false`。后端需运行在 `JUYA_ENVIRONMENT=local|test` 并启用 `JUYA_LOCAL_DEV_MODE=true`，例如使用小程序 API 的 `scripts/start-local.ps1`。该后端模式提供本地契约样例，不代表真实微信认证或生产数据验收。完全离线预览则使用 `VITE_USE_MOCK_API=true`，请求由前端 MockTransport 响应。
+H5在私有、已忽略的 `.env.development.local` 中配置后执行 `pnpm dev:h5`：
 
-本地微信开发者工具调试使用 `pnpm dev:mp-weixin`，或执行 `pnpm build:mp-weixin:local` 后导入 `dist/build/mp-weixin`。这两个命令都读取 `.env.development`，连接小程序 API `http://127.0.0.1:8001`。普通 `pnpm build:mp-weixin` 使用生产配置，不读取 `.env.development`。管理后台 API 使用 `8000`，不包含 `/api/v1/home`。在微信开发者工具中开启“不校验合法域名”；真机调试需把地址改为电脑局域网地址并保留小程序 API 端口。
-
-微信小程序测试和生产打包分别使用以下命令，两者都关闭 Mock 和本地登录模式：
-
-| 环境 | 命令                        | 配置文件          | API 地址                          |
-| ---- | --------------------------- | ----------------- | --------------------------------- |
-| 测试 | `pnpm build:mp-weixin:test` | `.env.test`       | `https://test-api.juyayingyu.com` |
-| 生产 | `pnpm build:mp-weixin`      | `.env.production` | `https://api.juyayingyu.com`      |
-
-两种构建均输出到 `dist/build/mp-weixin`，后一次构建会覆盖前一次产物。测试构建也使用生产优化，仅环境配置切换为 `test`。
-
-终端环境变量、`.env.local` 和对应的 `.env.<模式>.local` 可以覆盖上述配置。如果之前在 PowerShell 手动设置过接口地址或开发开关，先清除当前终端的覆盖值，再执行对应打包命令：
-
-```powershell
-Remove-Item Env:VITE_API_BASE_URL, Env:VITE_USE_MOCK_API, Env:VITE_LOCAL_DEV_MODE -ErrorAction SilentlyContinue
+```dotenv
+VITE_API_BASE_URL=
+VITE_DEV_API_PROXY_TARGET=http://127.0.0.1:8002
+VITE_STATIC_ASSET_BASE_URL=
+VITE_REMOTE_FONTS=false
 ```
 
-H5 开发时，浏览器通过 Vite 的同源 `/api/v1` 代理访问 `VITE_API_BASE_URL`，避免直接跨域请求。修改 `.env.development` 后需重启开发服务。生产构建和微信小程序直接使用配置的 API 地址。未登录直接访问真实首页接口返回 `401 ACCESS_TOKEN_REQUIRED`，这是认证要求。
+H5通过同源 `/api` 代理访问后端，默认端口5174；本地微信开发者工具构建时将 `VITE_API_BASE_URL` 设为 `http://127.0.0.1:8002`。修改环境文件后重启服务。测试／生产模式仍读取对应版本化环境文件；本轮构建须用私有模式覆盖或进程变量明确指定本地API、关闭远程字体和静态素材源，避免把本地产物当成线上部署。
 
-需要独立的本地契约样例服务时，可在 `juya-miniapp-api` 中设置 `$env:PORT = '8002'` 后执行 `./scripts/start-local.ps1`，同时把本工程 `VITE_API_BASE_URL` 改为 `http://127.0.0.1:8002`。这样可与管理后台和真实小程序 API 同时运行。该样例模式不读取真实业务数据。
+在独立PowerShell终端构建本地开发者工具包，显式覆盖H5的空接口前缀：
 
-所有 API 调用通过 `src/services/runtime.ts` 创建的共享服务进入统一请求层。页面不直接维护授权、权益、反馈或注销等服务端事实。
+```powershell
+$env:VITE_API_BASE_URL = 'http://127.0.0.1:8002'
+$env:VITE_STATIC_ASSET_BASE_URL = ''
+$env:VITE_REMOTE_FONTS = 'false'
+pnpm build:mp-weixin:test
+```
+
+小程序原生请求不能使用H5的空接口前缀。该地址用于本机开发者工具；真机需另配可访问的局域网或合法HTTPS地址，并重新构建。不要在同一终端随后启动需要空前缀代理的H5服务。
+
+产品登录仍要求用户主动同意后兑换真实微信身份；H5没有新增登录绕过。浏览器联调使用独立context中的本地合成验收账号，仅用于开发验证，不代表真实微信认证。私密会话凭证不得进入仓库、日志或截图。
 
 ## 页面与子包
 
-主包保留首页、学习、收藏、我的四个一级页面，文件为 `src/pages/{home,learning,favorites,profile}/index.vue`，访问地址为 `/pages/<业务>/index`。其余 40 个二级页面统一存放在 `src/sub-packages/` 下，按 home、learning、scene、favorites、profile、entitlement、feedback、account、compat 分为 9 个普通子包。
+主包三Tab为 `src/pages/{home,records,profile}/index.vue`，自定义底栏通过 `switchTab` 切换。场景列表和我的收藏保留 `src/pages/{learning,favorites}/index.vue` 普通页面，登录为 `src/pages/login/index.vue`。
 
-子包页面地址为 `/sub-packages/<业务>/<页面>`，例如 `/sub-packages/scene/dialogue?sceneId=one`。`pages.json` 的子包 `root` 为 `sub-packages/<业务>`，内部 `pages[].path` 仅填写相对页面路径。公共组件、业务组件、服务、状态和静态资源继续使用现有目录，不启用独立分包或预加载。
-
-底部导航仍使用自定义组件和 `reLaunch`。统一导航入口兼容已知二级页面的 `/pages/<业务>/<页面>` 旧地址和三个一级页面的旧子包地址，查询参数及片段原样保留；不注册旧路径占位页，也不改写未知地址。
+场景、听读、账号编辑、原记录兼容页及反馈按业务注册普通子包；听读入口／主题／文章为 `src/sub-packages/listening/{index,topic,article}.vue`。原场景详情、分享和反馈路径保留；安全返回目标统一由 `src/services/navigation.ts` 校验，队列结束回场景列表使用清栈语义。
 
 ## 类型与常量组织
 
@@ -72,7 +66,7 @@ H5 开发时，浏览器通过 Vite 的同源 `/api/v1` 代理访问 `VITE_API_B
 | `src/shared/types/`     | 业务结构、服务端口、参数和结果类型；`*-components.ts` 存放同业务的组件 Props/Emits |
 | `src/shared/constants/` | 按业务存放固定配置、文案映射、静态列表、存储键和校验阈值                           |
 
-实现代码直接从对应文件导入类型或常量，类型使用 `import type`。旧模块保留必要的再导出用于兼容原路径，不重复声明同一类型或常量。HTTP 异常类和错误判别函数归入 `src/services/http/errors.ts`。
+实现代码直接从对应文件导入类型或常量，类型使用 `import type`。旧模块保留必要的再导出用于兼容原路径，不重复声明同一类型或常量。HTTP 异常类和错误判别函数归入 `src/services/errors.ts`。
 
 响应式状态、函数局部变量、用户或设备数据及运行时实例保留在实现文件；组件默认参数保留在调用处。国际化文案继续由 `src/i18n/` 管理，运行时 Mock 数据在 `src/services/mock/` 的独立数据文件中维护，测试样本继续归入 `tests/`。这些目录调整不改变原取值、接口数据或业务规则。
 

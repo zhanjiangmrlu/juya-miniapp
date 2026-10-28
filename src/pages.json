@@ -1,6 +1,27 @@
 {
   "pages": [
     {
+      "path": "pages/home/index",
+      "style": {
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/records/index",
+      "style": {
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
       "path": "pages/learning/index",
       "style": {
         "navigationStyle": "custom",
@@ -99,6 +120,32 @@
           }
         }
       ]
+    },
+    {
+      "root": "sub-packages/listening",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": true
+          }
+        },
+        {
+          "path": "topic",
+          "style": {
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": true
+          }
+        },
+        {
+          "path": "article",
+          "style": {
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        }
+      ]
     }
   ],
   "globalStyle": {
@@ -115,16 +162,22 @@
     "borderStyle": "white",
     "list": [
       {
-        "pagePath": "pages/learning/index",
-        "text": "学习",
-        "iconPath": "static/navigation/learning@3x.png",
-        "selectedIconPath": "static/navigation/learning-selected@3x.png"
+        "pagePath": "pages/home/index",
+        "text": "首页",
+        "iconPath": "static/navigation/home@3x.png",
+        "selectedIconPath": "static/navigation/home@3x.png"
       },
       {
-        "pagePath": "pages/favorites/index",
-        "text": "收藏",
-        "iconPath": "static/navigation/favorites@3x.png",
-        "selectedIconPath": "static/navigation/favorites-selected@3x.png"
+        "pagePath": "pages/records/index",
+        "text": "学习记录",
+        "iconPath": "static/navigation/records@3x.png",
+        "selectedIconPath": "static/navigation/records@3x.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "账号",
+        "iconPath": "static/navigation/account@3x.png",
+        "selectedIconPath": "static/navigation/account@3x.png"
       }
     ]
   }

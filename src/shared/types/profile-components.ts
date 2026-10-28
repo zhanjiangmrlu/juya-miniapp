@@ -10,3 +10,7 @@ export interface ProfileLogoutDialogProps {
   busy: boolean
   error?: string
 }
+
+export interface ProfilePageProps {
+  primary?: boolean
+}

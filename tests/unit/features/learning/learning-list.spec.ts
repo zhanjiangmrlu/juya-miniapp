@@ -37,7 +37,7 @@ import { runtimeMode } from '@/services/runtime-mode'
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.stubGlobal('uni', { hideTabBar: vi.fn(), navigateTo: vi.fn() })
+  vi.stubGlobal('uni', { hideTabBar: vi.fn(), navigateTo: vi.fn(), switchTab: vi.fn() })
 })
 /** 载入给定发布范围的空待学列表
  * @param published 当前已发布卡片数量
@@ -70,7 +70,7 @@ it('distinguishes all learned from no published cards and exposes the full learn
   ).toBe(true)
   expect(learned.findAll('button').some((button) => button.text() === '查看收藏')).toBe(true)
   await learned.get('.records-entry').trigger('click')
-  expect(uni.navigateTo).toHaveBeenCalledWith({ url: '/sub-packages/records/index' })
+  expect(uni.switchTab).toHaveBeenCalledWith({ url: '/pages/records/index' })
   learned.unmount()
   const empty = await open(0)
   expect(

@@ -8,7 +8,10 @@ import { AudioStatus } from '@/shared/enums/audio'
 
 import type { AudioState } from '@/shared/types/audio'
 import type { SliderChangeEvent } from '@/shared/types/ui'
-const props = defineProps<{ state: AudioState }>()
+const props = withDefaults(defineProps<{ state: AudioState; title?: string; english?: string }>(), {
+  title: '完整对话音频',
+  english: 'LISTEN TO THE FULL DIALOGUE'
+})
 const emit = defineEmits<{ toggle: []; seek: [seconds: number]; rate: [value: number] }>()
 const ratesOpen = ref(false)
 /** 选择倍率后收起选项，由统一控制器确认实际生效
@@ -58,8 +61,8 @@ const change = (event: SliderChangeEvent) => {
         /><text v-else>Ⅱ</text>
       </button>
       <view class="audio-copy"
-        ><text class="audio-label">完整对话音频</text
-        ><text class="audio-english">LISTEN TO THE FULL DIALOGUE</text
+        ><text class="audio-label">{{ title }}</text
+        ><text class="audio-english">{{ english }}</text
         ><text class="duration"
           >{{ audioTime(position) }} / {{ audioTime(state.duration) }} · 整篇播放</text
         ></view

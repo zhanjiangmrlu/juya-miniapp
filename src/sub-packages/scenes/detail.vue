@@ -207,7 +207,7 @@ const returnSource = () =>
         : Routes.LEARNING
   )
 /** 结束或直接单卡完成后回到学习入口 */
-const learn = () => uni.switchTab({ url: Routes.LEARNING })
+const learn = () => uni.reLaunch({ url: Routes.LEARNING })
 /** 检查持久待确认完成，换页面或重新显示不能绕过原操作查询 */
 const checkPendingCompletion = () => {
   const pending = operations.pending(`complete:${id}`)

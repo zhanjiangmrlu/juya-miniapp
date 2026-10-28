@@ -1,3 +1,3 @@
 export interface BottomTabsProps {
-  active: 'learning' | 'favorites'
+  active: 'home' | 'records' | 'profile'
 }

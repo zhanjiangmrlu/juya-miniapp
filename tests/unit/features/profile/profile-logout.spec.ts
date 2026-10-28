@@ -18,7 +18,7 @@ vi.mock('@/stores/account-store', () => ({
     logout
   })
 }))
-import ProfilePage from '@/sub-packages/account/profile.vue'
+import ProfilePage from '@/features/profile/components/profile-page-view.vue'
 
 /** 挂载资料页真实退出确认流程，平台导航由测试隔离 */
 const page = () =>

@@ -107,6 +107,8 @@ beforeEach(() => {
   vi.stubGlobal('uni', {
     pageScrollTo: vi.fn(),
     switchTab: vi.fn(),
+    navigateTo: vi.fn(),
+    reLaunch: vi.fn(),
     redirectTo: vi.fn(({ success }) => success())
   })
 })
@@ -166,7 +168,7 @@ it('provides only a learning-page action for a direct single card after completi
   await flushPromises()
   expect(page.get('.safe-footer .primary').text()).toBe('前往学习页')
   await page.get('.safe-footer .primary').trigger('click')
-  expect(uni.switchTab).toHaveBeenCalledWith({ url: '/pages/learning/index' })
+  expect(uni.reLaunch).toHaveBeenCalledWith({ url: '/pages/learning/index' })
   expect(ports.next).not.toHaveBeenCalled()
   page.unmount()
 })

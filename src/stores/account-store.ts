@@ -19,7 +19,7 @@ export const useAccountStore = defineStore('learner-account', () => {
     statistics = ref<components['schemas']['Statistics'] | null>(null),
     avatarURL = ref('')
   let restoring: Promise<AccountProfile | null> | null = null,
-    target: string = Routes.LEARNING,
+    target: string = Routes.HOME,
     generation = 0
   /** 清除个人界面和含输入正文的内存，保留服务器成绩 */
   const clear = () => {
@@ -104,7 +104,7 @@ export const useAccountStore = defineStore('learner-account', () => {
     await session.logout()
     clearFeedbackDrafts()
     clear()
-    openLogin(Routes.LEARNING)
+    openLogin(Routes.HOME)
   }
   /** 更新一次已确认的同账号资料
    * @param value 已由服务器提交的本人资料
