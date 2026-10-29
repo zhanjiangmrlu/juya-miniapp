@@ -1078,6 +1078,10 @@ onUnload(() => {
         v-if="dictionary.selection.value"
         :selection="dictionary.selection.value"
         :result="dictionary.result.value"
+        :source-sentence="
+          card?.content.dialogue?.find((line) => line.id === dictionary.selection.value?.line_id)
+            ?.english || ''
+        "
         :busy="dictionary.busy.value"
         :error="dictionary.error.value"
         :voice-status="

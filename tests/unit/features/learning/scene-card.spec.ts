@@ -13,7 +13,7 @@ vi.mock('@/services/api', () => ({ session: { userId: () => 'learner', request: 
 vi.mock('@/services/client-thumbnail', () => ({ clientThumbnail: ports.thumbnail }))
 beforeEach(() => vi.clearAllMocks())
 vi.mock('@/services/navigation', () => ({ openScene: vi.fn() }))
-it('renders the published English title above Chinese and keeps its WebP thumbnail when list state refreshes', async () => {
+it('renders Chinese above the published English title and keeps its WebP thumbnail when list state refreshes', async () => {
   const card = {
     id: 'one',
     version_id: 'v1',
@@ -34,12 +34,35 @@ it('renders the published English title above Chinese and keeps its WebP thumbna
       .findAll('text')
       .map((node) => node.text())
       .slice(0, 2)
-  ).toEqual([card.title_en, card.name])
+  ).toEqual([card.name, card.title_en])
   expect(page.get('.thumbnail image').attributes('webp')).toBe('true')
   expect(page.get('.thumbnail image').attributes('src')).toBe('/thumbnail?thumbnail=list')
   await page.setProps({ card: { ...card, state: { ...card.state, completed: true } } })
   await flushPromises()
   expect(ports.media).toHaveBeenCalledTimes(1)
+  expect(page.text()).toContain('已学过')
+  page.unmount()
+})
+
+it('keeps completion dates visible for a learned scene instead of replacing them with free access text', async () => {
+  const page = mount(SceneCard, {
+    props: {
+      history: true,
+      source: 'records',
+      card: {
+        id: 'history',
+        name: '晨间习惯',
+        title_en: 'A Morning',
+        version_id: 'v1',
+        thumbnail_id: null,
+        available: true,
+        unavailable_reason: null,
+        first_completed_at: '2026-10-18T00:00:00Z',
+        last_completed_at: '2026-10-26T00:00:00Z'
+      }
+    }
+  })
+  expect(page.text()).toContain('首次完成10月18日 · 最近学习10月26日')
   expect(page.text()).toContain('已学过')
   page.unmount()
 })

@@ -41,11 +41,12 @@ const panelHeight = computed(() => {
       0
     ) || 1
   let height = hasDefinition.value
-    ? 332.8 +
+    ? 285 +
       (hasLemma.value ? 33.8 : 0) -
       (props.result?.phonetic ? 0 : 30.8) +
       Math.max(0, lines - 1) * 34.2
     : 305.4
+  if (props.sourceSentence) height += 35 + Math.ceil(props.sourceSentence.length / 38) * 22
   if (props.voiceError) height += 30
   return Math.min((info.windowHeight || 844) * 0.78, (height * (info.windowWidth || 390)) / 390)
 })
@@ -68,15 +69,37 @@ const panelHeight = computed(() => {
       >
         <view class="dictionary-content">
           <view class="dictionary-head between"
-            ><text class="dictionary-source">{{ badge }}</text
             ><button class="dictionary-close" aria-label="关闭查词" @click="$emit('close')">
               <image
-                src="/static/design/dictionary-close.svg"
+                class="dictionary-close-icon"
+                src="/static/listening/r17-dictionary-close.svg"
                 mode="aspectFit"
                 aria-hidden="true"
               /></button
           ></view>
-          <text class="dictionary-word">{{ selection.word }}</text>
+          <view class="dictionary-word-row"
+            ><text class="dictionary-word">{{ selection.word }}</text>
+            <button
+              v-if="hasDefinition && !busy && !error"
+              class="dictionary-voice"
+              :disabled="voiceStatus === AudioStatus.LOADING"
+              :aria-label="voiceError ? '重试单词发音' : '播放单词发音'"
+              @click="$emit('play')"
+            >
+              <AppLoading
+                v-if="voiceStatus === AudioStatus.LOADING"
+                compact
+                label="正在准备发音"
+                icon-only
+              />
+              <image
+                v-else
+                class="dictionary-speaker-icon"
+                src="/static/listening/r17-dictionary-speaker.svg"
+                mode="aspectFit"
+                aria-hidden="true"
+              /></button
+          ></view>
           <text v-if="hasLemma" class="dictionary-lemma">原形 {{ result?.lemma }}</text>
           <text
             v-if="result?.phonetic"
@@ -84,6 +107,7 @@ const panelHeight = computed(() => {
             :class="{ 'after-lemma': hasLemma }"
             >{{ result.phonetic }}</text
           >
+          <text class="dictionary-source">{{ badge }}</text>
           <view v-if="busy" class="dictionary-status"><AppLoading label="正在查询" /></view>
           <template v-else-if="error"
             ><text class="dictionary-status">释义查询失败，请重试。</text
@@ -102,28 +126,6 @@ const panelHeight = computed(() => {
                   >{{ definition.part_of_speech }} </text
                 ><text>{{ definition.meaning }}</text></view
               ></view
-            ><button
-              class="primary dictionary-voice"
-              :disabled="voiceStatus === AudioStatus.LOADING"
-              @click="$emit('play')"
-            >
-              <AppLoading
-                v-if="voiceStatus === AudioStatus.LOADING"
-                compact
-                label="正在准备发音"
-                icon-only
-              /><image
-                v-else
-                src="/static/design/dictionary-speaker.svg"
-                mode="aspectFit"
-                aria-hidden="true"
-              />{{
-                voiceStatus === AudioStatus.LOADING
-                  ? '正在准备发音…'
-                  : voiceStatus === AudioStatus.PLAYING
-                    ? '重新播放单词发音'
-                    : '播放单词发音'
-              }}</button
             ><text v-if="voiceError" class="dictionary-detail-error" role="alert">{{
               voiceError
             }}</text></template
@@ -134,6 +136,9 @@ const panelHeight = computed(() => {
             ><button class="text-button dictionary-retry" @click="$emit('retry')">
               重新查询
             </button></template
+          >
+          <view v-if="sourceSentence" class="dictionary-context"
+            ><text class="context-sentence">{{ sourceSentence }}</text></view
           >
           <text class="dictionary-help">点击喇叭才发音 · 整篇音频需手动继续</text>
         </view>
@@ -165,45 +170,48 @@ const panelHeight = computed(() => {
   }
 
   .dictionary-head {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    min-height: 84.615rpx;
+    position: relative;
+    min-height: 36.538rpx;
     background: #fffcf5;
   }
 
   .dictionary-source {
-    padding: 9.615rpx 19.231rpx;
-    background: #e4f0db;
+    display: block;
+    margin-top: 23.077rpx;
+    padding: 0;
+    background: transparent;
     color: #41664d;
-    font-size: 25rpx;
-    line-height: 41.25rpx;
+    font-size: 21.154rpx;
+    line-height: 30.769rpx;
     border-radius: 7.692rpx;
   }
 
   .dictionary-close {
+    position: absolute;
+    top: -12px;
+    right: -12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 84.615rpx;
-    height: 84.615rpx;
+    width: 44px;
+    height: 44px;
     padding: 0;
     border: 0;
     background: none;
 
-    image {
-      width: 38.462rpx;
-      height: 38.462rpx;
+    .dictionary-close-icon {
+      width: 19px;
+      height: 19px;
     }
   }
 
   .dictionary-word {
     display: block;
-    margin-top: 34.615rpx;
-    font-family: var(--app-latin-font, 'DM Sans', sans-serif);
+    margin-top: 0;
+    font-family: var(--app-serif-font, Georgia, serif);
     font-size: 57.692rpx;
-    font-weight: 700;
-    line-height: 75rpx;
+    font-weight: 400;
+    line-height: 1.5;
     overflow-wrap: anywhere;
   }
 
@@ -225,7 +233,9 @@ const panelHeight = computed(() => {
   }
 
   .dictionary-phonetic {
-    margin-top: 15.385rpx;
+    font-size: 26.923rpx;
+    line-height: 1.5;
+    margin-top: 13.462rpx;
 
     &.after-lemma {
       margin-top: 28.846rpx;
@@ -233,13 +243,13 @@ const panelHeight = computed(() => {
   }
 
   .dictionary-meanings {
-    margin-top: 34.615rpx;
+    margin-top: 19.231rpx;
   }
 
   .dictionary-definition {
-    color: #586c5b;
-    font-size: 34.615rpx;
-    line-height: 65.769rpx;
+    color: #2b4438;
+    font-size: 32.692rpx;
+    line-height: 55.577rpx;
     overflow-wrap: anywhere;
 
     .part-of-speech {
@@ -256,23 +266,47 @@ const panelHeight = computed(() => {
     margin-top: 28.846rpx;
   }
 
-  .dictionary-voice {
+  .dictionary-word-row {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 13.462rpx;
-    width: 100%;
-    min-height: 76.923rpx;
-    padding: 15.385rpx;
-    margin-top: 46.154rpx;
+    justify-content: space-between;
+    gap: 20rpx;
+    margin-top: 26.923rpx;
+  }
 
-    image {
-      width: 38.462rpx;
-      height: 38.462rpx;
-    }
+  .dictionary-voice {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .dictionary-speaker-icon {
+    width: 23px;
+    height: 23px;
+  }
+
+  .dictionary-context {
+    margin-top: 30rpx;
+    padding-top: 24rpx;
+    border-top: 1px solid #dfe5d8;
+  }
+
+  .context-sentence {
+    display: block;
+    color: #586c5b;
+    font-family: var(--app-latin-font, 'DM Sans', sans-serif);
+    font-size: 26.923rpx;
+    line-height: 1.8;
   }
 
   .dictionary-help {
+    font-size: 21.154rpx;
     margin-top: 26.923rpx;
   }
 

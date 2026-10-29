@@ -64,7 +64,10 @@ const loadStats = async () => {
 /** 刷新当前记录标签，失败保留已读取页 */
 const load = async () => {
   if (await account.ensure(Routes.RECORDS)) {
-    await Promise.all([loadStats(), current.value.refresh()])
+    await Promise.all([
+      loadStats(),
+      tab.value === RecordsTab.LISTENING ? Promise.resolve() : current.value.refresh()
+    ])
   }
 }
 /** 打开某日两类明细，迟到结果不能覆盖新日期
@@ -101,10 +104,8 @@ const select = (value: RecordsTab) => {
 }
 onShow(() => {
   uni.hideTabBar({ animation: false, fail: () => undefined })
-  tab.value =
-    uni.getStorageSync(RECORDS_TAB_STORAGE_KEY) === RecordsTab.CHECKINS
-      ? RecordsTab.CHECKINS
-      : tab.value
+  const stored = uni.getStorageSync(RECORDS_TAB_STORAGE_KEY)
+  if (Object.values(RecordsTab).includes(stored)) tab.value = stored
   void load()
 })
 onReachBottom(() => {
@@ -117,26 +118,48 @@ onUnload(() => {
 </script>
 <template>
   <AppPage title="学习记录" footer
-    ><view v-if="stats" class="statistics"
-      ><view
-        ><text>{{ stats.completed_cards }}</text
-        ><text>已学场景 / 张</text></view
-      ><view
-        ><text>{{ stats.completed_articles }}</text
-        ><text>已学听读 / 篇</text></view
-      ><view
-        ><text>{{ stats.total_checkin_days }}</text
-        ><text>打卡 / 天</text></view
+    ><view v-if="stats" class="record-summary"
+      ><view class="statistics">
+        <button class="metric" @click="select(RecordsTab.LEARNED)">
+          <text class="metric-number">{{ stats.completed_cards }}</text
+          ><text class="metric-label">已学场景卡 / 张</text>
+        </button>
+        <button class="metric" @click="select(RecordsTab.LISTENING)">
+          <text class="metric-number">{{ stats.completed_articles }}</text
+          ><text class="metric-label">已学听读 / 篇</text>
+        </button> </view
+      ><view class="checkin-summary"
+        ><text
+          >连续打卡<text class="checkin-number">{{ stats.current_streak }}</text
+          >天</text
+        ><text
+          >累计打卡<text class="checkin-number">{{ stats.total_checkin_days }}</text
+          >天</text
+        ></view
+      >
+      <view class="today-state"
+        ><image
+          class="checkin-icon"
+          src="/static/design/home-checkin.svg"
+          mode="aspectFit"
+        /><text>{{ stats.checked_in_today ? '今日已打卡' : '今日待打卡' }}</text></view
       ></view
+    >
     ><AppState v-if="statsError" :error="statsError" @retry="loadStats" /><view class="tabs"
-      ><button :class="{ active: tab === RecordsTab.LEARNED }" @click="select(RecordsTab.LEARNED)">
+      ><button
+        class="tab-button"
+        :class="{ active: tab === RecordsTab.LEARNED }"
+        @click="select(RecordsTab.LEARNED)"
+      >
         已学场景</button
       ><button
+        class="tab-button"
         :class="{ active: tab === RecordsTab.LISTENING }"
         @click="select(RecordsTab.LISTENING)"
       >
         已学听读</button
       ><button
+        class="tab-button"
         :class="{ active: tab === RecordsTab.CHECKINS }"
         @click="select(RecordsTab.CHECKINS)"
       >
@@ -187,45 +210,86 @@ onUnload(() => {
 </template>
 <style scoped lang="scss">
 .statistics {
-  display: flex;
-  justify-content: space-between;
-  padding: 28rpx 0 40rpx;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid #dfe5d8;
+  border-bottom: 1px solid #dfe5d8;
+  padding: 34.615rpx 0;
 
-  view {
-    text-align: center;
+  .metric {
+    display: flex;
+    flex-direction: column;
+    gap: 11.538rpx;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    min-height: 114rpx;
   }
 
-  text {
-    display: block;
-    font-size: 23rpx;
+  .metric-number {
+    font-family: var(--app-serif-italic-font, Fraunces, Georgia, serif);
+    font-style: italic;
+    font-size: 67.308rpx;
+    font-weight: 400;
+    line-height: 1.25;
+  }
+
+  .metric-label {
+    font-size: 23.077rpx;
     color: #586c5b;
   }
+}
 
-  text:first-child {
-    font-family: var(--app-serif-font, Georgia, serif);
-    font-size: 46rpx;
-    color: #2b4438;
+.checkin-summary {
+  display: flex;
+  justify-content: center;
+  gap: 30.769rpx;
+  margin-top: 26.923rpx;
+  font-size: 23.077rpx;
+  color: #586c5b;
+
+  .checkin-number {
+    margin: 0 8rpx;
+    font-weight: 700;
+  }
+}
+
+.today-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11.538rpx;
+  margin: 19.231rpx 0 36.538rpx;
+  font-size: 23.077rpx;
+  color: #586c5b;
+
+  .checkin-icon {
+    width: 13px;
+    height: 13px;
   }
 }
 
 .tabs {
   display: flex;
   border-bottom: 1px solid #dfe5d8;
-  margin-bottom: 20rpx;
 
-  button {
+  .tab-button {
     flex: 1;
-    min-height: 85rpx;
+    min-height: 48px;
     padding: 15rpx 4rpx;
     border: 0;
+    border-bottom: 2px solid transparent;
     border-radius: 0;
     background: transparent;
-    font-size: 24rpx;
-  }
+    font-size: 25rpx;
+    color: #586c5b;
 
-  .active {
-    background: #e4f0db;
-    color: #2b4438;
+    &.active {
+      border-bottom-color: #2b4438;
+      color: #2b4438;
+      font-weight: 700;
+    }
   }
 }
 

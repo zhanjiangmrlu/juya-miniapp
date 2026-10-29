@@ -4,10 +4,12 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import AppLoading from '@/components/app-loading/app-loading.vue'
 import { session } from '@/services/api'
 import { clientThumbnail } from '@/services/client-thumbnail'
+import { dateText } from '@/services/display'
 import { localImageSource } from '@/services/local-image'
 import { mediaAddress } from '@/services/media-service'
 import { openScene } from '@/services/navigation'
 import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
+import { QueueSource } from '@/shared/enums/learning'
 
 import type { PublishedScene } from '@/shared/types/learning'
 import type { SceneCardProps } from '@/shared/types/learning-components'
@@ -34,7 +36,35 @@ const available = computed(() => !('available' in props.card) || props.card.avai
 const images = computed(() =>
   src.value && !imageError.value ? [{ src: src.value, generation: imageKey.value }] : []
 )
-const completed = computed(() => 'state' in props.card && props.card.state.completed)
+const completed = computed(
+  () =>
+    props.source === QueueSource.RECORDS || ('state' in props.card && props.card.state.completed)
+)
+/** 将服务端完成或收藏时间显示为北京时间月日
+ * @param value 已确认的ISO时间
+ */
+const shortDate = (value: string) => {
+  const formatted = dateText(value)
+  return /^\d{4}-\d{2}-\d{2}/.test(formatted)
+    ? `${Number(formatted.slice(5, 7))}月${Number(formatted.slice(8, 10))}日`
+    : '暂未获取'
+}
+const historyMeta = computed(() => {
+  const card = props.card
+  if (
+    props.source === QueueSource.FAVORITES &&
+    'favorited_at' in card &&
+    typeof card.favorited_at === 'string'
+  )
+    return `收藏于${shortDate(card.favorited_at)}`
+  if (!props.history || !('first_completed_at' in card)) return ''
+  return [
+    card.first_completed_at ? `首次完成${shortDate(card.first_completed_at)}` : '',
+    card.last_completed_at ? `最近学习${shortDate(card.last_completed_at)}` : ''
+  ]
+    .filter(Boolean)
+    .join(' · ')
+})
 const started = computed(
   () => 'state' in props.card && 'started' in props.card.state && props.card.state.started
 )
@@ -136,32 +166,40 @@ onBeforeUnmount(() => {
         ><AppLoading compact stacked label="正在加载图片" /></view
       ><text v-else-if="!src && !imageError" class="image-placeholder">暂无场景图</text></view
     ><view class="scene-copy"
-      ><text v-if="card.title_en" class="scene-english">{{ card.title_en }}</text
       ><text class="scene-name">{{ card.name }}</text
+      ><text v-if="card.title_en" class="scene-english">{{ card.title_en }}</text
       ><text v-if="!available" class="availability">{{
         'unavailable_reason' in card && card.unavailable_reason === 'deleted'
           ? '已删除 · 当前不可用'
           : '已下线 · 当前不可用'
       }}</text
       ><text v-else-if="locked" class="availability">需学习授权</text>
+      <text v-else-if="history && completed" class="scene-hint">已学过</text>
       <text v-else-if="card.access?.is_free" class="scene-hint">免费开放</text>
       <text v-else-if="completed && !$slots.default" class="scene-hint">已学过 · 点击复习</text>
+      <text v-else-if="source === QueueSource.FAVORITES" class="scene-hint">已收藏</text>
       <text v-else-if="!$slots.default" class="scene-hint">{{
         started ? '学习中 · 继续学习' : '未开始'
       }}</text>
       <text v-if="contentSummary" class="scene-meta">{{ contentSummary }}</text>
-      <slot v-if="available" /></view
-    ><image class="arrow" src="/static/design/chevron.svg" mode="aspectFit" aria-hidden="true"
+      <text v-if="historyMeta" class="history-meta">{{ historyMeta }}</text
+      ><slot v-if="available" /></view
+    ><image
+      class="arrow"
+      :src="locked ? '/static/design/scene-row-lock.svg' : '/static/design/scene-row-chevron.svg'"
+      mode="aspectFit"
+      aria-hidden="true"
   /></view>
 </template>
 <style scoped lang="scss">
 .scene-row {
   display: flex;
   align-items: center;
-  gap: 26.923rpx;
+  gap: 30.769rpx;
   width: 100%;
-  min-height: 268.577rpx;
+  min-height: 278.846rpx;
   padding: 34.615rpx 0;
+  border-bottom: 1px solid #dfe5d8;
 
   .thumbnail {
     position: relative;
@@ -169,7 +207,7 @@ onBeforeUnmount(() => {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 119.231rpx;
+    width: 123.077rpx;
     height: 180.769rpx;
     border: 1px solid #dfe5d8;
     border-radius: 9.615rpx;
@@ -208,15 +246,15 @@ onBeforeUnmount(() => {
   }
 
   .scene-copy {
-    align-self: flex-start;
+    align-self: center;
     flex: 1;
     min-width: 0;
 
     .scene-name {
       display: block;
-      margin: 9.615rpx 0 0;
-      font-size: 25rpx;
-      font-weight: 500;
+      margin: 0;
+      font-size: 30.769rpx;
+      font-weight: 700;
       line-height: 42.5rpx;
       overflow-wrap: anywhere;
     }
@@ -224,9 +262,9 @@ onBeforeUnmount(() => {
     .scene-english {
       display: block;
       font-family: var(--app-serif-font, Fraunces, Georgia, serif);
-      font-size: 34.615rpx;
+      font-size: 38.462rpx;
       font-weight: 400;
-      line-height: 48.462rpx;
+      line-height: 51.923rpx;
       letter-spacing: -0.015em;
       overflow-wrap: anywhere;
     }
@@ -246,10 +284,18 @@ onBeforeUnmount(() => {
     }
   }
 
+  .history-meta {
+    display: block;
+    margin-top: 11.538rpx;
+    color: #586c5b;
+    font-size: 21.154rpx;
+    line-height: 1.8;
+  }
+
   .arrow {
     flex-shrink: 0;
-    width: 34.615rpx;
-    height: 34.615rpx;
+    width: 17px;
+    height: 18px;
   }
 
   &.featured {

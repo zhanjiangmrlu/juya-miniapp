@@ -12,6 +12,7 @@ import { Routes } from '@/shared/constants/navigation'
 import { AudioStatus } from '@/shared/enums/audio'
 import { useAccountStore } from '@/stores/account-store'
 
+import type { components } from '@/shared/contracts/generated/mini-api'
 import type { AudioState } from '@/shared/types/audio'
 import type { DictionaryResult, DictionarySelection } from '@/shared/types/dictionary'
 import type {
@@ -48,6 +49,8 @@ export const useListeningArticle = () => {
     nextArticle = ref<ListeningSummary | null>(null),
     endedTopic = ref(false),
     completed = ref(false),
+    completionResult = ref<components['schemas']['ListeningCompletionResult'] | null>(null),
+    lookupRestricted = ref(false),
     image = ref(''),
     imageError = ref(''),
     imageOpen = ref(false),
@@ -307,6 +310,8 @@ export const useListeningArticle = () => {
       article.value = value
       summary.value = value
       completed.value = false
+      completionResult.value = null
+      lookupRestricted.value = false
       nextArticle.value = null
       endedTopic.value = false
       setup()
@@ -379,14 +384,15 @@ export const useListeningArticle = () => {
     actionBusy.value = true
     actionError.value = ''
     try {
-      await writeListening(
+      const result = await writeListening<components['schemas']['ListeningCompletionResult']>(
         `listening-complete:${value.id}`,
         `/articles/${value.id}/complete`,
         'POST',
         { version_id: value.version_id }
       )
+      completionResult.value = result
       completed.value = true
-      value.state.completed = true
+      value.state = result.state
       await getNext()
     } catch (reason) {
       actionError.value = reason instanceof Error ? reason.message : '完成结果未确认，请重试'
@@ -428,9 +434,10 @@ export const useListeningArticle = () => {
     const value = article.value
     if (!value?.version_id) return
     if (!value.access.can_lookup) {
-      uni.showToast({ title: '点词查询需学习授权', icon: 'none' })
+      lookupRestricted.value = true
       return
     }
+    lookupRestricted.value = false
     if (audio.value.wordId) controller?.stopWord(audio.value.wordId)
     selection.value = {
       cardId: value.id,
@@ -571,6 +578,8 @@ export const useListeningArticle = () => {
     nextArticle,
     endedTopic,
     completed,
+    completionResult,
+    lookupRestricted,
     image,
     imageError,
     imageOpen,

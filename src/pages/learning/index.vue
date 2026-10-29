@@ -10,14 +10,13 @@ import {
   onShow,
   onUnload
 } from '@dcloudio/uni-app'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { useListPosition } from '@/composables/use-list-position'
 import { useNativeShare } from '@/composables/use-native-share'
 import { useSceneList } from '@/composables/use-scene-list'
-import LearningStatistics from '@/features/learning/components/learning-statistics.vue'
 import SceneCard from '@/features/learning/components/scene-card.vue'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
@@ -64,6 +63,14 @@ const {
   request: session.request,
   userId: session.userId,
   ensure: () => account.ensure(Routes.LEARNING)
+})
+const authorizationLabel = computed(() => {
+  if (!accessContext.value) return '权限准备中'
+  return accessContext.value.authorization.status === LearningAuthorizationStatus.ACTIVE
+    ? '授权有效'
+    : accessContext.value.authorization.status === LearningAuthorizationStatus.EXPIRED
+      ? '授权已到期'
+      : '未授权'
 })
 const position = useListPosition(session.userId)
 /** 保留详情返回前的滚动位置和已读页 */
@@ -166,50 +173,59 @@ onUnload(() => {
   <AppPage
     title="场景学习"
     back
-    :footer="!browseOnly"
     public-summary
     :shareable="!browseOnly && Boolean(account.profile)"
   >
     <ShareSummary v-if="browseOnly" />
     <AppState v-else-if="!accessReady" :busy="!statsError" :error="statsError" @retry="showPage" />
     <template v-else>
-      <view class="welcome between">
-        <text class="greeting">{{ account.profile?.nickname || '学习者' }}，今天也学一点</text>
-        <button class="account-link" aria-label="账号资料" @click="profile">
-          <text>账号</text
-          ><text
+      <text class="home-title">English, every day.</text>
+      <text class="learner-status"
+        >{{ account.profile?.nickname || '学习者' }} · {{ authorizationLabel }} ·
+        {{
+          account.statistics
+            ? account.statistics.checked_in_today
+              ? '今日已打卡'
+              : '今日待打卡'
+            : '打卡状态准备中'
+        }}</text
+      >
+      <view class="scene-summary">
+        <button v-if="account.statistics" class="summary-link learned-link" @click="records">
+          已学 {{ account.statistics.completed_cards }} 张场景卡
+        </button>
+        <button class="summary-link records-entry" @click="records">
+          学习记录<image
+            class="summary-chevron"
+            src="/static/design/scene-row-chevron.svg"
+            mode="aspectFit"
+          />
+        </button>
+        <button class="summary-link account-link" @click="profile">
+          账号<text
             v-if="feedbackInbox.value.value.unread"
             class="feedback-dot"
             aria-label="有未读反馈回复"
           />
+          <image
+            class="summary-chevron"
+            src="/static/design/scene-row-chevron.svg"
+            mode="aspectFit"
+          />
         </button>
       </view>
-      <text class="home-title">English, every day.</text>
-      <LearningStatistics v-if="account.statistics" :statistics="account.statistics" />
+      <view v-if="account.statistics" class="scene-streak">
+        <text>连续打卡 {{ account.statistics.current_streak }} 天</text>
+        <text>累计打卡 {{ account.statistics.total_checkin_days }} 天</text>
+      </view>
       <AppState
         v-else
         :busy="!statsError"
         :error="statsError && '统计暂未获取'"
         @retry="refreshStats"
       />
-      <view v-if="statsError && account.statistics" class="notice error">
-        统计暂未更新 <button class="text-button" @click="refreshStats">重试</button>
-      </view>
-      <button class="records-entry between" @click="records">
-        <view
-          ><image src="/static/design/calendar.svg" mode="aspectFit" aria-hidden="true" /><text
-            >学习记录</text
-          ></view
-        ><image src="/static/design/chevron.svg" mode="aspectFit" aria-hidden="true" />
-      </button>
-      <view class="today-line between"
-        ><image src="/static/design/calendar.svg" mode="aspectFit" aria-hidden="true" /><text>{{
-          account.statistics
-            ? account.statistics.checked_in_today
-              ? '今日已打卡'
-              : '今日还未打卡'
-            : '今日状态暂未获取'
-        }}</text></view
+      <view v-if="statsError && account.statistics" class="notice error"
+        >统计暂未更新<button class="text-button" @click="refreshStats">重试</button></view
       >
       <view class="catalog-heading between">
         <text class="section-title">待学场景</text>
@@ -245,13 +261,7 @@ onUnload(() => {
           ><button @click="favorites">查看收藏</button></view
         ></AppState
       >
-      <SceneCard
-        v-for="(card, index) in cards"
-        :key="card.id"
-        :card="card"
-        :featured="index === 0"
-        source="learning"
-      />
+      <SceneCard v-for="card in cards" :key="card.id" :card="card" source="learning" />
       <SceneListFooter
         :busy="moreBusy"
         :refreshing="busy && total !== null"
@@ -266,106 +276,70 @@ onUnload(() => {
   </AppPage>
 </template>
 <style scoped lang="scss">
-.access-notice {
-  margin: 24rpx 0;
-  color: #586c5b;
-  font-size: 24rpx;
-  line-height: 1.8;
-}
-
-.empty-actions {
-  display: flex;
-  justify-content: center;
-  gap: 19.231rpx;
-}
-
-.welcome {
-  min-height: 53.846rpx;
-  margin-bottom: 15.385rpx;
-
-  .greeting {
-    font-size: 25rpx;
-    line-height: 42.5rpx;
-    color: #586c5b;
-  }
-
-  .account-link {
-    display: flex;
-    align-items: center;
-    gap: 11.538rpx;
-    min-height: 53.846rpx;
-    padding: 7.692rpx 0 7.692rpx 28.846rpx;
-    border: 0;
-    border-radius: 0;
-    background: none;
-    font-size: 23.077rpx;
-    font-weight: 500;
-    line-height: 38.462rpx;
-    white-space: nowrap;
-
-    .feedback-dot {
-      width: 15.385rpx;
-      height: 15.385rpx;
-      border-radius: 50%;
-      background: #ad4f32;
-    }
-  }
-}
-
 .home-title {
   display: block;
-  margin-bottom: 38.462rpx;
+  margin: 0 0 15.385rpx;
   font-family: var(--app-serif-font, Fraunces, Georgia, serif);
   font-size: 51.923rpx;
   font-weight: 400;
-  line-height: 72.692rpx;
-  letter-spacing: -0.025em;
+  line-height: 1.5;
 }
 
-.records-entry {
-  width: 100%;
-  min-height: 103.846rpx;
-  padding: 26.923rpx 32.692rpx;
-  border: 1px solid #dfe5d8;
-  border-radius: 19.231rpx;
-  background: #fff;
-  font-size: 30.769rpx;
-  line-height: 46.154rpx;
+.learner-status {
+  display: block;
+  font-size: 23.077rpx;
+  color: #586c5b;
+}
 
-  view {
+.scene-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-top: 19.231rpx;
+
+  .summary-link {
     display: flex;
     align-items: center;
-    gap: 19.231rpx;
+    gap: 6rpx;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    font-size: 23.077rpx;
   }
 
-  image {
-    width: 38.462rpx;
-    height: 38.462rpx;
-    flex-shrink: 0;
+  .summary-chevron {
+    width: 13px;
+    height: 13px;
   }
 }
 
-.today-line {
-  margin-top: 30.769rpx;
-  min-height: 42.5rpx;
-  font-size: 25rpx;
-  line-height: 42.5rpx;
+.scene-streak {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #dfe5d8;
+  padding-bottom: 34.615rpx;
+  font-size: 23.077rpx;
+  color: #586c5b;
+}
 
-  image {
-    width: 34.615rpx;
-    height: 34.615rpx;
-  }
+.feedback-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ad4f32;
 }
 
 .catalog-heading {
-  margin: 53.846rpx 0 25rpx;
+  margin-top: 34.615rpx;
   align-items: baseline;
 
   .section-title {
     margin: 0;
-    font-size: 38.462rpx;
-    font-weight: 500;
-    line-height: 57.692rpx;
+    font-size: 32.692rpx;
+    font-weight: 700;
   }
 
   .catalog-count {
@@ -374,8 +348,16 @@ onUnload(() => {
   }
 }
 
-.more {
-  width: 100%;
-  margin-top: 23.077rpx;
+.access-notice {
+  margin: 13.462rpx 0;
+  color: #586c5b;
+  font-size: 23.077rpx;
+  line-height: 1.8;
+}
+
+.empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: 19.231rpx;
 }
 </style>

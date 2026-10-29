@@ -1185,6 +1185,11 @@ export interface components {
   schemas: {
     /** ArticleDetail */
     ArticleDetail: {
+      /** Audio Duration Seconds */
+      audio_duration_seconds?: number | null
+      /** Reading Paragraph */
+      reading_paragraph?: number | null
+      progress: components['schemas']['Progress']
       /** Id */
       id: string
       /**
@@ -1220,7 +1225,6 @@ export interface components {
       /** Completed At */
       completed_at?: string | null
       payload: components['schemas']['ListeningPayload']
-      progress: components['schemas']['Progress']
       timeline: components['schemas']['Timeline']
       /** Queue Token */
       queue_token: string
@@ -1822,6 +1826,11 @@ export interface components {
     }
     /** ListeningDailyRecord */
     ListeningDailyRecord: {
+      /** Audio Duration Seconds */
+      audio_duration_seconds?: number | null
+      /** Reading Paragraph */
+      reading_paragraph?: number | null
+      progress?: components['schemas']['Progress'] | null
       /** Id */
       id: string
       /**
@@ -2053,6 +2062,8 @@ export interface components {
       /** Unavailable Reason */
       unavailable_reason: string | null
       state: components['schemas']['CardState']
+      /** Favorited At */
+      favorited_at?: string | null
     }
     /** ProfileChange */
     ProfileChange: {
@@ -2313,6 +2324,11 @@ export interface components {
     }
     /** Summary */
     Summary: {
+      /** Audio Duration Seconds */
+      audio_duration_seconds?: number | null
+      /** Reading Paragraph */
+      reading_paragraph?: number | null
+      progress?: components['schemas']['Progress'] | null
       /** Id */
       id: string
       /**
@@ -2388,6 +2404,11 @@ export interface components {
     }
     /** TopicProgress */
     TopicProgress: {
+      /**
+       * Name En
+       * @default
+       */
+      name_en: string
       /** Name */
       name: string
       /**

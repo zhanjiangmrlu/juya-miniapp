@@ -90,8 +90,8 @@ const emphasized = (token: ListeningToken) =>
 <style scoped lang="scss">
 .reading-body {
   font-family: var(--app-latin-font, 'DM Sans', sans-serif);
-  font-size: 32rpx;
-  line-height: 1.95;
+  font-size: 32.692rpx;
+  line-height: 1.85;
   overflow-wrap: break-word;
 
   .paragraph {

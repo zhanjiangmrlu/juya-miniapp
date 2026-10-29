@@ -27,6 +27,8 @@ const list = useSceneList<ListeningSummary>({
       props.mode === ListeningCollectionMode.FAVORITES ? Routes.FAVORITES : Routes.RECORDS
     )
 })
+/** 空态返回主题听读选择真实内容 */
+const explore = () => uni.navigateTo({ url: Routes.LISTENING })
 /** 受限或删除文章的本人收藏仍允许取消
  * @param article 用户选择取消的安全摘要
  */
@@ -52,8 +54,21 @@ onUnload(list.dispose)
       :busy="list.busy.value && list.total.value === null"
       :error="list.error.value"
       :empty="list.total.value === 0"
-      :title="mode === ListeningCollectionMode.FAVORITES ? '还没有收藏的听读' : '还没有已学听读'"
-      description="从首页主题听读开始，学习一篇喜欢的文章"
+      :title="mode === ListeningCollectionMode.FAVORITES ? '还没有收藏听读文章' : '还没有已学听读'"
+      :description="
+        mode === ListeningCollectionMode.FAVORITES
+          ? '读到喜欢的一篇时，可以把整篇文章收藏在这里。'
+          : '从首页主题听读开始，学习一篇喜欢的文章'
+      "
+      prominent
+      centered-error
+      :icon="
+        mode === ListeningCollectionMode.FAVORITES
+          ? '/static/listening/r17-favorite.svg'
+          : '/static/listening/r17-empty-book.svg'
+      "
+      action-label="去主题听读"
+      @action="explore"
       @retry="list.refresh" /><ListeningArticleCard
       v-for="article in list.items.value"
       :key="article.id"

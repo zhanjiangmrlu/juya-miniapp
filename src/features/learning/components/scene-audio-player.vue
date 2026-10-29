@@ -8,12 +8,36 @@ import { AudioStatus } from '@/shared/enums/audio'
 
 import type { AudioState } from '@/shared/types/audio'
 import type { SliderChangeEvent } from '@/shared/types/ui'
-const props = withDefaults(defineProps<{ state: AudioState; title?: string; english?: string }>(), {
-  title: '完整对话音频',
-  english: 'LISTEN TO THE FULL DIALOGUE'
-})
+const props = withDefaults(
+  defineProps<{ state: AudioState; title?: string; english?: string; syncStatus?: string }>(),
+  {
+    title: '完整对话音频',
+    english: 'LISTEN TO THE FULL DIALOGUE',
+    syncStatus: ''
+  }
+)
 const emit = defineEmits<{ toggle: []; seek: [seconds: number]; rate: [value: number] }>()
 const ratesOpen = ref(false)
+const playbackHint = computed(() =>
+  props.state.status === AudioStatus.PLAYING
+    ? '正在播放全文音频'
+    : props.state.status === AudioStatus.LOADING
+      ? '正在准备音频'
+      : props.state.status === AudioStatus.ENDED
+        ? '播放完毕 · 点击重新播放'
+        : '点击继续播放'
+)
+const status = computed(
+  () =>
+    props.syncStatus ||
+    (props.state.status === AudioStatus.PLAYING
+      ? '正在播放 · 跟随音频阅读'
+      : props.state.status === AudioStatus.PAUSED
+        ? '已暂停 · 高亮与尾迹保持当前位置'
+        : props.state.status === AudioStatus.ENDED
+          ? '播放已结束 · 可继续阅读或重新播放'
+          : '点击播放，按自己的节奏听读')
+)
 /** 选择倍率后收起选项，由统一控制器确认实际生效
  * @param rate 用户选择的完整音频倍率
  */
@@ -55,17 +79,21 @@ const change = (event: SliderChangeEvent) => {
           icon-only
         /><image
           v-else-if="state.status !== AudioStatus.PLAYING"
-          src="/static/design/play.svg"
+          class="play-icon"
+          src="/static/listening/r17-audio-play.svg"
           mode="aspectFit"
           aria-hidden="true"
-        /><text v-else>Ⅱ</text>
+        /><image
+          v-else
+          class="pause-icon"
+          src="/static/listening/r17-audio-pause.svg"
+          mode="aspectFit"
+          aria-hidden="true"
+        />
       </button>
       <view class="audio-copy"
         ><text class="audio-label">{{ title }}</text
-        ><text class="audio-english">{{ english }}</text
-        ><text class="duration"
-          >{{ audioTime(position) }} / {{ audioTime(state.duration) }} · 整篇播放</text
-        ></view
+        ><text class="playback-hint">{{ playbackHint }}</text></view
       >
       <button
         class="rate-toggle"
@@ -77,6 +105,7 @@ const change = (event: SliderChangeEvent) => {
       </button>
     </view>
     <slider
+      class="audio-seek"
       :value="position"
       :max="state.duration || 1"
       :min="0"
@@ -89,10 +118,15 @@ const change = (event: SliderChangeEvent) => {
       @changing="changing"
       @change="change"
     />
+    <view class="player-times"
+      ><text class="time-current">{{ audioTime(position).padStart(5, '0') }}</text
+      ><text class="time-total">{{ audioTime(state.duration).padStart(5, '0') }}</text></view
+    >
     <view v-if="ratesOpen" class="rate-options" role="group" aria-label="完整音频倍速">
       <button
         v-for="rate in PLAYBACK_RATES"
         :key="rate"
+        class="rate-option"
         :data-rate="rate"
         :class="{ selected: state.rate === rate }"
         :aria-pressed="state.rate === rate"
@@ -101,6 +135,7 @@ const change = (event: SliderChangeEvent) => {
         {{ rate }}×
       </button>
     </view>
+    <text class="audio-status">{{ status }}</text>
     <text v-if="state.rateError" class="rate-error" role="alert">{{ state.rateError }}</text>
     <button v-if="state.error" class="text-button error" @click="emit('toggle')">
       {{ state.error }}
@@ -131,27 +166,36 @@ const change = (event: SliderChangeEvent) => {
     font-weight: 500;
   }
 
-  .audio-english {
+  .playback-hint {
     display: block;
     font-family: var(--app-latin-font, 'DM Sans', sans-serif);
-    font-size: 17.308rpx;
+    font-size: 21.154rpx;
     font-weight: 500;
-    letter-spacing: 0.08em;
     line-height: 1.6;
     color: #4f6d55;
     margin-top: 5.769rpx;
   }
 
-  .duration {
+  .player-times {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12rpx;
+    font-family: var(--app-latin-font, sans-serif);
+    font-size: 20rpx;
+    color: #586c5b;
+  }
+
+  .audio-status {
     display: block;
+    margin-top: 17rpx;
     font-size: 21.154rpx;
-    color: #4f6d55;
-    margin-top: 5.769rpx;
+    line-height: 1.6;
+    color: #586c5b;
   }
 
   .play {
-    width: 84.615rpx;
-    height: 84.615rpx;
+    width: 44px;
+    height: 44px;
     border: 0;
     border-radius: 50%;
     background: #bedda7;
@@ -161,19 +205,24 @@ const change = (event: SliderChangeEvent) => {
     font-size: 30.769rpx;
   }
 
-  .play image {
-    width: 38.462rpx;
-    height: 38.462rpx;
+  .play-icon {
+    width: 21px;
+    height: 22px;
   }
 
-  slider {
+  .pause-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .audio-seek {
     margin: 25rpx 0 0;
   }
 
   .rate-toggle {
     flex-shrink: 0;
-    width: 107.115rpx;
-    min-height: 84.615rpx;
+    width: 142rpx;
+    min-height: 44px;
     border: 1px solid #b8cdb0;
     border-radius: 15.385rpx;
     padding: 7.692rpx;
@@ -189,10 +238,10 @@ const change = (event: SliderChangeEvent) => {
     border-top: 1px solid #b8cdb0;
     padding-top: 23.077rpx;
 
-    button {
+    .rate-option {
       flex: 1;
       min-width: 0;
-      min-height: 84.615rpx;
+      min-height: 44px;
       border: 1px solid transparent;
       border-radius: 15.385rpx;
       padding: 7.692rpx 0;

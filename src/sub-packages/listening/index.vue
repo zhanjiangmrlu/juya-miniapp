@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { listeningResumeText } from '@/features/listening/listening-presenter'
 import { getListeningHome, openListeningArticle } from '@/features/listening/listening-service'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
@@ -15,6 +16,9 @@ const account = useAccountStore(),
   panel = ref(false),
   busy = ref(false),
   error = ref('')
+const continueTopic = computed(() =>
+  home.value?.topics.find((topic) => topic.id === home.value?.continue_learning?.topic_id)
+)
 const topics = computed(
   () =>
     home.value?.topics.filter((topic) => !category.value || topic.category_id === category.value) ||
@@ -51,21 +55,50 @@ onShow(() => void load())
 </script>
 <template>
   <AppPage title="主题听读" back
-    ><text class="section-title">让英语连成一段生活</text
-    ><text class="muted">围绕一个主题，读懂，也听懂。</text
-    ><AppState :busy="busy && !home" :error="error" @retry="load" /><template v-if="home"
+    ><text class="listening-title">让英语连成一段生活</text
+    ><text class="listening-subtitle">围绕一个主题，读懂，也听懂。</text
+    ><AppState :busy="busy && !home" :error="error" centered-error @retry="load" /><template
+      v-if="home"
+      ><view v-if="home.continue_learning" class="continue">
+        <view class="continue-label"
+          ><image
+            class="continue-clock"
+            src="/static/listening/r17-clock.svg"
+            mode="aspectFit"
+          /><text>继续学习</text></view
+        ><text class="continue-title">{{ home.continue_learning.title_zh }}</text>
+        <text class="continue-meta"
+          >{{ home.continue_learning.word_count }}词<text v-if="home.continue_learning.progress">
+            · {{ listeningResumeText(home.continue_learning) }}</text
+          ></text
+        >
+        <view class="continue-bottom"
+          ><button class="continue-action" @click="openListeningArticle(home.continue_learning)">
+            <image
+              class="continue-play"
+              src="/static/listening/r17-play.svg"
+              mode="aspectFit"
+            />继续阅读</button
+          ><text class="continue-meta">{{ continueTopic?.name }}</text></view
+        > </view
       ><view class="category-bar"
         ><scroll-view
           class="category-scroll"
           scroll-x
           :scroll-into-view="'category-' + (category || 'all')"
           ><view class="category-options"
-            ><button id="category-all" :class="{ active: !category }" @click="select('')">
+            ><button
+              id="category-all"
+              class="category-option"
+              :class="{ active: !category }"
+              @click="select('')"
+            >
               全部</button
             ><button
               v-for="item in home.categories"
               :id="'category-' + item.id"
               :key="item.id"
+              class="category-option"
               :class="{ active: category === item.id }"
               @click="select(item.id)"
             >
@@ -73,36 +106,53 @@ onShow(() => void load())
             </button></view
           ></scroll-view
         ><button class="category-toggle" @click="panel = true">分类⌄</button></view
-      ><button
-        v-if="home.continue_learning"
-        class="continue"
-        @click="openListeningArticle(home.continue_learning)"
-      >
-        继续学习 · {{ home.continue_learning.title_zh }} →</button
       ><view v-if="!home.configured" class="notice">主题听读准备中</view
       ><AppState
         :empty="!topics.length"
-        title="暂无听读内容"
-        description="新的主题正在准备中"
-      /><button v-for="topic in topics" :key="topic.id" class="topic" @click="open(topic)">
-        <view
-          ><text class="topic-title">{{ topic.name }}</text
-          ><text class="muted"
-            >已学 {{ topic.completed_articles }} / {{ topic.total_articles }} 篇</text
-          ></view
-        ><text>→</text>
-      </button></template
+        prominent
+        title="这个分类还没有内容"
+        description="新的主题正在准备中，可以先看看其他分类。"
+        icon="/static/listening/r17-empty-book.svg"
+        action-label="查看全部主题"
+        @action="select('')" /><button
+        v-for="topic in topics"
+        :key="topic.id"
+        class="topic"
+        @click="open(topic)"
+      >
+        <view class="topic-line"
+          ><view class="topic-heading"
+            ><text class="topic-title">{{ topic.name }}</text
+            ><text v-if="topic.name_en" class="topic-english">{{ topic.name_en }}</text></view
+          ><image
+            class="topic-arrow"
+            src="/static/listening/r17-topic-chevron.svg"
+            mode="aspectFit"
+        /></view>
+        <text v-if="topic.description" class="topic-description">{{ topic.description }}</text>
+        <view class="topic-counts"
+          ><text>{{ topic.total_articles }}篇短文</text
+          ><text>已学{{ topic.completed_articles }}／{{ topic.total_articles }}篇</text></view
+        >
+        <view class="topic-progress"
+          ><view
+            class="topic-progress-fill"
+            :style="{
+              width: `${topic.total_articles ? Math.min(100, (topic.completed_articles / topic.total_articles) * 100) : 0}%`
+            }"
+        /></view></button></template
     ><view v-if="panel" class="category-veil" @click="panel = false"
       ><view class="category-panel" @click.stop
         ><view class="between"
           ><text class="section-title">全部分类</text
-          ><button class="text-button" @click="panel = false">关闭</button></view
+          ><button class="text-button panel-close" @click="panel = false">关闭</button></view
         ><scroll-view scroll-y class="panel-scroll"
           ><button class="all" :class="{ active: !category }" @click="select('')">全部主题</button
           ><view class="category-grid"
             ><button
               v-for="item in home?.categories"
               :key="item.id"
+              class="panel-option"
               :class="{ active: category === item.id }"
               @click="select(item.id)"
             >
@@ -115,9 +165,25 @@ onShow(() => void load())
   >
 </template>
 <style scoped lang="scss">
+.listening-title {
+  display: block;
+  font-size: 42.308rpx;
+  line-height: 1.5;
+  font-weight: 700;
+  margin-bottom: 11.538rpx;
+}
+
+.listening-subtitle {
+  display: block;
+  color: #586c5b;
+  font-size: 25rpx;
+  line-height: 1.8;
+}
+
 .category-bar {
   display: flex;
-  margin: 38rpx 0 24rpx;
+  margin: 42rpx 0 24rpx;
+  gap: 19.231rpx;
 
   .category-scroll {
     flex: 1;
@@ -130,21 +196,32 @@ onShow(() => void load())
     gap: 12rpx;
   }
 
-  button {
+  .category-option {
     flex-shrink: 0;
-    min-height: 85rpx;
+    min-height: 44px;
     padding: 12rpx 24rpx;
-    background: transparent;
-    font-size: 25rpx;
-    border: 0;
+    background: #fff;
+    font-size: 26.923rpx;
+    border: 1px solid #dfe5d8;
+    border-radius: 22px;
+
+    &.active {
+      background: #e4f0db;
+      border-color: #e4f0db;
+      color: #2b4438;
+    }
   }
 
   .category-toggle {
     flex: none;
-    width: 123rpx;
+    width: 64px;
+    min-width: 64px;
+    min-height: 44px;
     padding: 12rpx;
-    border-left: 1px solid #dfe5d8;
-    border-radius: 0;
+    border: 1px solid #dfe5d8;
+    border-radius: 19.231rpx;
+    background: #fffcf5;
+    font-size: 25rpx;
   }
 }
 
@@ -154,32 +231,126 @@ onShow(() => void load())
 }
 
 .continue {
-  padding: 22rpx;
-  background: #edf2e5;
-  font-size: 24rpx;
-  text-align: left;
+  margin-top: 34.615rpx;
+  padding: 32.692rpx;
+  background: #e4f0db;
+  border-radius: 23.077rpx;
+
+  .continue-clock {
+    width: 15px;
+    height: 15px;
+  }
+
+  .continue-play {
+    width: 18px;
+    height: 18px;
+  }
+
+  .continue-label {
+    display: flex;
+    align-items: center;
+    gap: 11.538rpx;
+    color: #41664d;
+    font-size: 23.077rpx;
+  }
+
+  .continue-title {
+    display: block;
+    margin: 15.385rpx 0 13.462rpx;
+    font-size: 30.769rpx;
+    font-weight: 700;
+  }
+
+  .continue-meta {
+    font-size: 23.077rpx;
+    color: #586c5b;
+  }
+
+  .continue-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 21.154rpx;
+  }
+
+  .continue-action {
+    display: flex;
+    align-items: center;
+    gap: 13.462rpx;
+    min-height: 44px;
+    margin: 0;
+    padding: 12rpx 26rpx;
+    background: #fff;
+    font-size: 23.077rpx;
+    border: 1px solid #dfe5d8;
+  }
 }
 
 .topic {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: block;
   width: 100%;
-  margin-top: 24rpx;
-  padding: 32rpx;
-  border: 1px solid #dfe5d8;
-  border-radius: 24rpx;
-  background: #fffef9;
+  padding: 34.615rpx 0;
+  border: 0;
+  border-bottom: 1px solid #dfe5d8;
+  border-radius: 0;
+  background: transparent;
   text-align: left;
 
-  text {
-    display: block;
-    font-size: 24rpx;
+  .topic-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20rpx;
   }
 
   .topic-title {
-    margin-bottom: 14rpx;
-    font-size: 32rpx;
+    display: block;
+    font-size: 32.692rpx;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .topic-english {
+    display: block;
+    margin-top: 5.769rpx;
+    font-family: var(--app-serif-font, Georgia, serif);
+    font-size: 36.538rpx;
+    line-height: 1.5;
+  }
+
+  .topic-arrow {
+    flex: none;
+    width: 17px;
+    height: 17px;
+  }
+
+  .topic-description {
+    display: block;
+    margin-top: 15.385rpx;
+    font-size: 23.077rpx;
+    color: #586c5b;
+    line-height: 1.9;
+  }
+
+  .topic-counts {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 23.077rpx;
+    color: #586c5b;
+    font-size: 23.077rpx;
+  }
+
+  .topic-progress {
+    height: 7.692rpx;
+    margin-top: 25rpx;
+    overflow: hidden;
+    border-radius: 4rpx;
+    background: #e8ecdf;
+  }
+
+  .topic-progress-fill {
+    height: 100%;
+    background: #72966a;
   }
 }
 
@@ -199,6 +370,11 @@ onShow(() => void load())
   border-radius: 30rpx 30rpx 0 0;
   background: #fffcf5;
 
+  .panel-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
   .panel-scroll {
     max-height: 48vh;
     height: 48vh;
@@ -216,8 +392,9 @@ onShow(() => void load())
     gap: 16rpx;
   }
 
-  button {
-    min-height: 85rpx;
+  .panel-option,
+  .all {
+    min-height: 44px;
     font-size: 25rpx;
     white-space: normal;
   }

@@ -87,21 +87,22 @@ onUnload(() => {
 <template>
   <AppPage title="我的收藏" class="favorites-page" back>
     <view class="tabs"
-      ><button :class="{ active: kind === ContentType.SCENE }" @click="kind = ContentType.SCENE">
-        场景收藏</button
       ><button
+        class="tab-button"
+        :class="{ active: kind === ContentType.SCENE }"
+        @click="kind = ContentType.SCENE"
+      >
+        场景</button
+      ><button
+        class="tab-button"
         :class="{ active: kind === ContentType.LISTENING }"
         @click="kind = ContentType.LISTENING"
       >
-        听读收藏
+        听读
       </button></view
     ><ListeningCollection v-if="kind === ContentType.LISTENING" mode="favorites" /><view
       v-show="kind === ContentType.SCENE"
-      ><view class="favorites-heading between"
-        ><text class="section-title">整卡收藏</text
-        ><text v-if="total !== null" class="count">{{ total }} 张</text></view
-      >
-      <text class="favorites-help">按收藏时间由近到远，点击场景卡开始复习。</text>
+    >
       <AppState
         :busy="busy && total === null"
         :error="total === null ? error : ''"
@@ -127,51 +128,22 @@ onUnload(() => {
 <style scoped lang="scss">
 .tabs {
   display: flex;
-  gap: 20rpx;
+  border-bottom: 1px solid #dfe5d8;
+  margin: 28rpx 0 0;
 
-  button {
+  .tab-button {
     flex: 1;
+    min-height: 48px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: transparent;
     font-size: 25rpx;
+
+    &.active {
+      border-bottom-color: #2b4438;
+      font-weight: 700;
+    }
   }
-
-  .active {
-    background: #e4f0db;
-  }
-}
-
-.favorites-page {
-  :deep(.nav-title) {
-    margin-left: 80.769rpx;
-  }
-}
-
-.favorites-heading {
-  margin: 53.846rpx 0 25rpx;
-  align-items: baseline;
-
-  .section-title {
-    margin: 0;
-    font-size: 38.462rpx;
-    line-height: 1.5;
-    font-weight: 600;
-  }
-
-  .count {
-    font-size: 23.077rpx;
-    color: #586c5b;
-  }
-}
-
-.favorites-help {
-  display: block;
-  font-size: 23.077rpx;
-  line-height: 1.8;
-  color: #586c5b;
-  margin: 13.462rpx 0;
-}
-
-.more {
-  width: 100%;
-  margin-top: 23.077rpx;
 }
 </style>

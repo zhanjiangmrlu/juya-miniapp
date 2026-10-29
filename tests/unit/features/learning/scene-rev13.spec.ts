@@ -35,7 +35,9 @@ it('offers all five rates inline, closes after choosing, and never emits a play 
   expect(page.find('[data-rate]').exists()).toBe(false)
   await page.setProps({ state: { ...state, rate: 1.75 } })
   expect(page.get('[data-action="toggle-rate"]').text()).toBe('1.75× 倍速')
-  expect(page.text()).toContain('0:08 / 0:35')
+  expect(page.get('.time-current').text()).toBe('00:08')
+  expect(page.get('.time-total').text()).toBe('00:35')
+  expect(page.get('.audio-status').text()).toContain('已暂停')
   page.unmount()
 })
 

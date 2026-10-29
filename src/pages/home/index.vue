@@ -53,7 +53,9 @@ onShow(() => {
       <image src="/static/design/book-active.svg" mode="aspectFit" /><text class="module-title"
         >场景学习</text
       ><text class="module-en">English, every day.</text
-      ><text class="description">在生活里的对话中，<br />一起积累词汇和语块。</text
+      ><view class="description"
+        ><text class="description-line">在生活里的对话中，</text
+        ><text class="description-line">一起积累词汇和语块。</text></view
       ><view class="module-foot"
         ><text v-if="home"
           >已学{{ home.statistics.completed_cards }}张 ·
@@ -69,7 +71,9 @@ onShow(() => {
         class="module-title"
         >主题听读</text
       ><text class="module-en">Read. Listen. Keep it.</text
-      ><text class="description">读一篇短文，听完整英文，<br />把表达带进自己的生活。</text
+      ><view class="description"
+        ><text class="description-line">读一篇短文，听完整英文，</text
+        ><text class="description-line">把表达带进自己的生活。</text></view
       ><view class="module-foot"
         ><text v-if="home"
           >已学{{ home.statistics.completed_articles }}篇 ·
@@ -107,6 +111,15 @@ onShow(() => {
     background: transparent;
   }
 
+  :deep(.nav-wordmark) {
+    font-size: 61.538rpx;
+  }
+
+  :deep(.nav-brand) {
+    font-size: 28.846rpx;
+    font-weight: 700;
+  }
+
   :deep(.page-body) {
     padding-top: 0;
   }
@@ -115,7 +128,12 @@ onShow(() => {
     padding: 36rpx 0 50rpx;
   }
 
-  text {
+  .hello,
+  .welcome,
+  .intro,
+  .module-title,
+  .module-en,
+  .description-line {
     display: block;
   }
 
@@ -129,7 +147,7 @@ onShow(() => {
     margin: 20rpx 0 10rpx;
     font-size: 50rpx;
     line-height: 1.5;
-    font-weight: 600;
+    font-weight: 700;
   }
 
   .intro {
@@ -160,14 +178,15 @@ onShow(() => {
 
     .module-title {
       font-size: 44rpx;
-      font-weight: 600;
+      font-weight: 700;
       line-height: 1.5;
     }
 
     .module-en {
       margin-top: 7rpx;
       font-family: var(--app-serif-font, Georgia, serif);
-      font-size: 36rpx;
+      font-size: 36.538rpx;
+      font-weight: 400;
       line-height: 1.5;
     }
 

@@ -57,3 +57,21 @@ it('keeps loading, missing and failed query states distinct without fake definit
   expect(page.find('.dictionary-definition').exists()).toBe(false)
   page.unmount()
 })
+
+it('shows the real source sentence and keeps pronunciation beside the word with explicit retry', async () => {
+  const page = mount(SceneDictionary, {
+    props: {
+      selection,
+      result,
+      busy: false,
+      error: '',
+      voiceStatus: 'error',
+      voiceError: '发音暂不可用',
+      sourceSentence: 'She went home.'
+    }
+  })
+  expect(page.get('.dictionary-context').text()).toContain('She went home.')
+  expect(page.get('.dictionary-word-row').find('.dictionary-voice').exists()).toBe(true)
+  await page.get('.dictionary-voice').trigger('click')
+  expect(page.emitted('play')).toEqual([[]])
+})

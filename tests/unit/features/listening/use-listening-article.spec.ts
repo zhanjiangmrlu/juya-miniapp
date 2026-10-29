@@ -122,7 +122,7 @@ const detail = {
     reading_position: 0,
     translation_open: true,
     audio_position: 12.5,
-    playback_rate: 1.5
+    playback_rate: 1.5 as const
   },
   timeline: { state: 'missing', words: [] }
 }
@@ -253,4 +253,30 @@ it('retains the current article and exposes retry when next navigation fails', a
   await model.advance()
   expect(model.article.value?.id).toBe('a1')
   expect(model.actionError.value).toContain('下一篇')
+})
+
+it('preserves the confirmed completion result for the completion dialog and exposes an inline lookup restriction', async () => {
+  const model = await open()
+  ports.run.mockResolvedValueOnce({
+    article_id: 'a1',
+    first_checkin_today: true,
+    first_completion: true,
+    state: { favorite: false, completed: true, today_completed: true },
+    statistics: { checkin_days: 7 }
+  })
+  ports.request.mockImplementation(async (path: string) =>
+    path.includes('/next?') ? { article: null, ended: true } : structuredClone(detail)
+  )
+  await model.complete()
+  expect(model.completionResult.value?.first_checkin_today).toBe(true)
+  expect(model.article.value?.state.today_completed).toBe(true)
+  model.article.value!.access.can_lookup = false
+  ports.request.mockClear()
+  await model.lookup({ text: 'This', start: 0, end: 4, word: true })
+  expect(model.lookupRestricted.value).toBe(true)
+  expect(ports.request).not.toHaveBeenCalled()
+  expect(ports.audio[0]!.pause).not.toHaveBeenCalled()
+  model.article.value!.access.can_lookup = true
+  await model.lookup({ text: 'This', start: 0, end: 4, word: true })
+  expect(model.lookupRestricted.value).toBe(false)
 })

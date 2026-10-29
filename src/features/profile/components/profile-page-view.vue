@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import AppAvatar from '@/components/app-avatar/app-avatar.vue'
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
@@ -19,7 +19,8 @@ import type { components } from '@/shared/contracts/generated/mini-api'
 import type { ProfilePageProps } from '@/shared/types/profile-components'
 const props = withDefaults(defineProps<ProfilePageProps>(), { primary: false })
 const authorization = ref<components['schemas']['CurrentAccess'] | null>(null),
-  authorizationError = ref('')
+  authorizationError = ref(''),
+  statisticsError = ref('')
 /** 读取本人学习授权，失败不显示为未授权 */
 const loadAuthorization = async () => {
   try {
@@ -45,7 +46,7 @@ const load = async () => {
     if (await account.ensure(Routes.PROFILE)) {
       await account.restore()
       await account.refreshAvatar()
-      await loadAuthorization()
+      await Promise.all([loadAuthorization(), loadStatistics()])
     }
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : '资料暂未获取'
@@ -53,6 +54,30 @@ const load = async () => {
     busy.value = false
   }
 }
+/** 读取收藏数量，失败时不展示为零 */
+const loadStatistics = async () => {
+  try {
+    await account.refreshStatistics()
+    statisticsError.value = ''
+  } catch {
+    statisticsError.value = '收藏数量暂未获取'
+  }
+}
+const favoriteTotals = computed(() =>
+  account.statistics
+    ? `场景${account.statistics.favorite_count}张 · 听读${account.statistics.listening_favorite_count}篇`
+    : statisticsError.value
+)
+const authorizationLabel = computed(() => {
+  const status = authorization.value?.authorization?.status
+  return status === LearningAuthorizationStatus.ACTIVE
+    ? '授权有效'
+    : status === LearningAuthorizationStatus.EXPIRED
+      ? '已到期'
+      : authorization.value?.authorization
+        ? '未授权'
+        : '暂未获取'
+})
 /** 编辑本人主动设置的头像昵称 */
 const editProfile = () => uni.navigateTo({ url: Routes.IDENTITY })
 /** 补充或修改选填的联系方式 */
@@ -87,150 +112,155 @@ onShow(() => {
 })
 </script>
 <template>
-  <AppPage :title="primary ? '账号' : '账号资料'" :back="!primary" :footer="primary"
-    ><AppState :busy="busy && !account.profile" :error="error" @retry="load" /><template
-      v-if="account.profile"
-      ><view class="profile-summary"
-        ><AppAvatar :src="account.avatarURL" :size="127" /><view
-          ><text class="title">{{ account.profile.nickname || '学习者' }}</text
-          ><text class="muted small">每一次学习，都留在这里</text></view
-        ></view
-      ><button class="profile-link" @click="editProfile">
+  <AppPage :title="primary ? '账号' : '账号资料'" :back="!primary" :footer="primary">
+    <AppState :busy="busy && !account.profile" :error="error" @retry="load" />
+    <template v-if="account.profile">
+      <view class="profile-summary"
+        ><AppAvatar :src="account.avatarURL" :size="115.385" /><view>
+          <text class="profile-name">{{ account.profile.nickname || '学习者' }}</text
+          ><text class="profile-tagline">每一次学习，都留在这里</text>
+        </view></view
+      >
+      <button class="profile-link" @click="editProfile">
         <text>编辑个人资料</text
         ><image
           class="chevron"
           src="/static/design/profile-chevron.svg"
           mode="aspectFit"
           aria-hidden="true"
-        /></button
-      ><view class="profile-section"
-        ><view class="between"
-          ><text class="section-title">联系方式</text
-          ><button class="text-button" @click="editContact">
-            {{
-              account.profile.phone || account.profile.wechat_contact
-                ? '修改联系方式'
-                : '补充联系方式'
-            }}
-            <image
-              class="chevron"
-              src="/static/design/profile-chevron.svg"
-              mode="aspectFit"
-              aria-hidden="true"
-            /></button></view
-        ><view v-if="account.profile.phone" class="contact-row"
-          ><text class="muted">手机号</text
-          ><text class="contact-value">{{ maskPhone(account.profile.phone) }}</text></view
-        ><view v-if="account.profile.wechat_contact" class="contact-row"
-          ><text class="muted">微信号</text
-          ><text class="contact-value">{{ account.profile.wechat_contact }}</text></view
-        ><view v-if="!account.profile.phone && !account.profile.wechat_contact" class="no-contact"
-          >未填写联系方式</view
-        ></view
-      ><view class="profile-section"
-        ><view class="between"
-          ><text class="section-title">学习授权</text
-          ><text>{{
-            authorization?.authorization?.status === LearningAuthorizationStatus.ACTIVE
-              ? '授权有效'
-              : authorization?.authorization?.status === LearningAuthorizationStatus.EXPIRED
-                ? '已到期'
-                : authorization?.authorization
-                  ? '未授权'
-                  : '暂未获取'
-          }}</text></view
-        ><text v-if="authorization?.authorization?.status === LearningAuthorizationStatus.ACTIVE"
-          >到期日期：{{ authorization.authorization.expires_on }}</text
-        ><button v-if="authorizationError" @click="loadAuthorization">
-          {{ authorizationError }}
-        </button></view
-      ><button class="profile-link" @click="favorites">
-        我的收藏 <image class="chevron" src="/static/design/profile-chevron.svg" /></button
-      ><view class="profile-links"
-        ><button class="profile-link" @click="feedback">
-          <view class="feedback-entry"
-            ><image
-              src="/static/design/feedback-message.svg"
-              mode="aspectFit"
-              aria-hidden="true" /><text>我的反馈</text
-            ><text
-              v-if="feedbackInbox.value.value.unread"
-              class="feedback-dot"
-              aria-label="有未读反馈回复" /></view
+        />
+      </button>
+      <button class="profile-link" @click="favorites">
+        <view class="profile-link-label"
+          ><image
+            class="entry-icon"
+            src="/static/design/heart.svg"
+            mode="aspectFit"
+            aria-hidden="true"
+          /><text>我的收藏</text></view
+        ><view class="profile-link-value"
+          ><text>{{ favoriteTotals }}</text
           ><image
             class="chevron"
             src="/static/design/profile-chevron.svg"
             mode="aspectFit"
             aria-hidden="true"
-          /></button
-        ><button
-          class="profile-link privacy-link"
-          hover-class="privacy-pressed"
-          @click="privacy = true"
+        /></view>
+      </button>
+      <view class="authorization-section"
+        ><view class="between"
+          ><text class="authorization-title">学习授权</text
+          ><text
+            class="authorization-badge"
+            :class="{
+              valid: authorization?.authorization?.status === LearningAuthorizationStatus.ACTIVE
+            }"
+            >{{ authorizationLabel }}</text
+          ></view
         >
-          <text>隐私说明</text
+        <text v-if="authorization?.authorization?.expires_on" class="authorization-date"
+          >到期日期{{ authorization.authorization.expires_on
+          }}<text v-if="authorization.authorization.status === LearningAuthorizationStatus.ACTIVE"
+            >（当日有效）</text
+          ></text
+        >
+        <text class="authorization-help">场景学习与主题听读共用授权</text>
+        <button v-if="authorizationError" class="text-button" @click="loadAuthorization">
+          {{ authorizationError }}
+        </button>
+      </view>
+      <button class="profile-link" @click="editContact">
+        <text>联系方式</text
+        ><view class="profile-link-value"
+          ><text class="contact-value">{{
+            [
+              account.profile.phone ? maskPhone(account.profile.phone) : '',
+              account.profile.wechat_contact || ''
+            ]
+              .filter(Boolean)
+              .join(' · ') || '未填写'
+          }}</text
           ><image
             class="chevron"
             src="/static/design/profile-chevron.svg"
             mode="aspectFit"
             aria-hidden="true"
-          /></button></view
-      ><view class="profile-bottom"
-        ><button class="text-button" :disabled="logoutBusy" @click="openLogout">
+        /></view>
+      </button>
+      <button class="profile-link" @click="feedback">
+        <view class="profile-link-label"
+          ><image
+            class="entry-icon"
+            src="/static/design/feedback-message.svg"
+            mode="aspectFit"
+            aria-hidden="true" /><text>我的反馈</text
+          ><text
+            v-if="feedbackInbox.value.value.unread"
+            class="feedback-dot"
+            aria-label="有未读反馈回复" /></view
+        ><image
+          class="chevron"
+          src="/static/design/profile-chevron.svg"
+          mode="aspectFit"
+          aria-hidden="true"
+        />
+      </button>
+      <button
+        class="profile-link privacy-link"
+        hover-class="privacy-pressed"
+        @click="privacy = true"
+      >
+        <text>隐私说明</text
+        ><image
+          class="chevron"
+          src="/static/design/profile-chevron.svg"
+          mode="aspectFit"
+          aria-hidden="true"
+        />
+      </button>
+      <view class="profile-bottom"
+        ><button class="text-button logout-button" :disabled="logoutBusy" @click="openLogout">
           {{ logoutBusy ? '正在退出…' : '退出登录' }}</button
-        ><text>学习记录与收藏会保留</text></view
-      ></template
-    ><ProfileLogoutDialog
+        ><text class="logout-help">学习记录与收藏会保留</text></view
+      >
+    </template>
+    <ProfileLogoutDialog
       v-if="logoutConfirm"
       :busy="logoutBusy"
       :error="logoutError"
       @cancel="logoutConfirm = false"
-      @confirm="logout" /><AppPrivacySheet v-if="privacy" @close="privacy = false" /><AppBottomTabs
+      @confirm="logout"
+    />
+    <AppPrivacySheet v-if="privacy" @close="privacy = false" /><AppBottomTabs
+      v-if="primary"
       active="profile"
-  /></AppPage>
+    />
+  </AppPage>
 </template>
 <style scoped lang="scss">
-.privacy-link {
-  color: #41664d;
-
-  > text {
-    text-decoration: underline;
-    text-underline-offset: 7.692rpx;
-  }
-
-  &.privacy-pressed,
-  &:active {
-    background: #e4f0db;
-    color: #2b4438;
-  }
-}
-
 .profile-summary {
   display: flex;
   align-items: center;
-  gap: 30.77rpx;
-  padding: 13.462rpx 0 0;
-  margin-top: -15.385rpx;
-  margin-bottom: 19.231rpx;
+  gap: 30.769rpx;
+  margin-bottom: 46.154rpx;
+
+  .profile-name {
+    display: block;
+    font-size: 42.308rpx;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .profile-tagline {
+    display: block;
+    margin-top: 7.692rpx;
+    font-size: 23.077rpx;
+    color: #586c5b;
+  }
 
   :deep(.avatar) {
     background: #e4f0db;
-    color: #586c5b;
-  }
-
-  .title {
-    font-size: 44.23rpx;
-    font-weight: 500;
-    line-height: 1.5;
-    margin: 0;
-  }
-
-  .small {
-    display: block;
-    margin-top: 7.69rpx;
-    font-size: 21.15rpx;
-    line-height: 1.8;
-    color: #586c5b;
+    color: #2b4438;
   }
 }
 
@@ -238,117 +268,106 @@ onShow(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12rpx;
   width: 100%;
-  min-height: 92.308rpx;
-  border: 0;
-  border-radius: 0;
-  background: none;
+  min-height: 106rpx;
   padding: 23.077rpx 0;
+  border: 0;
   border-bottom: 1px solid #dfe5d8;
-  font-size: 25rpx;
+  border-radius: 0;
+  background: transparent;
+  font-size: 26.923rpx;
+  text-align: left;
 }
 
-.chevron {
-  width: 38.462rpx;
-  height: 38.462rpx;
+.profile-link-label,
+.profile-link-value {
+  display: flex;
+  align-items: center;
+  gap: 19.231rpx;
+}
+
+.profile-link-value {
+  min-width: 0;
+  font-size: 23.077rpx;
+  color: #586c5b;
+}
+
+.entry-icon {
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
 }
 
-.profile-section {
-  padding-top: 0;
-  margin-top: 34.615rpx;
-
-  .between {
-    margin-bottom: 11.54rpx;
-  }
-
-  .section-title {
-    font-size: 28.85rpx;
-    font-weight: 500;
-    margin-bottom: 0;
-  }
-
-  .text-button {
-    gap: 11.54rpx;
-    min-height: 76.92rpx;
-    padding: 5.77rpx 0;
-    font-size: 23.08rpx;
-    color: #2b4438;
-  }
-
-  .contact-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 26.92rpx;
-    min-height: 92.308rpx;
-    padding: 23.077rpx 0;
-    font-size: 25rpx;
-    border-bottom: 1px solid #dfe5d8;
-
-    .muted {
-      flex-shrink: 0;
-      color: #586c5b;
-    }
-
-    .contact-value {
-      overflow-wrap: anywhere;
-      text-align: right;
-      font-weight: 400;
-      line-height: 1.8;
-    }
-  }
-
-  .no-contact {
-    margin: 15.385rpx 0 0;
-    line-height: 1.75;
-    color: #586c5b;
-    font-size: 28.85rpx;
-  }
+.chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
-.feedback-entry {
-  display: flex;
-  align-items: center;
-  gap: 7.692rpx;
+.contact-value {
+  overflow-wrap: anywhere;
+  text-align: right;
+}
 
-  image {
-    width: 38.462rpx;
-    height: 38.462rpx;
+.authorization-section {
+  padding: 34.615rpx 0;
+  border-bottom: 1px solid #dfe5d8;
+
+  .authorization-title {
+    font-weight: 700;
+    font-size: 26.923rpx;
+  }
+
+  .authorization-badge {
+    padding: 7.692rpx 13.462rpx;
+    background: #f1f3ed;
+    border-radius: 9.615rpx;
+    font-size: 21.154rpx;
+    color: #586c5b;
+
+    &.valid {
+      background: #e4f0db;
+      color: #41664d;
+    }
+  }
+
+  .authorization-date,
+  .authorization-help {
+    display: block;
+    margin-top: 11.538rpx;
+    font-size: 23.077rpx;
+    line-height: 1.8;
+    color: #586c5b;
   }
 }
 
 .feedback-dot {
-  display: inline-block;
-  width: 15.385rpx;
-  height: 15.385rpx;
-  margin-left: 15.385rpx;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #ad4f32;
 }
 
-.profile-links {
-  margin-top: 23.077rpx;
+.privacy-pressed {
+  background: #e4f0db;
 }
 
 .profile-bottom {
-  margin-top: 53.846rpx;
-  padding-bottom: 15.38rpx;
+  margin-top: 34.615rpx;
   text-align: center;
 
-  button {
+  .logout-button {
     width: 100%;
-    min-height: 76.92rpx;
+    min-height: 44px;
     color: #ad4f32;
     font-size: 25rpx;
-    margin: auto;
   }
 
-  text {
+  .logout-help {
     display: block;
+    font-size: 21.154rpx;
     color: #586c5b;
-    font-size: 19.23rpx;
-    margin-top: 7.69rpx;
   }
 }
 </style>

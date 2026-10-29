@@ -51,6 +51,7 @@ export interface SceneQueueEndProps {
   source: import('../enums/learning').QueueSource | null
 }
 export interface SceneDictionaryProps {
+  sourceSentence?: string
   selection: import('./dictionary').DictionarySelection
   result: import('./dictionary').DictionaryResult | null
   busy: boolean
