@@ -12,6 +12,7 @@ import type { ShareMenuChannels } from '@/shared/types/share'
 const props = withDefaults(
   defineProps<{
     title: string
+    backgroundImage?: string
     back?: boolean
     footer?: boolean
     fallback?: string
@@ -20,13 +21,28 @@ const props = withDefaults(
     shareChannels?: ShareMenuChannels
     publicSummary?: boolean
   }>(),
-  { back: false, footer: false, fallback: undefined, customBack: false, shareChannels: undefined }
+  {
+    back: false,
+    footer: false,
+    fallback: undefined,
+    customBack: false,
+    shareChannels: undefined,
+    backgroundImage: undefined
+  }
 )
 const emit = defineEmits<{ back: [] }>()
 const browseOnly = runtimeMode.browseOnly
 let visible = false
 onShow(() => {
   visible = true
+  // 同步原生窗口的上下回弹区和安全区，避免真机露出默认白底
+  // #ifdef MP-WEIXIN
+  uni.setBackgroundColor?.({
+    backgroundColor: '#fffcf5',
+    backgroundColorTop: '#fffcf5',
+    backgroundColorBottom: '#fffcf5'
+  })
+  // #endif
   setShareMenu(props.shareable ? props.shareChannels || true : false)
 })
 onHide(() => {
@@ -68,9 +84,14 @@ const goBack = () => {
 <template>
   <view
     class="app-page"
-    :class="{ 'has-footer': footer }"
+    :class="{ 'has-footer': footer, 'has-background': backgroundImage }"
     :style="{ ...remoteFontStyles, '--page-header-height': `${top + nav}px` }"
-    ><view class="page-nav" :style="headingStyle"
+    ><image
+      v-if="backgroundImage"
+      class="page-background"
+      :src="backgroundImage"
+      mode="aspectFill"
+      aria-hidden="true" /><view class="page-nav" :style="headingStyle"
       ><button v-if="back && !browseOnly" class="back-button" aria-label="返回" @click="goBack">
         <image
           class="back-icon"
@@ -89,12 +110,28 @@ const goBack = () => {
 </template>
 <style scoped lang="scss">
 .app-page {
+  position: relative;
   min-height: 100vh;
   background: #fffcf5;
 
   &.has-footer {
     padding-bottom: calc(190rpx + env(safe-area-inset-bottom));
   }
+
+  &.has-background {
+    .page-nav {
+      background: transparent;
+    }
+  }
+}
+
+.page-background {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  pointer-events: none;
 }
 
 .page-nav {
@@ -151,6 +188,7 @@ const goBack = () => {
 }
 
 .page-body {
+  position: relative;
   padding: 46.154rpx 46.154rpx 53.846rpx;
 }
 </style>

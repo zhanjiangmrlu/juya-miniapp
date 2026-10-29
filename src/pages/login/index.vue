@@ -48,7 +48,9 @@ const consent = (event: ConsentChangeEvent) => {
 onLoad((query) => {
   if (query?.return) {
     try {
-      target = safeTarget(decodeURIComponent(String(query.return)))
+      const requested = safeTarget(decodeURIComponent(String(query.return)))
+      // 普通登录统一进入双模块首页，明确的分享目标仍恢复到对应内容
+      target = requested.includes('target=') ? requested : Routes.HOME
     } catch {
       target = Routes.HOME
     }

@@ -150,6 +150,8 @@
   ],
   "globalStyle": {
     "backgroundColor": "#fffcf5",
+    "backgroundColorTop": "#fffcf5",
+    "backgroundColorBottom": "#fffcf5",
     "navigationBarBackgroundColor": "#fffcf5",
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "句芽英语",

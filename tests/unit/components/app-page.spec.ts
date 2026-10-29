@@ -54,3 +54,27 @@ it('keeps unavailable native channels hidden across preparation, hide, and offic
   })
   page.unmount()
 })
+
+it('covers the status bar and viewport with the page artwork and keeps native edges cream', () => {
+  const setBackgroundColor = vi.fn()
+  vi.stubGlobal('uni', {
+    getWindowInfo: () => ({ windowWidth: 390, statusBarHeight: 47 }),
+    getMenuButtonBoundingClientRect: () => ({ left: 280, bottom: 87 }),
+    hideShareMenu: vi.fn(),
+    setBackgroundColor
+  })
+  const page = mount(AppPage, {
+    props: { title: '句芽英语', backgroundImage: '/static/listening/home-watercolor@3x.jpg' }
+  })
+  hooks.show?.()
+  expect(setBackgroundColor).toHaveBeenCalledWith({
+    backgroundColor: '#fffcf5',
+    backgroundColorTop: '#fffcf5',
+    backgroundColorBottom: '#fffcf5'
+  })
+  const image = page.get('.page-background')
+  expect(image.attributes('mode')).toBe('aspectFill')
+  expect(image.element.parentElement).toBe(page.element)
+  expect(page.element.firstElementChild).toBe(image.element)
+  page.unmount()
+})

@@ -111,3 +111,16 @@ it('keeps the stable shared target after failed login and restores it on an expl
   expect(openTarget).toHaveBeenCalledWith('/sub-packages/scenes/detail?target=scene&id=card-1')
   wrapper.unmount()
 })
+
+it.each(['/pages/learning/index', '/pages/records/index', '/sub-packages/listening/index'])(
+  'opens the dual-module home after ordinary login instead of restoring %s',
+  async (returnPath) => {
+    const wrapper = page()
+    ports.load?.({ return: encodeURIComponent(returnPath) })
+    await wrapper.get('.checkbox-group').trigger('change', { detail: { value: ['agree'] } })
+    await wrapper.get('button.primary').trigger('click')
+    await flushPromises()
+    expect(openTarget).toHaveBeenCalledWith('/pages/home/index')
+    wrapper.unmount()
+  }
+)
