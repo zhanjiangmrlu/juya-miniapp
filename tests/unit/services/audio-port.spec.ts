@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
 
-import { createAudioController } from '@/features/learning/audio-controller'
+import { createAudioController } from '@/services/audio-controller'
 import { createAudioPort } from '@/services/audio-port'
 
 /** 模拟浏览器规范化地址和媒体加载，不使用网络或真实声卡 */

@@ -58,7 +58,7 @@ vi.mock('@/stores/account-store', () => ({
 }))
 vi.mock('@/services/audio-port', () => ({ createAudioPort: ports.audio }))
 vi.mock('@/services/share-cover-file', () => ({ prepareShareCover: ports.cover }))
-vi.mock('@/features/learning/audio-controller', () => ({
+vi.mock('@/services/audio-controller', () => ({
   createAudioController: () => ({ state: {}, dispose: ports.disposeAudio })
 }))
 vi.mock('@/services/source-queue', () => ({

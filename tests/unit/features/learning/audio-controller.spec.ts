@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { createAudioController } from '@/features/learning/audio-controller'
+import { createAudioController } from '@/services/audio-controller'
 
 class AudioBoundary {
   playbackRate = 1

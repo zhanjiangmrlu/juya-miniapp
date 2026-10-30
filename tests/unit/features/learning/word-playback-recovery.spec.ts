@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
 
-import { createAudioController } from '@/features/learning/audio-controller'
+import { createAudioController } from '@/services/audio-controller'
 import { ApiError } from '@/services/errors'
 
 import type { AudioFailure, AudioPort } from '@/shared/types/audio'

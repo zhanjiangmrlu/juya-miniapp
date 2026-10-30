@@ -2,7 +2,7 @@
 import { onHide, onLaunch, onShow } from '@dcloudio/uni-app'
 import { watch } from 'vue'
 
-import { resetLearningAudioSession } from '@/features/learning/learning-audio-session'
+import { resetLearningAudioSession } from '@/services/audio-controller'
 import { loadRemoteFonts } from '@/services/remote-fonts'
 import { runtimeMode, syncRuntimeMode } from '@/services/runtime-mode'
 import { useAccountStore } from '@/stores/account-store'

@@ -50,7 +50,7 @@ vi.mock('@/services/audio-port', () => ({ createAudioPort: () => ({}) }))
 vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({ ensure: async () => true, refreshStatistics: async () => undefined })
 }))
-vi.mock('@/features/learning/audio-controller', () => ({
+vi.mock('@/services/audio-controller', () => ({
   createAudioController: () => ({ state: {}, dispose: vi.fn() })
 }))
 

@@ -27,7 +27,7 @@ vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
 vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({ ensure: () => Promise.resolve(true) })
 }))
-vi.mock('@/features/learning/audio-controller', () => ({
+vi.mock('@/services/audio-controller', () => ({
   createAudioController: () => ({ state: {}, dispose: vi.fn() })
 }))
 

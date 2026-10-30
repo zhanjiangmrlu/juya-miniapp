@@ -1,8 +1,8 @@
 import { onHide, onLoad, onPageScroll, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, nextTick, ref } from 'vue'
 
-import { createAudioController } from '@/features/learning/audio-controller'
 import { onSessionExpired, session } from '@/services/api'
+import { createAudioController } from '@/services/audio-controller'
 import { createAudioPort } from '@/services/audio-port'
 import { ApiError } from '@/services/errors'
 import { backTo } from '@/services/navigation'

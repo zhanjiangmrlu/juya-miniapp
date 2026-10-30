@@ -30,3 +30,23 @@ for (const page of pages) {
   )
 }
 console.info(`Verified ${pages.length} page configurations and three bottom tabs`)
+
+// 两个分包共用的音频模块须随主入口加载，不能依赖先访问场景分包
+const loaded = new Set()
+const visit = (relative) => {
+  if (loaded.has(relative)) return
+  loaded.add(relative)
+  const file = path.join(root, relative)
+  if (!existsSync(file)) return
+  const code = readFileSync(file, 'utf8')
+  for (const match of code.matchAll(/require\(["']([^"']+)["']\)/g)) {
+    if (!match[1].startsWith('.')) continue
+    visit(path.posix.normalize(path.posix.join(path.posix.dirname(relative), match[1])))
+  }
+}
+visit('app.js')
+assert.ok(
+  loaded.has('services/audio-controller.js'),
+  'Shared audio controller must load from the main app before either subpackage'
+)
+console.info('Verified shared audio controller is loaded by the main entry')

@@ -1,3 +1,7 @@
+import {
+  learningAudioSession,
+  resetLearningAudioSession as resetSession
+} from '@/features/learning/learning-audio-session'
 import { wordAudioRecovery } from '@/services/errors'
 import { recordWordAudio } from '@/services/word-audio-diagnostics'
 import { DEFAULT_PLAYBACK_RATE, PLAYBACK_RATES } from '@/shared/constants/audio'
@@ -11,7 +15,10 @@ import type {
   PlaybackRate
 } from '@/shared/types/audio'
 
-import { learningAudioSession } from './learning-audio-session'
+/** 从应用共享音频入口结束本轮倍速会话，保证分包前已加载控制器 */
+export const resetLearningAudioSession = () => {
+  resetSession()
+}
 
 /** 用两条底层音轨实现完整音频与词汇的互斥播放
  * @param full 当前场景完整音频播放器
