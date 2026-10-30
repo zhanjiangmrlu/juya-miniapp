@@ -1,3 +1,21 @@
+# 整合05／修订17本地接续（2026-10-30）
+
+本轮在隔离工作树`codex/revision17-integration05`实现，原运行目录未覆盖，未推送或部署。需求更新至整合05/T01—T300，最低schema仍0023。当前结果、配套版本、55画板与103关联状态、300条追踪及截图，见同级[API交接](../juya-api/docs/handoff/revision17/integration05/README.md)。下方2026-10-29为冻结历史，不作为本轮验收结论。
+
+六张干净背景位于`resources/oss/backgrounds`，实际原图853×1844，保留真实尺寸并记录SHA，未伪称@3x；禁止复制进`src/static`。H5开发白名单服务和H5构建输出在`/design-assets`；微信包不内嵌大图。部署前由用户另行发布这些资源并配置实际静态域名。
+
+本地H5：`VITE_API_BASE_URL='' VITE_DEV_API_PROXY_TARGET=http://127.0.0.1:5182 VITE_STATIC_ASSET_BASE_URL='' VITE_REMOTE_FONTS=false pnpm dev:h5 --port 5184 --strictPort`。
+
+本地开发者工具构建：`VITE_API_BASE_URL=http://127.0.0.1:5182 VITE_STATIC_ASSET_BASE_URL=http://127.0.0.1:5184/design-assets VITE_REMOTE_FONTS=false pnpm build:mp-weixin:test`；静态服务必须同时运行。真机不能使用手机自身127.0.0.1，需用户另行提供合法可达域名。未新增H5登录绕过；浏览器合成会话仅为隔离验收，不等同真实微信身份。
+
+BG06实际应用在`identity-edit.vue`；兼容`account/profile.vue`仍继承账号BG04。首页旧背景保留，长文插画只出现在顶部，后续为纸纹。
+
+检查：`pnpm check`、`pnpm test --maxWorkers=2`、`pnpm build:h5`、`pnpm build:mp-weixin:test`。
+
+---
+
+## 2026-10-29冻结记录
+
 # 修订17 MacBook接续入口
 
 本轮用户授权提交、推送远程`test`用于MacBook已有四项目环境增量接续，未授权部署。请先阅读同级API仓库的[完整MacBook交接](../juya-api/HANDOFF.md)或[远程交接](https://github.com/zhanjiangmrlu/juya-api/blob/test/HANDOFF.md)。本次需求文档由用户同步；设计链接、完整报告、276条追踪及9张截图随API仓库提交。
