@@ -145,7 +145,6 @@ onUnload(() => {
           mode="aspectFit"
         /><text>{{ stats.checked_in_today ? '今日已打卡' : '今日待打卡' }}</text></view
       ></view
-    >
     ><AppState v-if="statsError" :error="statsError" @retry="loadStats" /><view class="tabs"
       ><button
         class="tab-button"

@@ -89,5 +89,7 @@ it('restores the primary listening tab and renders the server checkin status', a
   expect(text).toContain('连续打卡3天')
   expect(text).toContain('累计打卡7天')
   expect(text).toContain('今日已打卡')
+  expect(text).not.toContain('>')
+  expect(text).not.toContain('&gt;')
   page.unmount()
 })
