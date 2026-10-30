@@ -17,6 +17,7 @@ import { LISTENING_API } from '@/shared/constants/listening'
 import { Routes } from '@/shared/constants/navigation'
 import { RecordsTab } from '@/shared/enums/learning'
 import { ListeningTimestampKind } from '@/shared/enums/listening'
+import { PageBackgroundKind } from '@/shared/enums/ui'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
@@ -117,7 +118,7 @@ onUnload(() => {
 })
 </script>
 <template>
-  <AppPage title="学习记录" footer
+  <AppPage :background-kind="PageBackgroundKind.RECORDS" title="学习记录" footer
     ><view v-if="stats" class="record-summary"
       ><view class="statistics">
         <button class="metric" @click="select(RecordsTab.LEARNED)">

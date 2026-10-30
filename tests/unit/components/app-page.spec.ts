@@ -78,3 +78,22 @@ it('covers the status bar and viewport with the page artwork and keeps native ed
   expect(page.element.firstElementChild).toBe(image.element)
   page.unmount()
 })
+
+it('loads artwork at its original ratio and leaves readable content after asset failure', async () => {
+  vi.stubGlobal('uni', {
+    getWindowInfo: () => ({ windowWidth: 390, statusBarHeight: 47 }),
+    getMenuButtonBoundingClientRect: () => ({ left: 280, bottom: 87 }),
+    hideShareMenu: vi.fn()
+  })
+  const page = mount(AppPage, {
+    props: { title: '学习记录', backgroundKind: 'records' },
+    slots: { default: '<text>今日已学</text>' }
+  })
+  const art = page.get('.page-artwork')
+  expect(art.attributes('src')).toContain('/backgrounds/records-journal.png')
+  expect(art.attributes('mode')).toBe('widthFix')
+  await art.trigger('error')
+  expect(page.find('.page-artwork').exists()).toBe(false)
+  expect(page.text()).toContain('今日已学')
+  page.unmount()
+})

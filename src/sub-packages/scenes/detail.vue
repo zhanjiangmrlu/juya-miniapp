@@ -981,10 +981,14 @@ onUnload(() => {
               <AppLoading v-if="favoriteBusy" compact label="正在更新收藏" icon-only /><image
                 v-else
                 class="favorite-icon"
-                src="/static/design/heart.svg"
+                :src="
+                  favorite
+                    ? '/static/listening/r17-favorite-filled.svg'
+                    : '/static/design/heart.svg'
+                "
                 mode="aspectFit"
                 aria-hidden="true"
-              /><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏整卡' }}</text>
+              /><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏' }}</text>
             </button></view
           ><view v-if="card.access" class="between"
             ><text>{{ card.access.is_free ? '免费开放' : '授权有效' }}</text

@@ -28,3 +28,9 @@ export interface ListeningReadingRect {
   top: number
   bottom: number
 }
+
+export interface PhraseHighlight {
+  start: number
+  end: number
+  color: string
+}

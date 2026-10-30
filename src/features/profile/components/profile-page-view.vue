@@ -13,6 +13,7 @@ import { session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
 import { Routes } from '@/shared/constants/navigation'
 import { LearningAuthorizationStatus } from '@/shared/enums/learning-access'
+import { PageBackgroundKind } from '@/shared/enums/ui'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
@@ -112,7 +113,12 @@ onShow(() => {
 })
 </script>
 <template>
-  <AppPage :title="primary ? '账号' : '账号资料'" :back="!primary" :footer="primary">
+  <AppPage
+    :background-kind="PageBackgroundKind.PROFILE"
+    :title="primary ? '账号' : '账号资料'"
+    :back="!primary"
+    :footer="primary"
+  >
     <AppState :busy="busy && !account.profile" :error="error" @retry="load" />
     <template v-if="account.profile">
       <view class="profile-summary"
@@ -189,11 +195,7 @@ onShow(() => {
       </button>
       <button class="profile-link" @click="feedback">
         <view class="profile-link-label"
-          ><image
-            class="entry-icon"
-            src="/static/design/feedback-message.svg"
-            mode="aspectFit"
-            aria-hidden="true" /><text>我的反馈</text
+          ><text>我的反馈</text
           ><text
             v-if="feedbackInbox.value.value.unread"
             class="feedback-dot"

@@ -27,6 +27,7 @@ import { runtimeMode } from '@/services/runtime-mode'
 import { homeShare } from '@/services/share-service'
 import { Routes } from '@/shared/constants/navigation'
 import { LearningAuthorizationStatus } from '@/shared/enums/learning-access'
+import { PageBackgroundKind } from '@/shared/enums/ui'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { CardBrief } from '@/shared/types/learning'
@@ -171,6 +172,7 @@ onUnload(() => {
 </script>
 <template>
   <AppPage
+    :background-kind="PageBackgroundKind.SCENE"
     title="场景学习"
     back
     public-summary

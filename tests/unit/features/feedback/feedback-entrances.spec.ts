@@ -35,6 +35,7 @@ it('provides the profile feedback row and aggregate unread dot without a third b
   })
   const button = wrapper.findAll('button').find((item) => item.text().includes('我的反馈'))
   expect(button).toBeDefined()
+  expect(button!.find('image[src="/static/design/feedback-message.svg"]').exists()).toBe(false)
   expect(wrapper.find('[aria-label="有未读反馈回复"]').exists()).toBe(true)
   await button!.trigger('click')
   expect(ports.navigate).toHaveBeenCalledWith({ url: '/sub-packages/feedback/index' })

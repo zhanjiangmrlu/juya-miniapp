@@ -15,6 +15,7 @@ import { waitForMedia } from '@/services/media-processing'
 import { operationKey } from '@/services/platform'
 import { Routes } from '@/shared/constants/navigation'
 import { MediaState } from '@/shared/enums/media'
+import { PageBackgroundKind } from '@/shared/enums/ui'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
@@ -267,6 +268,7 @@ onUnload(() => {
 </script>
 <template>
   <AppPage
+    :background-kind="PageBackgroundKind.PAPER"
     title="编辑个人资料"
     back
     footer

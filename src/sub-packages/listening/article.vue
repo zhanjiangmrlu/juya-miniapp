@@ -13,6 +13,7 @@ import { validateTimeline } from '@/features/listening/reading-model'
 import { useListeningArticle } from '@/features/listening/use-listening-article'
 import { useListeningThumbnail } from '@/features/listening/use-listening-thumbnail'
 import { Routes } from '@/shared/constants/navigation'
+import { PageBackgroundKind } from '@/shared/enums/ui'
 const {
   bodyRef,
   leave,
@@ -98,7 +99,13 @@ const closeImage = () => {
 }
 </script>
 <template>
-  <AppPage title="主题听读" back custom-back :fallback="Routes.LISTENING" @back="leave"
+  <AppPage
+    :background-kind="PageBackgroundKind.READING"
+    title="主题听读"
+    back
+    custom-back
+    :fallback="Routes.LISTENING"
+    @back="leave"
     ><AppState
       :busy="busy && !article"
       :error="!summary ? error : ''"
@@ -144,11 +151,12 @@ const closeImage = () => {
             :class="{ active: article.state.favorite }"
             :src="
               article.state.favorite
-                ? '/static/design/heart-active.svg'
+                ? '/static/listening/r17-favorite-filled.svg'
                 : '/static/listening/r17-article-heart.svg'
             "
             mode="aspectFit"
-          /></button></view
+          /><text>{{ article.state.favorite ? '已收藏' : '收藏' }}</text>
+        </button></view
       ><view class="article-heading"
         ><view class="titles"
           ><text class="article-title">{{ article.title_zh }}</text
@@ -234,7 +242,7 @@ const closeImage = () => {
             completed || article.state.today_completed ? '已完成 · 再次复习' : '完成本篇学习'
           }}</button
         ><button v-if="nextArticle" class="next-action" :disabled="actionBusy" @click="advance">
-          下一篇
+          继续学习下一篇
         </button></view
       ><text class="completion-help">完成后计入听读记录，并更新当日打卡</text
       ><ListeningCompletion
@@ -459,8 +467,10 @@ const closeImage = () => {
 .heading-favorite {
   display: flex;
   align-items: center;
+  gap: 10rpx;
+  font-size: 24rpx;
   justify-content: center;
-  width: 44px;
+  min-width: 44px;
   height: 44px;
   padding: 0;
   margin: 0 -12rpx 0 0;

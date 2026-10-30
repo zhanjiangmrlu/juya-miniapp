@@ -58,7 +58,7 @@ const refresh = async () => {
     const home = await getListeningHome()
     topic.value = home.topics.find((item) => item.id === id.value) || null
     resume.value = home.continue_learning
-    if (topic.value) title.value = topic.value.name
+    if (topic.value) title.value = topic.value.name_en || topic.value.name
   } catch {
     topic.value = null
     resume.value = null
@@ -71,7 +71,7 @@ onReachBottom(() => void list.more())
 </script>
 <template>
   <AppPage :title="title" back
-    ><text v-if="topic?.name_en" class="topic-english">{{ topic.name_en }}</text
+    ><text v-if="topic?.name_en && topic?.name" class="topic-subtitle">{{ topic.name }}</text
     ><text v-if="topic?.description" class="topic-description">{{ topic.description }}</text
     ><view class="topic-summary"
       ><text class="muted">{{
@@ -112,7 +112,7 @@ onReachBottom(() => void list.more())
 </template>
 
 <style scoped lang="scss">
-.topic-english {
+.topic-subtitle {
   display: block;
   font-family: var(--app-serif-font, Georgia, serif);
   font-size: 53.846rpx;

@@ -10,6 +10,7 @@ it('lets the reader stay on the completed article in both next-article and topic
   })
   expect(page.get('[role="dialog"]').attributes('aria-modal')).toBe('true')
   expect(page.text()).toContain('真实下一篇')
+  expect(page.get('[data-action="next"]').text()).toBe('继续学习下一篇')
   await page.get('[data-action="stay"]').trigger('click')
   expect(page.emitted('stay')).toEqual([[]])
   await page.get('[data-action="next"]').trigger('click')

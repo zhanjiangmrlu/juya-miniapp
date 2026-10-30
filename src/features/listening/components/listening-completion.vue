@@ -33,7 +33,7 @@ defineEmits<{ stay: []; next: []; topic: []; retry: [] }>()
         :disabled="busy"
         @click="$emit('next')"
       >
-        下一篇
+        继续学习下一篇
       </button>
       <button
         v-else-if="ended"

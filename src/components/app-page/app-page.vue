@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import { onHide, onShow } from '@dcloudio/uni-app'
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import ShareSummary from '@/features/share/components/share-summary.vue'
 import { setShareMenu } from '@/services/native-share'
 import { backTo } from '@/services/navigation'
+import { pageBackgroundURL } from '@/services/page-backgrounds'
 import { remoteFontStyles } from '@/services/remote-fonts'
 import { runtimeMode } from '@/services/runtime-mode'
+import { PageBackgroundKind } from '@/shared/enums/ui'
 
 import type { ShareMenuChannels } from '@/shared/types/share'
 const props = withDefaults(
   defineProps<{
     title: string
     backgroundImage?: string
+    backgroundKind?: PageBackgroundKind
     back?: boolean
     footer?: boolean
     fallback?: string
@@ -27,7 +30,23 @@ const props = withDefaults(
     fallback: undefined,
     customBack: false,
     shareChannels: undefined,
-    backgroundImage: undefined
+    backgroundImage: undefined,
+    backgroundKind: undefined
+  }
+)
+const artworkFailed = ref(false),
+  paperFailed = ref(false)
+const artwork = computed(() =>
+  props.backgroundKind ? pageBackgroundURL(props.backgroundKind) : ''
+)
+const paper = computed(() =>
+  props.backgroundKind && !paperFailed.value ? pageBackgroundURL(PageBackgroundKind.PAPER) : ''
+)
+watch(
+  () => props.backgroundKind,
+  () => {
+    artworkFailed.value = false
+    paperFailed.value = false
   }
 )
 const emit = defineEmits<{ back: [] }>()
@@ -84,14 +103,29 @@ const goBack = () => {
 <template>
   <view
     class="app-page"
-    :class="{ 'has-footer': footer, 'has-background': backgroundImage }"
-    :style="{ ...remoteFontStyles, '--page-header-height': `${top + nav}px` }"
+    :class="{ 'has-footer': footer, 'has-background': backgroundImage || backgroundKind }"
+    :style="{
+      ...remoteFontStyles,
+      '--page-header-height': `${top + nav}px`,
+      backgroundImage: paper ? `url(${paper})` : undefined
+    }"
     ><image
       v-if="backgroundImage"
       class="page-background"
       :src="backgroundImage"
       mode="aspectFill"
-      aria-hidden="true" /><view class="page-nav" :style="headingStyle"
+      aria-hidden="true" /><image
+      v-if="artwork && !artworkFailed"
+      class="page-artwork"
+      :src="artwork"
+      mode="widthFix"
+      aria-hidden="true"
+      @error="artworkFailed = true" /><image
+      v-if="paper"
+      class="paper-probe"
+      :src="paper"
+      aria-hidden="true"
+      @error="paperFailed = true" /><view class="page-nav" :style="headingStyle"
       ><button v-if="back && !browseOnly" class="back-button" aria-label="返回" @click="goBack">
         <image
           class="back-icon"
@@ -113,6 +147,8 @@ const goBack = () => {
   position: relative;
   min-height: 100vh;
   background: #fffcf5;
+  background-size: 100% auto;
+  background-repeat: repeat-y;
 
   &.has-footer {
     padding-bottom: calc(190rpx + env(safe-area-inset-bottom));
@@ -123,6 +159,22 @@ const goBack = () => {
       background: transparent;
     }
   }
+}
+
+.page-artwork {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+}
+
+.paper-probe {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .page-background {

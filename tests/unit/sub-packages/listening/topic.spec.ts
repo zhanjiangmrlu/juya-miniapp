@@ -62,9 +62,9 @@ const open = async () => {
 }
 it('loads the matching topic and real progress even when navigation supplied only its identity', async () => {
   const page = await open()
-  expect(page.get('.topic-english').text()).toBe('Real topic')
+  expect(page.get('.topic-subtitle').text()).toBe('真实主题')
   expect(page.get('.topic-description').text()).toBe('真实介绍')
-  expect(page.attributes('title')).toBe('真实主题')
+  expect(page.attributes('title')).toBe('Real topic')
   expect(page.text()).toContain('已学2篇')
   expect(page.get('.progress-fill').attributes('style')).toContain('66.666')
   expect(page.getComponent(ListeningArticleCard).props('article').progress?.reading_position).toBe(

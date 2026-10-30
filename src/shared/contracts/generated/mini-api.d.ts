@@ -2404,29 +2404,26 @@ export interface components {
     }
     /** TopicProgress */
     TopicProgress: {
+      /** Name */
+      name: string
       /**
        * Name En
        * @default
        */
       name_en: string
-      /** Name */
-      name: string
-      /**
-       * Sort Order
-       * @default 0
-       */
-      sort_order: number
+      /** Id */
+      id: string
       /** Category Id */
       category_id: string
+      /** Sort Order */
+      sort_order: number
+      /** Revision */
+      revision: number
       /**
        * Description
        * @default
        */
       description: string
-      /** Revision */
-      revision: number
-      /** Id */
-      id: string
       /** Total Articles */
       total_articles: number
       /** Completed Articles */

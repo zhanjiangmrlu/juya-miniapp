@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import { useReadingAnchors } from '@/composables/use-reading-anchors'
+import { phraseHighlights } from '@/features/listening/phrase-highlights'
 import { characterFrame, tokenizeBody, validateTimeline } from '@/features/listening/reading-model'
 import { ListeningTimelineState } from '@/shared/enums/listening'
 
@@ -11,6 +12,12 @@ const props = defineProps<ListeningBodyProps>()
 const { measureReading } = useReadingAnchors()
 defineExpose({ measureReading })
 const emit = defineEmits<{ lookup: [token: ListeningToken]; browse: [] }>()
+const highlights = computed(() =>
+  phraseHighlights(
+    props.article.payload.body_en,
+    (props.article.payload.expressions || []).map((item) => item.english)
+  )
+)
 const paragraphs = computed(() => tokenizeBody(props.article.payload.body_en))
 const usable = computed(
   () =>
@@ -34,27 +41,12 @@ const frame = computed(() =>
 const color = (position: number) => {
   if (frame.value.current === position)
     return `color:#1e6b43;background:rgba(220,236,201,${0.25 + frame.value.fraction * 0.75})`
+  const background = highlights.value.find(
+    (item) => position >= item.start && position < item.end
+  )?.color
   const trail = frame.value.trails.find((item) => item.position === position)
-  return trail ? `color:rgba(30,107,67,${0.45 + trail.strength * 0.55})` : ''
+  return `${background ? `background:${background};` : ''}${trail ? `color:rgba(30,107,67,${0.45 + trail.strength * 0.55})` : ''}`
 }
-/** 按真实表达文本匹配强调，绝不将表达释义冒充词典
- * @param token 正文词项和原文位置
- */
-const emphasized = (token: ListeningToken) =>
-  (props.article.payload.expressions || []).some((expression) => {
-    if (!expression.english) return false
-    const body = props.article.payload.body_en
-    let from = 0,
-      index = body.indexOf(expression.english)
-    while (index >= 0) {
-      const start = Array.from(body.slice(0, index)).length
-      if (token.start >= start && token.end <= start + Array.from(expression.english).length)
-        return true
-      from = index + expression.english.length
-      index = body.indexOf(expression.english, from)
-    }
-    return false
-  })
 </script>
 <template>
   <view class="reading-body" @touchmove="emit('browse')"
@@ -71,7 +63,6 @@ const emphasized = (token: ListeningToken) =>
           :key="token.start"
           :data-reading-anchor="token.word ? String(token.start) : undefined"
           :class="{
-            expression: emphasized(token),
             'reading-word': token.word,
             'reading-anchor': token.word
           }"

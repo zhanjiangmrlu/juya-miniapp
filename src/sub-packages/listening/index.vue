@@ -7,6 +7,7 @@ import AppState from '@/components/app-state/app-state.vue'
 import { listeningResumeText } from '@/features/listening/listening-presenter'
 import { getListeningHome, openListeningArticle } from '@/features/listening/listening-service'
 import { Routes } from '@/shared/constants/navigation'
+import { PageBackgroundKind } from '@/shared/enums/ui'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { ListeningHome, ListeningTopic } from '@/shared/types/listening'
@@ -49,12 +50,12 @@ const select = (id: string) => {
  */
 const open = (topic: ListeningTopic) =>
   uni.navigateTo({
-    url: `${Routes.TOPIC}?id=${encodeURIComponent(topic.id)}&name=${encodeURIComponent(topic.name)}`
+    url: `${Routes.TOPIC}?id=${encodeURIComponent(topic.id)}&name=${encodeURIComponent(topic.name_en || topic.name)}`
   })
 onShow(() => void load())
 </script>
 <template>
-  <AppPage title="主题听读" back
+  <AppPage :background-kind="PageBackgroundKind.LISTENING" title="主题听读" back
     ><text class="listening-title">让英语连成一段生活</text
     ><text class="listening-subtitle">围绕一个主题，读懂，也听懂。</text
     ><AppState :busy="busy && !home" :error="error" centered-error @retry="load" /><template
@@ -122,8 +123,10 @@ onShow(() => void load())
       >
         <view class="topic-line"
           ><view class="topic-heading"
-            ><text class="topic-title">{{ topic.name }}</text
-            ><text v-if="topic.name_en" class="topic-english">{{ topic.name_en }}</text></view
+            ><text class="topic-title">{{ topic.name_en || topic.name }}</text
+            ><text v-if="topic.name_en && topic.name" class="topic-chinese">{{
+              topic.name
+            }}</text></view
           ><image
             class="topic-arrow"
             src="/static/listening/r17-topic-chevron.svg"
@@ -305,16 +308,17 @@ onShow(() => void load())
 
   .topic-title {
     display: block;
-    font-size: 32.692rpx;
-    font-weight: 700;
-    line-height: 1.5;
+    font-family: var(--app-serif-font, Georgia, serif);
+    font-size: 44.231rpx;
+    font-weight: 400;
+    line-height: 1.24;
   }
 
-  .topic-english {
+  .topic-chinese {
     display: block;
     margin-top: 5.769rpx;
-    font-family: var(--app-serif-font, Georgia, serif);
-    font-size: 36.538rpx;
+    font-size: 26.923rpx;
+    font-weight: 500;
     line-height: 1.5;
   }
 

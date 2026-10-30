@@ -1,0 +1,48 @@
+{
+  "file_key": "yVnE9TCSoRS5sv4vAuxsBX",
+  "design": "V1.5整合05 修订17 2026-10-30",
+  "assets": [
+    {
+      "file": "listening-vase.png",
+      "dimensions": [853, 1844],
+      "bytes": 1842298,
+      "sha256": "4832be3a3967e6777953cf004a98acb48a15df4711f25b778f84d1e16407243a",
+      "matches_delivered_bytes": true
+    },
+    {
+      "file": "paper-texture.png",
+      "dimensions": [853, 1844],
+      "bytes": 1596109,
+      "sha256": "cb9ba6f80603048c50881d9a07f62d55bf00273cf9bcad4afada6fed0946a8f5",
+      "matches_delivered_bytes": true
+    },
+    {
+      "file": "profile-basket.png",
+      "dimensions": [853, 1844],
+      "bytes": 1948023,
+      "sha256": "c59860f3ba0b937ac4645f465943fb9d856ff518c6de9e9c50a347129be79696",
+      "matches_delivered_bytes": true
+    },
+    {
+      "file": "reading-window.png",
+      "dimensions": [853, 1844],
+      "bytes": 1830751,
+      "sha256": "e5874874bc04bf673733d211ab72cbae124b9a46acc1794f13508626ddf680be",
+      "matches_delivered_bytes": true
+    },
+    {
+      "file": "records-journal.png",
+      "dimensions": [853, 1844],
+      "bytes": 1927103,
+      "sha256": "ed185dbaccd5a2b205b57bfe7a9dbd9e7d3c04910ba7ea14257fe9aa47cc43e3",
+      "matches_delivered_bytes": true
+    },
+    {
+      "file": "scene-window.png",
+      "dimensions": [853, 1844],
+      "bytes": 1890726,
+      "sha256": "2c6ba77f4c13678225df0988f3dd86be595b5cbf41601febadc85a141eedd70d",
+      "matches_delivered_bytes": true
+    }
+  ]
+}
