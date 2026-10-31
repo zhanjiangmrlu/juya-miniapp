@@ -2,9 +2,6 @@
 import {
   onHide,
   onLoad,
-  onPageScroll,
-  onPullDownRefresh,
-  onReachBottom,
   onShareAppMessage,
   onShareTimeline,
   onShow,
@@ -32,7 +29,9 @@ import { useAccountStore } from '@/stores/account-store'
 
 import type { CardBrief } from '@/shared/types/learning'
 const account = useAccountStore(),
-  statsError = ref('')
+  statsError = ref(''),
+  scrollTop = ref(0),
+  refreshing = ref(false)
 const browseOnly = runtimeMode.browseOnly,
   accessReady = ref(!browseOnly.value),
   share = useNativeShare()
@@ -73,21 +72,37 @@ const authorizationLabel = computed(() => {
       ? '授权已到期'
       : '未授权'
 })
-const position = useListPosition(session.userId)
+/** 将阅读位置恢复到场景列表容器
+ * @param top 列表距离顶部的像素距离
+ */
+const restoreScroll = (top: number) => {
+  scrollTop.value = top
+}
+const position = useListPosition(session.userId, restoreScroll)
+/** 记录列表滚动位置供详情返回时恢复
+ * @param event 列表容器的滚动事件
+ */
+const onListScroll = (event: { detail: { scrollTop: number } }) => {
+  scrollTop.value = event.detail.scrollTop
+  position.scroll(event.detail.scrollTop)
+}
 /** 保留详情返回前的滚动位置和已读页 */
 const refresh = () => position.preserve(refreshList)
 /** 主动下拉成功后清除旧阅读位置，新轮次失败仍保留可信内容 */
 const restart = async () => {
   const owner = session.userId()
   await restartList()
-  if (owner === session.userId() && !error.value) position.reset()
+  if (owner === session.userId() && !error.value) {
+    position.reset()
+    scrollTop.value = 0
+  }
 }
 /** 账号切换同时清除上一账号的列表和位置 */
 const reset = () => {
   resetList()
   position.reset()
+  scrollTop.value = 0
 }
-onPageScroll((event) => position.scroll(event.scrollTop))
 const unsubscribe = onSessionExpired(reset)
 /** 统计单独失败时仍允许查看场景卡片 */
 const refreshStats = async () => {
@@ -152,18 +167,20 @@ onHide(() => {
   share.hide()
   position.dispose()
 })
-onPullDownRefresh(async () => {
-  if (runtimeMode.update()) {
-    uni.stopPullDownRefresh()
-    return
+/** 在列表内下拉刷新场景及统计，结束后收起刷新提示 */
+const pullRefresh = async () => {
+  if (runtimeMode.update() || refreshing.value) return
+  refreshing.value = true
+  try {
+    await Promise.allSettled([restart(), refreshStats()])
+  } finally {
+    refreshing.value = false
   }
-  await Promise.allSettled([restart(), refreshStats()])
-  uni.stopPullDownRefresh()
-})
-onReachBottom(() => {
-  if (runtimeMode.update()) return
-  void loadMore()
-})
+}
+/** 列表触底时追加下一页 */
+const more = () => {
+  if (!runtimeMode.update()) void loadMore()
+}
 onUnload(() => {
   dispose()
   position.dispose()
@@ -173,6 +190,7 @@ onUnload(() => {
 <template>
   <AppPage
     :background-kind="PageBackgroundKind.SCENE"
+    fixed-viewport
     title="场景学习"
     back
     public-summary
@@ -181,103 +199,127 @@ onUnload(() => {
     <ShareSummary v-if="browseOnly" />
     <AppState v-else-if="!accessReady" :busy="!statsError" :error="statsError" @retry="showPage" />
     <template v-else>
-      <text class="home-title">English, every day.</text>
-      <text class="learner-status"
-        >{{ account.profile?.nickname || '学习者' }} · {{ authorizationLabel }} ·
-        {{
-          account.statistics
-            ? account.statistics.checked_in_today
-              ? '今日已打卡'
-              : '今日待打卡'
-            : '打卡状态准备中'
-        }}</text
-      >
-      <view class="scene-summary">
-        <button v-if="account.statistics" class="summary-link learned-link" @click="records">
-          已学 {{ account.statistics.completed_cards }} 张场景卡
-        </button>
-        <button class="summary-link records-entry" @click="records">
-          学习记录<image
-            class="summary-chevron"
-            src="/static/design/scene-row-chevron.svg"
-            mode="aspectFit"
-          />
-        </button>
-        <button class="summary-link account-link" @click="profile">
-          账号<text
-            v-if="feedbackInbox.value.value.unread"
-            class="feedback-dot"
-            aria-label="有未读反馈回复"
-          />
-          <image
-            class="summary-chevron"
-            src="/static/design/scene-row-chevron.svg"
-            mode="aspectFit"
-          />
-        </button>
+      <view class="list-header">
+        <text class="home-title">English, every day.</text>
+        <text class="learner-status"
+          >{{ account.profile?.nickname || '学习者' }} · {{ authorizationLabel }} ·
+          {{
+            account.statistics
+              ? account.statistics.checked_in_today
+                ? '今日已打卡'
+                : '今日待打卡'
+              : '打卡状态准备中'
+          }}</text
+        >
+        <view class="scene-summary">
+          <button v-if="account.statistics" class="summary-link learned-link" @click="records">
+            已学 {{ account.statistics.completed_cards }} 张场景卡
+          </button>
+          <button class="summary-link records-entry" @click="records">
+            学习记录<image
+              class="summary-chevron"
+              src="/static/design/scene-row-chevron.svg"
+              mode="aspectFit"
+            />
+          </button>
+          <button class="summary-link account-link" @click="profile">
+            账号<text
+              v-if="feedbackInbox.value.value.unread"
+              class="feedback-dot"
+              aria-label="有未读反馈回复"
+            />
+            <image
+              class="summary-chevron"
+              src="/static/design/scene-row-chevron.svg"
+              mode="aspectFit"
+            />
+          </button>
+        </view>
+        <view v-if="account.statistics" class="scene-streak">
+          <text>连续打卡 {{ account.statistics.current_streak }} 天</text>
+          <text>累计打卡 {{ account.statistics.total_checkin_days }} 天</text>
+        </view>
+        <AppState
+          v-else
+          :busy="!statsError"
+          :error="statsError && '统计暂未获取'"
+          @retry="refreshStats"
+        />
+        <view v-if="statsError && account.statistics" class="notice error"
+          >统计暂未更新<button class="text-button" @click="refreshStats">重试</button></view
+        >
+        <view class="catalog-heading between">
+          <text class="section-title">待学场景</text>
+          <text v-if="total !== null" class="catalog-count">{{ total }} 张</text>
+        </view>
+        <view
+          v-if="
+            accessContext?.enabled &&
+            accessContext.authorization.status !== LearningAuthorizationStatus.ACTIVE
+          "
+          class="access-notice"
+          >{{
+            freeRemaining === 0 && total
+              ? '当前免费场景已学完'
+              : accessContext.free_count === 0
+                ? '当前暂无免费开放场景'
+                : `免费开放 ${accessContext.free_count} 张，其余场景需学习授权`
+          }}</view
+        >
       </view>
-      <view v-if="account.statistics" class="scene-streak">
-        <text>连续打卡 {{ account.statistics.current_streak }} 天</text>
-        <text>累计打卡 {{ account.statistics.total_checkin_days }} 天</text>
-      </view>
-      <AppState
-        v-else
-        :busy="!statsError"
-        :error="statsError && '统计暂未获取'"
-        @retry="refreshStats"
-      />
-      <view v-if="statsError && account.statistics" class="notice error"
-        >统计暂未更新<button class="text-button" @click="refreshStats">重试</button></view
+      <scroll-view
+        class="scene-scroll"
+        scroll-y
+        :scroll-top="scrollTop"
+        refresher-enabled
+        :refresher-triggered="refreshing"
+        refresher-background="transparent"
+        @scroll="onListScroll"
+        @scrolltolower="more"
+        @refresherrefresh="pullRefresh"
       >
-      <view class="catalog-heading between">
-        <text class="section-title">待学场景</text>
-        <text v-if="total !== null" class="catalog-count">{{ total }} 张</text>
-      </view>
-      <view
-        v-if="
-          accessContext?.enabled &&
-          accessContext.authorization.status !== LearningAuthorizationStatus.ACTIVE
-        "
-        class="access-notice"
-        >{{
-          freeRemaining === 0 && total
-            ? '当前免费场景已学完'
-            : accessContext.free_count === 0
-              ? '当前暂无免费开放场景'
-              : `免费开放 ${accessContext.free_count} 张，其余场景需学习授权`
-        }}</view
-      >
-      <AppState
-        :busy="busy && total === null"
-        :error="total === null ? error : ''"
-        :empty="total === 0"
-        :title="publishedTotal > 0 ? '当前场景卡已全部学完' : '暂无可学习的场景卡'"
-        :description="
-          publishedTotal > 0
-            ? '可以到学习记录复习已学场景。'
-            : '场景卡发布后会在这里展示，历史学习记录会保留。'
-        "
-        @retry="refresh"
-        ><view v-if="total === 0 && publishedTotal > 0" class="empty-actions"
-          ><button class="primary" @click="records">查看学习记录</button
-          ><button @click="favorites">查看收藏</button></view
-        ></AppState
-      >
-      <SceneCard v-for="card in cards" :key="card.id" :card="card" source="learning" />
-      <SceneListFooter
-        :busy="moreBusy"
-        :refreshing="busy && total !== null"
-        :refresh-error="total !== null ? error : ''"
-        :error="moreError"
-        :has-more="hasMore"
-        :done="done"
-        @refresh="refresh"
-        @more="loadMore"
-      />
+        <AppState
+          :busy="busy && total === null"
+          :error="total === null ? error : ''"
+          :empty="total === 0"
+          :title="publishedTotal > 0 ? '当前场景卡已全部学完' : '暂无可学习的场景卡'"
+          :description="
+            publishedTotal > 0
+              ? '可以到学习记录复习已学场景。'
+              : '场景卡发布后会在这里展示，历史学习记录会保留。'
+          "
+          @retry="refresh"
+          ><view v-if="total === 0 && publishedTotal > 0" class="empty-actions"
+            ><button class="primary" @click="records">查看学习记录</button
+            ><button @click="favorites">查看收藏</button></view
+          ></AppState
+        >
+        <SceneCard v-for="card in cards" :key="card.id" :card="card" source="learning" />
+        <SceneListFooter
+          :busy="moreBusy"
+          :refreshing="busy && total !== null"
+          :refresh-error="total !== null ? error : ''"
+          :error="moreError"
+          :has-more="hasMore"
+          :done="done"
+          @refresh="refresh"
+          @more="loadMore"
+        />
+      </scroll-view>
     </template>
   </AppPage>
 </template>
 <style scoped lang="scss">
+.list-header {
+  flex-shrink: 0;
+}
+
+.scene-scroll {
+  flex: 1;
+  height: 0;
+  min-height: 0;
+}
+
 .home-title {
   display: block;
   margin: 0 0 15.385rpx;

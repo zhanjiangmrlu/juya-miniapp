@@ -97,3 +97,25 @@ it('loads artwork at its original ratio and leaves readable content after asset 
   expect(page.text()).toContain('今日已学')
   page.unmount()
 })
+
+it('keeps the browse-only summary scrollable inside a fixed viewport', () => {
+  vi.stubGlobal('uni', {
+    getWindowInfo: () => ({ windowWidth: 375, statusBarHeight: 20 }),
+    getMenuButtonBoundingClientRect: () => ({ left: 280, bottom: 60 }),
+    hideShareMenu: vi.fn()
+  })
+  runtimeMode.update({ apiCategory: 'browseOnly' })
+  const page = mount(AppPage, {
+    props: { title: '场景学习', fixedViewport: true, publicSummary: true },
+    slots: { default: '<text>私人列表</text>' },
+    global: {
+      stubs: {
+        'scroll-view': { template: '<div><slot /></div>' },
+        ShareSummary: { template: '<text>分享摘要</text>' }
+      }
+    }
+  })
+  expect(page.get('.summary-scroll').text()).toBe('分享摘要')
+  expect(page.text()).not.toContain('私人列表')
+  page.unmount()
+})

@@ -13,6 +13,7 @@ import { PageBackgroundKind } from '@/shared/enums/ui'
 import type { ShareMenuChannels } from '@/shared/types/share'
 const props = withDefaults(
   defineProps<{
+    fixedViewport?: boolean
     title: string
     backgroundImage?: string
     backgroundKind?: PageBackgroundKind
@@ -25,6 +26,7 @@ const props = withDefaults(
     publicSummary?: boolean
   }>(),
   {
+    fixedViewport: false,
     back: false,
     footer: false,
     fallback: undefined,
@@ -103,7 +105,11 @@ const goBack = () => {
 <template>
   <view
     class="app-page"
-    :class="{ 'has-footer': footer, 'has-background': backgroundImage || backgroundKind }"
+    :class="{
+      'has-footer': footer,
+      'has-background': backgroundImage || backgroundKind,
+      'fixed-viewport': fixedViewport
+    }"
     :style="{
       ...remoteFontStyles,
       '--page-header-height': `${top + nav}px`,
@@ -138,7 +144,12 @@ const goBack = () => {
       ><text v-else class="nav-title">{{ browseOnly ? '分享摘要' : title }}</text
       ><view v-if="!browseOnly" class="nav-action"><slot name="action" /></view></view
     ><view class="page-body"
-      ><ShareSummary v-if="browseOnly && !publicSummary" /><slot v-else /></view
+      ><template v-if="browseOnly && (!publicSummary || fixedViewport)">
+        <scroll-view v-if="fixedViewport" class="summary-scroll" scroll-y
+          ><ShareSummary
+        /></scroll-view>
+        <ShareSummary v-else /> </template
+      ><slot v-else /></view
     ><slot v-if="!browseOnly" name="footer"
   /></view>
 </template>
@@ -149,6 +160,32 @@ const goBack = () => {
   background: #fffcf5;
   background-size: 100% auto;
   background-repeat: repeat-y;
+
+  &.fixed-viewport {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+
+    .summary-scroll {
+      flex: 1;
+      height: 0;
+      min-height: 0;
+    }
+
+    .page-nav {
+      flex-shrink: 0;
+    }
+
+    .page-body {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+      padding-bottom: max(53.846rpx, env(safe-area-inset-bottom));
+    }
+  }
 
   &.has-footer {
     padding-bottom: calc(190rpx + env(safe-area-inset-bottom));

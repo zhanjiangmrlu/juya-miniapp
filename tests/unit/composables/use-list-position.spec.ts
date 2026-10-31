@@ -47,3 +47,18 @@ it('does not apply the previous account position when another owner starts the n
   expect(pageScrollTo).not.toHaveBeenCalled()
   vi.unstubAllGlobals()
 })
+
+it('restores a nested list through its callback without scrolling the page', async () => {
+  const pageScrollTo = vi.fn(),
+    restore = vi.fn()
+  vi.stubGlobal('uni', { pageScrollTo })
+  const position = useListPosition(() => 'owner', restore)
+  position.scroll(680)
+  await position.preserve(async () => undefined)
+  expect(restore).toHaveBeenCalledWith(680)
+  expect(pageScrollTo).not.toHaveBeenCalled()
+  position.reset()
+  await position.preserve(async () => undefined)
+  expect(restore).toHaveBeenCalledTimes(1)
+  vi.unstubAllGlobals()
+})

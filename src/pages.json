@@ -25,7 +25,8 @@
       "path": "pages/learning/index",
       "style": {
         "navigationStyle": "custom",
-        "enablePullDownRefresh": true
+        "enablePullDownRefresh": false,
+        "disableScroll": true
       }
     },
     {
@@ -128,7 +129,8 @@
           "path": "index",
           "style": {
             "navigationStyle": "custom",
-            "enablePullDownRefresh": true
+            "enablePullDownRefresh": false,
+            "disableScroll": true
           }
         },
         {

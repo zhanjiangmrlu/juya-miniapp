@@ -2,8 +2,12 @@ import { nextTick } from 'vue'
 
 /** 保存列表页面阅读位置并隔离换账号或销毁后的恢复请求
  * @param userId 当前私人列表所属账号
+ * @param restore 列表容器的位置恢复操作，省略时恢复页面滚动
  */
-export const useListPosition = (userId: () => string | null) => {
+export const useListPosition = (
+  userId: () => string | null,
+  restore: (top: number) => void = (top) => uni.pageScrollTo({ scrollTop: top, duration: 0 })
+) => {
   let top = 0,
     generation = 0,
     owner = userId()
@@ -33,8 +37,7 @@ export const useListPosition = (userId: () => string | null) => {
       target = top
     await task()
     await nextTick()
-    if (run === generation && accountId === userId() && target > 0)
-      uni.pageScrollTo({ scrollTop: target, duration: 0 })
+    if (run === generation && accountId === userId() && target > 0) restore(target)
   }
   return { scroll, reset, dispose, preserve }
 }

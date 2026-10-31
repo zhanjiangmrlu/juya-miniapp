@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
@@ -16,7 +16,9 @@ const account = useAccountStore(),
   category = ref(''),
   panel = ref(false),
   busy = ref(false),
-  error = ref('')
+  error = ref(''),
+  scrollTop = ref(0),
+  refreshing = ref(false)
 const continueTopic = computed(() =>
   home.value?.topics.find((topic) => topic.id === home.value?.continue_learning?.topic_id)
 )
@@ -40,10 +42,27 @@ const load = async () => {
 /** 切换分类并确保横向标签可见，主动切换列表回顶部
  * @param id 真实分类身份，空值为全部
  */
-const select = (id: string) => {
+const select = async (id: string) => {
   category.value = id
   panel.value = false
-  uni.pageScrollTo({ scrollTop: 0, duration: 0 })
+  await nextTick()
+  scrollTop.value = 0
+}
+/** 记录容器位置以确保每次切换分类均能回到顶部
+ * @param event 主题列表的滚动事件
+ */
+const onListScroll = (event: { detail: { scrollTop: number } }) => {
+  scrollTop.value = event.detail.scrollTop
+}
+/** 列表内下拉重新获取主题并收起刷新提示 */
+const pullRefresh = async () => {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    await load()
+  } finally {
+    refreshing.value = false
+  }
 }
 /** 进入所选主题的篇目列表
  * @param topic 真实主题与所属分类
@@ -55,95 +74,110 @@ const open = (topic: ListeningTopic) =>
 onShow(() => void load())
 </script>
 <template>
-  <AppPage :background-kind="PageBackgroundKind.LISTENING" title="主题听读" back
-    ><text class="listening-title">让英语连成一段生活</text
-    ><text class="listening-subtitle">围绕一个主题，读懂，也听懂。</text
-    ><AppState :busy="busy && !home" :error="error" centered-error @retry="load" /><template
-      v-if="home"
-      ><view v-if="home.continue_learning" class="continue">
-        <view class="continue-label"
-          ><image
-            class="continue-clock"
-            src="/static/listening/r17-clock.svg"
-            mode="aspectFit"
-          /><text>继续学习</text></view
-        ><text class="continue-title">{{ home.continue_learning.title_zh }}</text>
-        <text class="continue-meta"
-          >{{ home.continue_learning.word_count }}词<text v-if="home.continue_learning.progress">
-            · {{ listeningResumeText(home.continue_learning) }}</text
-          ></text
-        >
-        <view class="continue-bottom"
-          ><button class="continue-action" @click="openListeningArticle(home.continue_learning)">
-            <image
-              class="continue-play"
-              src="/static/listening/r17-play.svg"
+  <AppPage :background-kind="PageBackgroundKind.LISTENING" title="主题听读" back fixed-viewport
+    ><view class="listening-header"
+      ><text class="listening-title">让英语连成一段生活</text
+      ><text class="listening-subtitle">围绕一个主题，读懂，也听懂。</text
+      ><template v-if="home"
+        ><view v-if="home.continue_learning" class="continue">
+          <view class="continue-label"
+            ><image
+              class="continue-clock"
+              src="/static/listening/r17-clock.svg"
               mode="aspectFit"
-            />继续阅读</button
-          ><text class="continue-meta">{{ continueTopic?.name }}</text></view
-        > </view
-      ><view class="category-bar"
-        ><scroll-view
-          class="category-scroll"
-          scroll-x
-          :scroll-into-view="'category-' + (category || 'all')"
-          ><view class="category-options"
-            ><button
-              id="category-all"
-              class="category-option"
-              :class="{ active: !category }"
-              @click="select('')"
-            >
-              全部</button
-            ><button
-              v-for="item in home.categories"
-              :id="'category-' + item.id"
-              :key="item.id"
-              class="category-option"
-              :class="{ active: category === item.id }"
-              @click="select(item.id)"
-            >
-              {{ item.name }}
-            </button></view
-          ></scroll-view
-        ><button class="category-toggle" @click="panel = true">分类⌄</button></view
-      ><view v-if="!home.configured" class="notice">主题听读准备中</view
-      ><AppState
-        :empty="!topics.length"
-        prominent
-        title="这个分类还没有内容"
-        description="新的主题正在准备中，可以先看看其他分类。"
-        icon="/static/listening/r17-empty-book.svg"
-        action-label="查看全部主题"
-        @action="select('')" /><button
-        v-for="topic in topics"
-        :key="topic.id"
-        class="topic"
-        @click="open(topic)"
-      >
-        <view class="topic-line"
-          ><view class="topic-heading"
-            ><text class="topic-title">{{ topic.name_en || topic.name }}</text
-            ><text v-if="topic.name_en && topic.name" class="topic-chinese">{{
-              topic.name
-            }}</text></view
-          ><image
-            class="topic-arrow"
-            src="/static/listening/r17-topic-chevron.svg"
-            mode="aspectFit"
-        /></view>
-        <text v-if="topic.description" class="topic-description">{{ topic.description }}</text>
-        <view class="topic-counts"
-          ><text>{{ topic.total_articles }}篇短文</text
-          ><text>已学{{ topic.completed_articles }}／{{ topic.total_articles }}篇</text></view
+            /><text>继续学习</text></view
+          ><text class="continue-title">{{ home.continue_learning.title_zh }}</text>
+          <text class="continue-meta"
+            >{{ home.continue_learning.word_count }}词<text v-if="home.continue_learning.progress">
+              · {{ listeningResumeText(home.continue_learning) }}</text
+            ></text
+          >
+          <view class="continue-bottom"
+            ><button class="continue-action" @click="openListeningArticle(home.continue_learning)">
+              <image
+                class="continue-play"
+                src="/static/listening/r17-play.svg"
+                mode="aspectFit"
+              />继续阅读</button
+            ><text class="continue-meta">{{ continueTopic?.name }}</text></view
+          > </view
+        ><view class="category-bar"
+          ><scroll-view
+            class="category-scroll"
+            scroll-x
+            :scroll-into-view="'category-' + (category || 'all')"
+            ><view class="category-options"
+              ><button
+                id="category-all"
+                class="category-option"
+                :class="{ active: !category }"
+                @click="select('')"
+              >
+                全部</button
+              ><button
+                v-for="item in home.categories"
+                :id="'category-' + item.id"
+                :key="item.id"
+                class="category-option"
+                :class="{ active: category === item.id }"
+                @click="select(item.id)"
+              >
+                {{ item.name }}
+              </button></view
+            ></scroll-view
+          ><button class="category-toggle" @click="panel = true">分类⌄</button></view
+        ></template
+      ></view
+    >
+    <scroll-view
+      class="topic-scroll"
+      scroll-y
+      :scroll-top="scrollTop"
+      refresher-enabled
+      :refresher-triggered="refreshing"
+      refresher-background="transparent"
+      @scroll="onListScroll"
+      @refresherrefresh="pullRefresh"
+    >
+      <AppState :busy="busy && !home" :error="error" centered-error @retry="load" />
+      <template v-if="home"
+        ><view v-if="!home.configured" class="notice">主题听读准备中</view
+        ><AppState
+          :empty="!topics.length"
+          prominent
+          title="这个分类还没有内容"
+          description="新的主题正在准备中，可以先看看其他分类。"
+          icon="/static/listening/r17-empty-book.svg"
+          action-label="查看全部主题"
+          @action="select('')" /><button
+          v-for="topic in topics"
+          :key="topic.id"
+          class="topic"
+          @click="open(topic)"
         >
-        <view class="topic-progress"
-          ><view
-            class="topic-progress-fill"
-            :style="{
-              width: `${topic.total_articles ? Math.min(100, (topic.completed_articles / topic.total_articles) * 100) : 0}%`
-            }"
-        /></view></button></template
+          <view class="topic-line"
+            ><view class="topic-heading"
+              ><text class="topic-title">{{ topic.name_en || topic.name }}</text
+              ><text v-if="topic.name_en && topic.name" class="topic-chinese">{{
+                topic.name
+              }}</text></view
+            ><image
+              class="topic-arrow"
+              src="/static/listening/r17-topic-chevron.svg"
+              mode="aspectFit"
+          /></view>
+          <text v-if="topic.description" class="topic-description">{{ topic.description }}</text>
+          <view class="topic-counts"
+            ><text>{{ topic.total_articles }}篇短文</text
+            ><text>已学{{ topic.completed_articles }}／{{ topic.total_articles }}篇</text></view
+          >
+          <view class="topic-progress"
+            ><view
+              class="topic-progress-fill"
+              :style="{
+                width: `${topic.total_articles ? Math.min(100, (topic.completed_articles / topic.total_articles) * 100) : 0}%`
+              }"
+          /></view></button></template></scroll-view
     ><view v-if="panel" class="category-veil" @click="panel = false"
       ><view class="category-panel" @click.stop
         ><view class="between"
@@ -168,6 +202,16 @@ onShow(() => void load())
   >
 </template>
 <style scoped lang="scss">
+.listening-header {
+  flex-shrink: 0;
+}
+
+.topic-scroll {
+  flex: 1;
+  height: 0;
+  min-height: 0;
+}
+
 .listening-title {
   display: block;
   font-size: 42.308rpx;

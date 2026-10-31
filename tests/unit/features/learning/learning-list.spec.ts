@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
-import { flushPromises, shallowMount } from '@vue/test-utils'
+import { config, flushPromises, shallowMount } from '@vue/test-utils'
 import { beforeEach, expect, it, vi } from 'vitest'
+
+config.global.stubs['scroll-view'] = { template: '<div><slot /></div>' }
 
 const ports = vi.hoisted(() => ({ show: undefined as undefined | (() => void), request: vi.fn() }))
 vi.mock('@/services/feedback-service', () => ({

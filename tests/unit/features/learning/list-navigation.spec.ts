@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
-import { flushPromises, shallowMount } from '@vue/test-utils'
+import { config, flushPromises, shallowMount } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+
+config.global.stubs['scroll-view'] = { template: '<div><slot /></div>' }
 
 const ports = vi.hoisted(() => ({
   show: undefined as undefined | (() => void),
@@ -64,6 +66,9 @@ beforeEach(() => {
   ports.owner = 'owner'
   ports.show = undefined
   ports.hide = undefined
+  ports.pull = undefined
+  ports.more = undefined
+  ports.scroll = undefined
   vi.stubGlobal('uni', {
     hideTabBar: vi.fn(),
     getWindowInfo: () => ({ windowWidth: 375, windowHeight: 812 }),
@@ -95,9 +100,12 @@ it.each([
     })
     ports.show?.()
     await flushPromises()
-    ports.more?.()
+    if (component === LearningPage) await page.get('.scene-scroll').trigger('scrolltolower')
+    else ports.more?.()
     await flushPromises()
-    ports.scroll?.({ scrollTop: 820 })
+    if (component === LearningPage)
+      await page.get('.scene-scroll').trigger('scroll', { detail: { scrollTop: 820 } })
+    else ports.scroll?.({ scrollTop: 820 })
     ports.hide?.()
     ports.show?.()
     await flushPromises()
@@ -105,12 +113,18 @@ it.each([
       `${path}?page=1&limit=${limit}`,
       `${path}?page=2&limit=${limit}`
     ])
-    expect(uni.pageScrollTo).toHaveBeenLastCalledWith({ scrollTop: 820, duration: 0 })
+    if (component === LearningPage) {
+      expect(page.get('.scene-scroll').attributes('scroll-top')).toBe('820')
+      expect(uni.pageScrollTo).not.toHaveBeenCalled()
+    } else expect(uni.pageScrollTo).toHaveBeenLastCalledWith({ scrollTop: 820, duration: 0 })
     const rows = page.findAll('.row').map((node) => node.text())
     ports.request.mockRejectedValue(new Error('offline'))
-    await ports.pull?.()
+    if (component === LearningPage) await page.get('.scene-scroll').trigger('refresherrefresh')
+    else await ports.pull?.()
     await flushPromises()
-    expect(uni.stopPullDownRefresh).toHaveBeenCalledOnce()
+    if (component === LearningPage)
+      expect(page.get('.scene-scroll').attributes('refresher-triggered')).toBe('false')
+    else expect(uni.stopPullDownRefresh).toHaveBeenCalledOnce()
     expect(page.findAll('.row').map((node) => node.text())).toEqual(rows)
     expect(page.get('.list-footer').text()).toContain('offline')
     expect(page.find('.refresh-list').exists()).toBe(false)
@@ -128,7 +142,9 @@ it.each([LearningPage, FavoritesPage])(
     })
     ports.show?.()
     await flushPromises()
-    ports.scroll?.({ scrollTop: 740 })
+    if (component === LearningPage)
+      await page.get('.scene-scroll').trigger('scroll', { detail: { scrollTop: 740 } })
+    else ports.scroll?.({ scrollTop: 740 })
     let finish: (value: unknown) => void = () => undefined
     ports.request.mockImplementationOnce(
       () =>
@@ -166,14 +182,16 @@ it.each([
     })
     ports.show?.()
     await flushPromises()
-    ports.more?.()
+    if (component === LearningPage) await page.get('.scene-scroll').trigger('scrolltolower')
+    else ports.more?.()
     await flushPromises()
     vi.stubGlobal('uni', {
       ...uni,
       getWindowInfo: () => ({ windowWidth: 375, windowHeight: 1000 })
     })
     const before = ports.request.mock.calls.length
-    await ports.pull?.()
+    if (component === LearningPage) await page.get('.scene-scroll').trigger('refresherrefresh')
+    else await ports.pull?.()
     await flushPromises()
     expect(ports.request.mock.calls.slice(before).map(([url]) => url)).toEqual([
       `${path}?page=1&limit=${newLimit}`
@@ -182,7 +200,8 @@ it.each([
     ports.show?.()
     await flushPromises()
     expect(ports.request.mock.calls.at(-1)?.[0]).toBe(`${path}?page=1&limit=${newLimit}`)
-    ports.more?.()
+    if (component === LearningPage) await page.get('.scene-scroll').trigger('scrolltolower')
+    else ports.more?.()
     await flushPromises()
     expect(ports.request.mock.calls.at(-1)?.[0]).toBe(`${path}?page=2&limit=${newLimit}`)
     page.unmount()
