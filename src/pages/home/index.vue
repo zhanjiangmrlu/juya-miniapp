@@ -14,7 +14,8 @@ const homeBackgroundUrl = '/static/listening/home-watercolor@3x.jpg'
 const account = useAccountStore(),
   home = ref<ListeningHome | null>(null),
   busy = ref(false),
-  error = ref('')
+  error = ref(''),
+  refreshing = ref(false)
 /** 读取本人双模块入口，不将读取失败展示为零成绩 */
 const load = async () => {
   busy.value = true
@@ -29,6 +30,16 @@ const load = async () => {
     busy.value = false
   }
 }
+/** 在首页内容区下拉时刷新入口统计并收起刷新提示 */
+const pullRefresh = async () => {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    await load()
+  } finally {
+    refreshing.value = false
+  }
+}
 /** 打开选定的真实学习模块
  * @param path 场景或主题听读的已注册页面
  */
@@ -39,64 +50,80 @@ onShow(() => {
 })
 </script>
 <template>
-  <AppPage title="句芽英语" class="home-page" :background-image="homeBackgroundUrl" footer
-    ><view class="hero"
-      ><text class="hello">{{ account.profile?.nickname || '学习者' }}，今天也学一点</text
-      ><text class="welcome">今天，想学些什么？</text></view
-    ><AppState :busy="busy && !home" :error="error" @retry="load" /><button
-      class="module scene-module"
-      @click="open(Routes.LEARNING)"
-    >
-      <image src="/static/design/book-active.svg" mode="aspectFit" /><text class="module-title"
-        >雅思词汇</text
-      ><text class="module-en">IELTS Vocabulary</text
-      ><view class="description"
-        ><text class="description-line">结合场景图片和日常对话，</text
-        ><text class="description-line">积累约3,700个词汇。</text></view
-      ><view class="module-foot"
-        ><text v-if="home"
-          >已学{{ home.statistics.completed_cards }}张 ·
-          {{
-            home?.scene_free_count === null
-              ? '免费范围准备中'
-              : `免费开放${home.scene_actual_free_count}张`
-          }}</text
-        ><text>开始学习 ›</text></view
-      ></button
-    ><button class="module listening-module" @click="open(Routes.LISTENING)">
-      <image src="/static/design/listening-headphones.svg" mode="aspectFit" /><text
-        class="module-title"
-        >主题听读</text
-      ><view class="description listening-description"
-        ><view class="description-group"
-          ><text class="description-line">English in Real Life：</text
-          ><text class="description-line">涵盖10类日常英语内容。</text></view
-        ><view class="description-group"
-          ><text class="description-line">IELTS Speaking B2–C1：</text
-          ><text class="description-line">涵盖10类口语内容。</text></view
-        ><view class="description-group"
-          ><text class="description-line">生活场景听读：</text
-          ><text class="description-line">约覆盖1.5万—2万词汇。</text></view
+  <AppPage title="句芽英语" class="home-page" :background-image="homeBackgroundUrl" fixed-viewport
+    ><scroll-view
+      class="home-scroll"
+      scroll-y
+      enhanced
+      :show-scrollbar="false"
+      refresher-enabled
+      :refresher-triggered="refreshing"
+      refresher-background="transparent"
+      @refresherrefresh="pullRefresh"
+      ><view class="hero"
+        ><text class="hello">{{ account.profile?.nickname || '学习者' }}，今天也学一点</text
+        ><text class="welcome">今天，想学些什么？</text></view
+      ><AppState :busy="busy && !home" :error="error" @retry="load" /><button
+        class="module scene-module"
+        @click="open(Routes.LEARNING)"
+      >
+        <image src="/static/design/book-active.svg" mode="aspectFit" /><text class="module-title"
+          >雅思词汇</text
+        ><text class="module-en">IELTS Vocabulary</text
+        ><view class="description"
+          ><text class="description-line">结合场景图片和日常对话，</text
+          ><text class="description-line">积累约3,700个词汇。</text></view
+        ><view class="module-foot"
+          ><text v-if="home"
+            >已学{{ home.statistics.completed_cards }}张 ·
+            {{
+              home?.scene_free_count === null
+                ? '免费范围准备中'
+                : `免费开放${home.scene_actual_free_count}张`
+            }}</text
+          ><text>开始学习 ›</text></view
+        ></button
+      ><button class="module listening-module" @click="open(Routes.LISTENING)">
+        <image src="/static/design/listening-headphones.svg" mode="aspectFit" /><text
+          class="module-title"
+          >主题听读</text
+        ><view class="description listening-description"
+          ><view class="description-group"
+            ><text class="description-line">English in Real Life：</text
+            ><text class="description-line">涵盖10类日常英语内容。</text></view
+          ><view class="description-group"
+            ><text class="description-line">IELTS Speaking B2–C1：</text
+            ><text class="description-line">涵盖10类口语内容。</text></view
+          ><view class="description-group"
+            ><text class="description-line">生活场景听读：</text
+            ><text class="description-line">约覆盖1.5万—2万词汇。</text></view
+          ></view
+        ><view class="module-foot"
+          ><text v-if="home"
+            >已学{{ home.statistics.completed_articles }}篇 ·
+            {{
+              home?.free_count === null ? '免费范围准备中' : `免费开放${home.actual_free_count}篇`
+            }}</text
+          ><text>开始听读 ›</text></view
+        ></button
+      ><view v-if="home" class="home-note"
+        ><image src="/static/design/home-checkin.svg" mode="aspectFit" aria-hidden="true" /><text
+          >连续打卡{{ home.statistics.current_streak }}天 ·
+          {{ home.statistics.checked_in_today ? '今日已打卡' : '今日待打卡' }}</text
         ></view
-      ><view class="module-foot"
-        ><text v-if="home"
-          >已学{{ home.statistics.completed_articles }}篇 ·
-          {{
-            home?.free_count === null ? '免费范围准备中' : `免费开放${home.actual_free_count}篇`
-          }}</text
-        ><text>开始听读 ›</text></view
-      ></button
-    ><view v-if="home" class="home-note"
-      ><image src="/static/design/home-checkin.svg" mode="aspectFit" aria-hidden="true" /><text
-        >连续打卡{{ home.statistics.current_streak }}天 ·
-        {{ home.statistics.checked_in_today ? '今日已打卡' : '今日待打卡' }}</text
-      ></view
-    ><AppBottomTabs active="home"
-  /></AppPage>
+      ></scroll-view
+    ><template #footer><AppBottomTabs active="home" embedded /></template
+  ></AppPage>
 </template>
 <style scoped lang="scss">
 .home-page {
   background: #fffcf5;
+
+  .home-scroll {
+    flex: 1;
+    min-height: 0;
+    height: 0;
+  }
 
   .hero,
   .home-note {

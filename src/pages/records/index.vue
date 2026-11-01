@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onReachBottom, onShow, onUnload } from '@dcloudio/uni-app'
+import { onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
@@ -38,7 +38,10 @@ const account = useAccountStore(),
       })
     | null
   >(null),
-  statsError = ref('')
+  statsError = ref(''),
+  listeningVisited = ref(false),
+  listeningCollections = ref<InstanceType<typeof ListeningCollection>[]>([]),
+  refreshing = ref(false)
 const scenes = useSceneList<components['schemas']['LearningRecord']>({
   path: '/api/mini/v1/me/learning-records',
   request: session.request,
@@ -52,6 +55,19 @@ const checkins = useSceneList<{ date: string; card_count: number; article_count:
   ensure: () => account.ensure(Routes.RECORDS),
   key: (row) => row.date
 })
+const recordLists = [
+  { tab: RecordsTab.LEARNED, list: scenes },
+  { tab: RecordsTab.LISTENING, list: null },
+  { tab: RecordsTab.CHECKINS, list: checkins }
+]
+/** 为触底的记录标签追加下一页
+ * @param value 触发滚动事件的记录标签
+ */
+const more = (value: RecordsTab) => {
+  if (value !== tab.value) return
+  if (value === RecordsTab.LISTENING) void listeningCollections.value[0]?.more()
+  else void (value === RecordsTab.CHECKINS ? checkins : scenes).more()
+}
 const current = computed(() => (tab.value === RecordsTab.CHECKINS ? checkins : scenes))
 /** 读取分模块成绩及同一北京时间自然日打卡统计 */
 const loadStats = async () => {
@@ -100,6 +116,7 @@ const expand = async (date: string) => {
  */
 const select = (value: RecordsTab) => {
   tab.value = value
+  if (value === RecordsTab.LISTENING) listeningVisited.value = true
   uni.setStorageSync(RECORDS_TAB_STORAGE_KEY, value)
   if (value !== RecordsTab.LISTENING) void current.value.refresh()
 }
@@ -107,108 +124,150 @@ onShow(() => {
   uni.hideTabBar({ animation: false, fail: () => undefined })
   const stored = uni.getStorageSync(RECORDS_TAB_STORAGE_KEY)
   if (Object.values(RecordsTab).includes(stored)) tab.value = stored
+  if (tab.value === RecordsTab.LISTENING) listeningVisited.value = true
   void load()
 })
-onReachBottom(() => {
-  if (tab.value !== RecordsTab.LISTENING) void current.value.more()
-})
+/** 在当前标签内刷新本人记录和统计，结束后收起刷新提示 */
+const pullRefresh = async () => {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    await Promise.all([
+      load(),
+      tab.value === RecordsTab.LISTENING
+        ? listeningCollections.value[0]?.refresh()
+        : Promise.resolve()
+    ])
+  } finally {
+    refreshing.value = false
+  }
+}
 onUnload(() => {
   scenes.dispose()
   checkins.dispose()
 })
 </script>
 <template>
-  <AppPage :background-kind="PageBackgroundKind.RECORDS" title="学习记录" footer
-    ><view v-if="stats" class="record-summary"
-      ><view class="statistics">
-        <button class="metric" @click="select(RecordsTab.LEARNED)">
-          <text class="metric-number">{{ stats.completed_cards }}</text
-          ><text class="metric-label">已学场景卡 / 张</text>
-        </button>
-        <button class="metric" @click="select(RecordsTab.LISTENING)">
-          <text class="metric-number">{{ stats.completed_articles }}</text
-          ><text class="metric-label">已学听读 / 篇</text>
-        </button> </view
-      ><view class="checkin-summary"
-        ><text
-          >连续打卡<text class="checkin-number">{{ stats.current_streak }}</text
-          >天</text
-        ><text
-          >累计打卡<text class="checkin-number">{{ stats.total_checkin_days }}</text
-          >天</text
+  <AppPage :background-kind="PageBackgroundKind.RECORDS" title="学习记录" fixed-viewport
+    ><view class="records-header"
+      ><view v-if="stats" class="record-summary"
+        ><view class="statistics">
+          <button class="metric" @click="select(RecordsTab.LEARNED)">
+            <text class="metric-number">{{ stats.completed_cards }}</text
+            ><text class="metric-label">已学场景卡 / 张</text>
+          </button>
+          <button class="metric" @click="select(RecordsTab.LISTENING)">
+            <text class="metric-number">{{ stats.completed_articles }}</text
+            ><text class="metric-label">已学听读 / 篇</text>
+          </button> </view
+        ><view class="checkin-summary"
+          ><text
+            >连续打卡<text class="checkin-number">{{ stats.current_streak }}</text
+            >天</text
+          ><text
+            >累计打卡<text class="checkin-number">{{ stats.total_checkin_days }}</text
+            >天</text
+          ></view
+        >
+        <view class="today-state"
+          ><image
+            class="checkin-icon"
+            src="/static/design/home-checkin.svg"
+            mode="aspectFit"
+          /><text>{{ stats.checked_in_today ? '今日已打卡' : '今日待打卡' }}</text></view
         ></view
-      >
-      <view class="today-state"
-        ><image
-          class="checkin-icon"
-          src="/static/design/home-checkin.svg"
-          mode="aspectFit"
-        /><text>{{ stats.checked_in_today ? '今日已打卡' : '今日待打卡' }}</text></view
+      ><AppState v-if="statsError" :error="statsError" @retry="loadStats" /><view class="tabs"
+        ><button
+          class="tab-button"
+          :class="{ active: tab === RecordsTab.LEARNED }"
+          @click="select(RecordsTab.LEARNED)"
+        >
+          已学场景</button
+        ><button
+          class="tab-button"
+          :class="{ active: tab === RecordsTab.LISTENING }"
+          @click="select(RecordsTab.LISTENING)"
+        >
+          已学听读</button
+        ><button
+          class="tab-button"
+          :class="{ active: tab === RecordsTab.CHECKINS }"
+          @click="select(RecordsTab.CHECKINS)"
+        >
+          打卡记录
+        </button></view
       ></view
-    ><AppState v-if="statsError" :error="statsError" @retry="loadStats" /><view class="tabs"
-      ><button
-        class="tab-button"
-        :class="{ active: tab === RecordsTab.LEARNED }"
-        @click="select(RecordsTab.LEARNED)"
-      >
-        已学场景</button
-      ><button
-        class="tab-button"
-        :class="{ active: tab === RecordsTab.LISTENING }"
-        @click="select(RecordsTab.LISTENING)"
-      >
-        已学听读</button
-      ><button
-        class="tab-button"
-        :class="{ active: tab === RecordsTab.CHECKINS }"
-        @click="select(RecordsTab.CHECKINS)"
-      >
-        打卡记录
-      </button></view
-    ><ListeningCollection v-if="tab === RecordsTab.LISTENING" mode="records" /><view v-else
-      ><AppState
-        :busy="current.busy.value && current.total.value === null"
-        :error="current.error.value"
-        :empty="current.total.value === 0"
-        title="完成学习后，记录会留在这里"
-        @retry="load" /><template v-if="tab === RecordsTab.LEARNED"
-        ><SceneCard
-          v-for="card in scenes.items.value"
-          :key="card.id"
-          :card="card"
-          history
-          source="records" /></template
-      ><template v-else
-        ><view v-for="record in checkins.items.value" :key="record.date" class="day"
-          ><button class="day-heading" @click="expand(record.date)">
-            <text>{{ record.date }}</text
-            ><text
-              >场景 {{ record.card_count }} 张 · 听读 {{ record.article_count }} 篇</text
-            ></button
-          ><view v-if="expanded === record.date"
-            ><AppState :busy="dayBusy" :error="dayError" @retry="expand(record.date)" /><SceneCard
-              v-for="card in day?.scene_items"
-              :key="card.id"
-              :card="card"
-              history
-              source="day"
-              :day="record.date"
-              ><text class="muted">{{ dateText(card.completed_at) }}</text></SceneCard
-            ><ListeningArticleCard
-              v-for="article in day?.article_items"
-              :key="article.id"
-              :article="article"
-              :timestamp="ListeningTimestampKind.DAILY" /></view></view></template
-      ><SceneListFooter
-        :busy="current.moreBusy.value"
-        :error="current.moreError.value"
-        :has-more="current.hasMore.value"
-        :done="current.done.value"
-        @more="current.more" /></view
-    ><AppBottomTabs active="records"
-  /></AppPage>
+    ><scroll-view
+      v-for="entry in recordLists"
+      v-show="tab === entry.tab"
+      :key="entry.tab"
+      class="record-scroll"
+      scroll-y
+      enhanced
+      :show-scrollbar="false"
+      refresher-enabled
+      :refresher-triggered="refreshing && tab === entry.tab"
+      refresher-background="transparent"
+      @scrolltolower="more(entry.tab)"
+      @refresherrefresh="pullRefresh"
+    >
+      <ListeningCollection
+        v-if="entry.tab === RecordsTab.LISTENING && listeningVisited"
+        ref="listeningCollections"
+        mode="records" /><view v-if="entry.list"
+        ><AppState
+          :busy="entry.list.busy.value && entry.list.total.value === null"
+          :error="entry.list.error.value"
+          :empty="entry.list.total.value === 0"
+          title="完成学习后，记录会留在这里"
+          @retry="load" /><template v-if="entry.tab === RecordsTab.LEARNED"
+          ><SceneCard
+            v-for="card in scenes.items.value"
+            :key="card.id"
+            :card="card"
+            history
+            source="records" /></template
+        ><template v-else
+          ><view v-for="record in checkins.items.value" :key="record.date" class="day"
+            ><button class="day-heading" @click="expand(record.date)">
+              <text>{{ record.date }}</text
+              ><text
+                >场景 {{ record.card_count }} 张 · 听读 {{ record.article_count }} 篇</text
+              ></button
+            ><view v-if="expanded === record.date"
+              ><AppState :busy="dayBusy" :error="dayError" @retry="expand(record.date)" /><SceneCard
+                v-for="card in day?.scene_items"
+                :key="card.id"
+                :card="card"
+                history
+                source="day"
+                :day="record.date"
+                ><text class="muted">{{ dateText(card.completed_at) }}</text></SceneCard
+              ><ListeningArticleCard
+                v-for="article in day?.article_items"
+                :key="article.id"
+                :article="article"
+                :timestamp="ListeningTimestampKind.DAILY" /></view></view></template
+        ><SceneListFooter
+          :busy="entry.list.moreBusy.value"
+          :error="entry.list.moreError.value"
+          :has-more="entry.list.hasMore.value"
+          :done="entry.list.done.value"
+          @more="entry.list.more" /></view></scroll-view
+    ><template #footer><AppBottomTabs active="records" embedded /></template
+  ></AppPage>
 </template>
 <style scoped lang="scss">
+.records-header {
+  flex-shrink: 0;
+}
+
+.record-scroll {
+  flex: 1;
+  min-height: 0;
+  height: 0;
+}
+
 .statistics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

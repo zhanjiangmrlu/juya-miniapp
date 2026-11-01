@@ -9,7 +9,7 @@ defineProps<BottomTabsProps>()
 const switchTab = (target: string) => uni.switchTab({ url: target })
 </script>
 <template>
-  <view class="bottom-tabs" role="navigation" aria-label="主导航">
+  <view class="bottom-tabs" :class="{ embedded }" role="navigation" aria-label="主导航">
     <button
       class="tab-button"
       :class="{ active: active === 'home' }"
@@ -47,6 +47,11 @@ const switchTab = (target: string) => uni.switchTab({ url: target })
   padding: 18rpx 30rpx max(34rpx, env(safe-area-inset-bottom));
   border-top: 1px solid #dfe5d8;
   background: #fffcf5;
+
+  &.embedded {
+    position: relative;
+    flex-shrink: 0;
+  }
 
   .tab-button {
     display: flex;

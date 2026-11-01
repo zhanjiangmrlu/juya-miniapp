@@ -43,6 +43,7 @@ const remove = async (article: ListeningSummary) => {
     })
   }
 }
+defineExpose({ more: list.more, refresh: list.refresh })
 onMounted(() => void list.refresh())
 onUnmounted(list.dispose)
 onShow(() => void list.refresh())

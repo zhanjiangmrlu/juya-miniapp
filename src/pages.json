@@ -4,14 +4,16 @@
       "path": "pages/home/index",
       "style": {
         "navigationStyle": "custom",
-        "enablePullDownRefresh": true
+        "enablePullDownRefresh": false,
+        "disableScroll": true
       }
     },
     {
       "path": "pages/records/index",
       "style": {
         "navigationStyle": "custom",
-        "enablePullDownRefresh": true
+        "enablePullDownRefresh": false,
+        "disableScroll": true
       }
     },
     {
