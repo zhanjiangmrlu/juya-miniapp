@@ -115,7 +115,7 @@ export const listeningMedia = async (article: ListeningArticle, mediaId: string)
 }
 /** 打开文章详情，受限历史仍可显示安全摘要
  * @param article 真实服务端文章摘要
- * @param queueToken 本轮冻结的同主题队列凭证
+ * @param queueToken 本轮冻结的同分类队列凭证
  * @param replace 同队列推进时替换当前详情，保留来源页面
  */
 export const openListeningArticle = (article: ListeningSummary, queueToken = '', replace = false) =>

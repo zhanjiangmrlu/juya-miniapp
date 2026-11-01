@@ -42,18 +42,17 @@ onShow(() => {
   <AppPage title="句芽英语" class="home-page" :background-image="homeBackgroundUrl" footer
     ><view class="hero"
       ><text class="hello">{{ account.profile?.nickname || '学习者' }}，今天也学一点</text
-      ><text class="welcome">今天，想学些什么？</text
-      ><text class="intro">从真实场景，到连贯阅读。</text></view
+      ><text class="welcome">今天，想学些什么？</text></view
     ><AppState :busy="busy && !home" :error="error" @retry="load" /><button
       class="module scene-module"
       @click="open(Routes.LEARNING)"
     >
       <image src="/static/design/book-active.svg" mode="aspectFit" /><text class="module-title"
-        >场景学习</text
-      ><text class="module-en">English, every day.</text
+        >雅思词汇</text
+      ><text class="module-en">IELTS Vocabulary</text
       ><view class="description"
-        ><text class="description-line">在生活里的对话中，</text
-        ><text class="description-line">一起积累词汇和语块。</text></view
+        ><text class="description-line">结合场景图片和日常对话，</text
+        ><text class="description-line">积累约3,700个词汇。</text></view
       ><view class="module-foot"
         ><text v-if="home"
           >已学{{ home.statistics.completed_cards }}张 ·
@@ -62,23 +61,30 @@ onShow(() => {
               ? '免费范围准备中'
               : `免费开放${home.scene_actual_free_count}张`
           }}</text
-        ><text>进入场景 →</text></view
+        ><text>开始学习 ›</text></view
       ></button
     ><button class="module listening-module" @click="open(Routes.LISTENING)">
       <image src="/static/design/listening-headphones.svg" mode="aspectFit" /><text
         class="module-title"
         >主题听读</text
-      ><text class="module-en">Read. Listen. Keep it.</text
-      ><view class="description"
-        ><text class="description-line">读一篇短文，听完整英文，</text
-        ><text class="description-line">把表达带进自己的生活。</text></view
+      ><view class="description listening-description"
+        ><view class="description-group"
+          ><text class="description-line">English in Real Life：</text
+          ><text class="description-line">涵盖10类日常英语内容。</text></view
+        ><view class="description-group"
+          ><text class="description-line">IELTS Speaking B2–C1：</text
+          ><text class="description-line">涵盖10类口语内容。</text></view
+        ><view class="description-group"
+          ><text class="description-line">生活场景听读：</text
+          ><text class="description-line">约覆盖1.5万—2万词汇。</text></view
+        ></view
       ><view class="module-foot"
         ><text v-if="home"
           >已学{{ home.statistics.completed_articles }}篇 ·
           {{
             home?.free_count === null ? '免费范围准备中' : `免费开放${home.actual_free_count}篇`
           }}</text
-        ><text>开始听读 →</text></view
+        ><text>开始听读 ›</text></view
       ></button
     ><view v-if="home" class="home-note"
       ><image src="/static/design/home-checkin.svg" mode="aspectFit" aria-hidden="true" /><text
@@ -115,7 +121,7 @@ onShow(() => {
   }
 
   .hero {
-    padding: 36rpx 0 50rpx;
+    padding: 36.538rpx 0 38.462rpx;
   }
 
   .hello,
@@ -134,7 +140,7 @@ onShow(() => {
   }
 
   .welcome {
-    margin: 20rpx 0 10rpx;
+    margin: 25rpx 0 0;
     font-size: 50rpx;
     line-height: 1.5;
     font-weight: 700;
@@ -149,9 +155,9 @@ onShow(() => {
   .module {
     position: relative;
     display: block;
-    min-height: 406rpx;
-    margin-bottom: 30rpx;
-    padding: 40rpx 38rpx;
+    min-height: 370.731rpx;
+    margin-bottom: 26.923rpx;
+    padding: 34.615rpx 38.462rpx;
     border: 1px solid #d5e1c7;
     border-radius: 27rpx;
     background: #e4f0dbdb;
@@ -160,10 +166,10 @@ onShow(() => {
 
     image {
       position: absolute;
-      top: 48rpx;
+      top: 40.385rpx;
       right: 38rpx;
-      width: 62rpx;
-      height: 62rpx;
+      width: 46.154rpx;
+      height: 46.154rpx;
     }
 
     .module-title {
@@ -175,7 +181,7 @@ onShow(() => {
     .module-en {
       margin-top: 7rpx;
       font-family: var(--app-serif-font, Georgia, serif);
-      font-size: 36.538rpx;
+      font-size: 38.462rpx;
       font-weight: 400;
       line-height: 1.5;
     }
@@ -191,8 +197,8 @@ onShow(() => {
       align-items: center;
       justify-content: space-between;
       gap: 12rpx;
-      margin-top: 34rpx;
-      font-size: 23rpx;
+      margin-top: 26.923rpx;
+      font-size: 23.077rpx;
       line-height: 1.5;
     }
   }
@@ -200,6 +206,13 @@ onShow(() => {
   .listening-module {
     border-color: #dfe5d8;
     background: #fffcf5e6;
+
+    .description {
+      display: flex;
+      flex-direction: column;
+      gap: 17.308rpx;
+      margin-top: 15.385rpx;
+    }
   }
 
   .home-note {

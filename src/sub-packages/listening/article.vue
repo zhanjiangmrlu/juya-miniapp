@@ -8,6 +8,7 @@ import SceneDictionary from '@/features/learning/components/scene-dictionary.vue
 import ListeningBody from '@/features/listening/components/listening-body.vue'
 import ListeningCompletion from '@/features/listening/components/listening-completion.vue'
 import ListeningImageViewer from '@/features/listening/components/listening-image-viewer.vue'
+import ListeningVocabulary from '@/features/listening/components/listening-vocabulary.vue'
 import { listeningSourceSentence } from '@/features/listening/listening-presenter'
 import { validateTimeline } from '@/features/listening/reading-model'
 import { useListeningArticle } from '@/features/listening/use-listening-article'
@@ -30,6 +31,7 @@ const {
   actionBusy,
   nextArticle,
   endedTopic,
+  endedCategoryId,
   completed,
   completionResult,
   lookupRestricted,
@@ -53,7 +55,8 @@ const {
   openImage,
   lookup,
   closeDictionary,
-  pronounce
+  pronounce,
+  pronounceVocabulary
 } = useListeningArticle()
 const {
   thumbnail,
@@ -89,9 +92,12 @@ const syncStatus = computed(() => {
       ? '已暂停 · 高亮与尾迹保持当前位置'
       : ''
 })
-/** 主题结束后返回本篇所属主题，无跨主题连播 */
+/** 分类结束后返回本篇所属分类 */
 const topic = () => {
-  if (summary.value) uni.redirectTo({ url: `${Routes.TOPIC}?id=${summary.value.topic_id}` })
+  if (summary.value)
+    uni.redirectTo({
+      url: `${Routes.LISTENING}?category_id=${encodeURIComponent(endedCategoryId.value || summary.value.category_id)}`
+    })
 }
 /** 只关闭大图覆盖层，保留原阅读位置和播放状态 */
 const closeImage = () => {
@@ -125,8 +131,8 @@ const closeImage = () => {
         icon="/static/listening/r17-lock.svg"
         :icon-size="30"
         :title="summary.available ? '此篇需学习授权' : '当前内容暂不可用'"
-        :description="error || '请返回主题列表查看其他篇目'"
-        action-label="返回主题列表"
+        :description="error || '请返回分类文章查看其他篇目'"
+        action-label="返回分类文章"
         @action="topic"
       /><AppState
         v-else
@@ -226,7 +232,12 @@ const closeImage = () => {
           class="paragraph"
           >{{ paragraph }}</view
         ></view
-      ><view class="expressions"
+      ><ListeningVocabulary
+        :words="article.payload.vocabulary || []"
+        :body="article.payload.body_en"
+        :audio="audio"
+        @play="pronounceVocabulary"
+      /><view class="expressions"
         ><text class="section-title">把表达带进你的生活</text
         ><view
           v-for="(expression, index) in article.payload.expressions"

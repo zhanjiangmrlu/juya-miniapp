@@ -4053,6 +4053,7 @@
       "get": {
         "tags": ["controlled word pronunciation"],
         "summary": "Audio",
+        "description": "Apply the checked operation within the caller’s transaction.",
         "operationId": "audio_api_mini_v1_pronunciation__credential__get",
         "parameters": [
           {
@@ -6728,6 +6729,7 @@
       "get": {
         "tags": ["thematic listening"],
         "summary": "Home",
+        "description": "Return category progress and an independent continuation target.",
         "operationId": "home_api_mini_v1_listening_home_get",
         "responses": {
           "200": {
@@ -6991,6 +6993,7 @@
       "get": {
         "tags": ["thematic listening"],
         "summary": "Articles",
+        "description": "Page articles using direct category ownership.",
         "operationId": "articles_api_mini_v1_listening_topics__topic_id__articles_get",
         "parameters": [
           {
@@ -7000,6 +7003,167 @@
             "schema": {
               "type": "string",
               "title": "Topic Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_Summary_"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/mini/v1/listening/articles": {
+      "get": {
+        "tags": ["thematic listening"],
+        "summary": "Category Articles",
+        "description": "Page publications directly in configured category and article order.",
+        "operationId": "category_articles_api_mini_v1_listening_articles_get",
+        "parameters": [
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Id"
             }
           },
           {
@@ -8086,6 +8250,7 @@
       "get": {
         "tags": ["thematic listening"],
         "summary": "Next Article",
+        "description": "Advance only inside the current category and return its destination ID.",
         "operationId": "next_article_api_mini_v1_listening_articles__article_id__next_get",
         "parameters": [
           {
@@ -9927,6 +10092,328 @@
           }
         }
       }
+    },
+    "/api/mini/v1/listening/articles/{article_id}/words/{word_id}/pronunciation": {
+      "get": {
+        "tags": ["listening word pronunciation"],
+        "summary": "Read",
+        "description": "Read persistent speech state without starting a cloud task.",
+        "operationId": "read_api_mini_v1_listening_articles__article_id__words__word_id__pronunciation_get",
+        "parameters": [
+          {
+            "name": "article_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Article Id"
+            }
+          },
+          {
+            "name": "word_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Word Id"
+            }
+          },
+          {
+            "name": "version_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 36
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version Id"
+            }
+          },
+          {
+            "name": "revision",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Revision"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpeechState"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      "post": {
+        "tags": ["listening word pronunciation"],
+        "summary": "Generate",
+        "description": "Generate one server-resolved vocabulary word with persistent idempotency.",
+        "operationId": "generate_api_mini_v1_listening_articles__article_id__words__word_id__pronunciation_post",
+        "parameters": [
+          {
+            "name": "article_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Article Id"
+            }
+          },
+          {
+            "name": "word_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Word Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpeechReference"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpeechState"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9969,8 +10456,29 @@
             "default": "listening"
           },
           "topic_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Topic Id"
+          },
+          "category_id": {
+            "type": "string",
+            "title": "Category Id"
+          },
+          "category_name": {
+            "type": "string",
+            "title": "Category Name",
+            "default": ""
+          },
+          "category_order": {
+            "type": "integer",
+            "title": "Category Order",
+            "default": 0
           },
           "title_zh": {
             "type": "string",
@@ -10086,7 +10594,7 @@
         "required": [
           "progress",
           "id",
-          "topic_id",
+          "category_id",
           "title_zh",
           "title_en",
           "tags",
@@ -10340,7 +10848,7 @@
         "required": ["completed", "today_completed", "favorite"],
         "title": "CardState"
       },
-      "Category": {
+      "CategoryProgress": {
         "properties": {
           "name": {
             "type": "string",
@@ -10358,20 +10866,49 @@
             "title": "Sort Order",
             "default": 0
           },
-          "revision": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Revision"
-          },
           "id": {
             "type": "string",
             "title": "Id"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "total_articles": {
+            "type": "integer",
+            "title": "Total Articles"
+          },
+          "completed_articles": {
+            "type": "integer",
+            "title": "Completed Articles"
+          },
+          "restricted_articles": {
+            "type": "integer",
+            "title": "Restricted Articles"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url"
           }
         },
         "additionalProperties": false,
         "type": "object",
-        "required": ["name", "revision", "id"],
-        "title": "Category"
+        "required": [
+          "name",
+          "id",
+          "revision",
+          "total_articles",
+          "completed_articles",
+          "restricted_articles"
+        ],
+        "title": "CategoryProgress"
       },
       "CheckinRecord": {
         "properties": {
@@ -11267,7 +11804,7 @@
         "properties": {
           "categories": {
             "items": {
-              "$ref": "#/components/schemas/Category"
+              "$ref": "#/components/schemas/CategoryProgress"
             },
             "type": "array",
             "title": "Categories"
@@ -11638,8 +12175,29 @@
             "default": "listening"
           },
           "topic_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Topic Id"
+          },
+          "category_id": {
+            "type": "string",
+            "title": "Category Id"
+          },
+          "category_name": {
+            "type": "string",
+            "title": "Category Name",
+            "default": ""
+          },
+          "category_order": {
+            "type": "integer",
+            "title": "Category Order",
+            "default": 0
           },
           "title_zh": {
             "type": "string",
@@ -11733,7 +12291,7 @@
         "type": "object",
         "required": [
           "id",
-          "topic_id",
+          "category_id",
           "title_zh",
           "title_en",
           "tags",
@@ -11812,6 +12370,14 @@
             "type": "array",
             "maxItems": 20,
             "title": "Expressions"
+          },
+          "vocabulary": {
+            "items": {
+              "$ref": "#/components/schemas/VocabularyWord"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Vocabulary"
           },
           "word_meanings": {
             "items": {
@@ -12072,6 +12638,10 @@
       },
       "NextArticle": {
         "properties": {
+          "category_id": {
+            "type": "string",
+            "title": "Category Id"
+          },
           "article": {
             "anyOf": [
               {
@@ -12088,7 +12658,7 @@
           }
         },
         "type": "object",
-        "required": ["article", "ended"],
+        "required": ["category_id", "article", "ended"],
         "title": "NextArticle"
       },
       "OperationResponse": {
@@ -13043,8 +13613,29 @@
             "default": "listening"
           },
           "topic_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Topic Id"
+          },
+          "category_id": {
+            "type": "string",
+            "title": "Category Id"
+          },
+          "category_name": {
+            "type": "string",
+            "title": "Category Name",
+            "default": ""
+          },
+          "category_order": {
+            "type": "integer",
+            "title": "Category Order",
+            "default": 0
           },
           "title_zh": {
             "type": "string",
@@ -13145,7 +13736,7 @@
         "type": "object",
         "required": [
           "id",
-          "topic_id",
+          "category_id",
           "title_zh",
           "title_en",
           "tags",
@@ -13508,6 +14099,99 @@
         },
         "type": "object",
         "title": "Vocabulary"
+      },
+      "VocabularySource": {
+        "properties": {
+          "start": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start"
+          },
+          "end": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "End"
+          },
+          "quote": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Quote"
+          },
+          "word_start": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Word Start"
+          },
+          "word_end": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Word End"
+          },
+          "word": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Word"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["start", "end", "quote", "word_start", "word_end", "word"],
+        "title": "VocabularySource"
+      },
+      "VocabularyWord": {
+        "properties": {
+          "source_hint": {
+            "type": "string",
+            "maxLength": 10000,
+            "title": "Source Hint",
+            "default": ""
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "english": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "English"
+          },
+          "meaning": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Meaning"
+          },
+          "phonetic": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Phonetic",
+            "default": ""
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VocabularySource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["id", "english", "meaning"],
+        "title": "VocabularyWord"
       },
       "WechatLogin": {
         "properties": {

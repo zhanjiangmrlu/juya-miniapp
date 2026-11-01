@@ -16,6 +16,7 @@ import type { components } from '@/shared/contracts/generated/mini-api'
 import type { AudioState } from '@/shared/types/audio'
 import type { DictionaryResult, DictionarySelection } from '@/shared/types/dictionary'
 import type {
+  ListeningAccess,
   ListeningArticle,
   ListeningProgress,
   ListeningSummary,
@@ -31,7 +32,7 @@ import {
   writeListening
 } from './listening-service'
 import { readingAnchor, restoreProgress, tokenizeBody } from './reading-model'
-/** 管理文章受控权限、同版本进度、互斥音轨及完成后的主题顺序 */
+/** 管理文章受控权限、同版本进度、互斥音轨及完成后的分类顺序 */
 export const useListeningArticle = () => {
   const bodyRef = ref<ListeningBodyHandle | null>(null)
   const account = useAccountStore(),
@@ -48,6 +49,7 @@ export const useListeningArticle = () => {
     actionBusy = ref(false),
     nextArticle = ref<ListeningSummary | null>(null),
     endedTopic = ref(false),
+    endedCategoryId = ref(''),
     completed = ref(false),
     completionResult = ref<components['schemas']['ListeningCompletionResult'] | null>(null),
     lookupRestricted = ref(false),
@@ -75,6 +77,7 @@ export const useListeningArticle = () => {
     timer: ReturnType<typeof setInterval> | undefined,
     expiry: ReturnType<typeof setTimeout> | undefined,
     generation = 0,
+    wordGeneration = 0,
     readingPosition = 0,
     currentScroll = 0,
     alive = true,
@@ -89,6 +92,7 @@ export const useListeningArticle = () => {
   const target = computed(() => `${Routes.ARTICLE}?id=${id.value}`)
   /** 释放当前文章的两个音轨和未完成异步处理 */
   const stop = () => {
+    wordGeneration++
     clearInterval(timer)
     clearTimeout(anchorTimer)
     clearTimeout(expiry)
@@ -107,6 +111,21 @@ export const useListeningArticle = () => {
     imageOpen.value = false
     selection.value = null
     error.value = reason instanceof Error ? reason.message : '权限暂未获取，请重试'
+  }
+  /** 受控媒体或预置发音一旦明确拒绝即停音清理，旧版本迟到错误不影响新页面
+   * @param request 当前受保护资源请求
+   * @param current 发出请求时的已确认文章版本
+   */
+  const guardResource = async <T>(request: Promise<T>, current: ListeningArticle): Promise<T> => {
+    try {
+      return await request
+    } catch (reason) {
+      if (article.value === current && reason instanceof ApiError) {
+        if ([401, 403, 404].includes(reason.status || 0)) deny(reason)
+        else if (reason.status === 409) void authorize()
+      }
+      throw reason
+    }
   }
   /** 保存实际阅读及媒体位置，失败明确展示并保留可重试操作 */
   const save = async () => {
@@ -180,6 +199,16 @@ export const useListeningArticle = () => {
       }
     })
   }
+  /** 根据每次服务端权限快照重设到期复核，不依赖设备时钟
+   * @param access 本次服务端确认的权限及服务器时间
+   */
+  const scheduleExpiry = (access: ListeningAccess) => {
+    clearTimeout(expiry)
+    const until = access.expires_at
+      ? Date.parse(access.expires_at) - Date.parse(access.server_now)
+      : 0
+    if (until > 0) expiry = setTimeout(() => void authorize(), Math.min(until + 50, 2147483647))
+  }
   /** 复核当前权限和发布版本；版本更新必须重新加载初始状态 */
   const authorize = async () => {
     const current = article.value
@@ -188,6 +217,7 @@ export const useListeningArticle = () => {
       const checked = await session.request<ListeningSummary>(
         `${LISTENING_API}/articles/${current.id}/summary`
       )
+      if (article.value !== current || !alive || !visible) return false
       if (!checked.access.can_learn || !checked.available)
         throw new ApiError('listening_locked', '当前文章暂不可学习')
       if (!visible || !alive) return false
@@ -198,14 +228,16 @@ export const useListeningArticle = () => {
         return false
       }
       current.access = checked.access
+      scheduleExpiry(checked.access)
       permissionError.value = ''
       if (!checked.access.can_lookup) {
         selection.value = null
-        if (audio.value.wordId) controller?.stopWord(audio.value.wordId)
+        if (audio.value.wordId && !audio.value.wordId.startsWith('vocabulary:'))
+          controller?.stopWord(audio.value.wordId)
       }
       return true
     } catch (reason) {
-      deny(reason)
+      if (article.value === current) deny(reason)
       return false
     }
   }
@@ -224,11 +256,14 @@ export const useListeningArticle = () => {
       () => {},
       () => {
         audioAddress = null
+      },
+      () => {
+        wordGeneration++
       }
     )
     const currentController = controller
     if (value.payload.audio_id) {
-      audioAddress = listeningMedia(value, value.payload.audio_id)
+      audioAddress = guardResource(listeningMedia(value, value.payload.audio_id), value)
       void audioAddress
         .then((url) => {
           if (controller === currentController) currentController.prepareFull(url)
@@ -289,10 +324,7 @@ export const useListeningArticle = () => {
       if (++autosave % 250 === 0) void save()
       if (autosave % 750 === 0) void authorize()
     }, 40)
-    const until = value.access.expires_at
-      ? Date.parse(value.access.expires_at) - Date.parse(value.access.server_now)
-      : 0
-    if (until > 0) expiry = setTimeout(() => void authorize(), Math.min(until + 50, 2147483647))
+    scheduleExpiry(value.access)
   }
   /** 文章进入及回到前台先鉴权，读取失败展示明确重试 */
   const load = async () => {
@@ -339,7 +371,9 @@ export const useListeningArticle = () => {
     lastParagraph = -1
     const value = article.value
     await controller?.toggleFull(
-      () => audioAddress || (audioAddress = listeningMedia(value, value.payload.audio_id!))
+      () =>
+        audioAddress ||
+        (audioAddress = guardResource(listeningMedia(value, value.payload.audio_id!), value))
     )
   }
   /** 拖动按原始音频秒数定位并重新开启跟随
@@ -358,6 +392,7 @@ export const useListeningArticle = () => {
   const favorite = async () => {
     const value = article.value || summary.value
     if (!value || actionBusy.value) return
+    if (!value.state.favorite && (!(await authorize()) || article.value !== value)) return
     actionBusy.value = true
     actionError.value = ''
     lastAction = favorite
@@ -376,7 +411,7 @@ export const useListeningArticle = () => {
       actionBusy.value = false
     }
   }
-  /** 完成成功后才展示成绩和服务端下一篇；读取失败不当作主题结束 */
+  /** 完成成功后才展示成绩和服务端下一篇；读取失败不当作分类结束 */
   const complete = async () => {
     lastAction = complete
     if (actionBusy.value || !(await authorize()) || !article.value) return
@@ -400,15 +435,16 @@ export const useListeningArticle = () => {
       actionBusy.value = false
     }
   }
-  /** 单独重试同主题后续查询，不重复提交已确认完成 */
+  /** 单独重试同分类后续查询，不重复提交已确认完成 */
   const getNext = async () => {
     lastAction = getNext
     try {
-      const result = await session.request<{ article: ListeningSummary | null; ended: boolean }>(
+      const result = await session.request<components['schemas']['NextArticle']>(
         `${LISTENING_API}/articles/${id.value}/next?queue_token=${encodeURIComponent(queueToken.value)}`
       )
       nextArticle.value = result.article
       endedTopic.value = result.ended
+      endedCategoryId.value = result.category_id
       actionError.value = ''
     } catch (reason) {
       endedTopic.value = false
@@ -418,11 +454,11 @@ export const useListeningArticle = () => {
   /** 查询本篇原图受控地址，打开覆盖层保留音轨与阅读状态 */
   const openImage = async () => {
     const value = article.value
-    if (!value?.payload.image_id) return
+    if (!value?.payload.image_id || !(await authorize()) || article.value !== value) return
     imageOpen.value = true
     imageError.value = ''
     try {
-      image.value = await listeningMedia(value, value.payload.image_id)
+      image.value = await guardResource(listeningMedia(value, value.payload.image_id), value)
     } catch (reason) {
       imageError.value = reason instanceof Error ? reason.message : '原图加载失败，请重试'
     }
@@ -432,7 +468,7 @@ export const useListeningArticle = () => {
    */
   const lookup = async (token: ListeningToken) => {
     const value = article.value
-    if (!value?.version_id) return
+    if (!value?.version_id || !(await authorize()) || article.value !== value) return
     if (!value.access.can_lookup) {
       lookupRestricted.value = true
       return
@@ -494,6 +530,49 @@ export const useListeningArticle = () => {
           )
         }
         if (result.state !== 'ready' || !result.url) throw new Error('发音暂不可用')
+        return resourceURL(result.url)
+      },
+      authorize
+    )
+  }
+  /** 只播放当前版本预置词汇，免费阅读者无需正文查词授权
+   * @param wordId 当前发布版本的稳定预置词条身份
+   */
+  const pronounceVocabulary = async (wordId: string) => {
+    const value = article.value
+    if (!value?.version_id || !value.payload.vocabulary?.some((word) => word.id === wordId)) return
+    selection.value = null
+    if (audio.value.wordId) controller?.stopWord(audio.value.wordId)
+    const run = ++wordGeneration
+    const active = () => run === wordGeneration && article.value === value && alive && visible
+    await controller?.playWord(
+      `vocabulary:${wordId}`,
+      async () => {
+        const path = `/articles/${encodeURIComponent(value.id)}/words/${encodeURIComponent(wordId)}/pronunciation`
+        if (!active()) throw new Error('已取消')
+        let result = await guardResource(
+          writeListening<components['schemas']['SpeechState']>(
+            `listening.word:${value.id}:${wordId}`,
+            path,
+            'POST',
+            { version_id: value.version_id }
+          ),
+          value
+        )
+        for (let count = 0; count < 12 && result.state === 'processing'; count++) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.min(5, result.retry_after || 1) * 1000)
+          )
+          if (!active()) throw new Error('已取消')
+          result = await guardResource(
+            session.request<components['schemas']['SpeechState']>(
+              `${LISTENING_API}${path}?version_id=${encodeURIComponent(value.version_id!)}`
+            ),
+            value
+          )
+        }
+        if (!active()) throw new Error('已取消')
+        if (result.state !== 'ready' || !result.url) throw new Error('发音暂不可用，点击重试')
         return resourceURL(result.url)
       },
       authorize
@@ -577,6 +656,7 @@ export const useListeningArticle = () => {
     actionBusy,
     nextArticle,
     endedTopic,
+    endedCategoryId,
     completed,
     completionResult,
     lookupRestricted,
@@ -600,6 +680,7 @@ export const useListeningArticle = () => {
     openImage,
     lookup,
     closeDictionary,
-    pronounce
+    pronounce,
+    pronounceVocabulary
   }
 }

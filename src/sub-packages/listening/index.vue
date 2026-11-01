@@ -1,83 +1,60 @@
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
-import { computed, nextTick, ref } from 'vue'
+import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
+import { ref } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
+import ListeningArticleCard from '@/features/listening/components/listening-article-card.vue'
+import ListeningCategorySummary from '@/features/listening/components/listening-category-summary.vue'
 import { listeningResumeText } from '@/features/listening/listening-presenter'
-import { getListeningHome, openListeningArticle } from '@/features/listening/listening-service'
-import { Routes } from '@/shared/constants/navigation'
+import { openListeningArticle } from '@/features/listening/listening-service'
+import { useListeningCatalog } from '@/features/listening/use-listening-catalog'
 import { PageBackgroundKind } from '@/shared/enums/ui'
-import { useAccountStore } from '@/stores/account-store'
-
-import type { ListeningHome, ListeningTopic } from '@/shared/types/listening'
-const account = useAccountStore(),
-  home = ref<ListeningHome | null>(null),
-  category = ref(''),
-  panel = ref(false),
-  busy = ref(false),
-  error = ref(''),
-  scrollTop = ref(0),
-  refreshing = ref(false)
-const continueTopic = computed(() =>
-  home.value?.topics.find((topic) => topic.id === home.value?.continue_learning?.topic_id)
-)
-const topics = computed(
-  () =>
-    home.value?.topics.filter((topic) => !category.value || topic.category_id === category.value) ||
-    []
-)
-/** 从服务端读取有效分类和主题，保留上次分类 */
-const load = async () => {
-  busy.value = true
-  error.value = ''
-  try {
-    if (await account.ensure(Routes.LISTENING)) home.value = await getListeningHome()
-  } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : '听读暂未获取'
-  } finally {
-    busy.value = false
-  }
-}
-/** 切换分类并确保横向标签可见，主动切换列表回顶部
+const panel = ref(false)
+const {
+  home,
+  category,
+  scrollTop,
+  busy,
+  error,
+  refreshing,
+  selectedCategory,
+  articles,
+  list,
+  load,
+  select: selectCategory,
+  pullRefresh,
+  dispose
+} = useListeningCatalog()
+/** 选择分类后收起弹层并加载真实文章
  * @param id 真实分类身份，空值为全部
  */
 const select = async (id: string) => {
-  category.value = id
   panel.value = false
-  await nextTick()
-  scrollTop.value = 0
+  await selectCategory(id)
 }
-/** 记录容器位置以确保每次切换分类均能回到顶部
- * @param event 主题列表的滚动事件
+/** 记录列表滚动位置供详情返回恢复
+ * @param event 原生文章列表滚动事件
  */
 const onListScroll = (event: { detail: { scrollTop: number } }) => {
   scrollTop.value = event.detail.scrollTop
 }
-/** 列表内下拉重新获取主题并收起刷新提示 */
-const pullRefresh = async () => {
-  if (refreshing.value) return
-  refreshing.value = true
-  try {
-    await load()
-  } finally {
-    refreshing.value = false
-  }
-}
-/** 进入所选主题的篇目列表
- * @param topic 真实主题与所属分类
- */
-const open = (topic: ListeningTopic) =>
-  uni.navigateTo({
-    url: `${Routes.TOPIC}?id=${encodeURIComponent(topic.id)}&name=${encodeURIComponent(topic.name_en || topic.name)}`
-  })
-onShow(() => void load())
+onLoad((query) => {
+  if (query?.category_id) category.value = query.category_id
+})
+onShow(() => {
+  if (list.value.total.value === null && category.value) {
+    void selectCategory(category.value).then(load)
+  } else void load()
+})
+onUnload(dispose)
 </script>
 <template>
   <AppPage :background-kind="PageBackgroundKind.LISTENING" title="主题听读" back fixed-viewport
     ><view class="listening-header"
       ><text class="listening-title">让英语连成一段生活</text
-      ><text class="listening-subtitle">围绕一个主题，读懂，也听懂。</text
+      ><text class="listening-subtitle">从一个分类开始，读懂，也听懂。</text
       ><template v-if="home"
         ><view v-if="home.continue_learning" class="continue">
           <view class="continue-label"
@@ -99,7 +76,7 @@ onShow(() => void load())
                 src="/static/listening/r17-play.svg"
                 mode="aspectFit"
               />继续阅读</button
-            ><text class="continue-meta">{{ continueTopic?.name }}</text></view
+            ><text class="continue-meta">{{ home.continue_learning.category_name }}</text></view
           > </view
         ><view class="category-bar"
           ><scroll-view
@@ -122,7 +99,7 @@ onShow(() => void load())
                 :class="{ active: category === item.id }"
                 @click="select(item.id)"
               >
-                {{ item.name }}
+                {{ item.name_en || item.name }}
               </button></view
             ></scroll-view
           ><button class="category-toggle" @click="panel = true">分类⌄</button></view
@@ -130,61 +107,53 @@ onShow(() => void load())
       ></view
     >
     <scroll-view
-      class="topic-scroll"
+      class="article-scroll"
       scroll-y
       :scroll-top="scrollTop"
       refresher-enabled
       :refresher-triggered="refreshing"
       refresher-background="transparent"
       @scroll="onListScroll"
+      @scrolltolower="list.more"
       @refresherrefresh="pullRefresh"
     >
-      <AppState :busy="busy && !home" :error="error" centered-error @retry="load" />
-      <template v-if="home"
-        ><view v-if="!home.configured" class="notice">主题听读准备中</view
-        ><AppState
-          :empty="!topics.length"
+      <AppState
+        :busy="busy && !home"
+        :error="error || list.error.value"
+        centered-error
+        @retry="load" />
+      <template v-if="home">
+        <view class="list-heading"
+          ><text>{{
+            selectedCategory ? selectedCategory.name_en || selectedCategory.name : '全部文章'
+          }}</text
+          ><text v-if="list.total.value !== null">{{ list.total.value }}篇</text></view
+        >
+        <ListeningCategorySummary v-if="selectedCategory" :category="selectedCategory" />
+        <AppState
+          :empty="list.total.value === 0"
           prominent
           title="这个分类还没有内容"
-          description="新的主题正在准备中，可以先看看其他分类。"
+          description="新的文章正在准备中，可以先看看其他分类。"
           icon="/static/listening/r17-empty-book.svg"
-          action-label="查看全部主题"
-          @action="select('')" /><button
-          v-for="topic in topics"
-          :key="topic.id"
-          class="topic"
-          @click="open(topic)"
-        >
-          <view class="topic-line"
-            ><view class="topic-heading"
-              ><text class="topic-title">{{ topic.name_en || topic.name }}</text
-              ><text v-if="topic.name_en && topic.name" class="topic-chinese">{{
-                topic.name
-              }}</text></view
-            ><image
-              class="topic-arrow"
-              src="/static/listening/r17-topic-chevron.svg"
-              mode="aspectFit"
-          /></view>
-          <text v-if="topic.description" class="topic-description">{{ topic.description }}</text>
-          <view class="topic-counts"
-            ><text>{{ topic.total_articles }}篇短文</text
-            ><text>已学{{ topic.completed_articles }}／{{ topic.total_articles }}篇</text></view
-          >
-          <view class="topic-progress"
-            ><view
-              class="topic-progress-fill"
-              :style="{
-                width: `${topic.total_articles ? Math.min(100, (topic.completed_articles / topic.total_articles) * 100) : 0}%`
-              }"
-          /></view></button></template></scroll-view
+          action-label="查看全部文章"
+          @action="select('')"
+        />
+        <ListeningArticleCard v-for="article in articles" :key="article.id" :article="article" />
+        <SceneListFooter
+          :busy="list.moreBusy.value"
+          :error="list.moreError.value"
+          :has-more="list.hasMore.value"
+          :done="list.done.value"
+          @more="list.more"
+        /> </template></scroll-view
     ><view v-if="panel" class="category-veil" @click="panel = false"
       ><view class="category-panel" @click.stop
         ><view class="between"
           ><text class="section-title">全部分类</text
           ><button class="text-button panel-close" @click="panel = false">关闭</button></view
         ><scroll-view scroll-y class="panel-scroll"
-          ><button class="all" :class="{ active: !category }" @click="select('')">全部主题</button
+          ><button class="all" :class="{ active: !category }" @click="select('')">全部文章</button
           ><view class="category-grid"
             ><button
               v-for="item in home?.categories"
@@ -193,7 +162,7 @@ onShow(() => void load())
               :class="{ active: category === item.id }"
               @click="select(item.id)"
             >
-              {{ item.name }}
+              {{ item.name_en || item.name }}
             </button></view
           ></scroll-view
         ></view
@@ -206,10 +175,19 @@ onShow(() => void load())
   flex-shrink: 0;
 }
 
-.topic-scroll {
+.article-scroll {
   flex: 1;
   height: 0;
   min-height: 0;
+}
+
+.list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 18rpx 0;
+  font-size: 28.846rpx;
 }
 
 .listening-title {
@@ -330,75 +308,6 @@ onShow(() => void load())
     background: #fff;
     font-size: 23.077rpx;
     border: 1px solid #dfe5d8;
-  }
-}
-
-.topic {
-  display: block;
-  width: 100%;
-  padding: 34.615rpx 0;
-  border: 0;
-  border-bottom: 1px solid #dfe5d8;
-  border-radius: 0;
-  background: transparent;
-  text-align: left;
-
-  .topic-line {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20rpx;
-  }
-
-  .topic-title {
-    display: block;
-    font-family: var(--app-serif-font, Georgia, serif);
-    font-size: 44.231rpx;
-    font-weight: 400;
-    line-height: 1.24;
-  }
-
-  .topic-chinese {
-    display: block;
-    margin-top: 5.769rpx;
-    font-size: 26.923rpx;
-    font-weight: 500;
-    line-height: 1.5;
-  }
-
-  .topic-arrow {
-    flex: none;
-    width: 17px;
-    height: 17px;
-  }
-
-  .topic-description {
-    display: block;
-    margin-top: 15.385rpx;
-    font-size: 23.077rpx;
-    color: #586c5b;
-    line-height: 1.9;
-  }
-
-  .topic-counts {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 23.077rpx;
-    color: #586c5b;
-    font-size: 23.077rpx;
-  }
-
-  .topic-progress {
-    height: 7.692rpx;
-    margin-top: 25rpx;
-    overflow: hidden;
-    border-radius: 4rpx;
-    background: #e8ecdf;
-  }
-
-  .topic-progress-fill {
-    height: 100%;
-    background: #72966a;
   }
 }
 

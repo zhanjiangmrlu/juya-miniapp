@@ -43,19 +43,19 @@ const { thumbnail, imageError, retryThumbnail } = useListeningThumbnail(
         ><text class="meta"
           >{{ article.word_count }}词<text v-if="article.audio_duration_seconds">
             · {{ listeningDuration(article.audio_duration_seconds) }}</text
-          ></text
+          ><text v-if="article.category_name"> · {{ article.category_name }}</text></text
         >
         <view class="article-state"
+          ><text v-if="article.available && !article.access.can_learn" class="restricted-badge"
+            >需学习授权</text
           ><text>{{
             !article.available
               ? '内容不可用'
-              : !article.access.can_learn
-                ? '需学习授权'
-                : article.state.completed
-                  ? '已学过 · 可以复习'
-                  : article.progress?.updated_at
-                    ? `学习中 · ${listeningResumeText(article)}`
-                    : '未开始'
+              : article.state.completed
+                ? '已学过 · 可以复习'
+                : article.progress?.updated_at
+                  ? `学习中 · ${listeningResumeText(article)}`
+                  : '未开始'
           }}</text
           ><text v-if="article.access.is_free" class="free-badge">免费</text
           ><text v-if="article.state.favorite" class="favorite-badge">已收藏</text></view
@@ -71,13 +71,13 @@ const { thumbnail, imageError, retryThumbnail } = useListeningThumbnail(
 </template>
 <style scoped lang="scss">
 .article-row {
-  padding: 24rpx 0;
+  padding: 34.615rpx 0;
   border-bottom: 1px solid #dfe5d8;
 
   .article-main {
     display: flex;
-    gap: 26.923rpx;
-    align-items: center;
+    gap: 23.077rpx;
+    align-items: flex-start;
     width: 100%;
     padding: 0;
     border: 0;
@@ -92,7 +92,7 @@ const { thumbnail, imageError, retryThumbnail } = useListeningThumbnail(
     align-items: center;
     justify-content: center;
     width: 123rpx;
-    height: 181rpx;
+    height: 180.769rpx;
     border-radius: 12rpx;
     background: #edf1e5;
     color: #586c5b;
@@ -128,13 +128,13 @@ const { thumbnail, imageError, retryThumbnail } = useListeningThumbnail(
   }
 
   .chinese {
-    font-size: 30.769rpx;
+    font-size: 28.846rpx;
     font-weight: 700;
     line-height: 1.6;
   }
 
   .english {
-    margin: 7rpx 0;
+    margin: 9.615rpx 0;
     font-family: var(--app-serif-font, Georgia, serif);
     font-size: 34.615rpx;
     line-height: 1.4;
@@ -142,8 +142,8 @@ const { thumbnail, imageError, retryThumbnail } = useListeningThumbnail(
 
   .article-arrow {
     flex: none;
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
   }
 
   .article-state {
@@ -153,6 +153,13 @@ const { thumbnail, imageError, retryThumbnail } = useListeningThumbnail(
     margin-top: 12rpx;
     font-size: 21.154rpx;
     color: #41664d;
+  }
+
+  .restricted-badge {
+    padding: 4rpx 13.462rpx;
+    border: 1px solid #dfe5d8;
+    border-radius: 9.615rpx;
+    font-size: 19.231rpx;
   }
 
   .free-badge,

@@ -33,3 +33,12 @@ export interface ListeningResumeLocation {
   progress?: { reading_position: number } | null
   reading_paragraph?: number | null
 }
+
+export interface ListeningCategorySummaryProps {
+  category: import('./listening').ListeningCategory
+}
+export interface ListeningVocabularyProps {
+  words: import('./listening').ListeningVocabulary[]
+  body: string
+  audio: import('./audio').AudioState
+}

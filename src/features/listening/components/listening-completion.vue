@@ -22,8 +22,8 @@ defineEmits<{ stay: []; next: []; topic: []; retry: [] }>()
         ><text class="next-english">{{ next.title_en }}</text>
       </view>
       <view v-else-if="ended" class="next-summary"
-        ><text class="next-title">本主题已学到最后一篇</text
-        ><text class="next-meta">可以回到主题列表，选择下一段生活。</text></view
+        ><text class="next-title">本分类已学到最后一篇</text
+        ><text class="next-meta">可以回到分类文章，选择下一段生活。</text></view
       >
       <text v-if="error" class="completion-error" role="alert">{{ error }}</text>
       <button
@@ -41,7 +41,7 @@ defineEmits<{ stay: []; next: []; topic: []; retry: [] }>()
         data-action="topic"
         @click="$emit('topic')"
       >
-        返回主题列表
+        返回分类文章
       </button>
       <button v-else class="primary completion-action" :disabled="busy" @click="$emit('retry')">
         {{ busy ? '正在获取下一篇' : '重新获取下一篇' }}

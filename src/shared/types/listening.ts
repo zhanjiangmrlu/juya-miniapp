@@ -1,7 +1,8 @@
 import type { components } from '@/shared/contracts/generated/mini-api'
 export type ListeningWord = components['schemas']['TimelineWord']
 export type ListeningProgress = components['schemas']['ProgressInput']
-export type ListeningCategory = components['schemas']['Category']
+export type ListeningCategory = ListeningHome['categories'][number]
+export type ListeningVocabulary = NonNullable<ListeningArticle['payload']['vocabulary']>[number]
 export type ListeningTopic = components['schemas']['TopicProgress']
 export type ListeningAccess = components['schemas']['LearningPermission']
 export type ListeningSummary = components['schemas']['Summary']

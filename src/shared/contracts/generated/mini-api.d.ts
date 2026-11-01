@@ -511,7 +511,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Audio */
+    /**
+     * Audio
+     * @description Apply the checked operation within the caller’s transaction.
+     */
     get: operations['audio_api_mini_v1_pronunciation__credential__get']
     put?: never
     post?: never
@@ -811,7 +814,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Home */
+    /**
+     * Home
+     * @description Return category progress and an independent continuation target.
+     */
     get: operations['home_api_mini_v1_listening_home_get']
     put?: never
     post?: never
@@ -845,8 +851,31 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Articles */
+    /**
+     * Articles
+     * @description Page articles using direct category ownership.
+     */
     get: operations['articles_api_mini_v1_listening_topics__topic_id__articles_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/mini/v1/listening/articles': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Category Articles
+     * @description Page publications directly in configured category and article order.
+     */
+    get: operations['category_articles_api_mini_v1_listening_articles_get']
     put?: never
     post?: never
     delete?: never
@@ -981,7 +1010,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Next Article */
+    /**
+     * Next Article
+     * @description Advance only inside the current category and return its destination ID.
+     */
     get: operations['next_article_api_mini_v1_listening_articles__article_id__next_get']
     put?: never
     post?: never
@@ -1179,6 +1211,30 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/mini/v1/listening/articles/{article_id}/words/{word_id}/pronunciation': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Read
+     * @description Read persistent speech state without starting a cloud task.
+     */
+    get: operations['read_api_mini_v1_listening_articles__article_id__words__word_id__pronunciation_get']
+    put?: never
+    /**
+     * Generate
+     * @description Generate one server-resolved vocabulary word with persistent idempotency.
+     */
+    post: operations['generate_api_mini_v1_listening_articles__article_id__words__word_id__pronunciation_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -1199,7 +1255,19 @@ export interface components {
        */
       content_type: 'listening'
       /** Topic Id */
-      topic_id: string
+      topic_id?: string | null
+      /** Category Id */
+      category_id: string
+      /**
+       * Category Name
+       * @default
+       */
+      category_name: string
+      /**
+       * Category Order
+       * @default 0
+       */
+      category_order: number
       /** Title Zh */
       title_zh: string
       /** Title En */
@@ -1329,8 +1397,8 @@ export interface components {
        */
       started: boolean
     }
-    /** Category */
-    Category: {
+    /** CategoryProgress */
+    CategoryProgress: {
       /** Name */
       name: string
       /**
@@ -1343,10 +1411,18 @@ export interface components {
        * @default 0
        */
       sort_order: number
-      /** Revision */
-      revision: number
       /** Id */
       id: string
+      /** Revision */
+      revision: number
+      /** Total Articles */
+      total_articles: number
+      /** Completed Articles */
+      completed_articles: number
+      /** Restricted Articles */
+      restricted_articles: number
+      /** Thumbnail Url */
+      thumbnail_url?: string | null
     }
     /** CheckinRecord */
     CheckinRecord: {
@@ -1719,7 +1795,7 @@ export interface components {
     /** Home */
     Home: {
       /** Categories */
-      categories: components['schemas']['Category'][]
+      categories: components['schemas']['CategoryProgress'][]
       /** Topics */
       topics: components['schemas']['TopicProgress'][]
       continue_learning: components['schemas']['Summary'] | null
@@ -1840,7 +1916,19 @@ export interface components {
        */
       content_type: 'listening'
       /** Topic Id */
-      topic_id: string
+      topic_id?: string | null
+      /** Category Id */
+      category_id: string
+      /**
+       * Category Name
+       * @default
+       */
+      category_name: string
+      /**
+       * Category Order
+       * @default 0
+       */
+      category_order: number
       /** Title Zh */
       title_zh: string
       /** Title En */
@@ -1901,6 +1989,8 @@ export interface components {
       translation_zh: string
       /** Expressions */
       expressions?: components['schemas']['Expression'][]
+      /** Vocabulary */
+      vocabulary?: components['schemas']['VocabularyWord'][]
       /** Word Meanings */
       word_meanings?: components['schemas']['WordMeaning'][]
       /** Audio Id */
@@ -1970,6 +2060,8 @@ export interface components {
     }
     /** NextArticle */
     NextArticle: {
+      /** Category Id */
+      category_id: string
       article: components['schemas']['Summary'] | null
       /** Ended */
       ended: boolean
@@ -2338,7 +2430,19 @@ export interface components {
        */
       content_type: 'listening'
       /** Topic Id */
-      topic_id: string
+      topic_id?: string | null
+      /** Category Id */
+      category_id: string
+      /**
+       * Category Name
+       * @default
+       */
+      category_name: string
+      /**
+       * Category Order
+       * @default 0
+       */
+      category_order: number
       /** Title Zh */
       title_zh: string
       /** Title En */
@@ -2496,6 +2600,46 @@ export interface components {
        * @default false
        */
       pronunciation_issue: boolean
+    }
+    /** VocabularySource */
+    VocabularySource: {
+      /** Start */
+      start: number
+      /** End */
+      end: number
+      /** Quote */
+      quote: string
+      /** Word Start */
+      word_start: number
+      /** Word End */
+      word_end: number
+      /** Word */
+      word: string
+      /**
+       * Confirmed
+       * @default false
+       */
+      confirmed: boolean
+    }
+    /** VocabularyWord */
+    VocabularyWord: {
+      /**
+       * Source Hint
+       * @default
+       */
+      source_hint: string
+      /** Id */
+      id: string
+      /** English */
+      english: string
+      /** Meaning */
+      meaning: string
+      /**
+       * Phonetic
+       * @default
+       */
+      phonetic: string
+      source?: components['schemas']['VocabularySource'] | null
     }
     /** WechatLogin */
     WechatLogin: {
@@ -8437,6 +8581,120 @@ export interface operations {
       }
     }
   }
+  category_articles_api_mini_v1_listening_articles_get: {
+    parameters: {
+      query?: {
+        category_id?: string | null
+        page?: number
+        limit?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Page_Summary_']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Gone */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
   favorites_api_mini_v1_listening_favorites_get: {
     parameters: {
       query?: {
@@ -10611,6 +10869,239 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['ListeningDictionaryReference']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SpeechState']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Gone */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
+  read_api_mini_v1_listening_articles__article_id__words__word_id__pronunciation_get: {
+    parameters: {
+      query?: {
+        version_id?: string | null
+        revision?: number | null
+      }
+      header?: never
+      path: {
+        article_id: string
+        word_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SpeechState']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Gone */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
+  generate_api_mini_v1_listening_articles__article_id__words__word_id__pronunciation_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        article_id: string
+        word_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SpeechReference']
       }
     }
     responses: {

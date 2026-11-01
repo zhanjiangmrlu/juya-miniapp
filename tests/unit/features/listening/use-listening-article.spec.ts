@@ -88,6 +88,9 @@ const detail = {
   id: 'a1',
   content_type: 'listening' as const,
   topic_id: 't1',
+  category_id: 'c1',
+  category_name: '生活',
+  category_order: 0,
   title_zh: '文章',
   title_en: 'Article',
   tags: [],
@@ -114,6 +117,38 @@ const detail = {
     translation_zh: '这是一段测试。',
     expressions: [],
     word_meanings: [],
+    vocabulary: [
+      {
+        id: 'word1',
+        english: 'This',
+        phonetic: '',
+        meaning: '这',
+        source: {
+          start: 0,
+          end: 15,
+          quote: 'This is a test.',
+          word_start: 0,
+          word_end: 4,
+          word: 'This',
+          confirmed: true
+        }
+      },
+      {
+        id: 'word2',
+        english: 'test',
+        phonetic: '',
+        meaning: '测试',
+        source: {
+          start: 0,
+          end: 15,
+          quote: 'This is a test.',
+          word_start: 10,
+          word_end: 14,
+          word: 'test',
+          confirmed: true
+        }
+      }
+    ],
     audio_id: 'audio1',
     image_id: null
   },
@@ -271,12 +306,131 @@ it('preserves the confirmed completion result for the completion dialog and expo
   expect(model.completionResult.value?.first_checkin_today).toBe(true)
   expect(model.article.value?.state.today_completed).toBe(true)
   model.article.value!.access.can_lookup = false
-  ports.request.mockClear()
+  ports.request.mockClear().mockImplementation(async () => ({
+    ...structuredClone(detail),
+    access: { ...detail.access, can_lookup: false }
+  }))
   await model.lookup({ text: 'This', start: 0, end: 4, word: true })
   expect(model.lookupRestricted.value).toBe(true)
-  expect(ports.request).not.toHaveBeenCalled()
+  expect(ports.request.mock.calls.every((call) => String(call[0]).endsWith('/summary'))).toBe(true)
   expect(ports.audio[0]!.pause).not.toHaveBeenCalled()
   model.article.value!.access.can_lookup = true
+  ports.request.mockImplementation(async () => structuredClone(detail))
   await model.lookup({ text: 'This', start: 0, end: 4, word: true })
   expect(model.lookupRestricted.value).toBe(false)
+})
+
+it('plays preset vocabulary for a free reader without dictionary permission and keeps full audio paused', async () => {
+  const model = await open()
+  model.article.value!.access.can_lookup = false
+  await model.toggle()
+  ports.run.mockResolvedValueOnce({ state: 'ready', url: '/word-ticket' })
+  await model.pronounceVocabulary('word1')
+  expect(ports.run).toHaveBeenCalledWith(
+    'listening.word:a1:word1',
+    '/api/mini/v1/listening/articles/a1/words/word1/pronunciation',
+    'POST',
+    { version_id: 'v1' },
+    expect.anything()
+  )
+  expect(model.audio.value.status).toBe('paused')
+  expect(model.audio.value.wordStatus).toBe('playing')
+  expect(ports.audio[1]!.play).toHaveBeenCalledTimes(1)
+  expect(ports.audio[0]!.play).toHaveBeenCalledTimes(1)
+})
+
+it('cancels a delayed preset pronunciation when another word is selected', async () => {
+  const model = await open()
+  let resolve: (value: unknown) => void = () => undefined
+  ports.run.mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done
+      })
+  )
+  const first = model.pronounceVocabulary('word1')
+  await flushPromises()
+  ports.run.mockResolvedValueOnce({ state: 'ready', url: '/word-two' })
+  await model.pronounceVocabulary('word2')
+  resolve({ state: 'ready', url: '/word-one' })
+  await first
+  expect(model.audio.value.wordId).toBe('vocabulary:word2')
+  expect(ports.audio[1]!.play).toHaveBeenCalledTimes(1)
+})
+
+it('keeps a free preset word playing after the periodic check removes only dictionary permission', async () => {
+  const model = await open()
+  ports.run.mockResolvedValueOnce({ state: 'ready', url: '/preset' })
+  await model.pronounceVocabulary('word1')
+  ports.request.mockImplementation(async () => ({
+    ...structuredClone(detail),
+    access: { ...detail.access, can_lookup: false }
+  }))
+  await vi.advanceTimersByTimeAsync(30000)
+  expect(model.article.value?.access.can_lookup).toBe(false)
+  expect(model.audio.value.wordStatus).toBe('playing')
+  expect(model.audio.value.wordId).toBe('vocabulary:word1')
+})
+
+it('immediately removes private content if the preset pronunciation endpoint rejects access', async () => {
+  const model = await open()
+  await model.toggle()
+  ports.run.mockRejectedValueOnce(new ApiError('forbidden', '免费已关闭', 403))
+  await model.pronounceVocabulary('word1')
+  expect(model.article.value).toBeNull()
+  expect(model.error.value).toBe('免费已关闭')
+})
+
+it('retries failed preset pronunciation on the same entry without restarting full audio', async () => {
+  const model = await open()
+  await model.toggle()
+  ports.run.mockResolvedValueOnce({ state: 'failed', error_code: 'tts_failed' })
+  await model.pronounceVocabulary('word1')
+  expect(model.audio.value.wordError).toContain('重试')
+  ports.run.mockResolvedValueOnce({ state: 'ready', url: '/retry-preset' })
+  await model.pronounceVocabulary('word1')
+  expect(model.audio.value.wordStatus).toBe('playing')
+  expect(ports.audio[0]!.play).toHaveBeenCalledTimes(1)
+})
+
+it('does not issue a preset request or play late audio after leaving during its asynchronous preparation', async () => {
+  const model = await open()
+  let resolve: (value: unknown) => void = () => undefined
+  ports.run.mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done
+      })
+  )
+  const playing = model.pronounceVocabulary('word1')
+  await flushPromises()
+  ports.hide?.()
+  resolve({ state: 'ready', url: '/late-word' })
+  await playing
+  expect(ports.audio[1]!.play).not.toHaveBeenCalled()
+})
+
+it('rechecks dictionary permission before an actual body lookup and never sends a dictionary request after grant expiry', async () => {
+  const model = await open()
+  ports.request.mockClear().mockImplementation(async () => ({
+    ...structuredClone(detail),
+    access: { ...detail.access, can_lookup: false }
+  }))
+  await model.lookup({ text: 'This', start: 0, end: 4, word: true })
+  expect(model.lookupRestricted.value).toBe(true)
+  expect(model.selection.value).toBeNull()
+  expect(ports.request.mock.calls.every((call) => String(call[0]).endsWith('/summary'))).toBe(true)
+  expect(model.article.value?.access.can_learn).toBe(true)
+})
+
+it('rechecks a newly reported grant expiry at its exact new boundary instead of waiting for the next periodic check', async () => {
+  const model = await open()
+  ports.request.mockImplementation(async () => ({
+    ...structuredClone(detail),
+    access: { ...detail.access, expires_at: '2026-10-28T00:00:01Z' }
+  }))
+  await model.toggle()
+  ports.request.mockClear()
+  await vi.advanceTimersByTimeAsync(1100)
+  expect(ports.request).toHaveBeenCalledWith('/api/mini/v1/listening/articles/a1/summary')
 })

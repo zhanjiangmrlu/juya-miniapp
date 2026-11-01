@@ -16,7 +16,7 @@ it('lets the reader stay on the completed article in both next-article and topic
   await page.get('[data-action="next"]').trigger('click')
   expect(page.emitted('next')).toEqual([[]])
   await page.setProps({ next: null, ended: true })
-  expect(page.text()).toContain('本主题已学到最后一篇')
+  expect(page.text()).toContain('本分类已学到最后一篇')
   await page.get('[data-action="topic"]').trigger('click')
   await page.get('[data-action="stay"]').trigger('click')
   expect(page.emitted('topic')).toEqual([[]])
