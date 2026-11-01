@@ -53,7 +53,8 @@ export const useListeningCatalog = () => {
     home.value = null
     category.value = ''
     scrollTop.value = 0
-    list.value.reset()
+    list.value.dispose()
+    list.value = createList('')
     owner = session.userId()
   }
   const unsubscribe = onSessionExpired(reset)

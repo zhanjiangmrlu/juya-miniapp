@@ -321,11 +321,21 @@ it('preserves the confirmed completion result for the completion dialog and expo
 })
 
 it('plays preset vocabulary for a free reader without dictionary permission and keeps full audio paused', async () => {
+  ports.request.mockImplementation(async () => ({
+    ...structuredClone(detail),
+    access: { ...detail.access, can_lookup: false }
+  }))
   const model = await open()
-  model.article.value!.access.can_lookup = false
+  expect(model.article.value?.access.can_lookup).toBe(false)
   await model.toggle()
   ports.run.mockResolvedValueOnce({ state: 'ready', url: '/word-ticket' })
   await model.pronounceVocabulary('word1')
+  expect(model.article.value?.access.can_lookup).toBe(false)
+  expect(model.article.value?.access.is_free).toBe(true)
+  expect(ports.request).toHaveBeenCalledWith('/api/mini/v1/listening/articles/a1/summary')
+  expect(ports.request.mock.calls.some((call) => String(call[0]).includes('/dictionary'))).toBe(
+    false
+  )
   expect(ports.run).toHaveBeenCalledWith(
     'listening.word:a1:word1',
     '/api/mini/v1/listening/articles/a1/words/word1/pronunciation',
