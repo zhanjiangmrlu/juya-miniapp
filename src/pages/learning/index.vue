@@ -270,6 +270,8 @@ onUnload(() => {
       <scroll-view
         class="scene-scroll"
         scroll-y
+        enhanced
+        :show-scrollbar="false"
         :scroll-top="scrollTop"
         refresher-enabled
         :refresher-triggered="refreshing"

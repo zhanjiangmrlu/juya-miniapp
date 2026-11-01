@@ -109,6 +109,8 @@ onUnload(dispose)
     <scroll-view
       class="article-scroll"
       scroll-y
+      enhanced
+      :show-scrollbar="false"
       :scroll-top="scrollTop"
       refresher-enabled
       :refresher-triggered="refreshing"
