@@ -10,6 +10,7 @@ import { resourceURL, storage } from '@/services/platform'
 import { LISTENING_API, LISTENING_PROGRESS_DRAFT_PREFIX } from '@/shared/constants/listening'
 import { Routes } from '@/shared/constants/navigation'
 import { AudioStatus } from '@/shared/enums/audio'
+import { LearningAccessReason } from '@/shared/enums/learning-access'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
@@ -218,8 +219,15 @@ export const useListeningArticle = () => {
         `${LISTENING_API}/articles/${current.id}/summary`
       )
       if (article.value !== current || !alive || !visible) return false
-      if (!checked.access.can_learn || !checked.available)
-        throw new ApiError('listening_locked', '当前文章暂不可学习')
+      if (!checked.access.can_learn || !checked.available) {
+        summary.value = checked
+        throw new ApiError(
+          checked.access.reason || 'listening_locked',
+          checked.access.reason === LearningAccessReason.REQUIRED
+            ? '此篇需学习授权'
+            : '当前文章暂不可学习'
+        )
+      }
       if (!visible || !alive) return false
       if (checked.version_id !== current.version_id) {
         stop()

@@ -444,3 +444,29 @@ it('rechecks a newly reported grant expiry at its exact new boundary instead of 
   await vi.advanceTimersByTimeAsync(1100)
   expect(ports.request).toHaveBeenCalledWith('/api/mini/v1/listening/articles/a1/summary')
 })
+
+it('retains the current safe authorization reason when a permission check locks an open article', async () => {
+  const model = await open()
+  await model.toggle()
+  ports.run.mockClear()
+  ports.request.mockResolvedValueOnce({
+    ...structuredClone(detail),
+    access: {
+      ...detail.access,
+      can_learn: false,
+      can_lookup: false,
+      is_free: false,
+      reason: 'learning_authorization_required'
+    }
+  })
+  await model.complete()
+  expect(model.article.value).toBeNull()
+  expect(model.summary.value?.title_zh).toBe('文章')
+  expect(model.summary.value?.category_id).toBe('c1')
+  expect(model.summary.value?.access).toMatchObject({
+    can_learn: false,
+    reason: 'learning_authorization_required'
+  })
+  expect(model.error.value).toContain('学习授权')
+  expect(ports.run).not.toHaveBeenCalled()
+})

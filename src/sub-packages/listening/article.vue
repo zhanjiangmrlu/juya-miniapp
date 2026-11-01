@@ -132,7 +132,10 @@ const closeImage = () => {
         :icon-size="30"
         :title="summary.available ? '此篇需学习授权' : '当前内容暂不可用'"
         :description="error || '请返回分类文章查看其他篇目'"
+        :error="error"
+        centered-error
         action-label="返回分类文章"
+        @retry="load"
         @action="topic"
       /><AppState
         v-else
