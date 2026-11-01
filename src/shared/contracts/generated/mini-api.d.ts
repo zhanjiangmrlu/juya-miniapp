@@ -513,7 +513,7 @@ export interface paths {
     }
     /**
      * Audio
-     * @description Apply the checked operation within the caller’s transaction.
+     * @description Resolve session-bound speech grants and recheck current content before delivery.
      */
     get: operations['audio_api_mini_v1_pronunciation__credential__get']
     put?: never
