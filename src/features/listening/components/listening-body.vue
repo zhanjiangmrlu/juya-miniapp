@@ -39,17 +39,16 @@ const frame = computed(() =>
     props.ended
   )
 )
-/** 保留词汇字重与色带，并按当前媒体时间叠加字符高亮
+/** 保留词汇与表达的字重和色带，并按当前媒体时间叠加字符高亮
  * @param position 字符的原文code point偏移
  */
 const color = (position: number) => {
   const word = vocabulary.value.find((item) => position >= item.start && position < item.end),
-    weight = word ? 'font-weight:700;' : ''
+    phrase = highlights.value.find((item) => position >= item.start && position < item.end),
+    weight = word || phrase ? 'font-weight:700;' : ''
   if (frame.value.current === position)
     return `${weight}color:#1e6b43;background:rgba(220,236,201,${0.25 + frame.value.fraction * 0.75})`
-  const background =
-    word?.color ||
-    highlights.value.find((item) => position >= item.start && position < item.end)?.color
+  const background = word?.color || phrase?.color
   const trail = frame.value.trails.find((item) => item.position === position)
   return `${weight}${background ? `background:${background};` : ''}${trail ? `color:rgba(30,107,67,${0.45 + trail.strength * 0.55})` : ''}`
 }

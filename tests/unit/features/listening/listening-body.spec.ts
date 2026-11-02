@@ -21,11 +21,52 @@ it('restores phrase color after active playback and preserves dictionary offsets
   })
   const anchor = page.get('#reading-word-2')
   expect(anchor.get('text').attributes('style')).toContain('rgba(220, 236, 201')
+  expect(anchor.get('text').attributes('style')).toContain('font-weight: 700')
   await page.setProps({ ended: true })
   expect(anchor.get('text').attributes('style')).toContain('#e4efd6')
+  expect(anchor.get('text').attributes('style')).toContain('font-weight: 700')
   await anchor.trigger('click')
   expect(page.emitted('lookup')?.[0]?.[0]).toMatchObject({ text: 'A', start: 2, end: 3 })
   expect(page.text()).toContain('🌱 A day in life.')
+  page.unmount()
+})
+
+it('bolds existing expression highlights when an article has no independent vocabulary', async () => {
+  const body = 'I like the chicken sandwich combo. It comes with fries. For here or to go?'
+  const content: Pick<ListeningArticle, 'payload' | 'timeline'> = {
+    payload: {
+      title_zh: '快餐店',
+      title_en: 'At a Fast-Food Restaurant',
+      body_en: body,
+      translation_zh: '',
+      vocabulary: [],
+      expressions: [
+        { english: 'the chicken sandwich combo', chinese: '', example: '' },
+        { english: 'comes with', chinese: '', example: '' },
+        { english: 'For here or to go?', chinese: '', example: '' }
+      ]
+    },
+    timeline: { state: 'failed', words: [] }
+  }
+  const page = mount(ListeningBody, {
+    props: { article: content as ListeningArticle, milliseconds: 11000, duration: 39, ended: false }
+  })
+  for (const [word, color] of [
+    ['chicken', '#e4efd6'],
+    ['comes', '#e2edf2'],
+    ['For', '#f7e6d6']
+  ] as const) {
+    const start = Array.from(body.slice(0, body.indexOf(word))).length
+    const anchor = page.get('#reading-word-' + start)
+    expect(anchor.get('text').attributes('style')).toContain(color)
+    expect(
+      anchor.findAll('text').every((item) => item.attributes('style')?.includes('font-weight: 700'))
+    ).toBe(true)
+  }
+  expect(page.get('#reading-word-0').get('text').attributes('style')).not.toContain('font-weight')
+  expect(page.text()).toBe(body)
+  await page.get('#reading-word-38').trigger('click')
+  expect(page.emitted('lookup')?.[0]?.[0]).toMatchObject({ text: 'comes', start: 38, end: 43 })
   page.unmount()
 })
 
