@@ -5,4 +5,4 @@ export const LISTENING_PROGRESS_DRAFT_PREFIX = 'juya-listening-progress-draft:'
 
 export const LISTENING_PHRASE_COLORS = ['#e4efd6', '#e2edf2', '#f7e6d6', '#f6efc9'] as const
 
-export const LISTENING_VOCABULARY_COLOR = '#e4efd6'
+export const LISTENING_VOCABULARY_COLORS = LISTENING_PHRASE_COLORS

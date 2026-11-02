@@ -60,13 +60,82 @@ it('restores bound vocabulary above phrase backgrounds after playback without mo
   })
   const word = page.get('#reading-word-15')
   expect(word.get('text').attributes('style')).toContain('#e4efd6')
+  expect(
+    word.findAll('text').every((item) => item.attributes('style')?.includes('font-weight: 700'))
+  ).toBe(true)
   await page.setProps({ ended: false })
   expect(
     word.findAll('text').some((item) => item.attributes('style')?.includes('rgba(220, 236, 201'))
+  ).toBe(true)
+  expect(
+    word.findAll('text').every((item) => item.attributes('style')?.includes('font-weight: 700'))
   ).toBe(true)
   await page.setProps({ ended: true })
   expect(word.get('text').attributes('style')).toContain('#e4efd6')
   await word.trigger('click')
   expect(page.emitted('lookup')?.[0]?.[0]).toMatchObject({ text: 'goes', start: 15, end: 19 })
+  page.unmount()
+})
+
+it('renders fallback text without a duplicate timeline notice and keeps vocabulary colored and bold', async () => {
+  const body = 'car police.'
+  const content: Pick<ListeningArticle, 'payload' | 'timeline'> = {
+    payload: {
+      title_zh: '交通',
+      title_en: 'Traffic',
+      body_en: body,
+      translation_zh: '汽车和警察',
+      expressions: [],
+      vocabulary: [
+        {
+          id: 'car',
+          english: 'car',
+          meaning: '汽车',
+          phonetic: '',
+          source_hint: '',
+          source: {
+            start: 0,
+            end: 11,
+            quote: body,
+            word_start: 0,
+            word_end: 3,
+            word: 'car',
+            confirmed: true
+          }
+        },
+        {
+          id: 'police',
+          english: 'police',
+          meaning: '警察',
+          phonetic: '',
+          source_hint: '',
+          source: {
+            start: 0,
+            end: 11,
+            quote: body,
+            word_start: 4,
+            word_end: 10,
+            word: 'police',
+            confirmed: true
+          }
+        }
+      ]
+    },
+    timeline: { state: 'failed', words: [] }
+  }
+  const page = mount(ListeningBody, {
+    props: { article: content as ListeningArticle, milliseconds: 0, duration: 39, ended: false }
+  })
+  expect(page.text()).toBe(body)
+  const car = page.get('#reading-word-0'),
+    police = page.get('#reading-word-4')
+  expect(car.get('text').attributes('style')).toContain('#e4efd6')
+  expect(police.get('text').attributes('style')).toContain('#e2edf2')
+  for (const word of [car, police])
+    expect(
+      word.findAll('text').every((item) => item.attributes('style')?.includes('font-weight: 700'))
+    ).toBe(true)
+  await police.trigger('click')
+  expect(page.emitted('lookup')?.[0]?.[0]).toMatchObject({ text: 'police', start: 4, end: 10 })
   page.unmount()
 })

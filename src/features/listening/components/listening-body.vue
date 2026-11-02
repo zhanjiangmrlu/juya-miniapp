@@ -22,7 +22,6 @@ const highlights = computed(() =>
 const vocabulary = computed(() =>
   vocabularyHighlights(props.article.payload.body_en, props.article.payload.vocabulary || [])
 )
-const backgrounds = computed(() => [...vocabulary.value, ...highlights.value])
 const paragraphs = computed(() => tokenizeBody(props.article.payload.body_en))
 const usable = computed(
   () =>
@@ -40,22 +39,23 @@ const frame = computed(() =>
     props.ended
   )
 )
-/** 根据当前媒体时间返回字符颜色，不使用独立CSS动画或墙上时钟
+/** 保留词汇字重与色带，并按当前媒体时间叠加字符高亮
  * @param position 字符的原文code point偏移
  */
 const color = (position: number) => {
+  const word = vocabulary.value.find((item) => position >= item.start && position < item.end),
+    weight = word ? 'font-weight:700;' : ''
   if (frame.value.current === position)
-    return `color:#1e6b43;background:rgba(220,236,201,${0.25 + frame.value.fraction * 0.75})`
-  const background = backgrounds.value.find(
-    (item) => position >= item.start && position < item.end
-  )?.color
+    return `${weight}color:#1e6b43;background:rgba(220,236,201,${0.25 + frame.value.fraction * 0.75})`
+  const background =
+    word?.color ||
+    highlights.value.find((item) => position >= item.start && position < item.end)?.color
   const trail = frame.value.trails.find((item) => item.position === position)
-  return `${background ? `background:${background};` : ''}${trail ? `color:rgba(30,107,67,${0.45 + trail.strength * 0.55})` : ''}`
+  return `${weight}${background ? `background:${background};` : ''}${trail ? `color:rgba(30,107,67,${0.45 + trail.strength * 0.55})` : ''}`
 }
 </script>
 <template>
   <view class="reading-body" @touchmove="emit('browse')"
-    ><text v-if="!usable" class="timeline-note">本篇暂不支持同步高亮</text
     ><view
       v-for="(paragraph, index) in paragraphs"
       :id="'paragraph-' + index"
@@ -98,14 +98,6 @@ const color = (position: number) => {
 
   .expression {
     font-weight: 600;
-  }
-
-  .timeline-note {
-    display: block;
-    margin-bottom: 24rpx;
-    font-family: var(--app-font, sans-serif);
-    font-size: 22rpx;
-    color: #586c5b;
   }
 }
 </style>

@@ -1,9 +1,9 @@
-import { LISTENING_VOCABULARY_COLOR } from '@/shared/constants/listening'
+import { LISTENING_VOCABULARY_COLORS } from '@/shared/constants/listening'
 
 import type { ListeningVocabulary, PhraseHighlight } from '@/shared/types/listening'
 /** 只高亮当前正文中已保存的词汇来源，不猜测重复词或失效位置
  * @param body 当前发布版本的英文正文
- * @param words 已保存的词条及独立原句来源
+ * @param words 按保存顺序循环分配色带的词条及独立原句来源
  * @returns 通过码点和原文校验的词汇色带
  */
 export const vocabularyHighlights = (
@@ -17,7 +17,7 @@ export const vocabularyHighlights = (
       return `${start}:${start + Array.from(match[0]).length}`
     })
   )
-  return words.flatMap(({ source }) => {
+  return words.flatMap(({ source }, index) => {
     if (!source) return []
     const { start, end, word_start: wordStart, word_end: wordEnd, quote, word } = source
     if (
@@ -33,6 +33,12 @@ export const vocabularyHighlights = (
       !tokens.has(`${wordStart}:${wordEnd}`)
     )
       return []
-    return [{ start: wordStart, end: wordEnd, color: LISTENING_VOCABULARY_COLOR }]
+    return [
+      {
+        start: wordStart,
+        end: wordEnd,
+        color: LISTENING_VOCABULARY_COLORS[index % LISTENING_VOCABULARY_COLORS.length]!
+      }
+    ]
   })
 }
