@@ -148,7 +148,12 @@ const goBack = () => {
       ><view v-if="!browseOnly" class="nav-action"><slot name="action" /></view></view
     ><view class="page-body"
       ><template v-if="browseOnly && (!publicSummary || fixedViewport)">
-        <scroll-view v-if="fixedViewport" class="summary-scroll" scroll-y
+        <scroll-view
+          v-if="fixedViewport"
+          class="summary-scroll"
+          scroll-y
+          enhanced
+          :show-scrollbar="false"
           ><ShareSummary
         /></scroll-view>
         <ShareSummary v-else /> </template

@@ -82,6 +82,8 @@ onUnload(dispose)
           ><scroll-view
             class="category-scroll"
             scroll-x
+            enhanced
+            :show-scrollbar="false"
             :scroll-into-view="'category-' + (category || 'all')"
             ><view class="category-options"
               ><button
@@ -154,7 +156,7 @@ onUnload(dispose)
         ><view class="between"
           ><text class="section-title">全部分类</text
           ><button class="text-button panel-close" @click="panel = false">关闭</button></view
-        ><scroll-view scroll-y class="panel-scroll"
+        ><scroll-view scroll-y enhanced :show-scrollbar="false" class="panel-scroll"
           ><button class="all" :class="{ active: !category }" @click="select('')">全部文章</button
           ><view class="category-grid"
             ><button

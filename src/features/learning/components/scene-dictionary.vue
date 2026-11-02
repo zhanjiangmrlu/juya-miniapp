@@ -64,6 +64,8 @@ const panelHeight = computed(() => {
       <scroll-view
         class="dictionary-scroll"
         scroll-y
+        enhanced
+        :show-scrollbar="false"
         :style="{ height: `${panelHeight}px` }"
         @touchmove.stop
       >

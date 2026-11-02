@@ -1,5 +1,19 @@
 @import './design-fonts';
 
+// 统一隐藏页面及局部滚动区域的滚动条，保留滚动和触摸行为
+::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* #ifdef H5 */
+* {
+  scrollbar-width: none;
+}
+
+/* #endif */
+
 page {
   background: #fffcf5;
   color: #2b4438;

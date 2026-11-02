@@ -5,7 +5,7 @@ defineEmits<{ close: [] }>()
   <view class="veil" @touchmove.stop.prevent
     ><view class="sheet"
       ><text class="dialog-title">隐私说明</text
-      ><scroll-view scroll-y class="privacy-text"
+      ><scroll-view scroll-y enhanced :show-scrollbar="false" class="privacy-text"
         ><text class="paragraph final-paragraph"
           >微信身份用于识别同一账号，保存学习记录和收藏。手机号、微信号在账号资料页自愿填写，不填写也可学习。头像昵称由你主动设置，不会自动读取。此处为原型用途说明，正式上线使用正式隐私政策。</text
         ></scroll-view
