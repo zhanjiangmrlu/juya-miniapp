@@ -33,7 +33,7 @@ export const waitForWordAudio = (
     })
   })
 
-/** 为单个已鉴权场景准备词汇，后台与主动点击分别占用一个通道
+/** 为单个已鉴权场景准备词汇，后台与主动点击复用同一目标缓存
  * @param ports 同一会话和卡片版本的发音、下载与失效处理端口
  */
 export const createWordAudioPreparation = (ports: WordAudioPreparationPorts) => {
@@ -96,9 +96,14 @@ export const createWordAudioPreparation = (ports: WordAudioPreparationPorts) => 
   }
   /** 同一个词汇只启动一次合成与下载，不延长服务端签发时间
    * @param id 当前页面中的词汇编号
-   * @param background 是否为唯一后台通道中的原始任务
+   * @param background 是否为页面后台通道中的原始任务
+   * @param expires 当前受控地址允许在页面复用的最晚时间
    */
-  const start = (id: string, background = false) => {
+  const start = (
+    id: string,
+    background = false,
+    expires = Date.now() + WORD_ADDRESS_LIFETIME_MS
+  ) => {
     const callbacks = new Set<() => void>()
     let cancelled = false,
       selected = false,
@@ -167,7 +172,6 @@ export const createWordAudioPreparation = (ports: WordAudioPreparationPorts) => 
     }
     pending.set(id, job)
     const work = async () => {
-      const expires = Date.now() + WORD_ADDRESS_LIFETIME_MS
       url = await ports.resolve(id, task)
       if (!task.active()) throw new Error('试听已取消')
       if (selected) promote()
@@ -268,5 +272,15 @@ export const createWordAudioPreparation = (ports: WordAudioPreparationPorts) => 
     for (const id of ids) if (!queue.includes(id) && !peek(id)) queue.push(id)
     void pump()
   }
-  return { peek, load, prefetch, invalidate, cancelSelection, dispose }
+  /** 将已由页面后台确认的目标加入缓存，不占用或取消用户前台选择
+   * @param id 当前页面中已确认可下载的精确词汇编号
+   * @param started 页面开始获取该后台地址的时间，不能因下载推迟延长有效期
+   */
+  const warm = (id: string, started = Date.now()): string | Promise<string> => {
+    if (!active()) return Promise.reject(new Error('试听已取消'))
+    return (
+      peek(id) || (pending.get(id) || start(id, true, started + WORD_ADDRESS_LIFETIME_MS)).promise
+    )
+  }
+  return { peek, load, warm, prefetch, invalidate, cancelSelection, dispose }
 }

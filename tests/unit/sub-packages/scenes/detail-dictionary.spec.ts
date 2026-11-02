@@ -1,11 +1,15 @@
 // @vitest-environment happy-dom
 import { flushPromises, shallowMount } from '@vue/test-utils'
-import { beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import type { AudioPort } from '@/shared/types/audio'
 const ports = vi.hoisted(() => ({
   load: undefined as undefined | ((query: { id: string }) => void),
   show: undefined as undefined | (() => void),
+  hide: undefined as undefined | (() => void),
+  scroll: undefined as undefined | ((event: { scrollTop: number }) => void),
+  unload: undefined as undefined | (() => void),
+  release: vi.fn(),
   run: vi.fn(),
   request: vi.fn(),
   invalidate: vi.fn()
@@ -19,9 +23,15 @@ vi.mock('@dcloudio/uni-app', () => ({
   onShow: (callback: typeof ports.show) => {
     ports.show = callback
   },
-  onHide: vi.fn(),
-  onUnload: vi.fn(),
-  onPageScroll: vi.fn()
+  onHide: (callback: typeof ports.hide) => {
+    ports.hide = callback
+  },
+  onUnload: (callback: typeof ports.unload) => {
+    ports.unload = callback
+  },
+  onPageScroll: (callback: typeof ports.scroll) => {
+    ports.scroll = callback
+  }
 }))
 vi.mock('@/services/api', () => ({
   session: { request: ports.request, userId: () => 'owner' },
@@ -34,13 +44,9 @@ vi.mock('@/stores/account-store', () => ({
 vi.mock('@/services/full-audio-preparation', () => ({
   createFullAudioPreparation: () => ({ prefetch: vi.fn(), load: () => '/full', dispose: vi.fn() })
 }))
-vi.mock('@/services/word-audio-preparation', () => ({
-  createWordAudioPreparation: () => ({
-    prefetch: vi.fn(),
-    load: () => '/word',
-    dispose: vi.fn(),
-    invalidate: ports.invalidate
-  })
+vi.mock('@/services/word-audio-file', () => ({
+  prepareAudioCacheFile: async () => ({ src: '/full', release: vi.fn() }),
+  prepareWordAudioFile: async () => ({ src: '/word', release: ports.release })
 }))
 vi.mock('@/services/audio-port', () => ({ createAudioPort: () => createTrack() }))
 
@@ -118,7 +124,11 @@ beforeEach(() => {
   vi.clearAllMocks()
   tracks.length = 0
   ports.request.mockImplementation(async (path: string) =>
-    path.includes('/dictionary?') ? meaning : scene
+    path.includes('/dictionary?')
+      ? meaning
+      : path.includes('/dictionary/pronunciation')
+        ? { state: 'ready', url: '/api/mini/v1/dictionary-pronunciation/word' }
+        : scene
   )
   vi.stubGlobal('uni', { pageScrollTo: ({ complete }: { complete?: () => void }) => complete?.() })
 })
@@ -303,5 +313,77 @@ it('refreshes today completion on foreground and flags a republished version bef
   await flushPromises()
   expect(page.text()).toContain('内容已更新')
   expect(page.find('.scene-title').exists()).toBe(false)
+  page.unmount()
+})
+
+it('preloads every body word on page entry and reuses its ready file across popup close without autoplay', async () => {
+  const page = await open()
+  const requests = ports.request.mock.calls.filter(([path]) =>
+    path.includes('/dictionary/pronunciation')
+  )
+  expect(requests).toHaveLength(3)
+  expect(
+    requests.map(([path]) => new URL(path, 'http://fixture').searchParams.get('word'))
+  ).toEqual(['Try', 'mobile', 'today'])
+  expect(tracks.every((track) => !track.playing)).toBe(true)
+  await page.findAll('.dictionary-token')[1]!.trigger('click')
+  await flushPromises()
+  page.findComponent({ name: 'SceneDictionary' }).vm.$emit('close')
+  await page.findAll('.dictionary-token')[1]!.trigger('click')
+  await flushPromises()
+  expect(
+    ports.request.mock.calls.filter(([path]) => path.includes('/dictionary/pronunciation'))
+  ).toHaveLength(3)
+  expect(tracks.every((track) => !track.playing)).toBe(true)
+  page.unmount()
+})
+
+it('releases page-owned pronunciation files on hide and unload and prepares fresh files on return', async () => {
+  const page = await open()
+  expect(ports.release).not.toHaveBeenCalled()
+  ports.hide?.()
+  expect(ports.release).toHaveBeenCalledTimes(3)
+  ports.show?.()
+  await flushPromises()
+  expect(
+    ports.request.mock.calls.filter(([path]) => path.includes('/dictionary/pronunciation'))
+  ).toHaveLength(6)
+  expect(tracks.every((track) => !track.playing)).toBe(true)
+  ports.unload?.()
+  expect(ports.release).toHaveBeenCalledTimes(6)
+  page.unmount()
+})
+
+afterEach(() => vi.useRealTimers())
+
+it('coalesces slow visible-region measurements and never schedules another measurement after hide', async () => {
+  vi.useFakeTimers()
+  const page = await open()
+  let finish!: (value: []) => void
+  const measure = vi.fn(
+    () =>
+      new Promise<[]>((resolve) => {
+        finish = resolve
+      })
+  )
+  page.findComponent({ name: 'SceneDialogue' }).vm.$.exposed!.measureReading = measure
+  ports.scroll?.({ scrollTop: 0 })
+  await vi.advanceTimersByTimeAsync(120)
+  expect(measure).toHaveBeenCalledTimes(1)
+  ports.scroll?.({ scrollTop: 0 })
+  await vi.advanceTimersByTimeAsync(120)
+  ports.scroll?.({ scrollTop: 0 })
+  await vi.advanceTimersByTimeAsync(120)
+  expect(measure).toHaveBeenCalledTimes(1)
+  finish([])
+  await vi.advanceTimersByTimeAsync(120)
+  expect(measure).toHaveBeenCalledTimes(2)
+  ports.scroll?.({ scrollTop: 0 })
+  await vi.advanceTimersByTimeAsync(120)
+  ports.hide?.()
+  finish([])
+  await vi.advanceTimersByTimeAsync(1000)
+  expect(measure).toHaveBeenCalledTimes(2)
+  ports.unload?.()
   page.unmount()
 })

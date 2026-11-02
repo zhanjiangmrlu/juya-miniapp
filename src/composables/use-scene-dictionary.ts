@@ -10,7 +10,7 @@ import type {
   DictionaryToken
 } from '@/shared/types/dictionary'
 
-/** 管理中央查词的最新目标，查询和发音互不自动触发
+/** 管理中央查词的最新目标，查询与音频准备并行且不自动播放
  * @param ports 当前本人发布上下文、受控请求和共用词音轨端口
  */
 export const useSceneDictionary = (ports: DictionaryPorts) => {
@@ -25,7 +25,7 @@ export const useSceneDictionary = (ports: DictionaryPorts) => {
   const close = () => {
     generation++
     if (selection.value) ports.stopSpeech(dictionarySpeechKey(selection.value))
-    speech?.dispose()
+    speech?.cancelSelection?.()
     speech = null
     selection.value = null
     result.value = null
@@ -64,6 +64,8 @@ export const useSceneDictionary = (ports: DictionaryPorts) => {
       )
     }
     speech = ports.prepareSpeech(current, active)
+    // 音频与释义并行准备；失败交由服务端口处理，明确点击喇叭时仍可重试
+    void Promise.resolve(speech.load()).catch(() => undefined)
     try {
       const value = await ports.request<DictionaryResult>(
         `/api/mini/v1/cards/${encodeURIComponent(scope.cardId)}/dictionary?${dictionaryQuery(current)}`

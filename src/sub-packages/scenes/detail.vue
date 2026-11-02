@@ -8,7 +8,7 @@ import {
   onShow,
   onUnload
 } from '@dcloudio/uni-app'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import AppLoading from '@/components/app-loading/app-loading.vue'
 import AppPage from '@/components/app-page/app-page.vue'
@@ -23,13 +23,14 @@ import SceneQueueEnd from '@/features/learning/components/scene-queue-end.vue'
 import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
 import SceneUnavailable from '@/features/learning/components/scene-unavailable.vue'
 import SceneVocabulary from '@/features/learning/components/scene-vocabulary.vue'
+import { dictionaryTokens } from '@/features/learning/scene-model'
 import ShareSheet from '@/features/share/components/share-sheet.vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
 import { onSessionExpired, operations, session } from '@/services/api'
 import { createAudioController } from '@/services/audio-controller'
 import { createAudioPort } from '@/services/audio-port'
 import { clientThumbnail } from '@/services/client-thumbnail'
-import { createDictionarySpeech } from '@/services/dictionary-service'
+import { createDictionarySpeechCache } from '@/services/dictionary-service'
 import { ApiError } from '@/services/errors'
 import { createFullAudioPreparation } from '@/services/full-audio-preparation'
 import { prepareImagePreviewSource, registerImagePreview } from '@/services/image-preview'
@@ -49,6 +50,7 @@ import {
 } from '@/services/source-queue'
 import { prepareAudioCacheFile, prepareWordAudioFile } from '@/services/word-audio-file'
 import { createWordAudioPreparation, waitForWordAudio } from '@/services/word-audio-preparation'
+import { DICTIONARY_PREFETCH_SCROLL_DELAY_MS } from '@/shared/constants/dictionary'
 import { Routes } from '@/shared/constants/navigation'
 import { AudioStatus } from '@/shared/enums/audio'
 import { QueueSource } from '@/shared/enums/learning'
@@ -60,7 +62,11 @@ import { createShareService } from '@/sub-packages/scenes/scene-share-service'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { AudioState } from '@/shared/types/audio'
-import type { DictionaryToken } from '@/shared/types/dictionary'
+import type {
+  DictionarySelection,
+  DictionarySpeechCache,
+  DictionaryToken
+} from '@/shared/types/dictionary'
 import type { PublishedScene } from '@/shared/types/learning'
 const account = useAccountStore(),
   accessError = ref(''),
@@ -124,6 +130,12 @@ let id = '',
   audio: ReturnType<typeof createAudioController> | null = null,
   fullAudio: ReturnType<typeof createFullAudioPreparation> | null = null,
   wordAudio: ReturnType<typeof createWordAudioPreparation> | null = null,
+  dictionaryAudio: DictionarySpeechCache | null = null,
+  dictionaryReferences: DictionarySelection[] = [],
+  dictionaryScrollTimer: ReturnType<typeof setTimeout> | undefined,
+  dictionaryMeasuring = false,
+  dictionaryMeasureRequested: DictionarySpeechCache | null = null,
+  scrollTop = 0,
   imageOpen = false,
   imageGeneration = 0,
   originalSrc = '',
@@ -152,10 +164,10 @@ const dictionary = useSceneDictionary({
         }
       : null,
   request: session.request,
-  prepareSpeech: (selection, active) =>
-    createDictionarySpeech(selection, active, (reason) => {
-      void invalid(reason)
-    }),
+  prepareSpeech: (selection) => {
+    createDictionaryAudio()
+    return dictionaryAudio!.prepare(selection)
+  },
   stopSpeech: (key) => audio?.stopWord(key),
   playSpeech: (key, load) => {
     createAudio()
@@ -215,9 +227,109 @@ const checkPendingCompletion = () => {
   if (pending) actionError.value = '上次完成结果待确认，请先查询结果'
   return pending
 }
+/** 按实际视口提高正文优先级，保留同形词各自的完整受控位置 */
+const prefetchDictionary = async () => {
+  const cache = dictionaryAudio,
+    scene = card.value
+  if (!cache || !scene) return
+  if (dictionaryMeasuring) {
+    dictionaryMeasureRequested = cache
+    return
+  }
+  dictionaryMeasuring = true
+  try {
+    await nextTick()
+    if (cache !== dictionaryAudio || !visible || !alive) return
+    const blocks = (await dialogueView.value?.measureReading?.(scrollTop)) || []
+    if (cache !== dictionaryAudio || scene !== card.value) return
+    const info =
+        typeof uni !== 'undefined' && typeof uni.getWindowInfo === 'function'
+          ? uni.getWindowInfo()
+          : null,
+      height = info?.windowHeight || 0,
+      visibleLines = new Set(
+        blocks
+          .filter((block) => block.top + block.height > scrollTop && block.top < scrollTop + height)
+          .map((block) => block.anchor.replace(/^dialogue:/, ''))
+      )
+    cache.prefetch(
+      dictionaryReferences,
+      dictionaryReferences.filter((reference) => visibleLines.has(reference.line_id))
+    )
+  } finally {
+    dictionaryMeasuring = false
+    const requested = dictionaryMeasureRequested
+    dictionaryMeasureRequested = null
+    // 仅补做当前页面明确请求的最新测量，旧缓存返回不会重新调度自己
+    if (requested && requested === dictionaryAudio && visible && alive) scheduleDictionaryPrefetch()
+  }
+}
+/** 合并滚动期间的可见区测量，复用本版本已分词的正文引用 */
+const scheduleDictionaryPrefetch = () => {
+  if (dictionaryScrollTimer || !dictionaryAudio) return
+  dictionaryScrollTimer = setTimeout(() => {
+    dictionaryScrollTimer = undefined
+    void prefetchDictionary()
+  }, DICTIONARY_PREFETCH_SCROLL_DELAY_MS)
+}
+/** 正文展开后同步阅读锚点与可见词元优先级 */
+const refreshDialogue = () => {
+  void reading.refresh()
+  void prefetchDictionary()
+}
+/** 正文音频由页面持有，弹窗开关不延长缓存或释放已下载文件 */
+const createDictionaryAudio = () => {
+  if (
+    dictionaryAudio ||
+    !visible ||
+    !alive ||
+    !card.value ||
+    stale.value ||
+    accessError.value ||
+    browseOnly.value ||
+    card.value.access?.can_lookup === false ||
+    !session.userId()
+  )
+    return
+  const scene = card.value,
+    owner = session.userId(),
+    profile = account.profile,
+    accessVersion = scene.access?.version
+  dictionaryReferences = (scene.content.dialogue || []).flatMap((line) =>
+    dictionaryTokens(line, scene.content.vocabulary || [])
+      .filter((token) => token.word)
+      .map((token) => ({
+        cardId: id,
+        version_id: scene.version_id,
+        word: token.lookup?.word ?? token.text,
+        line_id: token.line_id,
+        start: token.lookup?.start ?? token.start,
+        end: token.lookup?.end ?? token.end
+      }))
+  )
+  dictionaryAudio = createDictionarySpeechCache(
+    () =>
+      alive &&
+      visible &&
+      !stale.value &&
+      !accessError.value &&
+      !browseOnly.value &&
+      session.userId() === owner &&
+      account.profile === profile &&
+      card.value?.version_id === scene.version_id &&
+      card.value?.access?.version === accessVersion &&
+      card.value?.access?.can_lookup !== false,
+    (reason) => {
+      void invalid(reason)
+    }
+  )
+  void prefetchDictionary()
+}
 /** 进入当前场景时创建两路互斥音频，不自动播放 */
 const createAudio = () => {
-  if (runtimeMode.update() || audio || !visible || !card.value || stale.value) return
+  if (runtimeMode.update() || !visible || !card.value || stale.value) return
+  createDictionaryAudio()
+  if (audio) return
   const current = card.value,
     owner = account.profile,
     userId = session.userId()
@@ -307,6 +419,12 @@ const createAudio = () => {
 /** 离开场景时先停止播放器，再取消准备任务和释放临时音频 */
 const stopAudio = () => {
   dictionary.close()
+  clearTimeout(dictionaryScrollTimer)
+  dictionaryScrollTimer = undefined
+  dictionaryMeasureRequested = null
+  dictionaryReferences = []
+  dictionaryAudio?.dispose()
+  dictionaryAudio = null
   audio?.dispose()
   audio = null
   fullAudio?.dispose()
@@ -323,6 +441,9 @@ const applyAccess = (value: components['schemas']['CardAccessView']) => {
   if (previous?.access?.version !== value.access.version) {
     clearMediaAddresses()
     discardPreparedScene()
+    dictionary.close()
+    dictionaryAudio?.dispose()
+    dictionaryAudio = null
   }
   if (!value.access.can_lookup) dictionary.close()
   if (value.access.can_learn && previous) {
@@ -337,6 +458,7 @@ const applyAccess = (value: components['schemas']['CardAccessView']) => {
       return
     }
     previous.access = value.access
+    createDictionaryAudio()
     previous.state = value.summary.state
     if (!previous.state.today_completed && message.value === '今日已完成学习') message.value = ''
     checkPendingCompletion()
@@ -900,9 +1022,19 @@ watch(
   },
   { flush: 'sync' }
 )
-onPageScroll((event) => reading.scroll(event.scrollTop))
+onPageScroll((event) => {
+  scrollTop = event.scrollTop
+  reading.scroll(event.scrollTop)
+  scheduleDictionaryPrefetch()
+})
 onHide(() => {
   visible = false
+  dictionaryMeasureRequested = null
+  clearTimeout(dictionaryScrollTimer)
+  dictionaryScrollTimer = undefined
+  dictionary.close()
+  dictionaryAudio?.dispose()
+  dictionaryAudio = null
   accessMonitor.suspend()
   share.hide()
   publicShare.clear()
@@ -1036,7 +1168,7 @@ onUnload(() => {
           :key="`${id}:${card.version_id}`"
           :dialogue="card.content.dialogue || []"
           :vocabulary="card.content.vocabulary || []"
-          @layout="reading.refresh"
+          @layout="refreshDialogue"
           @lookup="lookup"
         />
         <SceneVocabulary

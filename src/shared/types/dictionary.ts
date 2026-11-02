@@ -39,3 +39,9 @@ export interface DictionaryPorts {
   playSpeech: (key: string, load: () => string | Promise<string>) => void
   onFailure: (reason: unknown) => Promise<void> | void
 }
+
+export interface DictionarySpeechCache {
+  prepare: (selection: DictionarySelection) => DictionarySpeechPreparation
+  prefetch: (selections: DictionarySelection[], visible?: DictionarySelection[]) => void
+  dispose: () => void
+}

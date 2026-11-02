@@ -50,7 +50,7 @@ it('queries exact clicked source without playing and preserves original word sep
   expect(dictionary.result.value?.word).toBe('went')
   expect(dictionary.result.value?.lemma).toBe('go')
   expect(playSpeech).not.toHaveBeenCalled()
-  expect(load).not.toHaveBeenCalled()
+  expect(load).toHaveBeenCalledOnce()
   dictionary.play()
   expect(playSpeech).toHaveBeenCalledTimes(1)
   dictionary.close()
@@ -92,7 +92,7 @@ it('rejects late results after switching words and stops only the previous popup
   dictionary.close()
   expect(dictionary.selection.value).toBe(null)
   expect(stopSpeech).toHaveBeenCalledTimes(2)
-  expect(dispose).toHaveBeenCalledTimes(2)
+  expect(dispose).not.toHaveBeenCalled()
 })
 
 it('shows a real failure separately from configured missing results and retries without inventing a definition', async () => {
