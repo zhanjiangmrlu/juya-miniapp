@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import { useReadingAnchors } from '@/composables/use-reading-anchors'
 import { phraseHighlights } from '@/features/listening/phrase-highlights'
 import { characterFrame, tokenizeBody, validateTimeline } from '@/features/listening/reading-model'
+import { vocabularyHighlights } from '@/features/listening/vocabulary-highlights'
 import { ListeningTimelineState } from '@/shared/enums/listening'
 
 import type { ListeningToken } from '@/shared/types/listening'
@@ -18,6 +19,10 @@ const highlights = computed(() =>
     (props.article.payload.expressions || []).map((item) => item.english)
   )
 )
+const vocabulary = computed(() =>
+  vocabularyHighlights(props.article.payload.body_en, props.article.payload.vocabulary || [])
+)
+const backgrounds = computed(() => [...vocabulary.value, ...highlights.value])
 const paragraphs = computed(() => tokenizeBody(props.article.payload.body_en))
 const usable = computed(
   () =>
@@ -41,7 +46,7 @@ const frame = computed(() =>
 const color = (position: number) => {
   if (frame.value.current === position)
     return `color:#1e6b43;background:rgba(220,236,201,${0.25 + frame.value.fraction * 0.75})`
-  const background = highlights.value.find(
+  const background = backgrounds.value.find(
     (item) => position >= item.start && position < item.end
   )?.color
   const trail = frame.value.trails.find((item) => item.position === position)

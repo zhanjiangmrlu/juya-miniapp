@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { onPageScroll } from '@dcloudio/uni-app'
+import { computed, ref } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
@@ -15,6 +16,10 @@ import { useListeningArticle } from '@/features/listening/use-listening-article'
 import { useListeningThumbnail } from '@/features/listening/use-listening-thumbnail'
 import { Routes } from '@/shared/constants/navigation'
 import { PageBackgroundKind } from '@/shared/enums/ui'
+const solidHeader = ref(false)
+onPageScroll((event) => {
+  solidHeader.value = event.scrollTop > 0
+})
 const {
   bodyRef,
   leave,
@@ -107,6 +112,7 @@ const closeImage = () => {
 <template>
   <AppPage
     :background-kind="PageBackgroundKind.READING"
+    :solid-header="solidHeader"
     title="主题听读"
     back
     custom-back

@@ -13,6 +13,7 @@ import { PageBackgroundKind } from '@/shared/enums/ui'
 import type { ShareMenuChannels } from '@/shared/types/share'
 const props = withDefaults(
   defineProps<{
+    solidHeader?: boolean
     fixedViewport?: boolean
     title: string
     backgroundImage?: string
@@ -26,6 +27,7 @@ const props = withDefaults(
     publicSummary?: boolean
   }>(),
   {
+    solidHeader: false,
     fixedViewport: false,
     back: false,
     footer: false,
@@ -108,7 +110,8 @@ const goBack = () => {
     :class="{
       'has-footer': footer,
       'has-background': backgroundImage || backgroundKind,
-      'fixed-viewport': fixedViewport
+      'fixed-viewport': fixedViewport,
+      'solid-header': solidHeader
     }"
     :style="{
       ...remoteFontStyles,
@@ -194,6 +197,12 @@ const goBack = () => {
   &.has-background {
     .page-nav {
       background: transparent;
+    }
+  }
+
+  &.solid-header {
+    .page-nav {
+      background: #fffcf5;
     }
   }
 }

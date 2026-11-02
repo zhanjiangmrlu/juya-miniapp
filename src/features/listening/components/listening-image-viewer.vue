@@ -1,39 +1,48 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { getCurrentInstance, nextTick, onUnmounted, ref } from 'vue'
 
 import AppState from '@/components/app-state/app-state.vue'
 
 import type { ListeningImageViewerProps } from '@/shared/types/listening-components'
 defineProps<ListeningImageViewerProps>()
 defineEmits<{ close: []; retry: []; error: [] }>()
-const scale = ref(1),
-  x = ref(0),
-  y = ref(0)
+const instance = getCurrentInstance(),
+  scale = ref(1),
+  commandScale = ref(1)
+let generation = 0
+onUnmounted(() => {
+  generation++
+})
 /** 同步原生双指缩放，确保后续按钮从实际倍率继续
  * @param event 原生图片缩放事件及当前倍率
  */
 const scaled = (event: { detail: { scale: number } }) => {
-  scale.value = event.detail.scale
+  if (Number.isFinite(event.detail.scale))
+    scale.value = Math.max(1, Math.min(5, event.detail.scale))
 }
-/** 同步原生拖动位置，复位时可真正回到容器中心
- * @param event 原生图片拖动事件及当前坐标
+/** 先同步实际倍率，再等待原生视图完成后下发目标，避免同值复位被合并
+ * @param targetScale 本次请求的目标倍率
  */
-const moved = (event: { detail: { x: number; y: number } }) => {
-  x.value = event.detail.x
-  y.value = event.detail.y
+const transform = async (targetScale: number) => {
+  const run = ++generation
+  commandScale.value = scale.value
+  scale.value = targetScale
+  if (instance?.proxy) await instance.proxy.$nextTick()
+  else await nextTick()
+  // #ifdef H5
+  // H5 的 movable-view 在下一帧应用倍率，等待其完成后再下发目标
+  if (typeof requestAnimationFrame === 'function')
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+  // #endif
+  if (run !== generation) return
+  commandScale.value = targetScale
 }
-/** 在原生控件支持范围内改变缩放倍率
+/** 只改变倍率，拖动位置交给原生视图保留，不重发不同平台口径的旧坐标
  * @param delta 用户按钮请求的倍率增量
  */
-const zoom = (delta: number) => {
-  scale.value = Math.max(1, Math.min(5, scale.value + delta))
-}
-/** 恢复初始适屏倍率及拖动原点 */
-const fit = () => {
-  scale.value = 1
-  x.value = 0
-  y.value = 0
-}
+const zoom = (delta: number) => transform(Math.max(1, Math.min(5, scale.value + delta)))
+/** 恢复适屏倍率，原生边界约束同时将占满容器的视图归回原点 */
+const fit = () => transform(1)
 </script>
 <template>
   <view class="image-veil" role="dialog" aria-modal="true" aria-label="本篇原图">
@@ -51,11 +60,12 @@ const fit = () => {
           scale
           :scale-min="1"
           :scale-max="5"
-          :scale-value="scale"
-          :x="x"
-          :y="y"
+          :scale-value="commandScale"
+          :animation="false"
+          :inertia="false"
+          :x="0"
+          :y="0"
           @scale="scaled"
-          @change="moved"
           ><image
             :src="image"
             mode="aspectFit"
@@ -133,11 +143,7 @@ const fit = () => {
     flex: 1;
     min-height: 0;
     flex-direction: column;
-    margin: 0 26.923rpx;
-    padding: 30.769rpx;
-    border: 1px solid #dfe5d8;
-    border-radius: 23.077rpx;
-    background: #f0f3e8;
+    overflow: hidden;
   }
 
   .image-area {
@@ -158,7 +164,7 @@ const fit = () => {
     flex: none;
     justify-content: center;
     gap: 23.077rpx;
-    margin-top: 30.769rpx;
+    padding: 24rpx 20rpx 0;
   }
 
   .zoom-button,
