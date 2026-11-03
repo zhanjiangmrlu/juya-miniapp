@@ -593,10 +593,19 @@ export const useListeningArticle = () => {
     summary.value = null
   }
   const unsubscribe = onSessionExpired(reset)
-  onLoad((query) => {
+  /** 还原页面地址中的队列凭证，避免下一篇请求再次编码后破坏签名
+   * @param query 原生页面加载参数，凭证可能仍保留 URL 编码
+   */
+  const initializeRoute = (query?: Record<string, string | undefined>) => {
     id.value = query?.id || ''
-    queueToken.value = query?.queue_token || ''
-  })
+    const token = query?.queue_token || ''
+    try {
+      queueToken.value = decodeURIComponent(token)
+    } catch {
+      queueToken.value = token
+    }
+  }
+  onLoad(initializeRoute)
   onShow(() => {
     visible = true
     void load()

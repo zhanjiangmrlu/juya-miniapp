@@ -277,6 +277,29 @@ it('replaces the current detail after saving progress and preserves the frozen q
     })
   )
 })
+it.each(['queue-frozen==', 'queue-frozen%3D%3D'])(
+  'keeps the server queue credential intact after loading route value %s',
+  async (routeToken) => {
+    const model = useListeningArticle()
+    ports.load?.({ id: 'a2', queue_token: routeToken })
+    ports.show?.()
+    await flushPromises()
+    ports.request.mockImplementation(async (path: string) =>
+      path.includes('/next?')
+        ? { article: { ...structuredClone(detail), id: 'a3' }, ended: false, category_id: 'c1' }
+        : structuredClone(detail)
+    )
+    await model.getNext()
+    const nextPath = ports.request.mock.calls.find((call) =>
+      String(call[0]).includes('/next?')
+    )?.[0]
+    expect(new URL(String(nextPath), 'https://test.invalid').searchParams.get('queue_token')).toBe(
+      'queue-frozen=='
+    )
+    expect(model.queueToken.value).toBe('queue-frozen==')
+    expect(model.nextArticle.value?.id).toBe('a3')
+  }
+)
 it('retains the current article and exposes retry when next navigation fails', async () => {
   vi.stubGlobal('uni', {
     pageScrollTo: vi.fn(),
