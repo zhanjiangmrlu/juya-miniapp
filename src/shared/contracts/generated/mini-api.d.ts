@@ -98,7 +98,7 @@ export interface paths {
     }
     /**
      * Listing
-     * @description 先按本人完成记录过滤再分页，并独立返回当前发布总数
+     * @description 先过滤本人完成记录，免费优先且组内保留人工顺序，再分页
      */
     get: operations['listing_api_mini_v1_cards_get']
     put?: never
@@ -853,7 +853,7 @@ export interface paths {
     }
     /**
      * Articles
-     * @description Page articles using direct category ownership.
+     * @description Page free articles first within their direct category, preserving manual ranks.
      */
     get: operations['articles_api_mini_v1_listening_topics__topic_id__articles_get']
     put?: never
@@ -873,7 +873,7 @@ export interface paths {
     }
     /**
      * Category Articles
-     * @description Page publications directly in configured category and article order.
+     * @description Page free publications first, preserving category and article ranks in each group.
      */
     get: operations['category_articles_api_mini_v1_listening_articles_get']
     put?: never
