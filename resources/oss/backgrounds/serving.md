@@ -29,4 +29,4 @@ location ~ "^/miniapp/static/backgrounds/.+-[a-f0-9]{12}\.(webp|jpg)$" {
 
 原 PNG 地址继续沿用既有缓存策略，不能加 immutable 后在同一路径覆盖文件。OSS/CDN 需配置等效的 Content-Type 和 Cache-Control 对象元数据。不要将不存在的文件以长期缓存的成功响应或 HTML 返回；上例不为 404 添加 immutable 缓存头。
 
-本次只准备本地文件与配置说明，没有上传 OSS、修改远程缓存或部署生产环境。
+2026-11-03 已按授权将六个变体上传既有测试 OSS 静态前缀，公网字节与响应头验证见 `docs/verification/test-background-compression-upload-20261103.json`；没有修改 ACL、bucket 策略或生产环境。
