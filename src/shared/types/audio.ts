@@ -50,6 +50,7 @@ export interface FullAudioPreparationPorts {
   onFailure: (reason: unknown) => void
 }
 export interface FullAudioPreparationEntry {
+  settled: Promise<void>
   expires: number
   url: string
   file: AudioCacheFile | null

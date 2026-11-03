@@ -88,7 +88,7 @@ it('keeps resume and categories outside the list and resets each category select
   expect(uni.pageScrollTo).not.toHaveBeenCalled()
   page.unmount()
 })
-it('ends a failed list refresh while retaining topics and allowing retry', async () => {
+it('ends a failed statistics refresh while retaining articles and allowing retry', async () => {
   const page = await open(),
     list = page.get('.article-scroll')
   ports.home.mockRejectedValueOnce(new Error('offline'))
@@ -96,10 +96,13 @@ it('ends a failed list refresh while retaining topics and allowing retry', async
   await flushPromises()
   expect(list.attributes('refresher-triggered')).toBe('false')
   expect(list.findAllComponents({ name: 'ListeningArticleCard' })).toHaveLength(2)
-  expect(list.findComponent({ name: 'AppState' }).props('error')).toBe('offline')
+  expect(page.get('.listening-header').findComponent({ name: 'AppState' }).props('error')).toBe(
+    'offline'
+  )
+  expect(list.findComponent({ name: 'AppState' }).props('error')).toBe('')
   await list.trigger('refresherrefresh')
   await flushPromises()
-  expect(list.findComponent({ name: 'AppState' }).props('error')).toBe('')
+  expect(page.get('.listening-header').findComponent({ name: 'AppState' }).props('error')).toBe('')
   page.unmount()
 })
 

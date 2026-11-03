@@ -20,7 +20,9 @@ export const useListeningCatalog = () => {
     error = ref(''),
     refreshing = ref(false)
   let owner = session.userId(),
-    generation = 0
+    generation = 0,
+    listCategory = '',
+    homeRequest: Promise<void> | null = null
   /** 为指定分类建立独立分页状态
    * @param categoryId 用户选择的分类，空值为全部文章
    */
@@ -50,7 +52,12 @@ export const useListeningCatalog = () => {
   /** 身份失效即清空本人进度及列表，拒绝迟到响应 */
   const reset = () => {
     generation++
+    homeRequest = null
+    busy.value = false
+    error.value = ''
+    refreshing.value = false
     home.value = null
+    listCategory = ''
     category.value = ''
     scrollTop.value = 0
     list.value.dispose()
@@ -58,34 +65,56 @@ export const useListeningCatalog = () => {
     owner = session.userId()
   }
   const unsubscribe = onSessionExpired(reset)
-  /** 真实刷新分类统计与已加载分页；失败明确展示，不伪造免费或进度 */
-  const load = async () => {
+  /** 对齐直达分类和分页实例，不重复请求已经选中的分类 */
+  const syncCategory = () => {
+    if (listCategory === category.value) return
+    list.value.dispose()
+    listCategory = category.value
+    list.value = createList(listCategory)
+    scrollTop.value = 0
+  }
+  /** 独立刷新分类统计，合并在途请求并拒绝旧账号的迟到响应 */
+  const loadHome = (): Promise<void> => {
     if (owner !== session.userId()) reset()
-    const run = ++generation
+    if (homeRequest) return homeRequest
+    const run = generation
     busy.value = true
     error.value = ''
-    try {
-      if (!(await account.ensure(Routes.LISTENING))) return
-      const value = await getListeningHome()
-      if (run !== generation) return
-      home.value = value
-      await list.value.refresh()
-    } catch (reason) {
-      if (run === generation)
-        error.value = reason instanceof Error ? reason.message : '听读暂未获取'
-    } finally {
-      if (run === generation) busy.value = false
-    }
+    const job = (async () => {
+      try {
+        if (!(await account.ensure(Routes.LISTENING))) return
+        if (run !== generation || owner !== session.userId()) return
+        const value = await getListeningHome()
+        if (run === generation && owner === session.userId()) home.value = value
+      } catch (reason) {
+        if (run === generation && owner === session.userId())
+          error.value = reason instanceof Error ? reason.message : '听读暂未获取'
+      } finally {
+        if (run === generation) {
+          if (owner !== session.userId()) reset()
+          else busy.value = false
+        }
+      }
+    })().finally(() => {
+      if (homeRequest === job) homeRequest = null
+    })
+    homeRequest = job
+    return job
+  }
+  /** 鉴权后并行刷新统计与已加载分页，任一失败不阻塞另一部分展示 */
+  const load = async () => {
+    if (owner !== session.userId()) reset()
+    syncCategory()
+    await Promise.all([loadHome(), list.value.refresh()])
   }
   /** 切换分类开始该分类第一页；详情往返不调用此方法
    * @param id 当前真实分类身份，空值为全部
    */
   const select = async (id: string) => {
-    if (category.value === id && list.value.total.value !== null) return
+    if (owner !== session.userId()) reset()
+    if (category.value === id && listCategory === id && list.value.total.value !== null) return
     category.value = id
-    list.value.dispose()
-    list.value = createList(id)
-    scrollTop.value = 0
+    syncCategory()
     await list.value.refresh()
   }
   /** 下拉刷新首屏并同步独立的继续学习目标 */
@@ -101,6 +130,8 @@ export const useListeningCatalog = () => {
   /** 页面离开后取消迟到列表与身份事件 */
   const dispose = () => {
     generation++
+    homeRequest = null
+    busy.value = false
     list.value.dispose()
     unsubscribe()
   }
@@ -115,6 +146,7 @@ export const useListeningCatalog = () => {
     articles,
     list,
     load,
+    loadHome,
     select,
     pullRefresh,
     dispose

@@ -129,6 +129,7 @@ let id = '',
   generation = 0,
   audio: ReturnType<typeof createAudioController> | null = null,
   fullAudio: ReturnType<typeof createFullAudioPreparation> | null = null,
+  fullAudioBackgroundPending = false,
   wordAudio: ReturnType<typeof createWordAudioPreparation> | null = null,
   dictionaryAudio: DictionarySpeechCache | null = null,
   dictionaryReferences: DictionarySelection[] = [],
@@ -231,7 +232,8 @@ const checkPendingCompletion = () => {
 const prefetchDictionary = async () => {
   const cache = dictionaryAudio,
     scene = card.value
-  if (!cache || !scene) return
+  if (!cache || !scene || (scene.content.audio_id && (!fullAudio || fullAudioBackgroundPending)))
+    return
   if (dictionaryMeasuring) {
     dictionaryMeasureRequested = cache
     return
@@ -325,11 +327,22 @@ const createDictionaryAudio = () => {
   )
   void prefetchDictionary()
 }
+/** 页面可见且整段音频已准备结束时恢复后台词汇队列 */
+const resumeBackgroundAudio = () => {
+  if (!visible || !alive || !card.value || fullAudioBackgroundPending) return
+  void prefetchDictionary()
+  wordAudio?.prefetch(
+    (card.value.content.vocabulary || []).flatMap((word) => (word.id ? [word.id] : []))
+  )
+}
 /** 进入当前场景时创建两路互斥音频，不自动播放 */
 const createAudio = () => {
   if (runtimeMode.update() || !visible || !card.value || stale.value) return
   createDictionaryAudio()
-  if (audio) return
+  if (audio) {
+    resumeBackgroundAudio()
+    return
+  }
   const current = card.value,
     owner = account.profile,
     userId = session.userId()
@@ -411,10 +424,13 @@ const createAudio = () => {
   })
   audio.state.duration = card.value.audio_duration || 0
   audioState.value = { ...audio.state }
-  fullAudio?.prefetch()
-  wordAudio.prefetch(
-    (current.content.vocabulary || []).flatMap((word) => (word.id ? [word.id] : []))
-  )
+  fullAudioBackgroundPending = Boolean(fullAudio)
+  // 完整音频准备先占用下载通道；用户主动点词不受后台队列限制
+  void Promise.resolve(fullAudio?.prefetch()).then(() => {
+    if (!active()) return
+    fullAudioBackgroundPending = false
+    resumeBackgroundAudio()
+  })
 }
 /** 离开场景时先停止播放器，再取消准备任务和释放临时音频 */
 const stopAudio = () => {
@@ -429,6 +445,7 @@ const stopAudio = () => {
   audio = null
   fullAudio?.dispose()
   fullAudio = null
+  fullAudioBackgroundPending = false
   wordAudio?.dispose()
   wordAudio = null
 }

@@ -38,21 +38,32 @@ const props = withDefaults(
     backgroundKind: undefined
   }
 )
-const artworkFailed = ref(false),
-  paperFailed = ref(false)
+const artworkFailures = ref(0),
+  paperFailures = ref(0)
 const artwork = computed(() =>
-  props.backgroundKind ? pageBackgroundURL(props.backgroundKind) : ''
+  props.backgroundKind && artworkFailures.value < 2
+    ? pageBackgroundURL(props.backgroundKind, artworkFailures.value > 0)
+    : ''
 )
 const paper = computed(() =>
-  props.backgroundKind && !paperFailed.value ? pageBackgroundURL(PageBackgroundKind.PAPER) : ''
+  props.backgroundKind && paperFailures.value < 2
+    ? pageBackgroundURL(PageBackgroundKind.PAPER, paperFailures.value > 0)
+    : ''
 )
-watch(
-  () => props.backgroundKind,
-  () => {
-    artworkFailed.value = false
-    paperFailed.value = false
-  }
-)
+/** 插画加载失败后仅重试一次原图，避免错误循环 */
+const onArtworkError = () => {
+  artworkFailures.value += 1
+}
+/** CSS 纸纹通过隐藏图片检测失败，依次使用原图和纯色背景 */
+const onPaperError = () => {
+  paperFailures.value += 1
+}
+/** 切换背景类别后重新尝试压缩资源 */
+const resetBackgroundFailures = () => {
+  artworkFailures.value = 0
+  paperFailures.value = 0
+}
+watch(() => props.backgroundKind, resetBackgroundFailures)
 const emit = defineEmits<{ back: [] }>()
 const browseOnly = runtimeMode.browseOnly
 let visible = false
@@ -124,17 +135,18 @@ const goBack = () => {
       :src="backgroundImage"
       mode="aspectFill"
       aria-hidden="true" /><image
-      v-if="artwork && !artworkFailed"
+      v-if="artwork"
       class="page-artwork"
       :src="artwork"
+      :webp="artwork.endsWith('.webp')"
       mode="widthFix"
       aria-hidden="true"
-      @error="artworkFailed = true" /><image
+      @error="onArtworkError" /><image
       v-if="paper"
       class="paper-probe"
       :src="paper"
       aria-hidden="true"
-      @error="paperFailed = true" /><view class="page-nav" :style="headingStyle"
+      @error="onPaperError" /><view class="page-nav" :style="headingStyle"
       ><button v-if="back && !browseOnly" class="back-button" aria-label="返回" @click="goBack">
         <image
           class="back-icon"

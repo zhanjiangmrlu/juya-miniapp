@@ -7,42 +7,99 @@
       "dimensions": [853, 1844],
       "bytes": 1842298,
       "sha256": "4832be3a3967e6777953cf004a98acb48a15df4711f25b778f84d1e16407243a",
-      "matches_delivered_bytes": true
+      "matches_delivered_bytes": true,
+      "variant": {
+        "file": "listening-vase-5b20483e3922.webp",
+        "format": "WebP",
+        "quality": 82,
+        "dimensions": [853, 1844],
+        "bytes": 53292,
+        "sha256": "5b20483e39229a7406c09c9bce2f78a51656de4b7b4eefe7790ad7e4f351281c"
+      }
     },
     {
       "file": "paper-texture.png",
       "dimensions": [853, 1844],
       "bytes": 1596109,
       "sha256": "cb9ba6f80603048c50881d9a07f62d55bf00273cf9bcad4afada6fed0946a8f5",
-      "matches_delivered_bytes": true
+      "matches_delivered_bytes": true,
+      "variant": {
+        "file": "paper-texture-ee39e121f9c3.jpg",
+        "format": "JPEG",
+        "quality": 82,
+        "dimensions": [853, 1844],
+        "bytes": 50966,
+        "sha256": "ee39e121f9c36349676f4164affdc7456e380c6beb5715046a3237aae8e8d6ec"
+      }
     },
     {
       "file": "profile-basket.png",
       "dimensions": [853, 1844],
       "bytes": 1948023,
       "sha256": "c59860f3ba0b937ac4645f465943fb9d856ff518c6de9e9c50a347129be79696",
-      "matches_delivered_bytes": true
+      "matches_delivered_bytes": true,
+      "variant": {
+        "file": "profile-basket-e91cc518433d.webp",
+        "format": "WebP",
+        "quality": 82,
+        "dimensions": [853, 1844],
+        "bytes": 69636,
+        "sha256": "e91cc518433d004e9939892059d4c15555b2b81f1d9dfc4e3795bfc812e040c9"
+      }
     },
     {
       "file": "reading-window.png",
       "dimensions": [853, 1844],
       "bytes": 1830751,
       "sha256": "e5874874bc04bf673733d211ab72cbae124b9a46acc1794f13508626ddf680be",
-      "matches_delivered_bytes": true
+      "matches_delivered_bytes": true,
+      "variant": {
+        "file": "reading-window-71ae33bab6f5.webp",
+        "format": "WebP",
+        "quality": 82,
+        "dimensions": [853, 1844],
+        "bytes": 44184,
+        "sha256": "71ae33bab6f53143130fcba489092dfc81fc325f1b2825cd099178eff7bf22ce"
+      }
     },
     {
       "file": "records-journal.png",
       "dimensions": [853, 1844],
       "bytes": 1927103,
       "sha256": "ed185dbaccd5a2b205b57bfe7a9dbd9e7d3c04910ba7ea14257fe9aa47cc43e3",
-      "matches_delivered_bytes": true
+      "matches_delivered_bytes": true,
+      "variant": {
+        "file": "records-journal-78658fff8368.webp",
+        "format": "WebP",
+        "quality": 82,
+        "dimensions": [853, 1844],
+        "bytes": 54758,
+        "sha256": "78658fff8368a4f16736434b17bcb4e58b810111923e09ce8f69c7634ef1d1e7"
+      }
     },
     {
       "file": "scene-window.png",
       "dimensions": [853, 1844],
       "bytes": 1890726,
       "sha256": "2c6ba77f4c13678225df0988f3dd86be595b5cbf41601febadc85a141eedd70d",
-      "matches_delivered_bytes": true
+      "matches_delivered_bytes": true,
+      "variant": {
+        "file": "scene-window-1816629a6ee2.webp",
+        "format": "WebP",
+        "quality": 82,
+        "dimensions": [853, 1844],
+        "bytes": 55798,
+        "sha256": "1816629a6ee24fca73474c85283be35a5df9d71c52132fb638ec8162e2c63dba"
+      }
     }
-  ]
+  ],
+  "compression": {
+    "pillow": "12.3.0",
+    "libwebp": "1.6.0",
+    "libjpeg": "6.2",
+    "webp_method": 6,
+    "jpeg_optimize": true,
+    "resize": false,
+    "command": "python scripts/compress-page-backgrounds.py"
+  }
 }

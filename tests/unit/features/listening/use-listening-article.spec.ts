@@ -8,6 +8,7 @@ const ports = vi.hoisted(() => ({
   unload: null as null | (() => void),
   request: vi.fn(),
   run: vi.fn(),
+  download: vi.fn(),
   drafts: new Map<string, unknown>(),
   audio: [] as {
     currentTime: number
@@ -46,6 +47,7 @@ vi.mock('@/services/platform', () => ({
     remove: (key: string) => ports.drafts.delete(key)
   }
 }))
+vi.mock('@/services/word-audio-file', () => ({ prepareAudioCacheFile: ports.download }))
 vi.mock('@/services/audio-port', () => ({
   createAudioPort: () => {
     const events: Record<string, () => void> = {}
@@ -163,6 +165,7 @@ const detail = {
 }
 beforeEach(() => {
   vi.useFakeTimers()
+  ports.download.mockResolvedValue({ src: '/local-full', release: vi.fn() })
   ports.audio.length = 0
   ports.drafts.clear()
   vi.stubGlobal('uni', { pageScrollTo: vi.fn(), showToast: vi.fn() })
@@ -492,4 +495,33 @@ it('retains the current safe authorization reason when a permission check locks 
   })
   expect(model.error.value).toContain('学习授权')
   expect(ports.run).not.toHaveBeenCalled()
+})
+
+it('prefetches the complete current article without playing, then reuses the local file after authorization', async () => {
+  const model = await open()
+  expect(ports.download).toHaveBeenCalledTimes(1)
+  expect(ports.audio[0]!.play).not.toHaveBeenCalled()
+  await model.toggle()
+  expect(ports.audio[0]).toHaveProperty('src', '/local-full')
+  expect(ports.audio[0]!.play).toHaveBeenCalledTimes(1)
+})
+
+it('releases a prefetched full audio file on hide and refuses playback after revocation', async () => {
+  const release = vi.fn()
+  ports.download.mockResolvedValue({ src: '/private-full', release })
+  const model = await open()
+  ports.request.mockRejectedValueOnce(
+    new ApiError('learning_authorization_required', '授权已撤销', 403)
+  )
+  await model.toggle()
+  expect(ports.audio[0]!.play).not.toHaveBeenCalled()
+  expect(release).toHaveBeenCalledTimes(1)
+  expect(model.article.value).toBeNull()
+})
+it('releases the page-owned prefetched full audio file on hide', async () => {
+  const release = vi.fn()
+  ports.download.mockResolvedValue({ src: '/private-full', release })
+  await open()
+  ports.hide?.()
+  expect(release).toHaveBeenCalledTimes(1)
 })

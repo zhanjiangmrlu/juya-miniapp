@@ -2,13 +2,11 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import type { Plugin } from 'vite'
+
+import { PAGE_BACKGROUND_ORIGINALS, PAGE_BACKGROUNDS } from '../src/shared/constants/ui'
 const assets = [
-  'backgrounds/scene-window.png',
-  'backgrounds/listening-vase.png',
-  'backgrounds/reading-window.png',
-  'backgrounds/profile-basket.png',
-  'backgrounds/records-journal.png',
-  'backgrounds/paper-texture.png',
+  ...Object.values(PAGE_BACKGROUND_ORIGINALS).map((file) => `backgrounds/${file}`),
+  ...Object.values(PAGE_BACKGROUNDS).map((file) => `backgrounds/${file}`),
   'fonts/fraunces-regular-1a07e715bff9.woff',
   'fonts/juya-ui-chinese-2de0b76bda1d.woff',
   'fonts/dm-sans-19b2ba846548.woff',
@@ -45,7 +43,16 @@ export const localDesignAssetsPlugin = (): Plugin => ({
         response.end()
         return
       }
-      response.setHeader('Content-Type', file.endsWith('.woff') ? 'font/woff' : 'image/png')
+      response.setHeader(
+        'Content-Type',
+        file.endsWith('.woff')
+          ? 'font/woff'
+          : file.endsWith('.webp')
+            ? 'image/webp'
+            : file.endsWith('.jpg')
+              ? 'image/jpeg'
+              : 'image/png'
+      )
       response.setHeader('Cache-Control', 'public, max-age=3600')
       response.end(request.method === 'HEAD' ? undefined : readFileSync(file))
     })

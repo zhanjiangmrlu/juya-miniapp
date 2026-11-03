@@ -79,7 +79,7 @@ it('covers the status bar and viewport with the page artwork and keeps native ed
   page.unmount()
 })
 
-it('loads artwork at its original ratio and leaves readable content after asset failure', async () => {
+it('falls back once from WebP to the original artwork and resets on page background changes', async () => {
   vi.stubGlobal('uni', {
     getWindowInfo: () => ({ windowWidth: 390, statusBarHeight: 47 }),
     getMenuButtonBoundingClientRect: () => ({ left: 280, bottom: 87 }),
@@ -90,10 +90,16 @@ it('loads artwork at its original ratio and leaves readable content after asset 
     slots: { default: '<text>今日已学</text>' }
   })
   const art = page.get('.page-artwork')
-  expect(art.attributes('src')).toContain('/backgrounds/records-journal.png')
+  expect(art.attributes('src')).toMatch(/\/backgrounds\/records-journal-[a-f0-9]{12}\.webp$/)
+  expect(art.attributes('webp')).toBe('true')
   expect(art.attributes('mode')).toBe('widthFix')
   await art.trigger('error')
+  expect(page.get('.page-artwork').attributes('src')).toContain('/backgrounds/records-journal.png')
+  expect(page.get('.page-artwork').attributes('webp')).toBe('false')
+  await page.get('.page-artwork').trigger('error')
   expect(page.find('.page-artwork').exists()).toBe(false)
+  await page.setProps({ backgroundKind: 'scene' })
+  expect(page.get('.page-artwork').attributes('src')).toMatch(/scene-window-[a-f0-9]{12}\.webp$/)
   expect(page.text()).toContain('今日已学')
   page.unmount()
 })
@@ -117,5 +123,28 @@ it('keeps the browse-only summary scrollable inside a fixed viewport', () => {
   })
   expect(page.get('.summary-scroll').text()).toBe('分享摘要')
   expect(page.text()).not.toContain('私人列表')
+  page.unmount()
+})
+
+it('falls back from JPEG paper to original PNG before retaining only the cream background', async () => {
+  vi.stubGlobal('uni', {
+    getWindowInfo: () => ({ windowWidth: 390, statusBarHeight: 47 }),
+    getMenuButtonBoundingClientRect: () => ({ left: 280, bottom: 87 }),
+    hideShareMenu: vi.fn()
+  })
+  const page = mount(AppPage, {
+    props: { title: '场景学习', backgroundKind: 'scene' },
+    slots: { default: '<text>可读正文</text>' }
+  })
+  expect(page.get('.paper-probe').attributes('src')).toMatch(/paper-texture-[a-f0-9]{12}\.jpg$/)
+  await page.get('.paper-probe').trigger('error')
+  expect(page.get('.paper-probe').attributes('src')).toContain('/backgrounds/paper-texture.png')
+  expect(page.attributes('style')).toContain('paper-texture.png')
+  await page.get('.paper-probe').trigger('error')
+  expect(page.find('.paper-probe').exists()).toBe(false)
+  expect(page.attributes('style')).not.toContain('background-image')
+  expect(page.text()).toContain('可读正文')
+  await page.setProps({ backgroundKind: 'reading' })
+  expect(page.get('.paper-probe').attributes('src')).toMatch(/paper-texture-[a-f0-9]{12}\.jpg$/)
   page.unmount()
 })

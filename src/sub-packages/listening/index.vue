@@ -23,6 +23,7 @@ const {
   articles,
   list,
   load,
+  loadHome,
   select: selectCategory,
   pullRefresh,
   dispose
@@ -44,9 +45,7 @@ onLoad((query) => {
   if (query?.category_id) category.value = query.category_id
 })
 onShow(() => {
-  if (list.value.total.value === null && category.value) {
-    void selectCategory(category.value).then(load)
-  } else void load()
+  void load()
 })
 onUnload(dispose)
 </script>
@@ -55,7 +54,8 @@ onUnload(dispose)
     ><view class="listening-header"
       ><text class="listening-title">让英语连成一段生活</text
       ><text class="listening-subtitle">从一个分类开始，读懂，也听懂。</text
-      ><template v-if="home"
+      ><AppState :busy="busy && !home" :error="error" @retry="loadHome" />
+      <template v-if="home"
         ><view v-if="home.continue_learning" class="continue">
           <view class="continue-label"
             ><image
@@ -122,11 +122,11 @@ onUnload(dispose)
       @refresherrefresh="pullRefresh"
     >
       <AppState
-        :busy="busy && !home"
-        :error="error || list.error.value"
+        :busy="list.busy.value && list.total.value === null"
+        :error="list.error.value"
         centered-error
-        @retry="load" />
-      <template v-if="home">
+        @retry="list.refresh" />
+      <template v-if="list.total.value !== null">
         <view class="list-heading"
           ><text>{{
             selectedCategory ? selectedCategory.name_en || selectedCategory.name : '全部文章'

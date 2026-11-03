@@ -5,8 +5,10 @@ import { onSessionExpired, session } from '@/services/api'
 import { createAudioController } from '@/services/audio-controller'
 import { createAudioPort } from '@/services/audio-port'
 import { ApiError } from '@/services/errors'
+import { createFullAudioPreparation } from '@/services/full-audio-preparation'
 import { backTo } from '@/services/navigation'
 import { resourceURL, storage } from '@/services/platform'
+import { prepareAudioCacheFile } from '@/services/word-audio-file'
 import { LISTENING_API, LISTENING_PROGRESS_DRAFT_PREFIX } from '@/shared/constants/listening'
 import { Routes } from '@/shared/constants/navigation'
 import { AudioStatus } from '@/shared/enums/audio'
@@ -86,7 +88,7 @@ export const useListeningArticle = () => {
     following = false,
     lastParagraph = -1,
     autosave = 0,
-    audioAddress: Promise<string> | null = null,
+    fullPreparation: ReturnType<typeof createFullAudioPreparation> | null = null,
     saveChain: Promise<void> = Promise.resolve(),
     anchorTimer: ReturnType<typeof setTimeout> | undefined,
     lastAction: (() => Promise<void>) | null = null
@@ -100,7 +102,8 @@ export const useListeningArticle = () => {
     controller?.dispose()
     controller = null
     full = null
-    audioAddress = null
+    fullPreparation?.dispose()
+    fullPreparation = null
   }
   /** 读取失败及失效时关闭私有内容，不回退旧正文
    * @param reason 当前真实服务端错误
@@ -263,7 +266,7 @@ export const useListeningArticle = () => {
       { rate: 1 },
       () => {},
       () => {
-        audioAddress = null
+        fullPreparation?.invalidate()
       },
       () => {
         wordGeneration++
@@ -271,14 +274,27 @@ export const useListeningArticle = () => {
     )
     const currentController = controller
     if (value.payload.audio_id) {
-      audioAddress = guardResource(listeningMedia(value, value.payload.audio_id), value)
-      void audioAddress
-        .then((url) => {
-          if (controller === currentController) currentController.prepareFull(url)
-        })
-        .catch(() => {
-          if (controller === currentController) audioAddress = null
-        })
+      const owner = session.userId()
+      fullPreparation = createFullAudioPreparation({
+        active: () =>
+          alive &&
+          visible &&
+          controller === currentController &&
+          article.value === value &&
+          session.userId() === owner,
+        resolve: () => guardResource(listeningMedia(value, value.payload.audio_id!), value),
+        download: prepareAudioCacheFile,
+        prepared: (url) => currentController.prepareFull(url),
+        onFailure: (reason) => {
+          if (
+            article.value === value &&
+            reason instanceof ApiError &&
+            [401, 403, 404].includes(reason.status || 0)
+          )
+            deny(reason)
+        }
+      })
+      void fullPreparation.prefetch()
     }
     const draftKey =
       LISTENING_PROGRESS_DRAFT_PREFIX + session.userId() + ':' + value.id + ':' + value.version_id
@@ -377,12 +393,8 @@ export const useListeningArticle = () => {
     if (!(await authorize()) || !article.value?.payload.audio_id) return
     follow.value = true
     lastParagraph = -1
-    const value = article.value
-    await controller?.toggleFull(
-      () =>
-        audioAddress ||
-        (audioAddress = guardResource(listeningMedia(value, value.payload.audio_id!), value))
-    )
+    const prepared = fullPreparation
+    if (prepared) await controller?.toggleFull(() => prepared.load())
   }
   /** 拖动按原始音频秒数定位并重新开启跟随
    * @param seconds 媒体原始时间轴的秒数

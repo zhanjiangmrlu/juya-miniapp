@@ -50,7 +50,12 @@ export const createFullAudioPreparation = (ports: FullAudioPreparationPorts) => 
     const cancelled = new Promise<never>((_resolve, reject) => {
       rejectAddress = reject
     })
+    let finishBackground!: () => void
+    const settled = new Promise<void>((resolve) => {
+      finishBackground = resolve
+    })
     const entry: FullAudioPreparationEntry = {
+      settled,
       expires: Date.now() + FULL_AUDIO_LIFETIME_MS,
       url: '',
       file: null,
@@ -59,6 +64,7 @@ export const createFullAudioPreparation = (ports: FullAudioPreparationPorts) => 
       failed: false,
       stopDownload: () => {
         entry.streaming = true
+        finishBackground()
         for (const callback of callbacks) callback()
         callbacks.clear()
       },
@@ -108,22 +114,24 @@ export const createFullAudioPreparation = (ports: FullAudioPreparationPorts) => 
         ports.prepared(file.src)
       } catch (reason) {
         if (!task.active()) return
-        if (reason instanceof ApiError && [401, 409, 410].includes(reason.status || 0)) {
+        if (reason instanceof ApiError && [401, 403, 404, 409, 410].includes(reason.status || 0)) {
           entry.failed = true
           ports.onFailure(reason)
         }
       }
     }
     // 后台准备不向页面泄露拒绝；显式点击仍通过 address 取得可重试错误
-    void prepare().catch(() => undefined)
+    void prepare()
+      .catch(() => undefined)
+      .finally(finishBackground)
     return entry
   }
-  /** 页面进入时只准备当前卡片，重复调用不会创建额外下载 */
+  /** 页面进入时只准备当前卡片，准备结束或转为流式后释放后台词汇队列 */
   const prefetch = () => {
     try {
-      ensure()
+      return ensure().settled
     } catch {
-      /* 页面已经离开 */
+      return Promise.resolve()
     }
   }
   /** 缓存命中时同步返回本地文件，否则取消下载并立即交给网络播放器 */

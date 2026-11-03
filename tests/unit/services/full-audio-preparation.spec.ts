@@ -169,13 +169,42 @@ it('releases a late downloaded file after its page or session changes', async ()
   service.dispose()
 })
 
-it.each([401, 409, 410])('does not stream a resource rejected with status %s', async (status) => {
-  const { service, download, onFailure } = setup()
-  const error = new ApiError('unavailable', '访问已变化', status)
-  download.mockRejectedValueOnce(error)
-  service.prefetch()
+it.each([401, 403, 404, 409, 410])(
+  'does not stream a resource rejected with status %s',
+  async (status) => {
+    const { service, download, onFailure } = setup()
+    const error = new ApiError('unavailable', '访问已变化', status)
+    download.mockRejectedValueOnce(error)
+    service.prefetch()
+    await flushPromises()
+    expect(onFailure).toHaveBeenCalledWith(error)
+    expect(await service.load()).toBe('/remote-full')
+    service.dispose()
+  }
+)
+
+it('keeps background word work waiting until full audio preparation finishes', async () => {
+  const { service, download } = setup()
+  const file = deferred<AudioCacheFile>(),
+    ready = vi.fn()
+  download.mockReturnValue(file.promise)
+  void Promise.resolve(service.prefetch()).then(ready)
   await flushPromises()
-  expect(onFailure).toHaveBeenCalledWith(error)
-  expect(await service.load()).toBe('/remote-full')
+  expect(ready).not.toHaveBeenCalled()
+  file.resolve({ src: '/full', release: vi.fn() })
+  await flushPromises()
+  expect(ready).toHaveBeenCalledTimes(1)
+  service.dispose()
+})
+it('settles the background gate promptly when an unfinished download switches to streaming', async () => {
+  const { service, download } = setup()
+  download.mockReturnValue(deferred<AudioCacheFile>().promise)
+  const ready = vi.fn()
+  void Promise.resolve(service.prefetch()).then(ready)
+  await flushPromises()
+  expect(ready).not.toHaveBeenCalled()
+  service.load()
+  await flushPromises()
+  expect(ready).toHaveBeenCalledTimes(1)
   service.dispose()
 })

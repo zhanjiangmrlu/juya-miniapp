@@ -10,6 +10,7 @@ const ports = vi.hoisted(() => ({
   scroll: undefined as undefined | ((event: { scrollTop: number }) => void),
   unload: undefined as undefined | (() => void),
   release: vi.fn(),
+  fullReady: vi.fn(),
   run: vi.fn(),
   request: vi.fn(),
   invalidate: vi.fn()
@@ -42,7 +43,11 @@ vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({ profile: { id: 'owner' }, ensure: async () => true })
 }))
 vi.mock('@/services/full-audio-preparation', () => ({
-  createFullAudioPreparation: () => ({ prefetch: vi.fn(), load: () => '/full', dispose: vi.fn() })
+  createFullAudioPreparation: () => ({
+    prefetch: ports.fullReady,
+    load: () => '/full',
+    dispose: vi.fn()
+  })
 }))
 vi.mock('@/services/word-audio-file', () => ({
   prepareAudioCacheFile: async () => ({ src: '/full', release: vi.fn() }),
@@ -105,8 +110,9 @@ const scene = {
   content: {
     name: 'Current scene',
     audio_id: 'full-audio',
+    image_id: '',
     dialogue: [{ id: 'line', speaker: 'A', english: 'Try mobile today.', chinese: '今天试试' }],
-    vocabulary: [],
+    vocabulary: [] as { id: string }[],
     chunks: []
   },
   state: { completed: false, today_completed: false, favorite: false, started: true }
@@ -121,6 +127,9 @@ const meaning = {
   provider: 'context'
 }
 beforeEach(() => {
+  scene.content.image_id = ''
+  scene.content.vocabulary = []
+  ports.fullReady.mockResolvedValue(undefined)
   vi.clearAllMocks()
   tracks.length = 0
   ports.request.mockImplementation(async (path: string) =>
@@ -385,5 +394,50 @@ it('coalesces slow visible-region measurements and never schedules another measu
   await vi.advanceTimersByTimeAsync(1000)
   expect(measure).toHaveBeenCalledTimes(2)
   ports.unload?.()
+  page.unmount()
+})
+
+it('defers background dictionary requests while the current full audio is preparing', async () => {
+  let ready!: () => void
+  ports.fullReady.mockReturnValue(
+    new Promise<void>((resolve) => {
+      ready = resolve
+    })
+  )
+  const page = await open()
+  expect(
+    ports.request.mock.calls.filter(([path]) => path.includes('/dictionary/pronunciation'))
+  ).toHaveLength(0)
+  ready()
+  await flushPromises()
+  expect(
+    ports.request.mock.calls.some(([path]) => path.includes('/dictionary/pronunciation'))
+  ).toBe(true)
+  page.unmount()
+})
+
+it('does not start background words after full audio finishes behind an image preview, and resumes on return', async () => {
+  let ready!: () => void
+  scene.content.image_id = 'image'
+  scene.content.vocabulary = [{ id: 'preview-word' }]
+  ports.fullReady.mockReturnValue(
+    new Promise<void>((resolve) => {
+      ready = resolve
+    })
+  )
+  const page = await open()
+  uni.navigateTo = vi.fn(() => {
+    ports.hide?.()
+    return undefined as never
+  })
+  await page.get('.expand-image').trigger('click')
+  ready()
+  await flushPromises()
+  expect(ports.request.mock.calls.filter(([path]) => path.includes('/pronunciation'))).toHaveLength(
+    0
+  )
+  ports.show?.()
+  await flushPromises()
+  expect(ports.request.mock.calls.some(([path]) => path.includes('/pronunciation'))).toBe(true)
   page.unmount()
 })
