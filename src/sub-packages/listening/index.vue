@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline, onShow, onUnload } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import ListeningArticleCard from '@/features/listening/components/listening-article-card.vue'
 import ListeningCategorySummary from '@/features/listening/components/listening-category-summary.vue'
 import { listeningResumeText } from '@/features/listening/listening-presenter'
 import { openListeningArticle } from '@/features/listening/listening-service'
 import { useListeningCatalog } from '@/features/listening/use-listening-catalog'
+import { pageShare } from '@/services/page-share'
 import { PageBackgroundKind } from '@/shared/enums/ui'
+
+const pageShareEntry = usePageShareEntry()
 const panel = ref(false)
 const {
   home,
@@ -42,12 +46,17 @@ const onListScroll = (event: { detail: { scrollTop: number } }) => {
   scrollTop.value = event.detail.scrollTop
 }
 onLoad((query) => {
+  if (pageShareEntry.value) return
   if (query?.category_id) category.value = query.category_id
 })
 onShow(() => {
+  if (pageShareEntry.value) return
   void load()
 })
 onUnload(dispose)
+
+onShareAppMessage(() => ({ ...pageShare.friends }))
+onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage :background-kind="PageBackgroundKind.LISTENING" title="主题听读" back fixed-viewport

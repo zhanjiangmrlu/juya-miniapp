@@ -1,0 +1,26 @@
+{
+  "friends": {
+    "file": "page-share-friends-2f9a6c3d5888.jpg",
+    "sha256": "2f9a6c3d58887a39d23b836da3e03977a254f8f82cc2282a86c13999ed363f4a",
+    "bytes": 114076,
+    "dimensions": [1402, 1122],
+    "fallback": {
+      "file": "page-share-friends-fallback.jpg",
+      "dimensions": [400, 320],
+      "bytes": 23078,
+      "quality": 70
+    }
+  },
+  "timeline": {
+    "file": "page-share-timeline-696f2baaa802.jpg",
+    "sha256": "696f2baaa80234288d7c49f2e65489010ee9109231e58892c8a4a38667062821",
+    "bytes": 130645,
+    "dimensions": [1254, 1254],
+    "fallback": {
+      "file": "page-share-timeline-fallback.jpg",
+      "dimensions": [360, 360],
+      "bytes": 27026,
+      "quality": 70
+    }
+  }
+}

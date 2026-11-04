@@ -1,19 +1,23 @@
 <script setup lang="ts">
-import { onLoad, onUnload } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppReturnBarrier from '@/components/app-return-barrier/app-return-barrier.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import AppUnsavedDialog from '@/components/app-unsaved-dialog/app-unsaved-dialog.vue'
+import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useUnsavedGuard } from '@/composables/use-unsaved-guard'
 import { contactChange, rebaseContact } from '@/features/profile/contact-model'
 import { operations } from '@/services/api'
 import { ApiError, isUnconfirmedFailure } from '@/services/errors'
+import { pageShare } from '@/services/page-share'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { AccountProfile } from '@/shared/types/account'
+
+const pageShareEntry = usePageShareEntry()
 const account = useAccountStore(),
   base = ref<AccountProfile | null>(null),
   phone = ref(''),
@@ -159,6 +163,7 @@ const recover = async () => {
   }
 }
 onLoad(() => {
+  if (pageShareEntry.value) return
   void load()
 })
 onUnload(() => {
@@ -167,6 +172,9 @@ onUnload(() => {
   wechat.value = ''
   base.value = null
 })
+
+onShareAppMessage(() => ({ ...pageShare.friends }))
+onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage

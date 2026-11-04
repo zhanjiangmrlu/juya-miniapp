@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onLoad, onUnload } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 
 import AppAvatar from '@/components/app-avatar/app-avatar.vue'
@@ -7,11 +7,13 @@ import AppPage from '@/components/app-page/app-page.vue'
 import AppReturnBarrier from '@/components/app-return-barrier/app-return-barrier.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import AppUnsavedDialog from '@/components/app-unsaved-dialog/app-unsaved-dialog.vue'
+import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useUnsavedGuard } from '@/composables/use-unsaved-guard'
 import { rebaseIdentity } from '@/features/profile/identity-model'
 import { operations, session } from '@/services/api'
 import { ApiError, isUnconfirmedFailure } from '@/services/errors'
 import { waitForMedia } from '@/services/media-processing'
+import { pageShare } from '@/services/page-share'
 import { operationKey } from '@/services/platform'
 import { Routes } from '@/shared/constants/navigation'
 import { MediaState } from '@/shared/enums/media'
@@ -21,6 +23,8 @@ import { useAccountStore } from '@/stores/account-store'
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { AccountProfile } from '@/shared/types/account'
 import type { AvatarChoiceEvent } from '@/shared/types/ui'
+
+const pageShareEntry = usePageShareEntry()
 const account = useAccountStore(),
   base = ref<AccountProfile | null>(null),
   nickname = ref(''),
@@ -256,6 +260,7 @@ const recover = async () => {
   }
 }
 onLoad(() => {
+  if (pageShareEntry.value) return
   void load()
 })
 onUnload(() => {
@@ -265,6 +270,9 @@ onUnload(() => {
   preview.value = ''
   base.value = null
 })
+
+onShareAppMessage(() => ({ ...pageShare.friends }))
+onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage

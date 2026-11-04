@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onPageScroll } from '@dcloudio/uni-app'
+import { onPageScroll, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import SceneAudioPlayer from '@/features/learning/components/scene-audio-player.vue'
 import SceneDictionary from '@/features/learning/components/scene-dictionary.vue'
 import ListeningBody from '@/features/listening/components/listening-body.vue'
@@ -14,8 +15,11 @@ import { listeningSourceSentence } from '@/features/listening/listening-presente
 import { validateTimeline } from '@/features/listening/reading-model'
 import { useListeningArticle } from '@/features/listening/use-listening-article'
 import { useListeningThumbnail } from '@/features/listening/use-listening-thumbnail'
+import { pageShare } from '@/services/page-share'
 import { Routes } from '@/shared/constants/navigation'
 import { PageBackgroundKind } from '@/shared/enums/ui'
+
+const pageShareEntry = usePageShareEntry()
 const solidHeader = ref(false)
 onPageScroll((event) => {
   solidHeader.value = event.scrollTop > 0
@@ -62,7 +66,7 @@ const {
   closeDictionary,
   pronounce,
   pronounceVocabulary
-} = useListeningArticle()
+} = useListeningArticle(pageShareEntry)
 const {
   thumbnail,
   imageError: thumbnailError,
@@ -108,6 +112,9 @@ const topic = () => {
 const closeImage = () => {
   imageOpen.value = false
 }
+
+onShareAppMessage(() => ({ ...pageShare.friends }))
+onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage

@@ -5,6 +5,8 @@ import {
   onPageScroll,
   onPullDownRefresh,
   onReachBottom,
+  onShareAppMessage,
+  onShareTimeline,
   onShow,
   onUnload
 } from '@dcloudio/uni-app'
@@ -12,6 +14,7 @@ import { computed, nextTick, ref } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useSceneList } from '@/composables/use-scene-list'
 import LearningStatistics from '@/features/learning/components/learning-statistics.vue'
 import SceneCard from '@/features/learning/components/scene-card.vue'
@@ -19,6 +22,7 @@ import SceneListFooter from '@/features/learning/components/scene-list-footer.vu
 import { onSessionExpired, session } from '@/services/api'
 import { dateText } from '@/services/display'
 import { listPageSize } from '@/services/list-page-size'
+import { pageShare } from '@/services/page-share'
 import { storage } from '@/services/platform'
 import { RECORDS_TAB_STORAGE_KEY } from '@/shared/constants/learning'
 import { Routes } from '@/shared/constants/navigation'
@@ -26,6 +30,8 @@ import { RecordsTab } from '@/shared/enums/learning'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
+
+const pageShareEntry = usePageShareEntry()
 const account = useAccountStore(),
   tab = ref<RecordsTab>(RecordsTab.LEARNED),
   statsError = ref(''),
@@ -169,6 +175,7 @@ const more = async () => {
 /** 新用户可返回学习入口 */
 const learn = () => uni.navigateTo({ url: Routes.LEARNING })
 onLoad((query) => {
+  if (pageShareEntry.value) return
   tab.value =
     query?.tab === RecordsTab.CHECKINS ||
     (!query?.tab && storage.get(RECORDS_TAB_STORAGE_KEY) === RecordsTab.CHECKINS)
@@ -176,6 +183,7 @@ onLoad((query) => {
       : RecordsTab.LEARNED
 })
 onShow(() => {
+  if (pageShareEntry.value) return
   void load()
   void loadStats()
 })
@@ -227,6 +235,9 @@ onUnload(() => {
   checkinList.dispose()
   unsubscribe()
 })
+
+onShareAppMessage(() => ({ ...pageShare.friends }))
+onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage title="学习记录" back>

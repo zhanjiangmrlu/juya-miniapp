@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline, onShow } from '@dcloudio/uni-app'
 import { computed, ref, shallowRef } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useUnsavedGuard } from '@/composables/use-unsaved-guard'
 import FeedbackComposer from '@/features/feedback/components/feedback-composer.vue'
 import FeedbackLeaveDialog from '@/features/feedback/components/feedback-leave-dialog.vue'
 import { session } from '@/services/api'
 import { feedbackDraft } from '@/services/feedback-service'
+import { pageShare } from '@/services/page-share'
 import { Routes } from '@/shared/constants/navigation'
 import { FeedbackSource } from '@/shared/enums/feedback'
 import { LeaveChoice } from '@/shared/enums/profile'
@@ -16,6 +18,8 @@ import { useAccountStore } from '@/stores/account-store'
 
 import type { FeedbackDetail, FeedbackOrigin } from '@/shared/types/feedback'
 import type { PublishedScene } from '@/shared/types/learning'
+
+const pageShareEntry = usePageShareEntry()
 const account = useAccountStore(),
   draft = shallowRef<ReturnType<typeof feedbackDraft> | null>(null),
   error = ref(''),
@@ -112,6 +116,7 @@ const reopen = () => {
     })
 }
 onLoad((query) => {
+  if (pageShareEntry.value) return
   cardId = String(query?.card_id || '')
   versionId = String(query?.version_id || '')
   if (
@@ -124,8 +129,12 @@ onLoad((query) => {
   }
 })
 onShow(() => {
+  if (pageShareEntry.value) return
   void load()
 })
+
+onShareAppMessage(() => ({ ...pageShare.friends }))
+onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage title="提交反馈" back custom-back :fallback="Routes.FEEDBACK" @back="guard.requestBack">

@@ -22,6 +22,25 @@ afterEach(() => {
   runtimeMode.update({ apiCategory: 'default' })
   vi.unstubAllGlobals()
 })
+it('enables generic sharing by default while respecting an explicit unavailable page', async () => {
+  vi.stubGlobal('uni', {
+    getWindowInfo: () => ({ windowWidth: 375, statusBarHeight: 20 }),
+    getMenuButtonBoundingClientRect: () => ({ left: 280, bottom: 60 }),
+    showShareMenu: vi.fn(),
+    hideShareMenu: vi.fn()
+  })
+  const page = mount(AppPage, { props: { title: '句芽英语' } })
+  hooks.show?.()
+  expect(uni.showShareMenu).toHaveBeenLastCalledWith({
+    withShareTicket: false,
+    menus: ['shareAppMessage', 'shareTimeline']
+  })
+  await page.setProps({ shareable: false })
+  expect(uni.hideShareMenu).toHaveBeenLastCalledWith({
+    menus: ['shareAppMessage', 'shareTimeline']
+  })
+  page.unmount()
+})
 it('keeps unavailable native channels hidden across preparation, hide, and official mode changes', async () => {
   vi.stubGlobal('uni', {
     getWindowInfo: () => ({ windowWidth: 375, statusBarHeight: 20 }),
@@ -125,6 +144,38 @@ it('keeps the browse-only summary scrollable inside a fixed viewport', () => {
   expect(page.text()).not.toContain('私人列表')
   page.unmount()
 })
+
+it.each([
+  [
+    false,
+    'https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/brand/page-share-timeline-696f2baaa802.jpg',
+    '把英语用进生活里'
+  ],
+  [true, '/static/brand/brand-share-square.png', '在真实场景里学英语']
+] as const)(
+  'uses the correct summary cover while preserving existing public summaries (%s)',
+  async (publicSummary, cover, description) => {
+    vi.stubGlobal('uni', {
+      getWindowInfo: () => ({ windowWidth: 375, statusBarHeight: 20 }),
+      getMenuButtonBoundingClientRect: () => ({ left: 280, bottom: 60 })
+    })
+    runtimeMode.update({ apiCategory: 'browseOnly' })
+    const page = mount(AppPage, {
+      props: { title: '句芽英语', fixedViewport: true, publicSummary },
+      slots: { default: '<text>私人资料</text>' }
+    })
+    expect(page.get('.summary-cover').attributes('src')).toBe(cover)
+    expect(page.text()).toContain(description)
+    expect(page.text()).not.toContain('私人资料')
+    if (!publicSummary) {
+      await page.get('.summary-cover').trigger('error')
+      expect(page.get('.summary-cover').attributes('src')).toBe(
+        '/static/brand/page-share-timeline-fallback.jpg'
+      )
+    }
+    page.unmount()
+  }
+)
 
 it('falls back from JPEG paper to original PNG before retaining only the cream background', async () => {
   vi.stubGlobal('uni', {

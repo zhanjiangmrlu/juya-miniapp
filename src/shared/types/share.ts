@@ -1,7 +1,17 @@
 import type { components } from '@/shared/contracts/generated/mini-api'
-import type { ShareTarget } from '@/shared/enums/share'
+import type { ShareChannel, ShareTarget } from '@/shared/enums/share'
 import type { SendRequest } from '@/shared/types/runtime'
 import type { Ref } from 'vue'
+
+export interface PageShareCoverAsset {
+  url: string
+  file: string
+  fallback: string
+  width: number
+  height: number
+  bytes: number
+}
+export type PageShareCoverAssets = Record<ShareChannel, PageShareCoverAsset>
 
 export type SafeShareTarget =
   { target: typeof ShareTarget.LEARNING } | { target: typeof ShareTarget.SCENE; id: string }

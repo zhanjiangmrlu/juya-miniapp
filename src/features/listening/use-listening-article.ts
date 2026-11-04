@@ -26,6 +26,7 @@ import type {
   ListeningToken
 } from '@/shared/types/listening'
 import type { ListeningBodyHandle } from '@/shared/types/listening-components'
+import type { Ref } from 'vue'
 
 import {
   getListeningArticle,
@@ -35,8 +36,10 @@ import {
   writeListening
 } from './listening-service'
 import { readingAnchor, restoreProgress, tokenizeBody } from './reading-model'
-/** 管理文章受控权限、同版本进度、互斥音轨及完成后的分类顺序 */
-export const useListeningArticle = () => {
+/** 管理文章受控权限、同版本进度、互斥音轨及完成后的分类顺序
+ * @param pageShareEntry 通用分享入口标记，分享落地不启动文章加载
+ */
+export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => {
   const bodyRef = ref<ListeningBodyHandle | null>(null)
   const account = useAccountStore(),
     id = ref(''),
@@ -617,8 +620,11 @@ export const useListeningArticle = () => {
       queueToken.value = token
     }
   }
-  onLoad(initializeRoute)
+  onLoad((query) => {
+    if (!pageShareEntry?.value) initializeRoute(query)
+  })
   onShow(() => {
+    if (pageShareEntry?.value) return
     visible = true
     void load()
   })

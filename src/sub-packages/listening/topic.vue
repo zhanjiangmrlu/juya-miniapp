@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline, onShow } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { session } from '@/services/api'
+import { pageShare } from '@/services/page-share'
 import { LISTENING_API } from '@/shared/constants/listening'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { ListeningTopic } from '@/shared/types/listening'
+
+const pageShareEntry = usePageShareEntry()
 const id = ref(''),
   busy = ref(false),
   error = ref(''),
@@ -34,9 +38,15 @@ const redirect = async () => {
 /** 无有效历史映射时明确返回全部文章 */
 const all = () => uni.redirectTo({ url: Routes.LISTENING })
 onLoad((query) => {
+  if (pageShareEntry.value) return
   id.value = query?.id || ''
 })
-onShow(() => void redirect())
+onShow(() => {
+  if (!pageShareEntry.value) void redirect()
+})
+
+onShareAppMessage(() => ({ ...pageShare.friends }))
+onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage title="主题听读" back

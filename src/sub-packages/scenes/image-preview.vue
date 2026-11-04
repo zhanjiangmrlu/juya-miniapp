@@ -1,8 +1,16 @@
 <script setup lang="ts">
-import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
+import {
+  onHide,
+  onLoad,
+  onShareAppMessage,
+  onShareTimeline,
+  onShow,
+  onUnload
+} from '@dcloudio/uni-app'
 import { computed, nextTick, ref, watch } from 'vue'
 
 import AppLoading from '@/components/app-loading/app-loading.vue'
+import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import ShareSummary from '@/features/share/components/share-summary.vue'
 import { session } from '@/services/api'
 import { ApiError } from '@/services/errors'
@@ -15,18 +23,25 @@ import {
 import { mediaAddress } from '@/services/media-service'
 import { setShareMenu } from '@/services/native-share'
 import { backTo } from '@/services/navigation'
+import { pageShare } from '@/services/page-share'
 import { resourceURL, sendPublicRequest } from '@/services/platform'
 import { runtimeMode } from '@/services/runtime-mode'
 import { shareTargetURL } from '@/services/share-service'
 import { IMAGE_MAX_SCALE, IMAGE_MIN_SCALE } from '@/shared/constants/media'
 import { Routes } from '@/shared/constants/navigation'
-import { SHARE_ID_PATTERN } from '@/shared/constants/share'
+import {
+  PAGE_SHARE_SUMMARY_IMAGE,
+  PAGE_SHARE_TIMELINE,
+  SHARE_ID_PATTERN
+} from '@/shared/constants/share'
 import { ShareTarget } from '@/shared/enums/share'
 import { createAccessMonitor } from '@/sub-packages/scenes/access-monitor'
 import { createShareService } from '@/sub-packages/scenes/scene-share-service'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { ImagePreviewContext, ImageScaleEvent } from '@/shared/types/image-preview'
+
+const pageShareEntry = usePageShareEntry()
 const zoom = ref(IMAGE_MIN_SCALE),
   scaleValue = ref(IMAGE_MIN_SCALE),
   topInset = ref(0),
@@ -155,6 +170,7 @@ const imageLoaded = (run: number) => {
 /** 关闭当前覆盖层，不退出原场景 */
 const close = () => backTo(Routes.LEARNING)
 onLoad((query) => {
+  if (pageShareEntry.value) return
   targetId = typeof query?.id === 'string' && SHARE_ID_PATTERN.test(query.id) ? query.id : ''
   setShareMenu(false)
   if (runtimeMode.update()) {
@@ -174,8 +190,10 @@ onLoad((query) => {
     imageLoading.value = true
   } else void load()
 })
+onHide(() => setShareMenu(false))
 onShow(() => {
-  setShareMenu(false)
+  if (pageShareEntry.value) return
+  setShareMenu(true)
   if (runtimeMode.update()) restrict()
   else if (context?.access) void accessMonitor.refresh()
 })
@@ -195,13 +213,22 @@ onUnload(() => {
   alive = false
   if (context) closeImagePreview(context)
 })
+
+onShareAppMessage(() => ({ ...pageShare.friends }))
+onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <view v-if="browseOnly" class="summary-overlay"
     ><text class="summary-heading">分享摘要</text
     ><ShareSummary
       :summary="publicShare.summary.value"
-      :image="publicShare.channels.timeline.ready ? publicShare.timeline().imageUrl : ''"
+      :image="
+        publicShare.channels.timeline.ready
+          ? publicShare.timeline().imageUrl
+          : PAGE_SHARE_SUMMARY_IMAGE
+      "
+      :fallback-image="targetId ? undefined : PAGE_SHARE_TIMELINE"
+      :description="targetId ? undefined : '把英语用进生活里'"
       :busy="publicShare.busy.value"
       :error="publicShare.error.value"
       @retry="restrict"

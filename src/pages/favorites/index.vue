@@ -4,6 +4,8 @@ import {
   onPageScroll,
   onPullDownRefresh,
   onReachBottom,
+  onShareAppMessage,
+  onShareTimeline,
   onShow,
   onUnload
 } from '@dcloudio/uni-app'
@@ -12,16 +14,20 @@ import { ref } from 'vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { useListPosition } from '@/composables/use-list-position'
+import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useSceneList } from '@/composables/use-scene-list'
 import SceneCard from '@/features/learning/components/scene-card.vue'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import ListeningCollection from '@/features/listening/components/listening-collection.vue'
 import { onSessionExpired, session } from '@/services/api'
+import { pageShare } from '@/services/page-share'
 import { Routes } from '@/shared/constants/navigation'
 import { ContentType } from '@/shared/enums/listening'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
+
+const pageShareEntry = usePageShareEntry()
 const kind = ref<ContentType>(ContentType.SCENE)
 const account = useAccountStore()
 const {
@@ -63,6 +69,7 @@ const unsubscribe = onSessionExpired(reset)
 /** 空收藏可以直接回到学习入口 */
 const learn = () => uni.navigateTo({ url: Routes.LEARNING })
 onShow(() => {
+  if (pageShareEntry.value) return
   // H5 直接刷新路由时可能尚未建立原生底栏，使用回调处理该状态
   uni.hideTabBar({ animation: false, fail: () => undefined })
   void refresh()
@@ -83,6 +90,9 @@ onUnload(() => {
   position.dispose()
   unsubscribe()
 })
+
+onShareAppMessage(() => ({ ...pageShare.friends }))
+onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage title="我的收藏" class="favorites-page" back>

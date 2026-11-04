@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vue'
+import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { openTarget, safeTarget } from '@/services/navigation'
+import { pageShare } from '@/services/page-share'
 import { LOGIN_BOTANICAL_IMAGE_URL } from '@/shared/constants/brand'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { ConsentChangeEvent } from '@/shared/types/ui'
+
+const pageShareEntry = usePageShareEntry()
 const account = useAccountStore(),
   agreed = ref(false),
   busy = ref(false),
@@ -46,6 +50,7 @@ const consent = (event: ConsentChangeEvent) => {
   agreed.value = event.detail.value.includes('agree')
 }
 onLoad((query) => {
+  if (pageShareEntry.value) return
   if (query?.return) {
     try {
       const requested = safeTarget(decodeURIComponent(String(query.return)))
@@ -56,6 +61,9 @@ onLoad((query) => {
     }
   }
 })
+
+onShareAppMessage(() => ({ ...pageShare.friends }))
+onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage title="句芽英语" class="login-screen">

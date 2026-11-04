@@ -54,6 +54,23 @@ it('excludes remote login artwork from the package and keeps native tab icons av
   }
 })
 
+it('packages only small generic share fallbacks while preserving the existing share images', () => {
+  for (const channel of ['friends', 'timeline']) {
+    expect(existsSync(path.join(output, `static/brand/page-share-${channel}@3x.jpg`))).toBe(false)
+    expect(
+      readFileSync(path.join(output, `static/brand/page-share-${channel}-fallback.jpg`)).length
+    ).toBeLessThan(30 * 1024)
+  }
+  expect(existsSync(path.join(output, 'static/brand/page-share-friends-2f9a6c3d5888.jpg'))).toBe(
+    false
+  )
+  expect(existsSync(path.join(output, 'static/brand/page-share-timeline-696f2baaa802.jpg'))).toBe(
+    false
+  )
+  expect(existsSync(path.join(output, 'static/brand/brand-share.png'))).toBe(true)
+  expect(existsSync(path.join(output, 'static/brand/brand-share-square.png'))).toBe(true)
+})
+
 /** 执行真实微信CommonJS产物，只替换原生界面及业务网络边界 */
 const nativeRuntime = () => {
   const opened: string[] = [],
@@ -146,34 +163,49 @@ it.each([
   ])
 })
 
-it.each(['pages/learning/index', 'sub-packages/scenes/detail'])(
-  'exposes both native share lifecycles in the compiled WeChat page %s',
-  (page) => {
-    let pageOptions: { __runtimeHooks?: number } = {}
-    const vendor = {
-      defineComponent: (options: unknown) => options,
-      _export_sfc: (options: unknown) => options
-    }
-    runInNewContext(readFileSync(path.join(output, `${page}.js`), 'utf8'), {
-      require: (specifier: string) => (specifier.endsWith('/common/vendor.js') ? vendor : {}),
-      wx: {
-        createPage: (options: typeof pageOptions) => {
-          pageOptions = options
-        }
-      },
-      exports: {}
-    })
-    // uni-mp-weixin only exposes these optional native callbacks when the compiler sets their flags
-    expect(
-      (pageOptions.__runtimeHooks || 0) & 2,
-      'onShareAppMessage must reach the native page'
-    ).toBe(2)
-    expect(
-      (pageOptions.__runtimeHooks || 0) & 4,
-      'onShareTimeline must reach the native page'
-    ).toBe(4)
-    const configuration = JSON.parse(readFileSync(path.join(output, `${page}.json`), 'utf8'))
-    expect(configuration).not.toHaveProperty('enableShareAppMessage')
-    expect(configuration).not.toHaveProperty('enableShareTimeline')
+it.each([
+  'pages/home/index',
+  'pages/records/index',
+  'pages/profile/index',
+  'pages/learning/index',
+  'pages/favorites/index',
+  'pages/login/index',
+  'sub-packages/scenes/detail',
+  'sub-packages/scenes/image-preview',
+  'sub-packages/records/index',
+  'sub-packages/account/profile',
+  'sub-packages/account/identity-edit',
+  'sub-packages/account/contact-edit',
+  'sub-packages/feedback/index',
+  'sub-packages/feedback/create',
+  'sub-packages/feedback/detail',
+  'sub-packages/listening/index',
+  'sub-packages/listening/topic',
+  'sub-packages/listening/article'
+])('exposes both native share lifecycles in the compiled WeChat page %s', (page) => {
+  let pageOptions: { __runtimeHooks?: number } = {}
+  const vendor = {
+    defineComponent: (options: unknown) => options,
+    _export_sfc: (options: unknown) => options
   }
-)
+  runInNewContext(readFileSync(path.join(output, `${page}.js`), 'utf8'), {
+    require: (specifier: string) => (specifier.endsWith('/common/vendor.js') ? vendor : {}),
+    wx: {
+      createPage: (options: typeof pageOptions) => {
+        pageOptions = options
+      }
+    },
+    exports: {}
+  })
+  // uni-mp-weixin only exposes these optional native callbacks when the compiler sets their flags
+  expect(
+    (pageOptions.__runtimeHooks || 0) & 2,
+    'onShareAppMessage must reach the native page'
+  ).toBe(2)
+  expect((pageOptions.__runtimeHooks || 0) & 4, 'onShareTimeline must reach the native page').toBe(
+    4
+  )
+  const configuration = JSON.parse(readFileSync(path.join(output, `${page}.json`), 'utf8'))
+  expect(configuration).not.toHaveProperty('enableShareAppMessage')
+  expect(configuration).not.toHaveProperty('enableShareTimeline')
+})

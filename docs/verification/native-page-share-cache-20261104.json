@@ -1,0 +1,54 @@
+{
+  "environment": "test",
+  "native_download_and_share": {
+    "cached": [
+      {
+        "name": "juya-page-share-page-share-friends-2f9a6c3d5888.jpg",
+        "bytes": 114076
+      },
+      {
+        "name": "juya-page-share-page-share-timeline-696f2baaa802.jpg",
+        "bytes": 130645
+      }
+    ],
+    "shares": {
+      "page": "pages/home/index",
+      "friends": {
+        "title": "句芽英语｜把英语用进生活里",
+        "path": "/pages/home/index",
+        "imageUrl": "http://usr/juya-page-share-page-share-friends-2f9a6c3d5888.jpg"
+      },
+      "timeline": {
+        "title": "句芽英语｜把英语用进生活里",
+        "query": "target=home",
+        "imageUrl": "http://usr/juya-page-share-page-share-timeline-696f2baaa802.jpg"
+      }
+    }
+  },
+  "native_cache_eviction_and_restore": {
+    "fallback": {
+      "friends": {
+        "title": "句芽英语｜把英语用进生活里",
+        "path": "/pages/home/index",
+        "imageUrl": "/static/brand/page-share-friends-fallback.jpg"
+      },
+      "timeline": {
+        "title": "句芽英语｜把英语用进生活里",
+        "query": "target=home",
+        "imageUrl": "/static/brand/page-share-timeline-fallback.jpg"
+      }
+    },
+    "restored": [
+      {
+        "name": "juya-page-share-page-share-friends-2f9a6c3d5888.jpg",
+        "bytes": 114076
+      },
+      {
+        "name": "juya-page-share-page-share-timeline-696f2baaa802.jpg",
+        "bytes": 130645
+      }
+    ],
+    "cache_eviction_verified": true
+  },
+  "real_message_sent": false
+}
