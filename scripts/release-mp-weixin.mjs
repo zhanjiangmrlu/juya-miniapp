@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isDeepStrictEqual } from 'node:util'
 
+import { publishAssets } from './asset-publish.mjs'
 import { buildProduction, uploadWeChat } from './wechat-release-build.mjs'
 
 const recordPath = 'release/wechat-version.json'
@@ -176,6 +177,7 @@ export const runRelease = async ({
   root,
   mode = 'upload',
   build = buildProduction,
+  publish = publishAssets,
   upload = uploadWeChat
 }) => {
   if (
@@ -247,6 +249,11 @@ export const runRelease = async ({
     checkClean(root)
     if (git(root, 'rev-parse', 'HEAD') !== sourceCommit || remoteHead(root) !== sourceCommit)
       throw new Error('构建期间源码或远程已变化，请重新构建')
+    await publish({ root, environment: 'production' })
+    checkBranch(root)
+    checkClean(root)
+    if (git(root, 'rev-parse', 'HEAD') !== sourceCommit || remoteHead(root) !== sourceCommit)
+      throw new Error('资源同步期间源码或远程已变化，请重新构建')
     const journal = { phase: 'uploading', sourceCommit, previous, candidate }
     save(journalFile, journal)
     const result = await upload({ root, candidate, output })

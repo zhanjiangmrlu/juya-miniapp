@@ -12,7 +12,7 @@
     "build": "pnpm build:mp-weixin",
     "build:h5": "uni build -p h5",
     "build:mp-weixin": "uni build -p mp-weixin && node scripts/verify-mp-page-meta.mjs && node scripts/verify-mp-package-budget.mjs",
-    "build:mp-weixin:test": "uni build -p mp-weixin --mode test && node scripts/verify-mp-page-meta.mjs && node scripts/verify-mp-package-budget.mjs",
+    "build:mp-weixin:test": "node scripts/build-mp-weixin-test.mjs",
     "build:mp-weixin:local": "uni build -p mp-weixin --mode development && node scripts/verify-mp-page-meta.mjs",
     "build:mp-weixin:local-share": "node scripts/build-local-share.mjs",
     "check": "pnpm format:check && pnpm lint && pnpm lint:style && pnpm typecheck",
@@ -50,6 +50,7 @@
     "@vue/compiler-sfc": "3.4.21",
     "@vue/test-utils": "2.5.1",
     "@vue/tsconfig": "0.7.0",
+    "ali-oss": "6.23.0",
     "eslint": "9.39.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-import-resolver-typescript": "4.4.5",
@@ -60,10 +61,12 @@
     "eslint-plugin-vue": "10.6.2",
     "happy-dom": "20.14.5",
     "lint-staged": "16.2.6",
+    "openapi-typescript": "7.13.0",
     "postcss-html": "2.0.0",
     "prettier": "3.9.9",
     "sass": "1.77.8",
     "simple-git-hooks": "2.13.1",
+    "ssh2": "1.17.0",
     "stylelint": "17.15.0",
     "stylelint-config-recommended-vue": "2.0.0",
     "stylelint-config-standard-scss": "17.0.0",
@@ -72,8 +75,7 @@
     "vite": "5.2.8",
     "vitest": "3.2.4",
     "vue-eslint-parser": "10.3.0",
-    "vue-tsc": "2.2.12",
-    "openapi-typescript": "7.13.0"
+    "vue-tsc": "2.2.12"
   },
   "lint-staged": {
     "*.{js,mjs,cjs,ts,tsx}": [

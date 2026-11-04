@@ -64,9 +64,9 @@ it('uploads 1.0.1 then 1.0.2 without requiring publication and syncs only releas
     versions.push(candidate.version)
   }
   const upload = () => ({ status: 'success', info: { fixture: true } })
-  await runRelease({ root: f.root, build, upload })
+  await runRelease({ publish: async () => {}, root: f.root, build, upload })
   expect(f.record().version).toBe('1.0.1')
-  await runRelease({ root: f.root, build, upload })
+  await runRelease({ publish: async () => {}, root: f.root, build, upload })
   expect(versions).toEqual(['1.0.1', '1.0.2'])
   expect(f.record().versionCode).toBe(102)
   expect(f.git('status', '--porcelain')).toBe('')
@@ -82,6 +82,7 @@ it.each(['dry-run', 'build-only'])('%s does not upload or advance records', asyn
   const f = fixture()
   const head = f.git('rev-parse', 'HEAD')
   await runRelease({
+    publish: async () => {},
     root: f.root,
     mode,
     build: () => {},
@@ -97,6 +98,7 @@ it('keeps the version after build failure or explicit upload rejection', async (
   const f = fixture()
   await expect(
     runRelease({
+      publish: async () => {},
       root: f.root,
       build: () => {
         throw new Error('build failed')
@@ -104,10 +106,20 @@ it('keeps the version after build failure or explicit upload rejection', async (
     })
   ).rejects.toThrow('build failed')
   await expect(
-    runRelease({ root: f.root, build: () => {}, upload: () => ({ status: 'failed' }) })
+    runRelease({
+      publish: async () => {},
+      root: f.root,
+      build: () => {},
+      upload: () => ({ status: 'failed' })
+    })
   ).rejects.toThrow()
   expect(f.record().version).toBe('1.0.0')
-  await runRelease({ root: f.root, build: () => {}, upload: () => ({ status: 'success' }) })
+  await runRelease({
+    publish: async () => {},
+    root: f.root,
+    build: () => {},
+    upload: () => ({ status: 'success' })
+  })
   expect(f.record().version).toBe('1.0.1')
 })
 it('blocks unknown uploads until explicitly resolved and resumes without uploading again', async () => {
@@ -115,6 +127,7 @@ it('blocks unknown uploads until explicitly resolved and resumes without uploadi
   const f = fixture()
   await expect(
     runRelease({
+      publish: async () => {},
       root: f.root,
       build: () => {},
       upload: () => {
@@ -122,8 +135,11 @@ it('blocks unknown uploads until explicitly resolved and resumes without uploadi
       }
     })
   ).rejects.toThrow()
-  await expect(runRelease({ root: f.root, mode: 'dry-run' })).rejects.toThrow(/待处理/)
+  await expect(
+    runRelease({ publish: async () => {}, root: f.root, mode: 'dry-run' })
+  ).rejects.toThrow(/待处理/)
   await runRelease({
+    publish: async () => {},
     root: f.root,
     mode: 'confirm-uploaded',
     upload: () => {
@@ -138,11 +154,17 @@ it('resumes a successful upload after a rejected push without uploading again', 
   const remote = f.git('remote', 'get-url', 'origin')
   f.git('config', 'remote.origin.pushurl', path.join(f.root, 'missing.git'))
   await expect(
-    runRelease({ root: f.root, build: () => {}, upload: () => ({ status: 'success' }) })
+    runRelease({
+      publish: async () => {},
+      root: f.root,
+      build: () => {},
+      upload: () => ({ status: 'success' })
+    })
   ).rejects.toThrow()
   expect(f.record().version).toBe('1.0.1')
   f.git('config', 'remote.origin.pushurl', remote)
   await runRelease({
+    publish: async () => {},
     root: f.root,
     mode: 'resume',
     upload: () => {
@@ -150,21 +172,31 @@ it('resumes a successful upload after a rejected push without uploading again', 
     }
   })
   expect(f.record().version).toBe('1.0.1')
-  await expect(runRelease({ root: f.root, mode: 'resume' })).rejects.toThrow(/没有/)
+  await expect(
+    runRelease({ publish: async () => {}, root: f.root, mode: 'resume' })
+  ).rejects.toThrow(/没有/)
 })
 it('rejects non-release, dirty, stale and locked repositories before building', async () => {
   const { runRelease } = await import(script)
   const other = fixture('test')
-  await expect(runRelease({ root: other.root, mode: 'dry-run' })).rejects.toThrow(/release/)
+  await expect(
+    runRelease({ publish: async () => {}, root: other.root, mode: 'dry-run' })
+  ).rejects.toThrow(/release/)
   const f = fixture()
   writeFileSync(path.join(f.root, 'untracked.txt'), 'dirty')
-  await expect(runRelease({ root: f.root, mode: 'dry-run' })).rejects.toThrow(/改动/)
+  await expect(
+    runRelease({ publish: async () => {}, root: f.root, mode: 'dry-run' })
+  ).rejects.toThrow(/改动/)
   rmSync(path.join(f.root, 'untracked.txt'))
   mkdirSync(path.join(f.root, '.git/juya-wechat-release.lock'))
-  await expect(runRelease({ root: f.root, mode: 'build-only' })).rejects.toThrow(/锁/)
+  await expect(
+    runRelease({ publish: async () => {}, root: f.root, mode: 'build-only' })
+  ).rejects.toThrow(/锁/)
   rmSync(path.join(f.root, '.git/juya-wechat-release.lock'), { recursive: true })
   f.git('commit', '--allow-empty', '-m', 'not synced')
-  await expect(runRelease({ root: f.root, mode: 'dry-run' })).rejects.toThrow(/同步/)
+  await expect(
+    runRelease({ publish: async () => {}, root: f.root, mode: 'dry-run' })
+  ).rejects.toThrow(/同步/)
 })
 
 it('recovers a crash between the version commit and journal update', async () => {
@@ -172,7 +204,12 @@ it('recovers a crash between the version commit and journal update', async () =>
   const f = fixture()
   f.git('config', 'remote.origin.pushurl', path.join(f.root, 'missing.git'))
   await expect(
-    runRelease({ root: f.root, build: () => {}, upload: () => ({ status: 'success' }) })
+    runRelease({
+      publish: async () => {},
+      root: f.root,
+      build: () => {},
+      upload: () => ({ status: 'success' })
+    })
   ).rejects.toThrow()
   const journalFile = path.join(f.root, '.git/juya-wechat-release.json')
   const journal = JSON.parse(readFileSync(journalFile, 'utf8'))
@@ -180,7 +217,7 @@ it('recovers a crash between the version commit and journal update', async () =>
   delete journal.recordCommit
   writeFileSync(journalFile, JSON.stringify(journal))
   f.git('config', '--unset', 'remote.origin.pushurl')
-  await runRelease({ root: f.root, mode: 'resume' })
+  await runRelease({ publish: async () => {}, root: f.root, mode: 'resume' })
   expect(f.record().version).toBe('1.0.1')
 })
 it('does not commit unrelated manifest edits while recovering a failed commit', async () => {
@@ -189,23 +226,92 @@ it('does not commit unrelated manifest edits while recovering a failed commit', 
   const hook = path.join(f.root, '.git/hooks/pre-commit')
   writeFileSync(hook, '#!/bin/sh\nexit 1\n', { mode: 0o755 })
   await expect(
-    runRelease({ root: f.root, build: () => {}, upload: () => ({ status: 'success' }) })
+    runRelease({
+      publish: async () => {},
+      root: f.root,
+      build: () => {},
+      upload: () => ({ status: 'success' })
+    })
   ).rejects.toThrow()
   rmSync(hook)
   const manifestFile = path.join(f.root, 'src/manifest.json')
   const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'))
   manifest.unrelated = 'should not be committed'
   writeFileSync(manifestFile, JSON.stringify(manifest))
-  await expect(runRelease({ root: f.root, mode: 'resume' })).rejects.toThrow(/变化/)
+  await expect(
+    runRelease({ publish: async () => {}, root: f.root, mode: 'resume' })
+  ).rejects.toThrow(/变化/)
 })
 it('allows retry of the same version after confirming an unknown upload did not succeed', async () => {
   const { runRelease } = await import(script)
   const f = fixture()
   await expect(
-    runRelease({ root: f.root, build: () => {}, upload: () => ({ status: 'unknown' }) })
+    runRelease({
+      publish: async () => {},
+      root: f.root,
+      build: () => {},
+      upload: () => ({ status: 'unknown' })
+    })
   ).rejects.toThrow()
-  await runRelease({ root: f.root, mode: 'confirm-not-uploaded' })
+  await runRelease({ publish: async () => {}, root: f.root, mode: 'confirm-not-uploaded' })
   expect(f.record().version).toBe('1.0.0')
-  await runRelease({ root: f.root, build: () => {}, upload: () => ({ status: 'success' }) })
+  await runRelease({
+    publish: async () => {},
+    root: f.root,
+    build: () => {},
+    upload: () => ({ status: 'success' })
+  })
   expect(f.record().version).toBe('1.0.1')
+})
+
+it('publishes production assets before WeChat upload and leaves the version untouched on failure', async () => {
+  const { runRelease } = await import(script)
+  const f = fixture()
+  const events: string[] = []
+  await expect(
+    runRelease({
+      root: f.root,
+      build: () => events.push('build'),
+      publish: async ({ environment }: { environment: string }) => {
+        events.push(environment)
+        throw new Error('asset publication failed')
+      },
+      upload: () => {
+        events.push('upload')
+        return { status: 'success' }
+      }
+    })
+  ).rejects.toThrow('asset publication failed')
+  expect(events).toEqual(['build', 'production'])
+  expect(f.record().version).toBe('1.0.0')
+})
+it.each(['dry-run', 'build-only'])('does not publish OSS resources in %s mode', async (mode) => {
+  const { runRelease } = await import(script)
+  const f = fixture()
+  await runRelease({
+    root: f.root,
+    mode,
+    build: () => {},
+    publish: () => {
+      throw new Error('must not publish assets')
+    }
+  })
+  expect(f.record().version).toBe('1.0.0')
+})
+it('checks source edits made during resource synchronization before uploading WeChat', async () => {
+  const { runRelease } = await import(script)
+  const f = fixture()
+  let uploaded = false
+  await expect(
+    runRelease({
+      root: f.root,
+      build: () => {},
+      publish: () => writeFileSync(path.join(f.root, 'changed.txt'), 'changed'),
+      upload: () => {
+        uploaded = true
+        return { status: 'success' }
+      }
+    })
+  ).rejects.toThrow()
+  expect(uploaded).toBe(false)
 })

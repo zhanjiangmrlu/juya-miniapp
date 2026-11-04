@@ -56,6 +56,13 @@
    - **新增或修改代码遵守以上规范；已有文件不因命名规范而批量改名、迁移目录或调整路由。确需修改页面路径时，必须同步更新 `pages.json`、导航配置、页面跳转和相关测试。**
 
 
+## 静态资源自动发布
+
+- 新增运行时图片/字体放在resources/oss，文件名必须包含内容SHA256前12位（如home-watercolor-42627c088d7e@3x.jpg），更新内容时更新文件名和引用，不覆盖旧对象；历史非哈希原图由publish-archive.json固定归档
+- 测试发布构建使用pnpm build:mp-weixin:test，成功后自动同步测试OSS；生产仅正式pnpm release:mp-weixin同步生产OSS及生产静态域名
+- 普通生产构建、--build-only、--dry-run、热更新和自动化测试均不上传资源；禁止为测试使用真实生产发布端口
+- 上传凭据仅私有.private/asset-publish.local.json或JUYA_ASSET_PUBLISH_CONFIG指定文件，禁止VITE密钥变量；模式、失败与恢复见docs/operations/asset-publish.md
+
 ## release 小程序上传
 
 - 生产小程序打包上传统一使用 `pnpm release:mp-weixin`，不要使用临时脚本手填上传版本
