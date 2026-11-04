@@ -21,6 +21,8 @@ pnpm release:mp-weixin
 
 每次只接受一个选项；不接受手填版本号。普通 `build:mp-weixin` 等命令不改变行为。新命令隔离输出到 `dist/release/mp-weixin`，源文件版本不在构建阶段修改；构建清单副本和版本说明位于 `dist/release/input/manifest.json`、`dist/release/build-info.json`。生产 API、静态域名、Mock 和本地登录模式由发布构建明确指定，忽略终端注入的测试配置。
 
+生产构建固定启用远程字体，复用生产静态域名的四个既有 WOFF；字体加载前或失败时使用系统字体，不阻塞启动。字体及资源减包记录见[本地验证](../verification/package-optimization-20261104.md)。
+
 官方上传成功并收到有效 JSON 回执后，更新 `release/wechat-version.json` 和 `src/manifest.json`，只提交这两个文件，提交标题为 `chore(release): 记录小程序<版本>上传成功`，再推送 `HEAD:refs/heads/release`。推送地址必须与读取的 origin 地址一致。**执行普通发布命令即包含自动 Git 提交及推送。** 工具不切换体验版、不提交审核、不正式发布。
 
 ## 异常恢复

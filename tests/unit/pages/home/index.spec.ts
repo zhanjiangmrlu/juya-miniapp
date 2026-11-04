@@ -38,3 +38,12 @@ it('shows the fixed IELTS introduction and three listening descriptions while op
   page.unmount()
   vi.unstubAllGlobals()
 })
+
+it('uses the environment static host for its hashed home decoration', () => {
+  const page = shallowMount(Home)
+  const container = page.findComponent({ name: 'AppPage' })
+  expect(container.props('backgroundImage')).toMatch(
+    /^https:\/\/juya-test\.oss-cn-shenzhen\.aliyuncs\.com\/miniapp\/static\/listening\/home-watercolor-[a-f0-9]{12}@3x\.jpg$/
+  )
+  page.unmount()
+})

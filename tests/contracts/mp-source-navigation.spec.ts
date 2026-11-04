@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -208,4 +208,21 @@ it.each([
   const configuration = JSON.parse(readFileSync(path.join(output, `${page}.json`), 'utf8'))
   expect(configuration).not.toHaveProperty('enableShareAppMessage')
   expect(configuration).not.toHaveProperty('enableShareTimeline')
+})
+
+it('excludes the remote home background and resolves package dependencies without main-to-subpackage imports', () => {
+  expect(existsSync(path.join(output, 'static/listening/home-watercolor@3x.jpg'))).toBe(false)
+  for (const entry of readdirSync(output, { recursive: true }).map(String)) {
+    if (!entry.endsWith('.js')) continue
+    const code = readFileSync(path.join(output, entry), 'utf8')
+    for (const match of code.matchAll(/require\(["'](\.[^"']+)["']\)/g)) {
+      const dependency = path.resolve(output, path.dirname(entry), match[1])
+      expect(existsSync(dependency), `${entry} requires missing ${match[1]}`).toBe(true)
+      if (!entry.startsWith(`sub-packages${path.sep}`)) {
+        expect(path.relative(output, dependency).startsWith(`sub-packages${path.sep}`), entry).toBe(
+          false
+        )
+      }
+    }
+  }
 })

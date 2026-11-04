@@ -8,6 +8,9 @@ it('serves only explicit local design assets, never configuration or traversal',
   expect(designAssetFile('/design-assets/backgrounds/scene-window.png')).toContain(
     'resources/oss/backgrounds/scene-window.png'
   )
+  expect(designAssetFile('/design-assets/listening/home-watercolor-42627c088d7e@3x.jpg')).toContain(
+    'resources/oss/listening/home-watercolor-42627c088d7e@3x.jpg'
+  )
   for (const path of [
     '/design-assets/../.env',
     '/design-assets/%2e%2e/.env',

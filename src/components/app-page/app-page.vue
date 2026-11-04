@@ -40,6 +40,7 @@ const props = withDefaults(
     backgroundKind: undefined
   }
 )
+const backgroundFailed = ref(false)
 const artworkFailures = ref(0),
   paperFailures = ref(0)
 const artwork = computed(() =>
@@ -66,6 +67,15 @@ const resetBackgroundFailures = () => {
   paperFailures.value = 0
 }
 watch(() => props.backgroundKind, resetBackgroundFailures)
+/** 背景加载失败后保留页面纯色，不阻塞内容和交互 */
+const onBackgroundError = () => {
+  backgroundFailed.value = true
+}
+/** 更换背景资源时允许新图片正常加载 */
+const resetBackgroundImageFailure = () => {
+  backgroundFailed.value = false
+}
+watch(() => props.backgroundImage, resetBackgroundImageFailure)
 const emit = defineEmits<{ back: [] }>()
 const browseOnly = runtimeMode.browseOnly
 let visible = false
@@ -132,11 +142,12 @@ const goBack = () => {
       backgroundImage: paper ? `url(${paper})` : undefined
     }"
     ><image
-      v-if="backgroundImage"
+      v-if="backgroundImage && !backgroundFailed"
       class="page-background"
       :src="backgroundImage"
       mode="aspectFill"
-      aria-hidden="true" /><image
+      aria-hidden="true"
+      @error="onBackgroundError" /><image
       v-if="artwork"
       class="page-artwork"
       :src="artwork"

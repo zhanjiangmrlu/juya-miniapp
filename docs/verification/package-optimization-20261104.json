@@ -1,0 +1,39 @@
+{
+  "baseline_commit": "4fef24065a497db4c8979c62da035215bc36ebe5",
+  "before": {
+    "main": 1126779,
+    "total": 1260023,
+    "app_wxss": 411120,
+    "subpackages": {
+      "sub-packages/scenes/": 47821,
+      "sub-packages/records/": 10868,
+      "sub-packages/account/": 21292,
+      "sub-packages/feedback/": 23508,
+      "sub-packages/listening/": 29755
+    }
+  },
+  "after": {
+    "main": 630481,
+    "total": 828400,
+    "app_wxss": 2206,
+    "subpackages": {
+      "sub-packages/scenes/": 63572,
+      "sub-packages/records/": 10868,
+      "sub-packages/account/": 21292,
+      "sub-packages/feedback/": 37192,
+      "sub-packages/listening/": 64995
+    }
+  },
+  "main_saved": 496298,
+  "total_saved": 431623,
+  "measurement": "local uncompressed build files; not official WeChat processed size",
+  "tests": {
+    "files": 103,
+    "passed": 525,
+    "static_checks": "passed",
+    "wechat_build": "passed",
+    "h5_build": "passed",
+    "code_review": "no blockers"
+  },
+  "uploaded": false
+}

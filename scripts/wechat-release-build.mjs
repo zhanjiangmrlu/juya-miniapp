@@ -37,7 +37,7 @@ export const buildProduction = ({ root, candidate }) => {
     VITE_API_BASE_URL: 'https://api.juyayingyu.com',
     VITE_STATIC_ASSET_BASE_URL: 'https://api.juyayingyu.com/miniapp/static',
     VITE_PAGE_SHARE_ASSET_BASE_URL: 'https://api.juyayingyu.com/miniapp/static',
-    VITE_REMOTE_FONTS: 'false',
+    VITE_REMOTE_FONTS: 'true',
     VITE_USE_MOCK_API: 'false',
     VITE_LOCAL_DEV_MODE: 'false'
   })

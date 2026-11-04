@@ -7,12 +7,12 @@ import AppState from '@/components/app-state/app-state.vue'
 import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import ListeningArticleCard from '@/features/listening/components/listening-article-card.vue'
-import ListeningCategorySummary from '@/features/listening/components/listening-category-summary.vue'
 import { listeningResumeText } from '@/features/listening/listening-presenter'
 import { openListeningArticle } from '@/features/listening/listening-service'
-import { useListeningCatalog } from '@/features/listening/use-listening-catalog'
 import { pageShare } from '@/services/page-share'
 import { PageBackgroundKind } from '@/shared/enums/ui'
+import ListeningCategorySummary from '@/sub-packages/listening/components/listening-category-summary.vue'
+import { useListeningCatalog } from '@/sub-packages/listening/use-listening-catalog'
 
 const pageShareEntry = usePageShareEntry()
 const panel = ref(false)
