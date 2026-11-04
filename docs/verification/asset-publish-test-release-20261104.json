@@ -1,0 +1,171 @@
+{
+  "commit": "190f5003ce77e43af58387172cfd51cd8c9507ad",
+  "version": "1.5.0-test.1104.1719",
+  "environment": "test",
+  "api_base": "https://test-api.juyayingyu.com",
+  "asset_base": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static",
+  "main_source_bytes": 446749,
+  "package_sha256": "dd8c09c224b758f5adba8d3926def95988dd066d7da06947522e08ba937033ad",
+  "source_pushed_to": "origin/test",
+  "automatic_asset_publish": {
+    "environment": "test",
+    "bucket": "juya-test",
+    "entries": [
+      {
+        "file": "backgrounds/listening-vase-5b20483e3922.webp",
+        "key": "miniapp/static/backgrounds/listening-vase-5b20483e3922.webp",
+        "bytes": 53292,
+        "sha256": "5b20483e39229a7406c09c9bce2f78a51656de4b7b4eefe7790ad7e4f351281c",
+        "status": "skipped",
+        "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/backgrounds/listening-vase-5b20483e3922.webp"
+      },
+      {
+        "file": "backgrounds/paper-texture-ee39e121f9c3.jpg",
+        "key": "miniapp/static/backgrounds/paper-texture-ee39e121f9c3.jpg",
+        "bytes": 50966,
+        "sha256": "ee39e121f9c36349676f4164affdc7456e380c6beb5715046a3237aae8e8d6ec",
+        "status": "skipped",
+        "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/backgrounds/paper-texture-ee39e121f9c3.jpg"
+      },
+      {
+        "file": "backgrounds/profile-basket-e91cc518433d.webp",
+        "key": "miniapp/static/backgrounds/profile-basket-e91cc518433d.webp",
+        "bytes": 69636,
+        "sha256": "e91cc518433d004e9939892059d4c15555b2b81f1d9dfc4e3795bfc812e040c9",
+        "status": "skipped",
+        "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/backgrounds/profile-basket-e91cc518433d.webp"
+      },
+      {
+        "file": "backgrounds/reading-window-71ae33bab6f5.webp",
+        "key": "miniapp/static/backgrounds/reading-window-71ae33bab6f5.webp",
+        "bytes": 44184,
+        "sha256": "71ae33bab6f53143130fcba489092dfc81fc325f1b2825cd099178eff7bf22ce",
+        "status": "skipped",
+        "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/backgrounds/reading-window-71ae33bab6f5.webp"
+      },
+      {
+        "file": "backgrounds/records-journal-78658fff8368.webp",
+        "key": "miniapp/static/backgrounds/records-journal-78658fff8368.webp",
+        "bytes": 54758,
+        "sha256": "78658fff8368a4f16736434b17bcb4e58b810111923e09ce8f69c7634ef1d1e7",
+        "status": "skipped",
+        "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/backgrounds/records-journal-78658fff8368.webp"
+      },
+      {
+        "file": "backgrounds/scene-window-1816629a6ee2.webp",
+        "key": "miniapp/static/backgrounds/scene-window-1816629a6ee2.webp",
+        "bytes": 55798,
+        "sha256": "1816629a6ee24fca73474c85283be35a5df9d71c52132fb638ec8162e2c63dba",
+        "status": "skipped",
+        "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/backgrounds/scene-window-1816629a6ee2.webp"
+      },
+      {
+        "file": "brand/page-share-friends-2f9a6c3d5888.jpg",
+        "key": "miniapp/static/brand/page-share-friends-2f9a6c3d5888.jpg",
+        "bytes": 114076,
+        "sha256": "2f9a6c3d58887a39d23b836da3e03977a254f8f82cc2282a86c13999ed363f4a",
+        "status": "skipped",
+        "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/brand/page-share-friends-2f9a6c3d5888.jpg"
+      },
+      {
+        "file": "brand/page-share-timeline-696f2baaa802.jpg",
+        "key": "miniapp/static/brand/page-share-timeline-696f2baaa802.jpg",
+        "bytes": 130645,
+        "sha256": "696f2baaa80234288d7c49f2e65489010ee9109231e58892c8a4a38667062821",
+        "status": "skipped",
+        "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/brand/page-share-timeline-696f2baaa802.jpg"
+      },
+      {
+        "file": "fonts/dm-sans-19b2ba846548.woff",
+        "key": "miniapp/static/fonts/dm-sans-19b2ba846548.woff",
+        "bytes": 47924,
+        "sha256": "19b2ba846548029c4fe0bb423de90d84a90473aae241db54296638b35720fc0a",
+        "status": "skipped",
+        "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/fonts/dm-sans-19b2ba846548.woff"
+      },
+      {
+        "file": "fonts/fraunces-italic-0e42d420e3d2.woff",
+        "key": "miniapp/static/fonts/fraunces-italic-0e42d420e3d2.woff",
+        "bytes": 12640,
+        "sha256": "0e42d420e3d2e1f55aac75f2ffb3d4b4732b4637c80422959d9982a4c9edda2f",
+        "status": "skipped",
+        "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/fonts/fraunces-italic-0e42d420e3d2.woff"
+      },
+      {
+        "file": "fonts/fraunces-regular-1a07e715bff9.woff",
+        "key": "miniapp/static/fonts/fraunces-regular-1a07e715bff9.woff",
+        "bytes": 88448,
+        "sha256": "1a07e715bff9af0269c13d8cd49226c50c8c649d39ba6f3477d0b0d2136e9000",
+        "status": "skipped",
+        "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/fonts/fraunces-regular-1a07e715bff9.woff"
+      },
+      {
+        "file": "fonts/juya-ui-chinese-2de0b76bda1d.woff",
+        "key": "miniapp/static/fonts/juya-ui-chinese-2de0b76bda1d.woff",
+        "bytes": 157260,
+        "sha256": "2de0b76bda1d0a672e6eea56ab31daf06a08b67db6bd076d5501d3b7cf4115ed",
+        "status": "skipped",
+        "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/fonts/juya-ui-chinese-2de0b76bda1d.woff"
+      },
+      {
+        "file": "listening/home-watercolor-42627c088d7e@3x.jpg",
+        "key": "miniapp/static/listening/home-watercolor-42627c088d7e@3x.jpg",
+        "bytes": 185176,
+        "sha256": "42627c088d7e32246e8d431987fb09f265b78907b6d989c04942de83297f5aea",
+        "status": "skipped",
+        "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/listening/home-watercolor-42627c088d7e@3x.jpg"
+      }
+    ]
+  },
+  "official_cli_exit_code": 0,
+  "official_cli_upload_complete": true,
+  "official_size": {
+    "total": 1216781,
+    "packages": [
+      {
+        "name": "TOTAL",
+        "size": 1216781
+      },
+      {
+        "name": "main",
+        "size": 779818
+      },
+      {
+        "name": "/sub-packages/account/",
+        "size": 55778
+      },
+      {
+        "name": "/sub-packages/feedback/",
+        "size": 70904
+      },
+      {
+        "name": "/sub-packages/listening/",
+        "size": 139497
+      },
+      {
+        "name": "/sub-packages/records/",
+        "size": 24978
+      },
+      {
+        "name": "/sub-packages/scenes/",
+        "size": 145806
+      }
+    ]
+  },
+  "source_files_unchanged_during_upload": true,
+  "experience_version_changed": false,
+  "wechat_review_submitted": false,
+  "production_wechat_published": false,
+  "verification": {
+    "files": 106,
+    "passed": 544,
+    "command": "pnpm test --maxWorkers=2",
+    "static_checks_passed": true,
+    "test_build_passed": true,
+    "test_api_ready": 200
+  },
+  "production_assets_published": false,
+  "api_deployed": false,
+  "admin_deployed": false,
+  "database_operations": false
+}
