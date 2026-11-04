@@ -1,0 +1,84 @@
+{
+  "commit": "982976f1827a2383a0c7a5a8e9816f931d9b4c48",
+  "version": "1.0.0",
+  "manifest_version_name": "1.0.0",
+  "manifest_version_code": "100",
+  "environment": "production",
+  "api_base": "https://api.juyayingyu.com",
+  "asset_base": "https://api.juyayingyu.com/miniapp/static",
+  "official_cli_exit_code": 0,
+  "official_cli_upload_complete": true,
+  "package_sha256": "9f405c0b5f9487808030494cb43276ce1475f52dcc1e9e2eac866822239e3a3a",
+  "experience_version_changed": false,
+  "wechat_review_submitted": false,
+  "production_wechat_published": false,
+  "official_size": {
+    "total": 1829761,
+    "packages": [
+      {
+        "name": "TOTAL",
+        "size": 1829761
+      },
+      {
+        "name": "main",
+        "size": 1529784
+      },
+      {
+        "name": "/sub-packages/account/",
+        "size": 55778
+      },
+      {
+        "name": "/sub-packages/feedback/",
+        "size": 48067
+      },
+      {
+        "name": "/sub-packages/listening/",
+        "size": 48442
+      },
+      {
+        "name": "/sub-packages/records/",
+        "size": 24978
+      },
+      {
+        "name": "/sub-packages/scenes/",
+        "size": 122712
+      }
+    ]
+  },
+  "source_files_unchanged_during_upload": true,
+  "test_feature_commit": "19d3d6d",
+  "tests": {
+    "test_branch": 511,
+    "merged_release": 511,
+    "static_checks_passed": true,
+    "production_wechat_build_passed": true
+  },
+  "static_resources": {
+    "status": "complete",
+    "environment": "production",
+    "files": [
+      {
+        "url": "https://api.juyayingyu.com/miniapp/static/brand/page-share-friends-2f9a6c3d5888.jpg",
+        "sha256": "2f9a6c3d58887a39d23b836da3e03977a254f8f82cc2282a86c13999ed363f4a",
+        "bytes": 114076,
+        "status": 200,
+        "mime": "image/jpeg",
+        "cache_control": "public, max-age=31536000, immutable"
+      },
+      {
+        "url": "https://api.juyayingyu.com/miniapp/static/brand/page-share-timeline-696f2baaa802.jpg",
+        "sha256": "696f2baaa80234288d7c49f2e65489010ee9109231e58892c8a4a38667062821",
+        "bytes": 130645,
+        "status": 200,
+        "mime": "image/jpeg",
+        "cache_control": "public, max-age=31536000, immutable"
+      }
+    ],
+    "original_resources_preserved": true,
+    "test_nginx_unchanged": true,
+    "database_operations": false,
+    "api_deployed": false,
+    "nginx_graceful_reload": true
+  },
+  "local_hot_reload_preserved": true
+}
