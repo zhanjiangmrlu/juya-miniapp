@@ -12,9 +12,11 @@ const fixture = (content = 'image-one') => {
   const root = mkdtempSync(path.join(tmpdir(), 'juya-assets-'))
   roots.push(root)
   mkdirSync(path.join(root, 'resources/oss/images'), { recursive: true })
-  const body = Buffer.from(content)
+  const body = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><title>${content}</title></svg>`
+  )
   const sha = createHash('sha256').update(body).digest('hex')
-  const file = `images/art-${sha.slice(0, 12)}@3x.jpg`
+  const file = `images/art-${sha.slice(0, 12)}@3x.svg`
   writeFileSync(path.join(root, 'resources/oss', file), body)
   return { root, file, body }
 }
@@ -44,7 +46,7 @@ it.each(['test', 'production'])(
       )
       return {
         body: f.body,
-        contentType: 'image/jpeg',
+        contentType: 'image/svg+xml',
         cacheControl: 'public, max-age=31536000, immutable',
         status: 200
       }
@@ -105,7 +107,7 @@ it('accepts a concurrent immutable create only after re-reading the exact conten
     },
     readPublic: async () => ({
       body: f.body,
-      contentType: 'image/jpeg',
+      contentType: 'image/svg+xml',
       cacheControl: 'max-age=31536000, immutable',
       status: 200
     })
@@ -126,7 +128,7 @@ it('blocks release when the public route returns the wrong content', async () =>
       readPublic: async () => ({
         body: Buffer.from('wrong'),
         status: 200,
-        contentType: 'image/jpeg',
+        contentType: 'image/svg+xml',
         cacheControl: 'immutable, max-age=31536000'
       })
     })
@@ -137,7 +139,7 @@ it('rejects invalid names, content hashes, environments and symlinks before uplo
   const { collectAssets, publishAssets } = await import(script)
   const f = fixture()
   writeFileSync(path.join(f.root, 'resources/oss', f.file), 'modified')
-  expect(() => collectAssets(f.root)).toThrow(/哈希/)
+  expect(() => collectAssets(f.root)).toThrow(/图片/)
   await expect(publishAssets({ root: f.root, environment: 'development' })).rejects.toThrow(/环境/)
   const g = fixture()
   symlinkSync(
@@ -164,12 +166,12 @@ it('does not expose malformed private JSON and refuses changed historical origin
   )
   expect(() => collectAssets(f.root)).toThrow(/历史原图/)
 })
-it('ignores resource metadata and rejects unversioned newly added pictures', async () => {
+it('ignores resource metadata and versions ordinary newly added pictures', async () => {
   const { collectAssets } = await import(script)
   const f = fixture()
   writeFileSync(path.join(f.root, 'resources/oss/notes.md'), 'documentation')
   writeFileSync(path.join(f.root, 'resources/oss/manifest.json'), '{}')
   expect(collectAssets(f.root)).toHaveLength(1)
-  writeFileSync(path.join(f.root, 'resources/oss/new.jpg'), 'new')
-  expect(() => collectAssets(f.root)).toThrow(/哈希/)
+  writeFileSync(path.join(f.root, 'resources/oss/new.svg'), f.body)
+  expect(collectAssets(f.root)).toHaveLength(2)
 })

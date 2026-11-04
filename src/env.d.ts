@@ -12,3 +12,5 @@ declare module '*.vue' {
   const component: DefineComponent<Record<string, never>, Record<string, never>, unknown>
   export default component
 }
+
+declare const __JUYA_ASSET_MANIFEST__: import('./shared/types/assets').AssetManifest

@@ -249,7 +249,11 @@ export const runRelease = async ({
     checkClean(root)
     if (git(root, 'rev-parse', 'HEAD') !== sourceCommit || remoteHead(root) !== sourceCommit)
       throw new Error('构建期间源码或远程已变化，请重新构建')
-    await publish({ root, environment: 'production' })
+    await publish({
+      root,
+      environment: 'production',
+      manifestFile: path.join(root, 'dist/release/asset-manifest.json')
+    })
     checkBranch(root)
     checkClean(root)
     if (git(root, 'rev-parse', 'HEAD') !== sourceCommit || remoteHead(root) !== sourceCommit)

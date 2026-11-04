@@ -1,3 +1,4 @@
+import { assetInfo, assetUrl } from '@/services/asset-url'
 import { ShareChannel } from '@/shared/enums/share'
 
 import type { PageShareCoverAssets } from '@/shared/types/share'
@@ -13,26 +14,28 @@ export const PAGE_SHARE_TIMELINE = '/static/brand/page-share-timeline-fallback.j
 export const PAGE_SHARE_ASSET_BASE_URL = (
   import.meta.env.VITE_PAGE_SHARE_ASSET_BASE_URL || ''
 ).replace(/\/+$/, '')
+const friends = assetInfo('brand/page-share-friends.jpg')
+const timeline = assetInfo('brand/page-share-timeline.jpg')
 export const PAGE_SHARE_COVERS: PageShareCoverAssets = {
   [ShareChannel.FRIENDS]: {
     url: PAGE_SHARE_ASSET_BASE_URL
-      ? `${PAGE_SHARE_ASSET_BASE_URL}/brand/page-share-friends-2f9a6c3d5888.jpg`
+      ? assetUrl('brand/page-share-friends.jpg', PAGE_SHARE_ASSET_BASE_URL)
       : '',
-    file: 'page-share-friends-2f9a6c3d5888.jpg',
+    file: friends?.file.split('/').pop() || '',
     fallback: PAGE_SHARE_FRIENDS,
-    width: 1402,
-    height: 1122,
-    bytes: 114076
+    width: friends?.width || 0,
+    height: friends?.height || 0,
+    bytes: friends?.bytes || 0
   },
   [ShareChannel.TIMELINE]: {
     url: PAGE_SHARE_ASSET_BASE_URL
-      ? `${PAGE_SHARE_ASSET_BASE_URL}/brand/page-share-timeline-696f2baaa802.jpg`
+      ? assetUrl('brand/page-share-timeline.jpg', PAGE_SHARE_ASSET_BASE_URL)
       : '',
-    file: 'page-share-timeline-696f2baaa802.jpg',
+    file: timeline?.file.split('/').pop() || '',
     fallback: PAGE_SHARE_TIMELINE,
-    width: 1254,
-    height: 1254,
-    bytes: 130645
+    width: timeline?.width || 0,
+    height: timeline?.height || 0,
+    bytes: timeline?.bytes || 0
   }
 }
 export const PAGE_SHARE_SUMMARY_IMAGE =

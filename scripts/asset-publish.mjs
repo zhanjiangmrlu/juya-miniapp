@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto'
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+
+import { assertBuildManifest, collectAssetCatalog } from './asset-manifest.mjs'
 
 const targets = {
   test: {
@@ -10,74 +12,10 @@ const targets = {
   },
   production: { bucket: 'juya', publicBase: 'https://api.juyayingyu.com/miniapp/static' }
 }
-const mimeTypes = {
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.png': 'image/png',
-  '.webp': 'image/webp',
-  '.svg': 'image/svg+xml',
-  '.gif': 'image/gif',
-  '.woff': 'font/woff'
-}
-/** 计算待发布资源的完整内容哈希，body 为文件字节 */
+/** 计算资源字节哈希，body 为待比对内容 */
 const digest = (body) => createHash('sha256').update(body).digest('hex')
-/** 收集内容哈希命名的运行时资源，root 为当前小程序仓库 */
-export const collectAssets = (root) => {
-  const base = path.join(root, 'resources/oss')
-  if (lstatSync(path.join(root, 'resources')).isSymbolicLink())
-    throw new Error('资源不允许符号链接')
-  const archivePath = path.join(base, 'publish-archive.json')
-  if (existsSync(archivePath) && lstatSync(archivePath).isSymbolicLink())
-    throw new Error('资源不允许符号链接')
-  let archive = {}
-  try {
-    if (existsSync(archivePath)) archive = JSON.parse(readFileSync(archivePath, 'utf8'))
-  } catch {
-    throw new Error('资源归档清单格式错误')
-  }
-  const assets = []
-  /** 检查目录及文件，directory 为待遍历的归档目录 */
-  const visit = (directory) => {
-    if (lstatSync(directory).isSymbolicLink()) throw new Error('资源不允许符号链接')
-    for (const name of readdirSync(directory).sort()) {
-      const absolute = path.join(directory, name),
-        stat = lstatSync(absolute)
-      if (stat.isSymbolicLink()) throw new Error('资源不允许符号链接')
-      if (stat.isDirectory()) {
-        visit(absolute)
-        continue
-      }
-      if (!stat.isFile()) throw new Error('资源必须为普通文件')
-      const file = path.relative(base, absolute).split(path.sep).join('/')
-      const extension = path.extname(file)
-      if (['.json', '.md'].includes(extension)) continue
-      if (!mimeTypes[extension] || !/^[a-z0-9@._/-]+$/.test(file))
-        throw new Error(`资源文件名或类型无效：${file}`)
-      const body = readFileSync(absolute),
-        sha256 = digest(body)
-      if (Object.hasOwn(archive, file)) {
-        if (archive[file] !== sha256)
-          throw new Error(`历史原图已改变，请生成哈希版本并更新引用：${file}`)
-        continue
-      }
-      const hash = /-([a-f0-9]{12})(?:@3x)?\.[^.]+$/.exec(file)?.[1]
-      if (!hash || hash !== sha256.slice(0, 12))
-        throw new Error(`资源哈希文件名与内容不匹配：${file}`)
-      if (body.length > 16 * 1024 * 1024) throw new Error(`资源超过16MiB：${file}`)
-      assets.push({
-        file,
-        key: `miniapp/static/${file}`,
-        sha256,
-        bytes: body.length,
-        body,
-        contentType: mimeTypes[extension],
-        cacheControl: 'public, max-age=31536000, immutable'
-      })
-    }
-  }
-  visit(base)
-  return assets
-}
+/** 收集待发布资源，root 为当前小程序仓库 */
+export const collectAssets = (root) => collectAssetCatalog(root).assets
 /** 读取忽略的私有发布配置，root 为仓库目录，environment 为明确发布环境 */
 const credentials = (root, environment) => {
   const file =
@@ -122,13 +60,16 @@ const fetchPublic = async (url) => {
 export const publishAssets = async ({
   root,
   environment,
+  manifestFile,
   store,
   mirror,
   readPublic = fetchPublic
 }) => {
   if (!Object.hasOwn(targets, environment)) throw new Error('资源发布环境必须为test或production')
   const target = targets[environment],
-    assets = collectAssets(root)
+    catalog = collectAssetCatalog(root)
+  if (manifestFile) assertBuildManifest(catalog, manifestFile)
+  const assets = catalog.assets
   let config
   if (!store || (environment === 'production' && !mirror)) config = credentials(root, environment)
   if (!store) {

@@ -32,6 +32,7 @@ export const buildProduction = ({ root, candidate }) => {
   )
   Object.assign(env, {
     NODE_ENV: 'production',
+    JUYA_ASSET_BUILD_MANIFEST: path.join(directory, 'asset-manifest.json'),
     UNI_INPUT_DIR: input,
     UNI_OUTPUT_DIR: output,
     VITE_API_BASE_URL: 'https://api.juyayingyu.com',
@@ -68,13 +69,20 @@ export const buildProduction = ({ root, candidate }) => {
   return output
 }
 
-/** 调用官方工具上传，root 为仓库目录、candidate 为版本、output 为已校验包路径 */
-export const uploadWeChat = ({ root, candidate, output }) => {
+/** 调用官方工具上传，root 为仓库、candidate 为版本、output 为包路径，directory 为回执目录，description 为环境备注 */
+export const uploadWeChat = ({
+  root,
+  candidate,
+  output,
+  directory = path.join(root, 'dist/release'),
+  description = `生产环境 ${candidate.version}`
+}) => {
   const cli =
     process.env.WECHAT_DEVTOOLS_CLI ||
     (process.platform === 'darwin' ? '/Applications/wechatwebdevtools.app/Contents/MacOS/cli' : '')
   if (!cli) return { status: 'failed', info: '请设置 WECHAT_DEVTOOLS_CLI 指向微信开发者工具 CLI' }
-  const infoFile = path.join(root, 'dist/release/upload-info.json')
+  mkdirSync(directory, { recursive: true })
+  const infoFile = path.join(directory, 'upload-info.json')
   rmSync(infoFile, { force: true })
   const args = [
     'upload',
@@ -83,7 +91,7 @@ export const uploadWeChat = ({ root, candidate, output }) => {
     '--version',
     candidate.version,
     '--desc',
-    `生产环境 ${candidate.version}`,
+    description,
     '--info-output',
     infoFile
   ]
@@ -96,7 +104,7 @@ export const uploadWeChat = ({ root, candidate, output }) => {
     { cwd: root, encoding: 'utf8', timeout: 300000 }
   )
   writeFileSync(
-    path.join(root, 'dist/release/upload.log'),
+    path.join(directory, 'upload.log'),
     `${result.stdout || ''}\n${result.stderr || ''}`
   )
   if (result.error && ['ENOENT', 'EACCES'].includes(result.error.code))
@@ -109,5 +117,5 @@ export const uploadWeChat = ({ root, candidate, output }) => {
     }
   }
   // 非零退出也可能发生在远端已收包之后，不据此断言上传失败
-  return { status: 'unknown', info: '请核对微信后台和 dist/release/upload.log' }
+  return { status: 'unknown', info: `请核对微信后台和 ${directory}/upload.log` }
 }

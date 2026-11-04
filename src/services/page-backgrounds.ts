@@ -1,4 +1,4 @@
-import { STATIC_ASSET_BASE_URL } from '@/shared/constants/brand'
+import { assetUrl } from '@/services/asset-url'
 import { PAGE_BACKGROUND_ORIGINALS, PAGE_BACKGROUNDS } from '@/shared/constants/ui'
 
 import type { PageBackgroundKind } from '@/shared/enums/ui'
@@ -8,4 +8,4 @@ import type { PageBackgroundKind } from '@/shared/enums/ui'
  * @returns 静态资源地址
  */
 export const pageBackgroundURL = (kind: PageBackgroundKind, original = false) =>
-  `${STATIC_ASSET_BASE_URL || '/design-assets'}/backgrounds/${(original ? PAGE_BACKGROUND_ORIGINALS : PAGE_BACKGROUNDS)[kind]}`
+  assetUrl(`backgrounds/${(original ? PAGE_BACKGROUND_ORIGINALS : PAGE_BACKGROUNDS)[kind]}`)

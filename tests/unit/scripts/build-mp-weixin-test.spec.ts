@@ -7,8 +7,14 @@ it('publishes only test assets after successful compilation', async () => {
   const events: string[] = []
   await buildTest({
     root: '/fixture',
-    build: () => events.push('build'),
-    publish: ({ environment }: { environment: string }) => events.push(environment)
+    build: () => {
+      events.push('build')
+      return '/fixture/dist/asset-manifest.json'
+    },
+    publish: ({ environment, manifestFile }: { environment: string; manifestFile: string }) => {
+      expect(manifestFile).toBe('/fixture/dist/asset-manifest.json')
+      events.push(environment)
+    }
   })
   expect(events).toEqual(['build', 'test'])
 })
@@ -30,10 +36,25 @@ it('never publishes after a failed build and propagates asset publication failur
   await expect(
     buildTest({
       root: '/fixture',
-      build: () => {},
+      build: () => '/fixture/dist/asset-manifest.json',
       publish: () => {
         throw new Error('assets failed')
       }
     })
   ).rejects.toThrow('assets failed')
+})
+
+it('blocks publication if compilation does not return its resource manifest', async () => {
+  const { buildTest } = await import(path.resolve('scripts/build-mp-weixin-test.mjs'))
+  let published = false
+  await expect(
+    buildTest({
+      root: '/fixture',
+      build: () => undefined,
+      publish: () => {
+        published = true
+      }
+    })
+  ).rejects.toThrow(/未返回资源清单/)
+  expect(published).toBe(false)
 })

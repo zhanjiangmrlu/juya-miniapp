@@ -17,4 +17,4 @@ export const PAGE_BACKGROUNDS: Record<PageBackgroundKind, string> = {
   paper: 'paper-texture-ee39e121f9c3.jpg'
 }
 
-export const HOME_BACKGROUND_FILE = 'listening/home-watercolor-42627c088d7e@3x.jpg'
+export const HOME_BACKGROUND_FILE = 'listening/home-watercolor@3x.jpg'

@@ -1,6 +1,7 @@
 import { computed, reactive } from 'vue'
 
-import { STATIC_ASSET_BASE_URL } from '@/shared/constants/brand'
+import { assetUrl } from '@/services/asset-url'
+import { STATIC_ASSET_BASE_URL } from '@/shared/constants/assets'
 import { DESIGN_FONT_FACES, REMOTE_FONTS_ENABLED } from '@/shared/constants/fonts'
 
 import type { CSSProperties } from 'vue'
@@ -48,7 +49,7 @@ export const loadRemoteFonts = () => {
       uni.loadFontFace({
         global: true,
         family: face.family,
-        source: `url("${STATIC_ASSET_BASE_URL}/fonts/${face.file}")`,
+        source: `url("${assetUrl(`fonts/${face.file}`)}")`,
         desc: { style: face.style, weight: '100 900', variant: 'normal' },
         success: () => loaded.add(face.file),
         fail: () => undefined
