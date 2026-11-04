@@ -8,6 +8,7 @@ import { backTo } from '@/services/navigation'
 import { pageBackgroundURL } from '@/services/page-backgrounds'
 import { remoteFontStyles } from '@/services/remote-fonts'
 import { runtimeMode } from '@/services/runtime-mode'
+import { PAGE_SHARE_SUMMARY_IMAGE, PAGE_SHARE_TIMELINE } from '@/shared/constants/share'
 import { PageBackgroundKind } from '@/shared/enums/ui'
 
 import type { ShareMenuChannels } from '@/shared/types/share'
@@ -33,6 +34,7 @@ const props = withDefaults(
     footer: false,
     fallback: undefined,
     customBack: false,
+    shareable: true,
     shareChannels: undefined,
     backgroundImage: undefined,
     backgroundKind: undefined
@@ -167,8 +169,16 @@ const goBack = () => {
           enhanced
           :show-scrollbar="false"
           ><ShareSummary
+            :image="publicSummary ? undefined : PAGE_SHARE_SUMMARY_IMAGE"
+            :fallback-image="publicSummary ? undefined : PAGE_SHARE_TIMELINE"
+            :description="publicSummary ? undefined : '把英语用进生活里'"
         /></scroll-view>
-        <ShareSummary v-else /> </template
+        <ShareSummary
+          v-else
+          :image="publicSummary ? undefined : PAGE_SHARE_SUMMARY_IMAGE"
+          :fallback-image="publicSummary ? undefined : PAGE_SHARE_TIMELINE"
+          :description="publicSummary ? undefined : '把英语用进生活里'"
+        /> </template
       ><slot v-else /></view
     ><slot v-if="!browseOnly" name="footer"
   /></view>

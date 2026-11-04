@@ -7,6 +7,10 @@ const ports = vi.hoisted(() => ({
   request: vi.fn()
 }))
 vi.mock('@dcloudio/uni-app', () => ({
+  onHide: vi.fn(),
+  onUnload: vi.fn(),
+  onShareAppMessage: vi.fn(),
+  onShareTimeline: vi.fn(),
   onLoad: (callback: typeof ports.load) => {
     ports.load = callback
   },

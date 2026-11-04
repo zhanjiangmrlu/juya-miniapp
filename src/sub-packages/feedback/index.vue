@@ -1,21 +1,31 @@
 <script setup lang="ts">
-import { onReachBottom, onShow, onUnload } from '@dcloudio/uni-app'
+import {
+  onReachBottom,
+  onShareAppMessage,
+  onShareTimeline,
+  onShow,
+  onUnload
+} from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import AppLoading from '@/components/app-loading/app-loading.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useSceneList } from '@/composables/use-scene-list'
 import { feedbackTime } from '@/features/feedback/feedback-model'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import { onSessionExpired, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
+import { pageShare } from '@/services/page-share'
 import { FEEDBACK_CATEGORIES, FEEDBACK_STATUS_LABELS } from '@/shared/constants/feedback'
 import { Routes } from '@/shared/constants/navigation'
 import { FeedbackStatus } from '@/shared/enums/feedback'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { FeedbackDetail } from '@/shared/types/feedback'
+
+const pageShareEntry = usePageShareEntry()
 const account = useAccountStore(),
   owner = ref<string | null>(null)
 const list = useSceneList<FeedbackDetail>({
@@ -45,6 +55,7 @@ const unsubscribe = onSessionExpired(() => {
   owner.value = null
 })
 onShow(() => {
+  if (pageShareEntry.value) return
   void load()
 })
 onReachBottom(() => {
@@ -54,6 +65,9 @@ onUnload(() => {
   list.dispose()
   unsubscribe()
 })
+
+onShareAppMessage(() => ({ ...pageShare.friends }))
+onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage title="我的反馈" back :fallback="Routes.PROFILE">

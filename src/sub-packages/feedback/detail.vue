@@ -1,9 +1,17 @@
 <script setup lang="ts">
-import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
+import {
+  onHide,
+  onLoad,
+  onShareAppMessage,
+  onShareTimeline,
+  onShow,
+  onUnload
+} from '@dcloudio/uni-app'
 import { computed, nextTick, ref, shallowRef } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useUnsavedGuard } from '@/composables/use-unsaved-guard'
 import FeedbackComposer from '@/features/feedback/components/feedback-composer.vue'
 import FeedbackLeaveDialog from '@/features/feedback/components/feedback-leave-dialog.vue'
@@ -11,6 +19,7 @@ import FeedbackThread from '@/features/feedback/components/feedback-thread.vue'
 import { onSessionExpired, session } from '@/services/api'
 import { feedbackDraft, feedbackInbox } from '@/services/feedback-service'
 import { openScene } from '@/services/navigation'
+import { pageShare } from '@/services/page-share'
 import { FEEDBACK_CATEGORIES, FEEDBACK_STATUS_LABELS } from '@/shared/constants/feedback'
 import { Routes } from '@/shared/constants/navigation'
 import { FeedbackSource, FeedbackStatus } from '@/shared/enums/feedback'
@@ -18,6 +27,8 @@ import { LeaveChoice } from '@/shared/enums/profile'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { FeedbackDetail } from '@/shared/types/feedback'
+
+const pageShareEntry = usePageShareEntry()
 const account = useAccountStore(),
   feedback = shallowRef<FeedbackDetail | null>(null),
   draft = shallowRef<ReturnType<typeof feedbackDraft> | null>(null),
@@ -114,6 +125,7 @@ const unsubscribe = onSessionExpired(() => {
   busy.value = false
 })
 onLoad((query) => {
+  if (pageShareEntry.value) return
   id = String(query?.id || '')
   if (!/^[A-Za-z0-9-]{1,64}$/.test(id)) {
     id = ''
@@ -121,6 +133,7 @@ onLoad((query) => {
   }
 })
 onShow(() => {
+  if (pageShareEntry.value) return
   visible = true
   void load()
 })
@@ -132,6 +145,9 @@ onUnload(() => {
   generation++
   unsubscribe()
 })
+
+onShareAppMessage(() => ({ ...pageShare.friends }))
+onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage title="反馈详情" back custom-back :fallback="Routes.FEEDBACK" @back="guard.requestBack">

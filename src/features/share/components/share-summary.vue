@@ -1,26 +1,50 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { BRAND_SHARE_TIMELINE, COMPLETE_APP_GUIDANCE } from '@/shared/constants/share'
 
 import type { PublicSceneShare } from '@/shared/types/share'
 
-defineProps<{ summary?: PublicSceneShare | null; image?: string; busy?: boolean; error?: string }>()
+const props = defineProps<{
+  summary?: PublicSceneShare | null
+  image?: string
+  fallbackImage?: string
+  description?: string
+  busy?: boolean
+  error?: string
+}>()
 defineEmits<{ retry: [] }>()
 const guidance = ref(false)
+const imageFailed = ref(false)
+const cover = computed(() =>
+  imageFailed.value && props.fallbackImage
+    ? props.fallbackImage
+    : props.image || BRAND_SHARE_TIMELINE
+)
+/** 通用 OSS 图片加载失败后只回到包内小图，原场景摘要保持原有处理 */
+const onImageError = () => {
+  if (props.fallbackImage) imageFailed.value = true
+}
+watch(
+  () => props.image,
+  () => {
+    imageFailed.value = false
+  }
+)
 </script>
 <template>
   <view class="share-summary">
     <template v-if="!busy && !error">
       <image
         class="summary-cover"
-        :src="image || BRAND_SHARE_TIMELINE"
+        :src="cover"
         mode="aspectFit"
         :alt="summary?.name || '句芽英语'"
+        @error="onImageError"
       />
       <text class="summary-title">{{ summary?.name || '句芽英语' }}</text>
       <text v-if="summary?.title_en" class="summary-english">{{ summary.title_en }}</text>
-      <text class="summary-description">在真实场景里学英语</text>
+      <text class="summary-description">{{ description || '在真实场景里学英语' }}</text>
     </template>
     <text v-else class="summary-message" role="status">{{
       busy ? '正在获取分享摘要…' : error

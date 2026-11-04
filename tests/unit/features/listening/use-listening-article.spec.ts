@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 const ports = vi.hoisted(() => ({
   load: null as null | ((query: Record<string, string>) => void),
   show: null as null | (() => void),
@@ -189,6 +190,15 @@ const open = async () => {
   await flushPromises()
   return model
 }
+it('does not load an article or audio for a generic timeline landing', async () => {
+  const model = useListeningArticle(ref(true))
+  ports.load?.({ target: 'home' })
+  ports.show?.()
+  await flushPromises()
+  expect(ports.request).not.toHaveBeenCalled()
+  expect(ports.audio).toHaveLength(0)
+  expect(model.article.value).toBeNull()
+})
 it('restores the server version progress paused and freezes the actual media clock during pause', async () => {
   const model = await open(),
     full = ports.audio[0]!

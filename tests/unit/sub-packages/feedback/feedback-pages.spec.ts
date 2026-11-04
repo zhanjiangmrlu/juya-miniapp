@@ -9,6 +9,8 @@ import { createOperationService } from '@/services/operation-service'
 
 import type { FeedbackDetail } from '@/shared/types/feedback'
 const ports = vi.hoisted(() => ({
+  loads: [] as ((query: Record<string, string>) => void)[],
+  shows: [] as (() => void)[],
   load: undefined as undefined | ((query: Record<string, string>) => void),
   show: undefined as undefined | (() => void),
   request: vi.fn(),
@@ -18,11 +20,15 @@ const ports = vi.hoisted(() => ({
   redirect: vi.fn()
 }))
 vi.mock('@dcloudio/uni-app', () => ({
+  onShareAppMessage: vi.fn(),
+  onShareTimeline: vi.fn(),
   onLoad: (cb: typeof ports.load) => {
-    ports.load = cb
+    if (cb) ports.loads.push(cb)
+    ports.load = (query) => ports.loads.forEach((callback) => callback(query))
   },
   onShow: (cb: typeof ports.show) => {
-    ports.show = cb
+    if (cb) ports.shows.push(cb)
+    ports.show = () => ports.shows.forEach((callback) => callback())
   },
   onHide: vi.fn(),
   onUnload: vi.fn()
@@ -97,6 +103,8 @@ const globals = {
   }
 }
 beforeEach(() => {
+  ports.loads.length = 0
+  ports.shows.length = 0
   ports.request.mockReset()
   ports.ensure.mockReset().mockResolvedValue(true)
   ports.acknowledge.mockReset().mockResolvedValue(undefined)
@@ -125,7 +133,26 @@ beforeEach(() => {
     feedbackId: 'feedback-1',
     key: () => `image-key-${++key}`
   })
-  vi.stubGlobal('uni', { redirectTo: ports.redirect, navigateTo: vi.fn(), previewImage: vi.fn() })
+  vi.stubGlobal('uni', {
+    redirectTo: ports.redirect,
+    navigateTo: vi.fn(),
+    switchTab: vi.fn(),
+    previewImage: vi.fn()
+  })
+})
+it('opens home from a generic timeline entry without restoring or opening recipient feedback', async () => {
+  const draft = ports.draft as ReturnType<typeof createFeedbackDraft>
+  const resume = vi.spyOn(draft, 'resume').mockResolvedValue(original)
+  const page = shallowMount(FeedbackCreate, { global: globals })
+  ports.load?.({ target: 'home' })
+  ports.show?.()
+  await flushPromises()
+  expect(uni.switchTab).toHaveBeenCalledWith({ url: '/pages/home/index' })
+  expect(ports.ensure).not.toHaveBeenCalled()
+  expect(resume).not.toHaveBeenCalled()
+  expect(ports.redirect).not.toHaveBeenCalled()
+  expect(ports.request).not.toHaveBeenCalled()
+  page.unmount()
 })
 it('renders the server snapshot before acknowledgement and permits repeated supplements after resolved status', async () => {
   let current = structuredClone(original)

@@ -1,0 +1,27 @@
+{
+  "verified_at": "2026-11-04T02:26:58.945721+00:00",
+  "environment": "test",
+  "bucket": "juya-test",
+  "uploaded": [
+    {
+      "channel": "friends",
+      "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/brand/page-share-friends-2f9a6c3d5888.jpg",
+      "status": 200,
+      "bytes": 114076,
+      "sha256": "2f9a6c3d58887a39d23b836da3e03977a254f8f82cc2282a86c13999ed363f4a",
+      "content_type": "image/jpeg",
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "channel": "timeline",
+      "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/brand/page-share-timeline-696f2baaa802.jpg",
+      "status": 200,
+      "bytes": 130645,
+      "sha256": "696f2baaa80234288d7c49f2e65489010ee9109231e58892c8a4a38667062821",
+      "content_type": "image/jpeg",
+      "cache_control": "public, max-age=31536000, immutable"
+    }
+  ],
+  "production_touched": false,
+  "bucket_policy_changed": false
+}

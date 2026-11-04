@@ -3,10 +3,12 @@ import { fileURLToPath } from 'node:url'
 
 import type { Plugin } from 'vite'
 
+import pageShareAssets from '../resources/oss/brand/page-share-manifest.json'
 import { PAGE_BACKGROUND_ORIGINALS, PAGE_BACKGROUNDS } from '../src/shared/constants/ui'
 const assets = [
   ...Object.values(PAGE_BACKGROUND_ORIGINALS).map((file) => `backgrounds/${file}`),
   ...Object.values(PAGE_BACKGROUNDS).map((file) => `backgrounds/${file}`),
+  ...Object.values(pageShareAssets).map((asset) => `brand/${asset.file}`),
   'fonts/fraunces-regular-1a07e715bff9.woff',
   'fonts/juya-ui-chinese-2de0b76bda1d.woff',
   'fonts/dm-sans-19b2ba846548.woff',

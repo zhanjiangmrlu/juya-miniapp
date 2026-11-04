@@ -7,7 +7,14 @@ vi.mock('@/services/api', () => ({
   onSessionExpired: () => () => undefined,
   session: { userId: () => 'owner' }
 }))
-vi.mock('@dcloudio/uni-app', () => ({ onShow: vi.fn() }))
+vi.mock('@dcloudio/uni-app', () => ({
+  onLoad: vi.fn(),
+  onHide: vi.fn(),
+  onUnload: vi.fn(),
+  onShareAppMessage: vi.fn(),
+  onShareTimeline: vi.fn(),
+  onShow: vi.fn()
+}))
 vi.mock('@/stores/account-store', () => ({ useAccountStore: () => ({ profile: null }) }))
 vi.mock('@/features/listening/listening-service', () => ({ getListeningHome: vi.fn() }))
 import Home from '@/pages/home/index.vue'

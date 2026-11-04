@@ -1,16 +1,20 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 
 vi.hoisted(() => {
   vi.stubGlobal('uni', { getStorageSync: () => undefined })
 })
 
 const { logout } = vi.hoisted(() => ({ logout: vi.fn() }))
+const hooks = vi.hoisted(() => ({ show: undefined as undefined | (() => void) }))
 vi.mock('@/services/feedback-service', () => ({
   feedbackInbox: { value: { value: { unread: false, count: 0 } }, refresh: vi.fn() }
 }))
-vi.mock('@dcloudio/uni-app', () => ({ onShow: vi.fn() }))
+vi.mock('@dcloudio/uni-app', () => ({
+  onShow: (callback: typeof hooks.show) => (hooks.show = callback)
+}))
 vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({
     profile: { nickname: '学习者', phone: null, wechat_contact: null },
@@ -19,6 +23,8 @@ vi.mock('@/stores/account-store', () => ({
   })
 }))
 import ProfilePage from '@/features/profile/components/profile-page-view.vue'
+import { feedbackInbox } from '@/services/feedback-service'
+import { PAGE_SHARE_ENTRY_KEY } from '@/shared/constants/share'
 
 /** 挂载资料页真实退出确认流程，平台导航由测试隔离 */
 const page = () =>
@@ -37,6 +43,18 @@ beforeEach(() => {
   logout.mockReset().mockResolvedValue(undefined)
 })
 afterEach(() => vi.unstubAllGlobals())
+it('skips profile loading and inbox refresh for a generic share provided by its parent page', () => {
+  vi.mocked(feedbackInbox.refresh).mockClear()
+  const wrapper = mount(ProfilePage, {
+    global: {
+      provide: { [PAGE_SHARE_ENTRY_KEY as symbol]: ref(true) },
+      stubs: { AppPage: { template: '<div><slot /></div>' }, AppAvatar: true, AppState: true }
+    }
+  })
+  hooks.show?.()
+  expect(feedbackInbox.refresh).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
 it('requires confirmation and lets cancel leave the current account intact', async () => {
   const wrapper = page()
   await wrapper.get('.profile-bottom button').trigger('click')

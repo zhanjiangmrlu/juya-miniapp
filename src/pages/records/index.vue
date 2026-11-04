@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onShow, onUnload } from '@dcloudio/uni-app'
+import { onShareAppMessage, onShareTimeline, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
+import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useSceneList } from '@/composables/use-scene-list'
 import SceneCard from '@/features/learning/components/scene-card.vue'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
@@ -12,6 +13,7 @@ import ListeningArticleCard from '@/features/listening/components/listening-arti
 import ListeningCollection from '@/features/listening/components/listening-collection.vue'
 import { session } from '@/services/api'
 import { dateText } from '@/services/display'
+import { pageShare } from '@/services/page-share'
 import { RECORDS_TAB_STORAGE_KEY } from '@/shared/constants/learning'
 import { LISTENING_API } from '@/shared/constants/listening'
 import { Routes } from '@/shared/constants/navigation'
@@ -22,6 +24,8 @@ import { useAccountStore } from '@/stores/account-store'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { ListeningSummary } from '@/shared/types/listening'
+
+const pageShareEntry = usePageShareEntry()
 const account = useAccountStore(),
   tab = ref<RecordsTab>(RecordsTab.LEARNED),
   expanded = ref(''),
@@ -121,6 +125,7 @@ const select = (value: RecordsTab) => {
   if (value !== RecordsTab.LISTENING) void current.value.refresh()
 }
 onShow(() => {
+  if (pageShareEntry.value) return
   uni.hideTabBar({ animation: false, fail: () => undefined })
   const stored = uni.getStorageSync(RECORDS_TAB_STORAGE_KEY)
   if (Object.values(RecordsTab).includes(stored)) tab.value = stored
@@ -146,6 +151,9 @@ onUnload(() => {
   scenes.dispose()
   checkins.dispose()
 })
+
+onShareAppMessage(() => ({ ...pageShare.friends }))
+onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage :background-kind="PageBackgroundKind.RECORDS" title="学习记录" fixed-viewport

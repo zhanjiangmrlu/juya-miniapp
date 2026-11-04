@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
-import { computed, ref } from 'vue'
+import { computed, inject, ref } from 'vue'
 
 import AppAvatar from '@/components/app-avatar/app-avatar.vue'
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
@@ -12,6 +12,7 @@ import { maskPhone } from '@/features/profile/contact-model'
 import { session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
 import { Routes } from '@/shared/constants/navigation'
+import { PAGE_SHARE_ENTRY_KEY } from '@/shared/constants/share'
 import { LearningAuthorizationStatus } from '@/shared/enums/learning-access'
 import { PageBackgroundKind } from '@/shared/enums/ui'
 import { useAccountStore } from '@/stores/account-store'
@@ -19,6 +20,7 @@ import { useAccountStore } from '@/stores/account-store'
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { ProfilePageProps } from '@/shared/types/profile-components'
 const props = withDefaults(defineProps<ProfilePageProps>(), { primary: false })
+const pageShareEntry = inject(PAGE_SHARE_ENTRY_KEY, undefined)
 const authorization = ref<components['schemas']['CurrentAccess'] | null>(null),
   authorizationError = ref(''),
   statisticsError = ref('')
@@ -107,6 +109,7 @@ const logout = async () => {
   }
 }
 onShow(() => {
+  if (pageShareEntry?.value) return
   if (props.primary) uni.hideTabBar({ animation: false, fail: () => undefined })
   void load()
   void feedbackInbox.refresh()
