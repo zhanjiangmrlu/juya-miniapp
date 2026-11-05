@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 
 import SceneAudioPlayer from '@/features/learning/components/scene-audio-player.vue'
-import SceneVocabulary from '@/features/learning/components/scene-vocabulary.vue'
+import SceneVocabulary from '@/sub-packages/scenes/components/scene-vocabulary.vue'
 
 import type { AudioState } from '@/shared/types/audio'
 

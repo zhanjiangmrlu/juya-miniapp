@@ -7,12 +7,12 @@ import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { getListeningHome } from '@/features/listening/listening-service'
 import { pageShare } from '@/services/page-share'
+import { HOME_BACKGROUND_IMAGE_URL } from '@/shared/constants/brand'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { ListeningHome } from '@/shared/types/listening'
 
-const homeBackgroundUrl = '/static/listening/home-watercolor@3x.jpg'
 const account = useAccountStore(),
   home = ref<ListeningHome | null>(null),
   busy = ref(false),
@@ -55,7 +55,11 @@ onShareAppMessage(() => ({ ...pageShare.friends }))
 onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
-  <AppPage title="句芽英语" class="home-page" :background-image="homeBackgroundUrl" fixed-viewport
+  <AppPage
+    title="句芽英语"
+    class="home-page"
+    :background-image="HOME_BACKGROUND_IMAGE_URL"
+    fixed-viewport
     ><scroll-view
       class="home-scroll"
       scroll-y

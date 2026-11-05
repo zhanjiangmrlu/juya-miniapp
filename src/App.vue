@@ -3,6 +3,7 @@ import { onHide, onLaunch, onShow } from '@dcloudio/uni-app'
 import { watch } from 'vue'
 
 import { resetLearningAudioSession } from '@/services/audio-controller'
+import { hasBackgroundAudioSession } from '@/services/audio-navigation'
 import { preparePageShareCovers } from '@/services/page-share'
 import { loadRemoteFonts } from '@/services/remote-fonts'
 import { runtimeMode, syncRuntimeMode } from '@/services/runtime-mode'
@@ -26,7 +27,9 @@ watch(
   },
   { flush: 'sync' }
 )
-onHide(resetLearningAudioSession)
+onHide(() => {
+  if (!hasBackgroundAudioSession()) resetLearningAudioSession()
+})
 </script>
 <style lang="scss">
 @import './styles/main';

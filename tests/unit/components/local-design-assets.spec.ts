@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+
 import { expect, it } from 'vitest'
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -7,6 +10,11 @@ import { designAssetFile } from '../../../build/local-design-assets'
 it('serves only explicit local design assets, never configuration or traversal', () => {
   expect(designAssetFile('/design-assets/backgrounds/scene-window.png')).toContain(
     'resources/oss/backgrounds/scene-window.png'
+  )
+  const home = designAssetFile('/design-assets/listening/home-watercolor-42627c088d7e@3x.jpg')
+  expect(home).toBeDefined()
+  expect(createHash('sha256').update(readFileSync(home!)).digest('hex').slice(0, 12)).toBe(
+    '42627c088d7e'
   )
   for (const path of [
     '/design-assets/../.env',
@@ -24,6 +32,7 @@ it('serves compressed artwork and CSS paper with their actual media types', asyn
   const handlers: Connect.NextHandleFunction[] = []
   if (typeof plugin.configureServer !== 'function') throw new Error('Missing asset middleware')
   plugin.configureServer({
+    watcher: { add: () => {}, on: () => {} },
     middlewares: { use: (callback: Connect.NextHandleFunction) => handlers.push(callback) }
   } as unknown as ViteDevServer)
   for (const [path, type] of [
@@ -46,4 +55,18 @@ it('serves compressed artwork and CSS paper with their actual media types', asyn
     expect(headers.get('Content-Type')).toBe(type)
     expect(payload?.length).toBeGreaterThan(0)
   }
+})
+
+it('serves a canonical version path before a colliding logical alias', async () => {
+  const { createAssetPreviewIndex } = await import('../../../build/local-design-assets')
+  const index = createAssetPreviewIndex({
+    assets: [],
+    sources: {},
+    map: {
+      'images/name.svg': { file: 'images/name-111111111111.svg', bytes: 1 },
+      'images/name-111111111111.svg': { file: 'images/name-222222222222.svg', bytes: 2 }
+    }
+  })
+  expect(index.get('images/name-111111111111.svg')).toBe('images/name.svg')
+  expect(index.get('images/name-222222222222.svg')).toBe('images/name-111111111111.svg')
 })

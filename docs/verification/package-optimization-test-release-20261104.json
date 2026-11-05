@@ -1,0 +1,109 @@
+{
+  "commit": "483393ab553be34d0b82d623574070f79410af15",
+  "version": "1.5.0-test.1104.1516",
+  "environment": "test",
+  "api_base": "https://test-api.juyayingyu.com",
+  "asset_base": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static",
+  "main_source_bytes": 446749,
+  "package_sha256": "6f577d63d844b00039dbffd6755ebe7eeda33bc092f4bea040fcb9eab533146e",
+  "source_pushed_to": "origin/test",
+  "official_cli_exit_code": 0,
+  "official_cli_upload_complete": true,
+  "official_size": {
+    "total": 1216781,
+    "packages": [
+      {
+        "name": "TOTAL",
+        "size": 1216781
+      },
+      {
+        "name": "main",
+        "size": 779818
+      },
+      {
+        "name": "/sub-packages/account/",
+        "size": 55778
+      },
+      {
+        "name": "/sub-packages/feedback/",
+        "size": 70904
+      },
+      {
+        "name": "/sub-packages/listening/",
+        "size": 139497
+      },
+      {
+        "name": "/sub-packages/records/",
+        "size": 24978
+      },
+      {
+        "name": "/sub-packages/scenes/",
+        "size": 145806
+      }
+    ]
+  },
+  "source_files_unchanged_during_upload": true,
+  "experience_version_changed": false,
+  "wechat_review_submitted": false,
+  "production_wechat_published": false,
+  "tests": {
+    "files": 103,
+    "passed": 528,
+    "static_checks_passed": true,
+    "test_wechat_build_passed": true
+  },
+  "test_public_checks": [
+    {
+      "url": "https://test-api.juyayingyu.com/health/ready",
+      "status": 200,
+      "bytes": 56,
+      "sha256": "98e9ef065e27b4bc03c84e8818fc0c23b39d84ea58045f7a73d397098925cb42",
+      "content_type": "application/json",
+      "cache_control": "no-store"
+    },
+    {
+      "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/listening/home-watercolor-42627c088d7e@3x.jpg",
+      "status": 200,
+      "bytes": 185176,
+      "sha256": "42627c088d7e32246e8d431987fb09f265b78907b6d989c04942de83297f5aea",
+      "content_type": "image/jpeg",
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    {
+      "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/fonts/dm-sans-19b2ba846548.woff",
+      "status": 200,
+      "bytes": 47924,
+      "sha256": "19b2ba846548029c4fe0bb423de90d84a90473aae241db54296638b35720fc0a",
+      "content_type": "font/woff",
+      "cache_control": "public,max-age=31536000,immutable"
+    },
+    {
+      "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/fonts/fraunces-regular-1a07e715bff9.woff",
+      "status": 200,
+      "bytes": 88448,
+      "sha256": "1a07e715bff9af0269c13d8cd49226c50c8c649d39ba6f3477d0b0d2136e9000",
+      "content_type": "font/woff",
+      "cache_control": "public,max-age=31536000,immutable"
+    },
+    {
+      "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/fonts/fraunces-italic-0e42d420e3d2.woff",
+      "status": 200,
+      "bytes": 12640,
+      "sha256": "0e42d420e3d2e1f55aac75f2ffb3d4b4732b4637c80422959d9982a4c9edda2f",
+      "content_type": "font/woff",
+      "cache_control": "public,max-age=31536000,immutable"
+    },
+    {
+      "url": "https://juya-test.oss-cn-shenzhen.aliyuncs.com/miniapp/static/fonts/juya-ui-chinese-2de0b76bda1d.woff",
+      "status": 200,
+      "bytes": 157260,
+      "sha256": "2de0b76bda1d0a672e6eea56ab31daf06a08b67db6bd076d5501d3b7cf4115ed",
+      "content_type": "font/woff",
+      "cache_control": "public,max-age=31536000,immutable"
+    }
+  ],
+  "api_deployed": false,
+  "admin_deployed": false,
+  "database_operations": false,
+  "test_oss_artwork_available": true
+}

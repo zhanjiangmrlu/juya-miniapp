@@ -2,8 +2,10 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
-import type { AudioPort } from '@/shared/types/audio'
+import type { AudioPort, FullAudioOptions } from '@/shared/types/audio'
 const ports = vi.hoisted(() => ({
+  background: false,
+  options: undefined as FullAudioOptions | undefined,
   load: undefined as undefined | ((query: { id: string }) => void),
   show: undefined as undefined | (() => void),
   hide: undefined as undefined | (() => void),
@@ -53,7 +55,14 @@ vi.mock('@/services/word-audio-file', () => ({
   prepareAudioCacheFile: async () => ({ src: '/full', release: vi.fn() }),
   prepareWordAudioFile: async () => ({ src: '/word', release: ports.release })
 }))
-vi.mock('@/services/audio-port', () => ({ createAudioPort: () => createTrack() }))
+vi.mock('@/services/audio-port', () => ({
+  createAudioPort: (word: boolean, options?: FullAudioOptions) => {
+    if (options) ports.options = options
+    const track = createTrack()
+    Object.assign(track, { background: ports.background && !word })
+    return track
+  }
+}))
 
 import { ApiError } from '@/services/errors'
 import SceneDetail from '@/sub-packages/scenes/detail.vue'
@@ -127,6 +136,8 @@ const meaning = {
   provider: 'context'
 }
 beforeEach(() => {
+  ports.background = false
+  ports.options = undefined
   scene.content.image_id = ''
   scene.content.vocabulary = []
   ports.fullReady.mockResolvedValue(undefined)
@@ -140,6 +151,55 @@ beforeEach(() => {
         : scene
   )
   vi.stubGlobal('uni', { pageScrollTo: ({ complete }: { complete?: () => void }) => complete?.() })
+})
+it('keeps scene background audio during hide and stops it when its page departs', async () => {
+  ports.background = true
+  const page = await open()
+  page.findComponent({ name: 'SceneAudioPlayer' }).vm.$emit('toggle')
+  await flushPromises()
+  const full = tracks[0]!
+  ports.hide?.()
+  expect(full.playing).toBe(true)
+  expect(full.destroy).not.toHaveBeenCalled()
+  ports.show?.()
+  await flushPromises()
+  expect(tracks).toHaveLength(2)
+  ports.options!.leave()
+  expect(full.playing).toBe(false)
+  page.unmount()
+})
+
+it('does not start scene playback if its page hides while click authorization is pending', async () => {
+  ports.background = true
+  const access = {
+    can_learn: true,
+    can_lookup: true,
+    is_free: false,
+    reason: null,
+    version: 'active',
+    server_now: '2026-11-05T00:00:00Z',
+    expires_at: null
+  }
+  ports.request.mockImplementation(async (path: string) =>
+    path.endsWith('/access')
+      ? { summary: { id: 'card', version_id: 'v1', state: scene.state }, access }
+      : { ...scene, access }
+  )
+  const page = await open()
+  let finish!: (value: unknown) => void
+  ports.request.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      })
+  )
+  page.findComponent({ name: 'SceneAudioPlayer' }).vm.$emit('toggle')
+  await flushPromises()
+  ports.hide?.()
+  finish({ summary: { id: 'card', version_id: 'v1', state: scene.state }, access })
+  await flushPromises()
+  expect(tracks[0]!.playing).toBe(false)
+  page.unmount()
 })
 /** 进入真实详情并保留真实对话与音频控制器 */
 const open = async () => {

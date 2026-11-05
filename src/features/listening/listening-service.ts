@@ -11,13 +11,11 @@ import type {
 } from '@/shared/types/listening'
 /** 读取听读双模块首页真实权限与继续学习目标 */
 export const getListeningHome = () => session.request<ListeningHome>(`${LISTENING_API}/home`)
-/** 读取当前可学文章；拒绝时不回退缓存正文
+/** 按文章身份读取当前正文，冻结队列仅用于下一篇查询，拒绝时不回退缓存正文
  * @param id 稳定文章身份
  */
-export const getListeningArticle = (id: string, queueToken = '') =>
-  session.request<ListeningArticle>(
-    `${LISTENING_API}/articles/${encodeURIComponent(id)}${queueToken ? `?queue_token=${encodeURIComponent(queueToken)}` : ''}`
-  )
+export const getListeningArticle = (id: string) =>
+  session.request<ListeningArticle>(`${LISTENING_API}/articles/${encodeURIComponent(id)}`)
 /** 兼容旧版仅存元数据的未知记录，先查回执再明确确认同账号同版本正文
  * @param action 当前待确认的听读操作
  * @param path 当前文章的业务路径

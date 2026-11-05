@@ -17,3 +17,5 @@ project.private.config.json
 *.local
 .DS_Store
 Thumbs.db
+
+.private/

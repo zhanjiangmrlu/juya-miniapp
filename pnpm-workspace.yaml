@@ -2,7 +2,9 @@ allowBuilds:
   agent-browser: true
   core-js: false
   core-js-pure: false
+  cpu-features: false
   esbuild: true
   simple-git-hooks: true
+  ssh2: false
   unrs-resolver: true
   vue-demi: true

@@ -199,3 +199,22 @@ it('falls back from JPEG paper to original PNG before retaining only the cream b
   expect(page.get('.paper-probe').attributes('src')).toMatch(/paper-texture-[a-f0-9]{12}\.jpg$/)
   page.unmount()
 })
+
+it('hides failed full-page artwork without blocking content and retries when its URL changes', async () => {
+  vi.stubGlobal('uni', {
+    getWindowInfo: () => ({ windowWidth: 390, statusBarHeight: 47 }),
+    getMenuButtonBoundingClientRect: () => ({ left: 280, bottom: 87 })
+  })
+  const page = mount(AppPage, {
+    props: { title: '首页', backgroundImage: 'https://static.example/home-v1.jpg' },
+    slots: { default: '<button>开始学习</button>' }
+  })
+  expect(page.get('.page-background').attributes('src')).toBe('https://static.example/home-v1.jpg')
+  expect(page.text()).toContain('开始学习')
+  await page.get('.page-background').trigger('error')
+  expect(page.find('.page-background').exists()).toBe(false)
+  expect(page.text()).toContain('开始学习')
+  await page.setProps({ backgroundImage: 'https://static.example/home-v2.jpg' })
+  expect(page.get('.page-background').attributes('src')).toBe('https://static.example/home-v2.jpg')
+  page.unmount()
+})

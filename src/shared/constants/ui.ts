@@ -16,3 +16,5 @@ export const PAGE_BACKGROUNDS: Record<PageBackgroundKind, string> = {
   records: 'records-journal-78658fff8368.webp',
   paper: 'paper-texture-ee39e121f9c3.jpg'
 }
+
+export const HOME_BACKGROUND_FILE = 'listening/home-watercolor@3x.jpg'

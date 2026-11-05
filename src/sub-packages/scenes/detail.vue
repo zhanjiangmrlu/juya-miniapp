@@ -17,12 +17,8 @@ import { useNativeShare } from '@/composables/use-native-share'
 import { useReadingPosition } from '@/composables/use-reading-position'
 import { useSceneDictionary } from '@/composables/use-scene-dictionary'
 import SceneAudioPlayer from '@/features/learning/components/scene-audio-player.vue'
-import SceneDialogue from '@/features/learning/components/scene-dialogue.vue'
 import SceneDictionary from '@/features/learning/components/scene-dictionary.vue'
-import SceneQueueEnd from '@/features/learning/components/scene-queue-end.vue'
 import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
-import SceneUnavailable from '@/features/learning/components/scene-unavailable.vue'
-import SceneVocabulary from '@/features/learning/components/scene-vocabulary.vue'
 import { dictionaryTokens } from '@/features/learning/scene-model'
 import ShareSheet from '@/features/share/components/share-sheet.vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
@@ -58,6 +54,10 @@ import { LearningAccessReason } from '@/shared/enums/learning-access'
 import { ShareTarget } from '@/shared/enums/share'
 import { useAccountStore } from '@/stores/account-store'
 import { createAccessMonitor } from '@/sub-packages/scenes/access-monitor'
+import SceneDialogue from '@/sub-packages/scenes/components/scene-dialogue.vue'
+import SceneQueueEnd from '@/sub-packages/scenes/components/scene-queue-end.vue'
+import SceneUnavailable from '@/sub-packages/scenes/components/scene-unavailable.vue'
+import SceneVocabulary from '@/sub-packages/scenes/components/scene-vocabulary.vue'
 import { createShareService } from '@/sub-packages/scenes/scene-share-service'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
@@ -130,6 +130,8 @@ let id = '',
   audio: ReturnType<typeof createAudioController> | null = null,
   fullAudio: ReturnType<typeof createFullAudioPreparation> | null = null,
   fullAudioBackgroundPending = false,
+  backgroundFull = false,
+  audioClickGeneration = 0,
   wordAudio: ReturnType<typeof createWordAudioPreparation> | null = null,
   dictionaryAudio: DictionarySpeechCache | null = null,
   dictionaryReferences: DictionarySelection[] = [],
@@ -346,8 +348,29 @@ const createAudio = () => {
   const current = card.value,
     owner = account.profile,
     userId = session.userId()
-  const full = createAudioPort(),
+  const full = createAudioPort(false, {
+      title: current.content.name || current.content.title_en || '场景学习',
+      resume: async (active) => {
+        if (runtimeMode.update() || (current.access && !(await checkAccess()))) return
+        if (
+          !active() ||
+          !alive ||
+          audio !== player ||
+          account.profile !== owner ||
+          session.userId() !== userId ||
+          card.value !== current ||
+          stale.value
+        )
+          return
+        const prepared = fullAudio
+        if (prepared) await player.toggleFull(() => prepared.load())
+      },
+      leave: stopAudio,
+      keepOnNavigate: (url) =>
+        imageOpen && (url.startsWith('/sub-packages/scenes/image-preview') || !url)
+    }),
     word = createAudioPort(true)
+  backgroundFull = Boolean(full.background)
   const player = createAudioController(
     full,
     word,
@@ -391,6 +414,7 @@ const createAudio = () => {
   if (current.content.audio_id) {
     const audioId = current.content.audio_id
     fullAudio = createFullAudioPreparation({
+      networkOnly: full.background,
       active,
       resolve: () => mediaAddress(id, audioId, current.version_id, false, true),
       download: prepareAudioCacheFile,
@@ -434,6 +458,7 @@ const createAudio = () => {
 }
 /** 离开场景时先停止播放器，再取消准备任务和释放临时音频 */
 const stopAudio = () => {
+  audioClickGeneration++
   dictionary.close()
   clearTimeout(dictionaryScrollTimer)
   dictionaryScrollTimer = undefined
@@ -446,6 +471,7 @@ const stopAudio = () => {
   fullAudio?.dispose()
   fullAudio = null
   fullAudioBackgroundPending = false
+  backgroundFull = false
   wordAudio?.dispose()
   wordAudio = null
 }
@@ -768,9 +794,19 @@ const refreshState = async () => {
 }
 /** 已准备好的完整音频同步播放，提前点击只等待受控地址 */
 const playFull = async () => {
-  if (card.value?.access && !(await checkAccess())) return
+  const run = ++audioClickGeneration,
+    current = card.value
+  if (current?.access && !(await checkAccess())) return
   if (runtimeMode.update()) return
-  if (!card.value || stale.value) return
+  if (
+    !visible ||
+    !alive ||
+    run !== audioClickGeneration ||
+    card.value !== current ||
+    !current ||
+    stale.value
+  )
+    return
   createAudio()
   const prepared = fullAudio
   if (prepared) void audio?.toggleFull(() => prepared.load())
@@ -1007,12 +1043,14 @@ onShow(() => {
       void checkAccess().then((allowed) => {
         if (allowed && card.value && !stale.value) {
           createAudio()
+          audio?.refreshFull()
           void publicShare.prepare(id, card.value.version_id, true)
         }
       })
       return
     }
     createAudio()
+    audio?.refreshFull()
     void refreshState().catch(invalid)
     void publicShare.prepare(id, card.value.version_id, true)
   }
@@ -1046,17 +1084,23 @@ onPageScroll((event) => {
 })
 onHide(() => {
   visible = false
+  audioClickGeneration++
   dictionaryMeasureRequested = null
   clearTimeout(dictionaryScrollTimer)
   dictionaryScrollTimer = undefined
   dictionary.close()
   dictionaryAudio?.dispose()
   dictionaryAudio = null
-  accessMonitor.suspend()
+  if (!backgroundFull) accessMonitor.suspend()
   share.hide()
   publicShare.clear()
   if (!runtimeMode.update()) void reading.save()
-  if (!imageOpen) {
+  if (backgroundFull) {
+    if (audioState.value.status === AudioStatus.LOADING) audio?.pauseFull()
+    audio?.refreshFull()
+    if (audioState.value.wordId) audio?.stopWord(audioState.value.wordId)
+    wordAudio?.cancelSelection()
+  } else if (!imageOpen) {
     stopAudio()
   }
 })

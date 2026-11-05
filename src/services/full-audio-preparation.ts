@@ -103,6 +103,10 @@ export const createFullAudioPreparation = (ports: FullAudioPreparationPorts) => 
     const prepare = async () => {
       const url = await entry.address
       if (!task.active()) return
+      if (ports.networkOnly) {
+        ports.prepared(url)
+        return
+      }
       try {
         const file = await ports.download(url, task)
         if (!task.active()) {

@@ -13,7 +13,6 @@ import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useSceneList } from '@/composables/use-scene-list'
-import { feedbackTime } from '@/features/feedback/feedback-model'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import { onSessionExpired, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
@@ -22,6 +21,7 @@ import { FEEDBACK_CATEGORIES, FEEDBACK_STATUS_LABELS } from '@/shared/constants/
 import { Routes } from '@/shared/constants/navigation'
 import { FeedbackStatus } from '@/shared/enums/feedback'
 import { useAccountStore } from '@/stores/account-store'
+import { feedbackTime } from '@/sub-packages/feedback/feedback-model'
 
 import type { FeedbackDetail } from '@/shared/types/feedback'
 

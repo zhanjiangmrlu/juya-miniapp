@@ -176,7 +176,7 @@ const prepareCover = (asset: PageShareCoverAsset): Promise<string> => {
       }
     }
     try {
-      if (!uni.env?.USER_DATA_PATH || !/^[a-z\d-]+\.jpg$/.test(asset.file)) {
+      if (!uni.env?.USER_DATA_PATH || !/^[a-z\d-]+(?:@3x)?\.jpg$/.test(asset.file)) {
         fail()
         return
       }

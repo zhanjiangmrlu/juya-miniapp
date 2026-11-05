@@ -39,3 +39,16 @@ it('keeps the delivered PNGs intact and loads hashed variants within the page do
     expect(fileURLToPath(new URL(asset.variant.file, directory))).not.toContain('/src/static/')
   }
 })
+
+it('archives the exact home artwork outside the package under its content hash', () => {
+  const directory = new URL('../../resources/oss/listening/', import.meta.url)
+  const asset = JSON.parse(
+    readFileSync(new URL('home-background-manifest.json', directory), 'utf8')
+  )
+  const data = readFileSync(new URL(asset.file, directory))
+  const digest = createHash('sha256').update(data).digest('hex')
+  expect(data.length).toBe(185176)
+  expect(asset.bytes).toBe(data.length)
+  expect(asset.sha256).toBe(digest)
+  expect(asset.file).toContain(digest.slice(0, 12))
+})

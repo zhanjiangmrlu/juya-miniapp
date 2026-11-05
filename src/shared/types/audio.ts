@@ -18,6 +18,8 @@ export interface LearningAudioSession {
   rate: PlaybackRate
 }
 export interface AudioPort {
+  background?: boolean
+  paused?: boolean
   prepare?: (src: string) => void
   playbackRate?: number
   src: string
@@ -30,10 +32,37 @@ export interface AudioPort {
   destroy: () => void
   onPlay: (callback: () => void) => void
   onPause: (callback: () => void) => void
+  onStop?: (callback: () => void) => void
   onEnded: (callback: () => void) => void
   onError: (callback: (reason?: AudioFailure) => void) => void
   onTimeUpdate: (callback: () => void) => void
 }
+export interface FullAudioOptions {
+  title: string
+  resume: (active: () => boolean) => Promise<void>
+  leave: () => void
+  keepOnNavigate?: (url: string) => boolean
+}
+export type BackgroundAudioNative = Pick<
+  UniNamespace.BackgroundAudioManager,
+  | 'src'
+  | 'title'
+  | 'startTime'
+  | 'currentTime'
+  | 'duration'
+  | 'paused'
+  | 'playbackRate'
+  | 'play'
+  | 'pause'
+  | 'stop'
+  | 'seek'
+  | 'onPlay'
+  | 'onPause'
+  | 'onStop'
+  | 'onEnded'
+  | 'onError'
+  | 'onTimeUpdate'
+>
 export interface AudioPreparationCancellation {
   active: () => boolean
   onCancel: (callback: () => void) => () => void
@@ -43,6 +72,7 @@ export interface AudioCacheFile {
   release: () => void
 }
 export interface FullAudioPreparationPorts {
+  networkOnly?: boolean
   resolve: () => Promise<string>
   download: (url: string, task: AudioPreparationCancellation) => Promise<AudioCacheFile>
   active: () => boolean
@@ -71,4 +101,19 @@ export interface AudioState {
   wordId: string | null
   wordStatus: AudioStatus
   wordError: string
+}
+
+export interface BackgroundAudioEvents {
+  play: () => void
+  pause: () => void
+  stop: () => void
+  ended: () => void
+  time: () => void
+  error: (reason?: AudioFailure) => void
+  release: () => void
+}
+
+export interface AudioNavigationArguments {
+  url?: string
+  success?: (result: unknown) => void
 }

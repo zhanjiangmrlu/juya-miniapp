@@ -59,7 +59,7 @@ vi.mock('@/stores/account-store', () => ({
 vi.mock('@/services/audio-port', () => ({ createAudioPort: ports.audio }))
 vi.mock('@/services/share-cover-file', () => ({ prepareShareCover: ports.cover }))
 vi.mock('@/services/audio-controller', () => ({
-  createAudioController: () => ({ state: {}, dispose: ports.disposeAudio })
+  createAudioController: () => ({ state: {}, dispose: ports.disposeAudio, refreshFull: vi.fn() })
 }))
 vi.mock('@/services/source-queue', () => ({
   sourceQueue: {
@@ -114,6 +114,7 @@ const open = (
 }
 beforeEach(() => {
   vi.clearAllMocks()
+  ports.audio.mockReturnValue({ background: false })
   runtimeMode.update({ apiCategory: 'default' })
   ports.cover.mockImplementation(async (path: string) => path)
   ports.publicRequest.mockResolvedValue({ status: 200, data: summary })

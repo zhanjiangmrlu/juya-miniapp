@@ -112,7 +112,7 @@ it('continues loading the remaining faces when the native font API throws for on
 
 it.each([
   [
-    'production fonts remain embedded',
+    'explicit local font mode remains available',
     'false',
     'https://juya.oss-cn-shenzhen.aliyuncs.com/miniapp/static'
   ],
