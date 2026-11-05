@@ -37,6 +37,18 @@ describe('published listening reading state', () => {
       validateTimeline('This word next', [words[0]!, { ...words[1]!, start_ms: 300 }], 1600)
     ).toBe(false)
   })
+  it('highlights only matched spans and leaves a skipped word untouched', () => {
+    const partial = [
+      { start: 0, end: 2, start_ms: 0, end_ms: 100, sentence_id: '0' },
+      { start: 11, end: 16, start_ms: 700, end_ms: 1000, sentence_id: '0' }
+    ]
+    expect(validateTimeline('We explain today', partial, 1100)).toBe(true)
+    expect(characterFrame(partial, 50, false).current).toBe(1)
+    const gap = characterFrame(partial, 400, false)
+    expect(gap.current).toBe(-1)
+    expect(gap.trails.every((item) => item.position < 3 || item.position >= 11)).toBe(true)
+    expect(characterFrame(partial, 760, false).current).toBe(12)
+  })
   it('keeps code point offsets and untouched natural paragraphs for dictionary lookup', () => {
     const tokens = tokenizeBody('🌱 This\n\nword’s end.')
     expect(tokens.map((p) => p.tokens.map((t) => t.text).join('') + p.separator).join('')).toBe(
