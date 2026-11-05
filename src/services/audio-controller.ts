@@ -177,6 +177,7 @@ export const createAudioController = (
   })
   full.onPause(() => {
     if (!alive) return
+    if (full.background) fullStarting = false
     state.status = AudioStatus.PAUSED
     ratePausing = false
     if (pendingRate !== null) {
@@ -184,7 +185,21 @@ export const createAudioController = (
       pendingRate = null
       confirmRate(rate)
       if (fullIntent) startFull()
-    } else if (!fullStarting) fullIntent = false
+    } else if (!fullStarting) {
+      fullIntent = false
+      fullGeneration++
+    }
+    notify()
+  })
+  full.onStop?.(() => {
+    if (!alive) return
+    fullGeneration++
+    fullIntent = false
+    fullStarting = false
+    ratePausing = false
+    pendingRate = null
+    pendingSeek = state.position
+    state.status = AudioStatus.PAUSED
     notify()
   })
   full.onEnded(() => {
@@ -279,6 +294,8 @@ export const createAudioController = (
         fullSource = url
       }
       restoreRate()
+      // 背景播放器绑定地址即自动播放，须提前设置原生开始位置
+      if (full.background) full.seek(pendingSeek)
       startFull()
     } catch {
       if (alive && generation === fullGeneration) {
@@ -431,6 +448,31 @@ export const createAudioController = (
     full.seek(state.position)
     notify()
   }
+  /** 恢复前台时读取原生时钟和暂停状态，不自动播放或重载音源 */
+  const refreshFull = () => {
+    if (!alive || state.status === AudioStatus.IDLE || state.status === AudioStatus.LOADING) return
+    if (Number.isFinite(full.currentTime)) state.position = full.currentTime
+    if (Number.isFinite(full.duration) && full.duration > 0) state.duration = full.duration
+    if (
+      typeof full.paused === 'boolean' &&
+      state.status !== AudioStatus.ENDED &&
+      state.status !== AudioStatus.ERROR
+    ) {
+      fullIntent = !full.paused
+      state.status = full.paused ? AudioStatus.PAUSED : AudioStatus.PLAYING
+    }
+    notify()
+  }
+  /** 取消未返回的整篇播放请求并保留当前断点 */
+  const pauseFull = () => {
+    if (!alive) return
+    fullGeneration++
+    fullIntent = false
+    pendingRate = null
+    full.pause()
+    state.status = AudioStatus.PAUSED
+    notify()
+  }
   /** 离开场景时销毁音轨并取消所有未返回的资源请求 */
   const dispose = () => {
     if (!alive) return
@@ -446,5 +488,16 @@ export const createAudioController = (
     full.destroy()
     word.destroy()
   }
-  return { prepareFull, toggleFull, playWord, stopWord, seekFull, setRate, dispose, state }
+  return {
+    prepareFull,
+    toggleFull,
+    playWord,
+    stopWord,
+    seekFull,
+    setRate,
+    refreshFull,
+    pauseFull,
+    dispose,
+    state
+  }
 }

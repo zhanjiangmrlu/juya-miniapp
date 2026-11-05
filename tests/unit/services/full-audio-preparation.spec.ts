@@ -36,6 +36,24 @@ beforeEach(() => {
 })
 afterEach(() => vi.useRealTimers())
 
+it('prepares only a controlled network address when the player cannot consume local files', async () => {
+  const prepared = vi.fn(),
+    download = vi.fn()
+  const service = createFullAudioPreparation({
+    resolve: async () => 'https://media.test/full.mp3',
+    download,
+    prepared,
+    active: () => true,
+    onFailure: vi.fn(),
+    networkOnly: true
+  })
+  await service.prefetch()
+  expect(service.load()).toBe('https://media.test/full.mp3')
+  expect(download).not.toHaveBeenCalled()
+  expect(prepared).toHaveBeenCalledExactlyOnceWith('https://media.test/full.mp3')
+  service.dispose()
+})
+
 it('prepares one local file without playing and returns it synchronously on repeated clicks', async () => {
   const { service, resolve, download, prepared } = setup()
   service.prefetch()

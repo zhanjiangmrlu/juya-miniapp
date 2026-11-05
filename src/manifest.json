@@ -9,6 +9,7 @@
     "enable": false
   },
   "mp-weixin": {
+    "requiredBackgroundModes": ["audio"],
     "appid": "wx55af725d6cf39d91",
     "setting": {
       "urlCheck": true

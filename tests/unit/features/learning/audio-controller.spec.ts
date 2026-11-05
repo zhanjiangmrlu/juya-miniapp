@@ -16,6 +16,9 @@ class AudioBoundary {
   onPause(callback: () => void) {
     this.callbacks.pause = callback
   }
+  onStop(callback: () => void) {
+    this.callbacks.stop = callback
+  }
   onEnded(callback: () => void) {
     this.callbacks.ended = callback
   }
@@ -52,6 +55,68 @@ const setup = () => {
   return { full, word, controller }
 }
 describe('single whole-audio player and word pronunciation', () => {
+  it.each(['pause', 'stop'])(
+    'cancels an unfinished source renewal after a system %s',
+    async (event) => {
+      const { full, controller } = setup()
+      Object.assign(full, { background: true })
+      await controller.toggleFull(() => '/first')
+      await controller.toggleFull(() => '/first')
+      let finish!: (value: string) => void
+      const play = vi.spyOn(full, 'play')
+      const pending = controller.toggleFull(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve
+          })
+      )
+      full.callbacks[event]?.()
+      finish('/renewed')
+      await pending
+      expect(play).not.toHaveBeenCalled()
+      expect(full.playing).toBe(false)
+      expect(controller.state.status).toBe('paused')
+      controller.dispose()
+    }
+  )
+  it('stages a background track position before its first automatic native start', async () => {
+    const { full, controller } = setup()
+    Object.assign(full, { background: true })
+    controller.state.position = 12.5
+    let startedAt = -1
+    const original = full.play.bind(full)
+    full.play = () => {
+      startedAt = full.currentTime
+      original()
+    }
+    await controller.toggleFull(() => '/full')
+    expect(startedAt).toBe(12.5)
+    controller.dispose()
+  })
+  it('preserves restored progress when native audio has not been started', () => {
+    const { full, controller } = setup()
+    controller.state.position = 12.5
+    Object.assign(full, { paused: true })
+    controller.refreshFull()
+    expect(controller.state.position).toBe(12.5)
+    controller.dispose()
+  })
+  it('reflects system stop and refreshes actual native progress after a background interval', async () => {
+    const { full, controller } = setup()
+    await controller.toggleFull(() => '/full')
+    full.currentTime = 13
+    full.callbacks.time?.()
+    full.callbacks.stop?.()
+    expect(controller.state.status).toBe('paused')
+    await controller.toggleFull(() => '/full')
+    expect(full.currentTime).toBe(13)
+    full.currentTime = 24
+    Object.assign(full, { paused: true })
+    controller.refreshFull()
+    expect(controller.state.status).toBe('paused')
+    expect(controller.state.position).toBe(24)
+    controller.dispose()
+  })
   it('starts prepared whole audio synchronously and never resets the same source on resume or replay', async () => {
     const { full, controller } = setup()
     let source = '',

@@ -2,7 +2,11 @@
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
+
+import type { FullAudioOptions } from '@/shared/types/audio'
 const ports = vi.hoisted(() => ({
+  background: false,
+  options: undefined as FullAudioOptions | undefined,
   load: null as null | ((query: Record<string, string>) => void),
   show: null as null | (() => void),
   hide: null as null | (() => void),
@@ -50,16 +54,25 @@ vi.mock('@/services/platform', () => ({
 }))
 vi.mock('@/services/word-audio-file', () => ({ prepareAudioCacheFile: ports.download }))
 vi.mock('@/services/audio-port', () => ({
-  createAudioPort: () => {
+  createAudioPort: (word: boolean, options?: FullAudioOptions) => {
+    if (options) ports.options = options
     const events: Record<string, () => void> = {}
     const audio = {
+      background: ports.background && !word,
+      paused: true,
       src: '',
       currentTime: 0,
       duration: 100,
       playbackRate: 1,
       events,
-      play: vi.fn(() => events.play?.()),
-      pause: vi.fn(() => events.pause?.()),
+      play: vi.fn(() => {
+        audio.paused = false
+        events.play?.()
+      }),
+      pause: vi.fn(() => {
+        audio.paused = true
+        events.pause?.()
+      }),
       stop: vi.fn(),
       destroy: vi.fn(),
       seek: (value: number) => {
@@ -165,6 +178,8 @@ const detail = {
   timeline: { state: 'missing', words: [] }
 }
 beforeEach(() => {
+  ports.background = false
+  ports.options = undefined
   vi.useFakeTimers()
   ports.download.mockResolvedValue({ src: '/local-full', release: vi.fn() })
   ports.audio.length = 0
@@ -190,6 +205,95 @@ const open = async () => {
   await flushPromises()
   return model
 }
+it('retains a background track on hide and restores its real clock without recreating the player', async () => {
+  ports.background = true
+  const model = await open(),
+    full = ports.audio[0]!
+  await model.toggle()
+  ports.hide?.()
+  full.currentTime = 41
+  ports.show?.()
+  await flushPromises()
+  expect(ports.audio).toHaveLength(2)
+  expect(model.audio.value.position).toBe(41)
+  expect(model.audio.value.status).toBe('playing')
+  ports.options!.leave()
+  expect(model.audio.value.status).not.toBe('playing')
+})
+
+it('authorizes external resume behind the lock screen and refuses a revoked article', async () => {
+  ports.background = true
+  const model = await open(),
+    full = ports.audio[0]!
+  await model.toggle()
+  await model.toggle()
+  ports.hide?.()
+  await ports.options!.resume(() => true)
+  expect(model.audio.value.status).toBe('playing')
+  full.pause()
+  ports.request.mockRejectedValueOnce(new ApiError('forbidden', '权限已撤销', 403))
+  await ports.options!.resume(() => true)
+  expect(model.article.value).toBeNull()
+})
+
+it('cancels a pending full source on hide even though native playback is still paused', async () => {
+  ports.background = true
+  let finish!: (value: unknown) => void
+  ports.run.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      })
+  )
+  const model = await open(),
+    full = ports.audio[0]!
+  const playing = model.toggle()
+  await flushPromises()
+  expect(model.audio.value.status).toBe('loading')
+  ports.hide?.()
+  finish({ url: '/late-full', expires_at: '2099-01-01' })
+  await playing
+  expect(full.play).not.toHaveBeenCalled()
+})
+
+it('cancels a page play click when authorization succeeds after hiding', async () => {
+  ports.background = true
+  const model = await open(),
+    full = ports.audio[0]!
+  let finish!: (value: unknown) => void
+  ports.request.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      })
+  )
+  const playing = model.toggle()
+  await flushPromises()
+  ports.hide?.()
+  finish(structuredClone(detail))
+  await playing
+  expect(full.play).not.toHaveBeenCalled()
+  expect(model.audio.value.status).not.toBe('playing')
+})
+
+it('applies an in-flight permission revocation after hiding the same background session', async () => {
+  ports.background = true
+  const model = await open()
+  await model.toggle()
+  let reject!: (reason: unknown) => void
+  ports.request.mockImplementationOnce(
+    () =>
+      new Promise((_resolve, fail) => {
+        reject = fail
+      })
+  )
+  await vi.advanceTimersByTimeAsync(30000)
+  ports.hide?.()
+  reject(new ApiError('forbidden', '权限已撤销', 403))
+  await flushPromises()
+  expect(model.article.value).toBeNull()
+  expect(model.audio.value.status).not.toBe('playing')
+})
 it('does not load an article or audio for a generic timeline landing', async () => {
   const model = useListeningArticle(ref(true))
   ports.load?.({ target: 'home' })

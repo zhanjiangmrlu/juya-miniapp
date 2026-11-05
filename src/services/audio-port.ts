@@ -1,5 +1,7 @@
-import type { AudioPort } from '@/shared/types/audio'
+import type { AudioPort, FullAudioOptions } from '@/shared/types/audio'
 
+import { registerBackgroundAudioNavigation } from './audio-navigation'
+import { createBackgroundAudioPort } from './background-audio-port'
 import { runtimeMode } from './runtime-mode'
 import { createWordAudioPort } from './word-audio-port'
 
@@ -100,13 +102,26 @@ const browserAudioPort = (): AudioPort => {
 // #endif
 
 /** 为当前平台创建音轨，词汇独立隔离每次切源的迟到回调
- * @param isolateSources 仅词汇音轨启用上下文隔离，整篇音轨保持原行为
+ * @param isolateSources 为词汇音轨启用上下文隔离，避免切源后的迟到回调
+ * @param options 整篇音频的系统标题、受控续播和离页清理
  */
-export const createAudioPort = (isolateSources = false): AudioPort => {
+export const createAudioPort = (isolateSources = false, options?: FullAudioOptions): AudioPort => {
   runtimeMode.assertPrivate()
   if (isolateSources) return createWordAudioPort(() => createAudioPort())
   // #ifdef H5
   return browserAudioPort()
+  // #endif
+  // #ifdef MP-WEIXIN
+  if (options) {
+    const port = createBackgroundAudioPort(uni.getBackgroundAudioManager(), options!)
+    const release = registerBackgroundAudioNavigation(options!),
+      destroy = port.destroy
+    port.destroy = () => {
+      release()
+      destroy()
+    }
+    return port
+  }
   // #endif
   // #ifndef H5
   const audio = uni.createInnerAudioContext()

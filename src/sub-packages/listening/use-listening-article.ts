@@ -86,12 +86,14 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     timer: ReturnType<typeof setInterval> | undefined,
     expiry: ReturnType<typeof setTimeout> | undefined,
     generation = 0,
+    authorizationGeneration = 0,
     wordGeneration = 0,
     readingPosition = 0,
     currentScroll = 0,
     alive = true,
     visible = false,
     following = false,
+    audioOwner = '',
     lastParagraph = -1,
     autosave = 0,
     fullPreparation: ReturnType<typeof createFullAudioPreparation> | null = null,
@@ -101,6 +103,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   const target = computed(() => `${Routes.ARTICLE}?id=${id.value}`)
   /** 释放当前文章的两个音轨和未完成异步处理 */
   const stop = () => {
+    authorizationGeneration++
     wordGeneration++
     clearInterval(timer)
     clearTimeout(anchorTimer)
@@ -110,6 +113,8 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     full = null
     fullPreparation?.dispose()
     fullPreparation = null
+    if (audio.value.status === AudioStatus.PLAYING || audio.value.status === AudioStatus.LOADING)
+      audio.value = { ...audio.value, status: AudioStatus.PAUSED }
   }
   /** 读取失败及失效时关闭私有内容，不回退旧正文
    * @param reason 当前真实服务端错误
@@ -189,7 +194,8 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   }
   /** 当前播放段离开可视区域才适度跟随，手动浏览时不抢位置 */
   const scrollFollow = () => {
-    if (!follow.value || !article.value || audio.value.status !== AudioStatus.PLAYING) return
+    if (!visible || !follow.value || !article.value || audio.value.status !== AudioStatus.PLAYING)
+      return
     const word = (article.value.timeline.words || []).find(
       (item) =>
         audio.value.position * 1000 >= item.start_ms && audio.value.position * 1000 < item.end_ms
@@ -226,16 +232,33 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       : 0
     if (until > 0) expiry = setTimeout(() => void authorize(), Math.min(until + 50, 2147483647))
   }
-  /** 复核当前前台代次的权限和发布版本，忽略锁屏前的迟到响应 */
+  /** 按音轨、身份和版本复核权限，后台保留同会话失效结果并拒绝旧请求 */
   const authorize = async () => {
     const current = article.value,
-      run = generation
-    if (!current || !alive || !visible) return false
+      run = ++authorizationGeneration,
+      owner = session.userId(),
+      track = controller
+    if (
+      !current ||
+      !alive ||
+      (!visible && !full?.background) ||
+      (audioOwner && audioOwner !== session.userId())
+    )
+      return false
     try {
       const checked = await session.request<ListeningSummary>(
         `${LISTENING_API}/articles/${current.id}/summary`
       )
-      if (run !== generation || article.value !== current || !alive || !visible) return false
+      if (
+        run !== authorizationGeneration ||
+        article.value !== current ||
+        controller !== track ||
+        !alive ||
+        (!visible && !full?.background) ||
+        audioOwner !== owner ||
+        owner !== session.userId()
+      )
+        return false
       if (!checked.access.can_learn || !checked.available) {
         summary.value = checked
         throw new ApiError(
@@ -245,7 +268,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
             : '当前文章暂不可学习'
         )
       }
-      if (!visible || !alive) return false
+      if ((!visible && !full?.background) || !alive) return false
       if (checked.version_id !== current.version_id) {
         stop()
         article.value = null
@@ -262,15 +285,65 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       }
       return true
     } catch (reason) {
-      if (run === generation && article.value === current && alive && visible) deny(reason)
+      if (
+        run === authorizationGeneration &&
+        article.value === current &&
+        controller === track &&
+        owner === session.userId() &&
+        alive &&
+        (visible || full?.background)
+      )
+        deny(reason)
       return false
     }
+  }
+  /** 前台按原生媒体时钟同步高亮，后台不测量正文或依赖循环计时 */
+  const startClock = () => {
+    clearInterval(timer)
+    timer = setInterval(() => {
+      if (
+        full &&
+        Number.isFinite(full.duration) &&
+        full.duration > 0 &&
+        controller &&
+        controller.state.duration !== full.duration
+      ) {
+        controller.state.duration = full.duration
+        audio.value = { ...controller.state }
+      }
+      if (audio.value.status === AudioStatus.PLAYING && full) {
+        const actual = full.currentTime
+        if (Number.isFinite(actual)) {
+          controller!.state.position = actual
+          audio.value = {
+            ...controller!.state,
+            position: actual,
+            duration: Number.isFinite(full.duration) ? full.duration : audio.value.duration
+          }
+          scrollFollow()
+        }
+      }
+      if (++autosave % 250 === 0) void save()
+      if (autosave % 750 === 0) void authorize()
+    }, 40)
   }
   /** 为已成功读取的文章设置播放轨道并恢复媒体位置，不自动播放 */
   const setup = () => {
     const value = article.value
     if (!value?.version_id) return
-    full = createAudioPort()
+    audioOwner = session.userId() || ''
+    full = createAudioPort(false, {
+      title: value.title_zh || value.title_en || '听读文章',
+      resume: async (active) => {
+        if (!(await authorize()) || !active() || controller !== currentController) return
+        const prepared = fullPreparation
+        if (prepared) await currentController.toggleFull(() => prepared.load())
+      },
+      leave: () => {
+        void save()
+        stop()
+      }
+    })
     controller = createAudioController(
       full,
       createAudioPort(true),
@@ -290,9 +363,10 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     if (value.payload.audio_id) {
       const owner = session.userId()
       fullPreparation = createFullAudioPreparation({
+        networkOnly: full.background,
         active: () =>
           alive &&
-          visible &&
+          (visible || Boolean(full?.background)) &&
           controller === currentController &&
           article.value === value &&
           session.userId() === owner,
@@ -336,32 +410,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
           uni.pageScrollTo({ scrollTop: Math.max(0, currentScroll + block.top - 110), duration: 0 })
       })
     }
-    timer = setInterval(() => {
-      if (
-        full &&
-        Number.isFinite(full.duration) &&
-        full.duration > 0 &&
-        controller &&
-        controller.state.duration !== full.duration
-      ) {
-        controller.state.duration = full.duration
-        audio.value = { ...controller.state }
-      }
-      if (audio.value.status === AudioStatus.PLAYING && full) {
-        const actual = full.currentTime
-        if (Number.isFinite(actual)) {
-          controller!.state.position = actual
-          audio.value = {
-            ...controller!.state,
-            position: actual,
-            duration: Number.isFinite(full.duration) ? full.duration : audio.value.duration
-          }
-          scrollFollow()
-        }
-      }
-      if (++autosave % 250 === 0) void save()
-      if (autosave % 750 === 0) void authorize()
-    }, 40)
+    startClock()
     scheduleExpiry(value.access)
   }
   /** 文章进入及回到前台按身份重新鉴权，读取失败展示明确重试 */
@@ -398,17 +447,28 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       if (run === generation) busy.value = false
     }
   }
-  /** 手动播放先验权；查词只读时不会触发本方法 */
+  /** 手动播放先验权，隐藏或切换会话后取消迟到的页面点击 */
   const toggle = async () => {
+    const run = generation,
+      player = controller
+    if (!alive || !visible || !player) return
     if (audio.value.status === AudioStatus.PLAYING) {
-      await controller?.toggleFull(() => '')
+      await player.toggleFull(() => '')
       return
     }
-    if (!(await authorize()) || !article.value?.payload.audio_id) return
+    if (
+      !(await authorize()) ||
+      !alive ||
+      !visible ||
+      run !== generation ||
+      controller !== player ||
+      !article.value?.payload.audio_id
+    )
+      return
     follow.value = true
     lastParagraph = -1
     const prepared = fullPreparation
-    if (prepared) await controller?.toggleFull(() => prepared.load())
+    if (prepared) await player.toggleFull(() => prepared.load())
   }
   /** 拖动按原始音频秒数定位并重新开启跟随
    * @param seconds 媒体原始时间轴的秒数
@@ -637,7 +697,16 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   onShow(() => {
     if (pageShareEntry?.value) return
     visible = true
-    void load()
+    if (controller && full?.background) {
+      void authorize().then((allowed) => {
+        if (!allowed || !visible || !controller) return
+        controller.refreshFull()
+        lastParagraph = -1
+        startClock()
+        scrollFollow()
+        void save()
+      })
+    } else void load()
   })
   onPageScroll((event) => {
     currentScroll = event.scrollTop
@@ -649,11 +718,20 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     visible = false
     generation++
     busy.value = false
+    if (full?.background) {
+      if (audio.value.status === AudioStatus.LOADING) controller?.pauseFull()
+      controller?.refreshFull()
+      if (audio.value.wordId) controller?.stopWord(audio.value.wordId)
+      wordGeneration++
+      clearInterval(timer)
+      clearTimeout(anchorTimer)
+    }
     void save()
-    stop()
+    if (!full?.background) stop()
   })
   onUnload(() => {
-    if (visible) void save()
+    controller?.refreshFull()
+    void save()
     alive = false
     visible = false
     generation++
