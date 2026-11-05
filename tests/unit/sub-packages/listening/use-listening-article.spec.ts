@@ -535,3 +535,73 @@ it('releases the page-owned prefetched full audio file on hide', async () => {
   ports.hide?.()
   expect(release).toHaveBeenCalledTimes(1)
 })
+
+it('reloads a large-category article after hide without sending its frozen queue in the detail URL', async () => {
+  const queue = 'A'.repeat(16000)
+  ports.request.mockImplementation(async (path: string) => {
+    if (path.length > 8192) throw new ApiError('request_failed', '请求暂未成功，请重试', 414)
+    return { ...structuredClone(detail), queue_token: queue }
+  })
+  const model = await open()
+  expect(model.article.value?.id).toBe('a1')
+  ports.hide?.()
+  ports.show?.()
+  await flushPromises()
+  expect(model.article.value?.id).toBe('a1')
+  expect(model.error.value).toBe('')
+  expect(model.queueToken.value).toBe(queue)
+  await model.load()
+  expect(model.article.value?.id).toBe('a1')
+})
+
+it('ignores a permission failure from before lock while the resumed article is loading', async () => {
+  const model = await open()
+  let rejectCheck!: (reason: unknown) => void
+  ports.request.mockImplementationOnce(
+    () =>
+      new Promise((_resolve, reject) => {
+        rejectCheck = reject
+      })
+  )
+  const checking = model.toggle()
+  await flushPromises()
+  ports.hide?.()
+  let finishReload!: (value: unknown) => void
+  ports.request.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finishReload = resolve
+      })
+  )
+  ports.show?.()
+  await flushPromises()
+  rejectCheck(new ApiError('request_failed', '请求暂未成功，请重试', 503))
+  await checking
+  expect(model.error.value).toBe('')
+  expect(model.article.value?.id).toBe('a1')
+  finishReload(structuredClone(detail))
+  await flushPromises()
+  expect(model.busy.value).toBe(false)
+  expect(model.article.value?.id).toBe('a1')
+  expect(model.audio.value.status).not.toBe('playing')
+})
+
+it('ignores a late media rejection after the page has hidden and disposed its preparation', async () => {
+  let rejectMedia!: (reason: unknown) => void
+  ports.run.mockImplementationOnce(
+    () =>
+      new Promise((_resolve, reject) => {
+        rejectMedia = reject
+      })
+  )
+  const model = await open()
+  ports.hide?.()
+  rejectMedia(new ApiError('forbidden', '旧媒体请求已失效', 403))
+  await flushPromises()
+  expect(model.error.value).toBe('')
+  expect(model.article.value?.id).toBe('a1')
+  ports.show?.()
+  await flushPromises()
+  expect(model.article.value?.id).toBe('a1')
+  expect(model.error.value).toBe('')
+})

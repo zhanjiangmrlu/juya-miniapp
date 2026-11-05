@@ -122,15 +122,22 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     selection.value = null
     error.value = reason instanceof Error ? reason.message : '权限暂未获取，请重试'
   }
-  /** 受控媒体或预置发音一旦明确拒绝即停音清理，旧版本迟到错误不影响新页面
+  /** 当前前台受控资源明确拒绝时停音清理，锁屏前的迟到错误不影响恢复后的页面
    * @param request 当前受保护资源请求
    * @param current 发出请求时的已确认文章版本
    */
   const guardResource = async <T>(request: Promise<T>, current: ListeningArticle): Promise<T> => {
+    const run = generation
     try {
       return await request
     } catch (reason) {
-      if (article.value === current && reason instanceof ApiError) {
+      if (
+        run === generation &&
+        alive &&
+        visible &&
+        article.value === current &&
+        reason instanceof ApiError
+      ) {
         if ([401, 403, 404].includes(reason.status || 0)) deny(reason)
         else if (reason.status === 409) void authorize()
       }
@@ -219,15 +226,16 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       : 0
     if (until > 0) expiry = setTimeout(() => void authorize(), Math.min(until + 50, 2147483647))
   }
-  /** 复核当前权限和发布版本；版本更新必须重新加载初始状态 */
+  /** 复核当前前台代次的权限和发布版本，忽略锁屏前的迟到响应 */
   const authorize = async () => {
-    const current = article.value
-    if (!current) return false
+    const current = article.value,
+      run = generation
+    if (!current || !alive || !visible) return false
     try {
       const checked = await session.request<ListeningSummary>(
         `${LISTENING_API}/articles/${current.id}/summary`
       )
-      if (article.value !== current || !alive || !visible) return false
+      if (run !== generation || article.value !== current || !alive || !visible) return false
       if (!checked.access.can_learn || !checked.available) {
         summary.value = checked
         throw new ApiError(
@@ -254,7 +262,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       }
       return true
     } catch (reason) {
-      if (article.value === current) deny(reason)
+      if (run === generation && article.value === current && alive && visible) deny(reason)
       return false
     }
   }
@@ -356,7 +364,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     }, 40)
     scheduleExpiry(value.access)
   }
-  /** 文章进入及回到前台先鉴权，读取失败展示明确重试 */
+  /** 文章进入及回到前台按身份重新鉴权，读取失败展示明确重试 */
   const load = async () => {
     if (!id.value || busy.value) return
     busy.value = true
@@ -364,7 +372,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     const run = ++generation
     try {
       if (!(await account.ensure(target.value))) return
-      const value = await getListeningArticle(id.value, queueToken.value)
+      const value = await getListeningArticle(id.value)
       if (!value.version_id) throw new ApiError('response_invalid', '文章版本暂未获取，请重试')
       if (!queueToken.value) queueToken.value = value.queue_token
       if (run !== generation || !alive || !visible) return
