@@ -20,6 +20,7 @@ it('renders Chinese above the published English title and keeps its WebP thumbna
     name: '晨间慢慢活动身体',
     title_en: 'A Gentle Start to the Morning',
     thumbnail_id: 'thumb',
+    has_study_note: false,
     published_at: '',
     vocabulary_count: 10,
     chunk_count: 5,
@@ -81,6 +82,7 @@ it('generates the current publication thumbnail from its authorized original whe
         name: '无缩略图',
         title_en: 'Missing thumbnail',
         thumbnail_id: null,
+        has_study_note: false,
         published_at: '',
         vocabulary_count: 0,
         chunk_count: 0,
@@ -134,6 +136,7 @@ it('keeps its image placeholder until pixels load, retries failed pixels in plac
     name: '场景',
     title_en: 'Scene',
     thumbnail_id: 'thumb',
+    has_study_note: false,
     published_at: '',
     vocabulary_count: 0,
     chunk_count: 0,
@@ -170,6 +173,7 @@ it('keeps a locked card visible without requesting protected detail to generate 
         name: '受限场景',
         title_en: 'Locked',
         thumbnail_id: null,
+        has_study_note: false,
         published_at: '',
         state: { completed: false, today_completed: false, favorite: false, started: false },
         access: {
@@ -190,3 +194,39 @@ it('keeps a locked card visible without requesting protected detail to generate 
   expect(ports.thumbnail).not.toHaveBeenCalled()
   page.unmount()
 })
+
+it.each([false, true])(
+  'shows current authorization and one separate review marker for an authorized note, completed=%s',
+  async (completed) => {
+    const page = mount(SceneCard, {
+      props: {
+        source: 'learning_notes',
+        card: {
+          id: 'note',
+          name: '笔记卡',
+          title_en: 'A Note',
+          version_id: 'v1',
+          thumbnail_id: null,
+          published_at: '',
+          has_study_note: true,
+          vocabulary_count: 1,
+          chunk_count: 1,
+          state: { completed, today_completed: false, favorite: false, started: false },
+          access: {
+            can_learn: true,
+            can_lookup: true,
+            is_free: false,
+            reason: null,
+            version: 'a1',
+            server_now: '2026-11-06',
+            expires_at: null
+          }
+        }
+      }
+    })
+    expect(page.text()).toContain('授权可学')
+    expect(page.text()).not.toContain('已学过 · 点击复习')
+    expect(page.findAll('.learned-note')).toHaveLength(completed ? 1 : 0)
+    page.unmount()
+  }
+)

@@ -8,7 +8,7 @@ vi.mock('@/services/api', () => ({
   session: { userId: () => ports.owner },
   operations: { run: ports.run, pending: () => false, recover: vi.fn() }
 }))
-import { useReadingPosition } from '@/composables/use-reading-position'
+import { useReadingPosition } from '@/sub-packages/scenes/use-reading-position'
 
 import type { PublishedScene } from '@/shared/types/learning'
 

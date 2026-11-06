@@ -129,3 +129,19 @@ it.each(['/pages/learning/index', '/pages/records/index', '/sub-packages/listeni
     wrapper.unmount()
   }
 )
+
+it('restores the validated PDF intent after the real consent/login button without preserving a foreign queue', async () => {
+  const wrapper = page()
+  ports.load?.({
+    return: encodeURIComponent(
+      '/sub-packages/scenes/detail?id=card-1&intent=study_note&source=learning_notes&queue=foreign'
+    )
+  })
+  await wrapper.get('.checkbox-group').trigger('change', { detail: { value: ['agree'] } })
+  await wrapper.get('button.primary').trigger('click')
+  await flushPromises()
+  expect(openTarget).toHaveBeenCalledExactlyOnceWith(
+    '/sub-packages/scenes/detail?id=card-1&intent=study_note&source=learning_notes'
+  )
+  wrapper.unmount()
+})

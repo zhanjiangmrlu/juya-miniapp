@@ -54,8 +54,11 @@ onLoad((query) => {
   if (query?.return) {
     try {
       const requested = safeTarget(decodeURIComponent(String(query.return)))
-      // 普通登录统一进入双模块首页，明确的分享目标仍恢复到对应内容
-      target = requested.includes('target=') ? requested : Routes.HOME
+      // 普通登录统一回首页；分享目标与经过校验的PDF查看意图恢复其原动作
+      target =
+        requested.includes('target=') || requested.includes('intent=study_note')
+          ? requested
+          : Routes.HOME
     } catch {
       target = Routes.HOME
     }

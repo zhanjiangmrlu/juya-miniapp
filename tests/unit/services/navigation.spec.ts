@@ -61,3 +61,12 @@ it('retains only the stable shared-card target across login, without restoring a
     '/pages/learning/index?target=learning'
   )
 })
+
+it('preserves a validated note login intent and notes fallback without accepting a foreign queue', () => {
+  expect(
+    safeTarget(
+      '/sub-packages/scenes/detail?id=card-1&intent=study_note&source=learning_notes&queue=foreign'
+    )
+  ).toBe('/sub-packages/scenes/detail?id=card-1&intent=study_note&source=learning_notes')
+  expect(safeTarget('/pages/learning/index?tab=notes')).toBe('/pages/learning/index?tab=notes')
+})

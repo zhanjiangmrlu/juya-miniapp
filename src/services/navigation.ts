@@ -18,6 +18,7 @@ export const safeTarget = (target: string) => {
   )
     return Routes.HOME
   const query = (target.split('?')[1] || '').split('#')[0]
+  if (path === Routes.LEARNING && query.split('&').includes('tab=notes')) return `${path}?tab=notes`
   if (path === Routes.SCENE || path === Routes.LEARNING) {
     const values: Record<string, string> = {}
     try {
@@ -65,8 +66,12 @@ export const safeTarget = (target: string) => {
     } catch {
       return Routes.HOME
     }
+    const noteIntent = path === Routes.SCENE && query.split('&').includes('intent=study_note')
+    const source = query.split('&').includes('source=learning_notes')
+      ? '&source=learning_notes'
+      : ''
     return /^[A-Za-z0-9-]{1,64}$/.test(id)
-      ? `${path}?id=${encodeURIComponent(id)}`
+      ? `${path}?id=${encodeURIComponent(id)}${noteIntent ? '&intent=study_note' : ''}${path === Routes.SCENE ? source : ''}`
       : Routes.LEARNING
   }
   if (path === Routes.RECORDS && query.split('&').includes('tab=checkins'))

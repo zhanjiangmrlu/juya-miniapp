@@ -9,6 +9,7 @@ const ports = vi.hoisted(() => ({
   recover: vi.fn(),
   pending: vi.fn(() => false),
   next: vi.fn(),
+  skip: vi.fn(),
   matches: vi.fn(),
   source: vi.fn(() => 'learning'),
   clear: vi.fn(),
@@ -37,6 +38,7 @@ vi.mock('@/services/source-queue', () => ({
   sourceQueue: {
     endReason: () => 'round_complete',
     next: ports.next,
+    skip: ports.skip,
     matches: ports.matches,
     source: ports.source,
     clear: ports.clear,
@@ -81,7 +83,11 @@ const open = (queue = true, realDialogue = false) => {
   const page = shallowMount(SceneDetail, {
     global: {
       stubs: {
-        AppPage: { template: '<view><slot /><slot name="footer" /></view>' },
+        AppPage: {
+          name: 'AppPage',
+          props: ['customBack'],
+          template: '<view><slot /><slot name="footer" /></view>'
+        },
         SceneDialogue: !realDialogue
       }
     }
@@ -104,6 +110,7 @@ beforeEach(() => {
   })
   ports.next.mockResolvedValue(null)
   ports.take.mockReturnValue(null)
+  vi.stubGlobal('getCurrentPages', () => [])
   vi.stubGlobal('uni', {
     pageScrollTo: vi.fn(),
     switchTab: vi.fn(),
@@ -138,7 +145,7 @@ it('allows next for a card completed today and never resubmits it', async () => 
   await flushPromises()
   expect(ports.run).not.toHaveBeenCalled()
   expect(ports.next).toHaveBeenCalledTimes(1)
-  expect(page.findComponent({ name: 'SceneQueueEnd' }).exists()).toBe(true)
+  expect(uni.reLaunch).toHaveBeenCalledWith({ url: '/pages/learning/index' })
   page.unmount()
 })
 
@@ -249,13 +256,13 @@ it('retains the current body and cursor when the next card body fails, and retri
   page.unmount()
 })
 
-it('shows the source-specific end choice immediately when the last completion is confirmed', async () => {
+it('returns to the current learning collection immediately when its last completion is confirmed', async () => {
   ports.next.mockResolvedValue(null)
   const page = open()
   await flushPromises()
   await page.get('.safe-footer .primary').trigger('click')
   await flushPromises()
-  expect(page.findComponent({ name: 'SceneQueueEnd' }).exists()).toBe(true)
+  expect(uni.reLaunch).toHaveBeenCalledWith({ url: '/pages/learning/index' })
   expect(ports.commit).not.toHaveBeenCalled()
   page.unmount()
 })
@@ -332,4 +339,56 @@ it('explains a changed publication position reset and starts a re-entered dialog
   await flushPromises()
   expect(reopened.find('.translation-section').exists()).toBe(false)
   reopened.unmount()
+})
+
+it('routes the visible back control to the notes source when there is no native stack', async () => {
+  ports.source.mockReturnValue('learning_notes')
+  const page = open()
+  await flushPromises()
+  const frame = page.getComponent({ name: 'AppPage' })
+  expect(frame.props('customBack')).toBe(true)
+  frame.vm.$emit('back')
+  expect(uni.reLaunch).toHaveBeenCalledWith({ url: '/pages/learning/index?tab=notes' })
+  page.unmount()
+})
+
+it('uses atomic note admission and skips an unavailable candidate without entering or starting it', async () => {
+  const { ApiError } = await import('@/services/errors')
+  today = true
+  ports.source.mockReturnValue('learning_notes')
+  ports.next.mockResolvedValueOnce('removed-note').mockResolvedValueOnce('valid-note')
+  ports.request.mockImplementation(async (path: string) => {
+    if (path.includes('/removed-note'))
+      throw new ApiError('study_note_unavailable', '笔记已移除', 409)
+    return {
+      ...scene(path.includes('/valid-note') ? 'valid-note' : 'first'),
+      study_note: {
+        state: 'ready',
+        version_id: 'note-v1',
+        media_id: 'pdf',
+        filename: 'n.pdf',
+        size: 1
+      }
+    }
+  })
+  const page = open()
+  await flushPromises()
+  await page.get('.safe-footer .primary').trigger('click')
+  await flushPromises()
+  expect(
+    ports.request.mock.calls
+      .filter(([path]) => path.includes('/removed-note'))
+      .map(([path]) => path)
+  ).toEqual(['/api/mini/v1/cards/removed-note?require_study_note=true'])
+  expect(ports.skip).toHaveBeenCalledWith('removed-note')
+  expect(ports.commit).toHaveBeenCalledExactlyOnceWith('valid-note')
+  expect(ports.request.mock.calls.find(([path]) => path.includes('/valid-note'))?.[0]).toBe(
+    '/api/mini/v1/cards/valid-note?require_study_note=true'
+  )
+  expect(uni.redirectTo).toHaveBeenCalledWith(
+    expect.objectContaining({
+      url: '/sub-packages/scenes/detail?id=valid-note&queue=q&source=learning_notes'
+    })
+  )
+  page.unmount()
 })

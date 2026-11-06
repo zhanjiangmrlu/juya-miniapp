@@ -73,8 +73,9 @@ export const useSceneList = <T>(ports: SceneListPorts<T>) => {
   const current = (run: number) => run === generation && (!ports.userId || owner === ports.userId())
   /** 获取已读范围或新轮次首屏，失败时不提交新的页数和页长
    * @param firstPage 用户主动下拉时仅请求新轮次第一页
+   * @param rangePages 服务端缩页后需要重新读取的有效页数
    */
-  const refreshRange = async (firstPage = false) => {
+  const refreshRange = async (firstPage = false, rangePages?: number) => {
     busy.value = true
     error.value = ''
     const run = ++generation
@@ -85,15 +86,17 @@ export const useSceneList = <T>(ports: SceneListPorts<T>) => {
           firstPage || !limit
             ? Math.max(1, Math.min(50, Math.floor(ports.pageSize?.() ?? listPageSize())))
             : limit,
-        nextPages = firstPage ? 1 : pages
+        nextPages = firstPage ? 1 : rangePages || pages
       const results = await Promise.all(
         Array.from({ length: nextPages }, (_, index) =>
-          ports.request<SceneListPage<T>>(`${ports.path}?page=${index + 1}&limit=${nextLimit}`)
+          ports.request<SceneListPage<T>>(
+            `${ports.path}${ports.path.includes('?') ? '&' : '?'}page=${index + 1}&limit=${nextLimit}`
+          )
         )
       )
       if (!current(run)) return
       limit = nextLimit
-      pages = nextPages
+      pages = Math.max(...results.map((page, index) => page.page || index + 1))
       items.value = unique(results.flatMap((page) => page.items))
       total.value = results[0]?.total ?? 0
       publishedTotal.value = results[0]?.published_total ?? 0
@@ -148,15 +151,21 @@ export const useSceneList = <T>(ports: SceneListPorts<T>) => {
       if (!(await ports.ensure())) return
       if (!current(run)) return
       const result = await ports.request<SceneListPage<T>>(
-        `${ports.path}?page=${page}&limit=${limit}`
+        `${ports.path}${ports.path.includes('?') ? '&' : '?'}page=${page}&limit=${limit}`
       )
       if (!current(run)) return
-      items.value = unique([...items.value, ...result.items])
+      if (result.total > 0 && result.page && result.page < page) {
+        // 旧页已被服务端钳回，必须重建当前有效范围，不能把失效条目追加成已结束快照
+        moreBusy.value = false
+        await refreshRange(false, result.page)
+        return
+      }
+      items.value = result.total === 0 ? [] : unique([...items.value, ...result.items])
       total.value = result.total
       publishedTotal.value = result.published_total ?? publishedTotal.value
       accessContext.value = result.learning_access ?? accessContext.value
       freeRemaining.value = result.free_uncompleted_total ?? freeRemaining.value
-      pages = page
+      pages = result.total === 0 ? 1 : result.page || page
       acceptBoundary(result)
     } catch (reason) {
       if (current(run))

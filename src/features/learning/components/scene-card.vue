@@ -168,20 +168,32 @@ onBeforeUnmount(() => {
     ><view class="scene-copy"
       ><text class="scene-name">{{ card.name }}</text
       ><text v-if="card.title_en" class="scene-english">{{ card.title_en }}</text
-      ><text v-if="!available" class="availability">{{
-        'unavailable_reason' in card && card.unavailable_reason === 'deleted'
-          ? '已删除 · 当前不可用'
-          : '已下线 · 当前不可用'
-      }}</text
-      ><text v-else-if="locked" class="availability">需学习授权</text>
-      <text v-else-if="history && completed" class="scene-hint">已学过</text>
-      <text v-else-if="card.access?.is_free" class="scene-hint">免费开放</text>
-      <text v-else-if="completed && !$slots.default" class="scene-hint">已学过 · 点击复习</text>
-      <text v-else-if="source === QueueSource.FAVORITES" class="scene-hint">已收藏</text>
-      <text v-else-if="!$slots.default" class="scene-hint">{{
-        started ? '学习中 · 继续学习' : '未开始'
-      }}</text>
-      <text v-if="contentSummary" class="scene-meta">{{ contentSummary }}</text>
+      ><view
+        class="scene-state-line"
+        :class="{ 'has-note': 'has_study_note' in card && card.has_study_note }"
+        ><text v-if="!available" class="availability">{{
+          'unavailable_reason' in card && card.unavailable_reason === 'deleted'
+            ? '已删除 · 当前不可用'
+            : '已下线 · 当前不可用'
+        }}</text
+        ><text v-else-if="locked" class="availability">需学习授权</text>
+        <text v-else-if="source === QueueSource.LEARNING_NOTES" class="scene-hint">{{
+          card.access?.is_free ? '免费开放' : '授权可学'
+        }}</text>
+        <text v-else-if="history && completed" class="scene-hint">已学过</text>
+        <text v-else-if="card.access?.is_free" class="scene-hint">免费开放</text>
+        <text v-else-if="completed && !$slots.default" class="scene-hint">已学过 · 点击复习</text>
+        <text v-else-if="source === QueueSource.FAVORITES" class="scene-hint">已收藏</text>
+        <text v-else-if="!$slots.default" class="scene-hint">{{
+          started ? '学习中 · 继续学习' : '未开始'
+        }}</text>
+        <view v-if="'has_study_note' in card && card.has_study_note" class="note-label"
+          ><image src="/static/design/study-note-label.svg" mode="aspectFit" />含学习笔记</view
+        > </view
+      ><text v-if="contentSummary" class="scene-meta">{{ contentSummary }}</text>
+      <view v-if="source === QueueSource.LEARNING_NOTES && completed" class="learned-note"
+        ><image src="/static/design/study-note-learned.svg" mode="aspectFit" />已学／可复习</view
+      >
       <text v-if="historyMeta" class="history-meta">{{ historyMeta }}</text
       ><slot v-if="available" /></view
     ><image
@@ -277,6 +289,38 @@ onBeforeUnmount(() => {
       color: #586c5b;
       font-size: 21.154rpx;
       line-height: 35.962rpx;
+    }
+
+    :where(.scene-state-line.has-note) {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+
+      :where(.scene-hint, .note-label, .availability) {
+        margin-top: 0;
+      }
+    }
+
+    :where(.note-label, .learned-note) {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+      color: #41664d;
+      font-size: 10px;
+      line-height: 17px;
+
+      image {
+        width: 12px;
+        height: 14px;
+      }
+    }
+
+    :where(.learned-note) image {
+      width: 12px;
+      height: 12px;
     }
 
     .scene-meta {

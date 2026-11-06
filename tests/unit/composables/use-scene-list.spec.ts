@@ -292,3 +292,65 @@ it('coalesces the new round and ignores an older retained-range refresh response
   expect(list.items.value).toEqual([{ id: 'fresh' }])
   expect(list.total.value).toBe(5)
 })
+
+it('combines server-side note filters with paging without changing the collection query', async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce({ items: [{ id: 'one' }], total: 3, page: 1, limit: 2 })
+    .mockResolvedValueOnce({ items: [{ id: 'two' }], total: 3, page: 2, limit: 2 })
+  const list = useSceneList<{ id: string }>({
+    path: '/cards?scope=published&has_study_note=true',
+    request,
+    ensure: async () => true,
+    pageSize: () => 2
+  })
+  await list.refresh()
+  await list.more()
+  expect(request.mock.calls.map(([path]) => path)).toEqual([
+    '/cards?scope=published&has_study_note=true&page=1&limit=2',
+    '/cards?scope=published&has_study_note=true&page=2&limit=2'
+  ])
+})
+
+it.each([0, 1])(
+  'reconverges a shrunken collection of %i instead of keeping removed notes beside the empty state',
+  async (total) => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({
+        items: [{ id: 'removed' }, { id: 'also-removed' }],
+        total: 5,
+        page: 1,
+        limit: 2
+      })
+      .mockResolvedValueOnce({
+        items: total ? [{ id: 'remaining' }] : [],
+        total,
+        page: 1,
+        limit: 2
+      })
+      .mockResolvedValueOnce({
+        items: total ? [{ id: 'remaining' }] : [],
+        total,
+        page: 1,
+        limit: 2
+      })
+    const list = useSceneList<{ id: string }>({
+      path: '/cards?scope=published&has_study_note=true',
+      request,
+      ensure: async () => true,
+      pageSize: () => 2
+    })
+    await list.refresh()
+    await list.more()
+    expect(list.items.value).toEqual(total ? [{ id: 'remaining' }] : [])
+    expect(list.total.value).toBe(total)
+    expect(list.hasMore.value).toBe(false)
+    expect(list.moreBusy.value).toBe(false)
+    expect(request.mock.calls.map(([path]) => path)).toEqual([
+      '/cards?scope=published&has_study_note=true&page=1&limit=2',
+      '/cards?scope=published&has_study_note=true&page=2&limit=2',
+      ...(total ? ['/cards?scope=published&has_study_note=true&page=1&limit=2'] : [])
+    ])
+  }
+)

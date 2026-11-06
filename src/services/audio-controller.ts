@@ -473,6 +473,20 @@ export const createAudioController = (
     state.status = AudioStatus.PAUSED
     notify()
   }
+  /** 原生文档打开前暂停所有音轨并取消在途播放，保留真实时钟和倍率 */
+  const suspend = () => {
+    if (!alive) return
+    refreshFull()
+    pauseFull()
+    if (state.wordId) stopWord(state.wordId)
+    else {
+      wordCancelled()
+      cancelWordRecovery()
+      wordGeneration++
+      wordSourceGeneration = 0
+      word.stop()
+    }
+  }
   /** 离开场景时销毁音轨并取消所有未返回的资源请求 */
   const dispose = () => {
     if (!alive) return
@@ -497,6 +511,7 @@ export const createAudioController = (
     setRate,
     refreshFull,
     pauseFull,
+    suspend,
     dispose,
     state
   }
