@@ -58,3 +58,31 @@ it('cleans a cancelled native download again when the platform creates its file 
   expect(abort).toHaveBeenCalledOnce()
   expect(unlink).toHaveBeenCalledTimes(2)
 })
+
+it('sweeps only owned orphan PDFs and protects both active downloads and open documents', async () => {
+  const dir = uni.env.USER_DATA_PATH
+  const entries = [
+    'study-note-ab-1700000000000-abc123.pdf',
+    'study-note-export.pdf',
+    'foreign.pdf',
+    '../study-note-ab-1700000000000-z.pdf'
+  ]
+  const fs = { unlink, unlinkSync: vi.fn(), readdirSync: vi.fn(() => entries) }
+  Object.assign(uni, { getFileSystemManager: () => fs })
+  const task = { active: () => true, onCancel: () => () => undefined }
+  const first = downloadStudyNote('/ticket', 'open', task)
+  const firstPath = callback!.filePath!
+  callback!.success?.({ statusCode: 200, tempFilePath: firstPath, errMsg: 'ok' })
+  const opened = await first
+  entries.push(firstPath.slice(dir.length + 1))
+  const second = downloadStudyNote('/ticket', 'active', task)
+  const secondCallback = callback!
+  entries.push(secondCallback.filePath!.slice(dir.length + 1))
+  const third = downloadStudyNote('/ticket', 'third', task)
+  expect(fs.readdirSync).toHaveBeenCalledWith(dir)
+  expect(fs.unlinkSync.mock.calls).toContainEqual([dir + '/' + entries[0]])
+  expect(fs.unlinkSync.mock.calls.every(([path]) => path === dir + '/' + entries[0])).toBe(true)
+  for (const call of [secondCallback, callback!])
+    call.success?.({ statusCode: 200, tempFilePath: call.filePath!, errMsg: 'ok' })
+  for (const file of [opened, await second, await third]) file.release()
+})

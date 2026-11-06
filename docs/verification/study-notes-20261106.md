@@ -17,11 +17,11 @@
 
 ```sh
 pnpm check
-pnpm test --maxWorkers=2
-UNI_OUTPUT_DIR=dist/study-notes-build/h5 VITE_API_BASE_URL=http://127.0.0.1:8394 VITE_STATIC_ASSET_BASE_URL='' VITE_REMOTE_FONTS=false pnpm build:h5
-UNI_OUTPUT_DIR=dist/study-notes-build/mp-weixin VITE_API_BASE_URL=http://127.0.0.1:8394 VITE_STATIC_ASSET_BASE_URL='' VITE_REMOTE_FONTS=false pnpm exec uni build -p mp-weixin --mode development
-UNI_OUTPUT_DIR=dist/study-notes-build/mp-weixin node scripts/verify-mp-page-meta.mjs
-UNI_OUTPUT_DIR=dist/study-notes-build/mp-weixin node scripts/verify-mp-package-budget.mjs
+pnpm test
+UNI_OUTPUT_DIR=dist/study-notes-final-build/h5 VITE_API_BASE_URL=http://127.0.0.1:8394 VITE_STATIC_ASSET_BASE_URL='' VITE_REMOTE_FONTS=false pnpm build:h5
+UNI_OUTPUT_DIR=dist/study-notes-final-build/mp-weixin VITE_API_BASE_URL=http://127.0.0.1:8394 VITE_STATIC_ASSET_BASE_URL='' VITE_REMOTE_FONTS=false pnpm exec uni build -p mp-weixin --mode development
+UNI_OUTPUT_DIR=dist/study-notes-final-build/mp-weixin node scripts/verify-mp-page-meta.mjs
+UNI_OUTPUT_DIR=dist/study-notes-final-build/mp-weixin node scripts/verify-mp-package-budget.mjs
 ```
 
 完整测试中的 `remote-font-build.spec.ts` 另行构建test/production，断言主包小于既定450KiB，未放宽阈值。仅场景运行时使用的 `use-reading-position.ts` 原样移入场景分包，其测试同步迁移；前后原实现字节一致。详情15×17官方SVG也保留单份于场景分包；H5实际200、微信产物存在，列表/已学/空态图标对应12×14、12×12、40×48原始尺寸。首页、听读、底部导航未改。
@@ -62,14 +62,14 @@ UNI_OUTPUT_DIR=dist/study-notes-build/mp-weixin node scripts/verify-mp-package-b
 
 iOS/Android微信、蓝牙耳机和系统面板真机验收未完成，不能用H5或端口模拟替代。未承诺撤回用户已导出的文件。
 
-两项Minor按本轮审查范围记录，未扩展实现：旧Tab下拉刷新迟到成功可能重置后来Tab的共享滚动；异常退出可能留下自有前缀PDF私有文件，尚未增加冷启动过期清扫。不会跨次复用旧PDF文件或权限。
+集中修复后，旧Tab下拉的成功/失败回执仅能重置发起该请求的可见分区和浏览代次。下一次合法下载前清扫上次异常退出遗留的完整自有格式PDF，排除活动下载、打开的文档及无关文件。回归覆盖A→B、A→B→A，以及包含孤儿和活动文件的模拟微信文件目录。真实设备强杀与磁盘回收仍待验证。
 
 ## 最终记录
 
 - `pnpm check`：格式、ESLint、Stylelint、类型检查全部通过
-- `pnpm test --maxWorkers=2`：114文件、621测试全部通过；包含原450KiB test/production断言
+- `pnpm test`：114文件、625测试全部通过；包含原450KiB test/production断言
 - 隔离H5及微信local构建：全部通过，18页面、三底Tab、共享音频入口校验通过
-- 微信local使用本地字体：主包865770B；按平台预算加20%估计1038924B，仍留1058228B，要求保留102400B
-- 标准远程字体test主包459383B、production主包458302B，两者均低于450KiB（460800B）；不以本地字体开发包冒充标准发布包大小
+- 微信local使用本地字体：主包865822B；按平台预算加20%估计1038987B，仍留1058165B，要求保留102400B
+- 标准远程字体test主包459435B、production主包458354B，两者均低于450KiB（460800B）；不以本地字体开发包冒充标准发布包大小
 - 四份图标非空、主包/分包位置及两端引用核对通过；微信详情SVG与源码原字节一致，H5资源实际200，原dist/dev保留，OpenAPI与后端解析一致
-- 本轮未推送、上传或部署。iOS/Android与耳机真机待验；两项Minor仍按上文边界记录
+- 本轮未推送、上传或部署。iOS/Android与耳机真机待验

@@ -40,6 +40,7 @@ const browseOnly = runtimeMode.browseOnly,
 onShareAppMessage(() => ({ ...homeShare.friends }))
 onShareTimeline(() => ({ ...homeShare.timeline }))
 let listOwner = session.userId(),
+  browseGeneration = 0,
   sharedEntry = false,
   requiresIdentityCheck = browseOnly.value
 const activeTab = ref<LearningTab>(LearningTab.ALL)
@@ -81,11 +82,6 @@ const refreshList = () => {
   syncOwner()
   return currentList.value.refresh()
 }
-/** 主动重读当前分区的第一页 */
-const restartList = () => {
-  syncOwner()
-  return currentList.value.restart()
-}
 /** 追加当前分区下一有效页 */
 const loadMore = () => {
   syncOwner()
@@ -126,6 +122,7 @@ const selectTab = async (tab: LearningTab) => {
   syncOwner()
   if (tab === activeTab.value || runtimeMode.update()) return
   position.dispose()
+  browseGeneration++
   activeTab.value = tab
   positions[tab].reset()
   scrollTop.value = 0
@@ -142,15 +139,24 @@ const onListScroll = (event: { detail: { scrollTop: number } }) => {
 const refresh = () => position.preserve(refreshList)
 /** 主动下拉成功后清除旧阅读位置，新轮次失败仍保留可信内容 */
 const restart = async () => {
-  const owner = session.userId()
-  await restartList()
-  if (owner === session.userId() && !error.value) {
-    position.reset()
+  syncOwner()
+  const tab = activeTab.value,
+    run = browseGeneration,
+    list = lists[tab]
+  await list.restart()
+  if (
+    run === browseGeneration &&
+    tab === activeTab.value &&
+    listOwner === session.userId() &&
+    !list.error.value
+  ) {
+    positions[tab].reset()
     scrollTop.value = 0
   }
 }
 /** 账号切换同时清除上一账号的列表和位置 */
 const reset = () => {
+  browseGeneration++
   listOwner = session.userId()
   resetList()
   position.reset()
@@ -232,6 +238,7 @@ watch(
   { flush: 'sync' }
 )
 onHide(() => {
+  browseGeneration++
   share.hide()
   position.dispose()
 })
@@ -250,6 +257,7 @@ const more = () => {
   if (!runtimeMode.update()) void loadMore()
 }
 onUnload(() => {
+  browseGeneration++
   dispose()
   position.dispose()
   unsubscribe()

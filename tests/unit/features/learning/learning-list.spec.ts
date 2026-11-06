@@ -196,3 +196,29 @@ it('clears every tab and its authorization context immediately when the stable a
   expect(page.findAllComponents({ name: 'SceneCard' })).toHaveLength(0)
   page.unmount()
 })
+
+it.each([
+  ['notes', false],
+  ['notes', true],
+  ['all', false]
+] as const)('ignores a stale pull after navigating to %s (failure %s)', async (tab, fail) => {
+  const page = await open(8)
+  let settle!: () => void
+  ports.request.mockImplementationOnce(
+    () =>
+      new Promise((resolve, reject) => {
+        settle = () => (fail ? reject(new Error('离线')) : resolve({ items: [], total: 0 }))
+      })
+  )
+  await page.get('.scene-scroll').trigger('refresherrefresh')
+  await flushPromises()
+  await page.get('[data-tab="notes"]').trigger('click')
+  await flushPromises()
+  if (tab === 'all') await page.get('[data-tab="all"]').trigger('click')
+  const scroll = page.get('.scene-scroll')
+  await scroll.trigger('scroll', { detail: { scrollTop: 510 } })
+  settle()
+  await flushPromises()
+  expect(scroll.attributes('scroll-top')).toBe('510')
+  page.unmount()
+})

@@ -4,6 +4,28 @@ import { SESSION_STORAGE_KEY } from '@/shared/constants/account'
 import type { StoredSession } from '@/shared/types/account'
 import type { StudyNoteFile, StudyNoteTask } from '@/shared/types/study-note'
 
+const activeFiles = new Set<string>()
+
+/** 清扫上次进程遗留的笔记，只处理本功能生成且当前无人使用的私有文件
+ * @param dir 当前微信账号的用户文件目录
+ */
+const sweepOrphans = (dir: string) => {
+  try {
+    const fs = uni.getFileSystemManager()
+    for (const name of fs.readdirSync(dir)) {
+      if (!/^study-note-[0-9a-z]{1,7}-[0-9]{13}-[0-9a-z]*\.pdf$/.test(name)) continue
+      const path = `${dir}/${name}`
+      if (activeFiles.has(path)) continue
+      try {
+        fs.unlinkSync(path)
+      } catch {
+        /* 单个文件可能已被系统回收，继续处理其余遗留文件 */
+      }
+    }
+  } catch {
+    /* 微信文件目录可能暂时不可访问，后续下载将重新清扫 */
+  }
+}
 /** 删除本次原生下载拥有的文件，path 为该次请求的独占临时路径 */
 const temporaryFile = (path: string): StudyNoteFile => {
   let released = false
@@ -12,6 +34,7 @@ const temporaryFile = (path: string): StudyNoteFile => {
     release: () => {
       if (released) return
       released = true
+      activeFiles.delete(path)
       try {
         uni.getFileSystemManager().unlink({ filePath: path, fail: () => undefined })
       } catch {
@@ -50,9 +73,11 @@ export const downloadStudyNote = (
       .toString(36)
     const path = `${uni.env.USER_DATA_PATH}/study-note-${suffix}-${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`,
       file = temporaryFile(path)
+    activeFiles.add(path)
+    sweepOrphans(uni.env.USER_DATA_PATH)
     let settled = false,
       unsubscribe = () => undefined as void
-    const download = uni.downloadFile({
+    const options = {
       url,
       filePath: path,
       timeout: 60000,
@@ -91,7 +116,15 @@ export const downloadStudyNote = (
         file.release()
         reject(new Error('网络中断，请检查网络后重试'))
       }
-    })
+    } satisfies UniApp.DownloadFileOption
+    let download: UniApp.DownloadTask
+    try {
+      download = uni.downloadFile(options)
+    } catch (reason) {
+      file.release()
+      reject(reason)
+      return
+    }
     if (!settled)
       unsubscribe = task.onCancel(() => {
         if (settled) return
