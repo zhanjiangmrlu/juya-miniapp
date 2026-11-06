@@ -291,40 +291,45 @@ onBeforeUnmount(() => {
       line-height: 35.962rpx;
     }
 
-    :where(.scene-state-line.has-note) {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-      margin-top: 6px;
-
-      :where(.scene-hint, .note-label, .availability) {
-        margin-top: 0;
-      }
-    }
-
-    :where(.note-label, .learned-note) {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-top: 4px;
-      color: #41664d;
-      font-size: 10px;
-      line-height: 17px;
-
-      image {
-        width: 12px;
-        height: 14px;
-      }
-    }
-
-    :where(.learned-note) image {
-      width: 12px;
-      height: 12px;
-    }
-
     .scene-meta {
       margin-top: 13.462rpx;
+    }
+  }
+
+  .note-label,
+  .learned-note {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+    color: #41664d;
+    font-size: 10px;
+    line-height: 17px;
+
+    image {
+      width: 12px;
+      height: 14px;
+    }
+  }
+
+  .learned-note image {
+    width: 12px;
+    height: 12px;
+  }
+
+  .scene-state-line.has-note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .has-note {
+    .scene-hint,
+    .note-label,
+    .availability {
+      margin-top: 0;
     }
   }
 
