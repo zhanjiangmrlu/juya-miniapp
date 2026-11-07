@@ -18,7 +18,12 @@ vi.mock('@/services/feedback-service', () => ({
   feedbackInbox: { value: ref({ unread: true, count: 1 }), refresh: vi.fn() }
 }))
 vi.mock('@/services/api', () => ({
-  session: { request: vi.fn(), userId: () => 'owner' },
+  session: {
+    contentRequest: vi.fn(),
+    request: vi.fn(),
+    identity: () => 'owner',
+    userId: () => 'owner'
+  },
   onSessionExpired: () => () => undefined
 }))
 vi.mock('@/stores/account-store', () => ({

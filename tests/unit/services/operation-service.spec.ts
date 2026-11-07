@@ -317,3 +317,33 @@ it.each(['run', 'recover'])(
     expect(JSON.stringify(Array.from(records.values()))).not.toContain('replacement B')
   }
 )
+
+it('rejects an operation result from an earlier session of the same stable account', async () => {
+  let epoch = 1
+  let finish!: (value: unknown) => void
+  const records = new Map<string, unknown>()
+  const service = createOperationService({
+    session: {
+      userId: () => 'A',
+      identity: () => `${epoch}:A`,
+      request: <T>() =>
+        new Promise<T>((resolve) => {
+          finish = (value) => resolve(value as T)
+        })
+    },
+    storage: {
+      get: (key) => records.get(key),
+      set: (key, value) => {
+        records.set(key, value)
+      },
+      remove: (key) => {
+        records.delete(key)
+      }
+    },
+    key: () => 'same-account-old-operation'
+  })
+  const pending = service.run('queue', '/api/mini/v1/learning-queues', 'POST', { card_id: 'card' })
+  epoch = 3
+  finish({ id: 'old-queue' })
+  await expect(pending).rejects.toMatchObject({ code: 'session_changed' })
+})

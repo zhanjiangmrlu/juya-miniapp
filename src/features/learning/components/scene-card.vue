@@ -26,11 +26,11 @@ let generation = 0
 const locked = computed(() => props.card.access?.can_learn === false)
 /** 受限场景只提示授权，不建立来源队列或预取正文 */
 const open = () => {
-  if (locked.value) {
-    uni.showModal({ title: '学习授权提示', content: '此场景需学习授权', showCancel: false })
-    return
-  }
-  void openScene(props.card.id, available.value ? props.source : undefined, props.day)
+  void openScene(
+    props.card.id,
+    available.value && !locked.value ? props.source : undefined,
+    props.day
+  )
 }
 const available = computed(() => !('available' in props.card) || props.card.available)
 const images = computed(() =>
@@ -38,7 +38,7 @@ const images = computed(() =>
 )
 const completed = computed(
   () =>
-    props.source === QueueSource.RECORDS || ('state' in props.card && props.card.state.completed)
+    props.source === QueueSource.RECORDS || ('state' in props.card && props.card.state?.completed)
 )
 /** 将服务端完成或收藏时间显示为北京时间月日
  * @param value 已确认的ISO时间
@@ -66,7 +66,11 @@ const historyMeta = computed(() => {
     .join(' · ')
 })
 const started = computed(
-  () => 'state' in props.card && 'started' in props.card.state && props.card.state.started
+  () =>
+    'state' in props.card &&
+    props.card.state &&
+    'started' in props.card.state &&
+    props.card.state.started
 )
 /** 仅展示当前发布版本的实际内容数量，缺少的统计不填入示例值 */
 const contentSummary = computed(() => {
@@ -105,9 +109,9 @@ const loadImage = async (renew = false) => {
         )
       : (
           await clientThumbnail(
-            JSON.stringify([session.userId(), cardId, version]),
+            JSON.stringify([session.identity(), cardId, version]),
             async () => {
-              const scene = await session.request<PublishedScene>(
+              const scene = await session.contentRequest<PublishedScene>(
                 `/api/mini/v1/cards/${encodeURIComponent(cardId)}?version_id=${encodeURIComponent(version!)}&mark_started=false`
               )
               const imageId = sceneImageId(null, scene.content.image_id, true)

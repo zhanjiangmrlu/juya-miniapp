@@ -34,11 +34,17 @@ vi.mock('@dcloudio/uni-app', () => ({
   }
 }))
 vi.mock('@/services/api', () => ({
-  session: { request: ports.request, userId: () => 'owner' },
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => 'owner',
+    userId: () => 'owner'
+  },
   onSessionExpired: () => () => undefined
 }))
 vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({
+    restore: async () => null,
     ensure: async () => true,
     refreshStatistics: async () => undefined,
     statistics: ports.statistics

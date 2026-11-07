@@ -64,7 +64,8 @@ export const downloadStudyNote = (
       return
     }
     const credential = uni.getStorageSync(SESSION_STORAGE_KEY) as StoredSession | undefined
-    if (!credential?.access_token) {
+    const publicTicket = /\/api\/mini\/v1\/public\/resources\/pub1_[^/?#]+$/.test(url)
+    if (!publicTicket && !credential?.access_token) {
       reject(new Error('请重新登录后重试'))
       return
     }
@@ -81,7 +82,7 @@ export const downloadStudyNote = (
       url,
       filePath: path,
       timeout: 60000,
-      header: { Authorization: `Bearer ${credential.access_token}` },
+      header: publicTicket ? {} : { Authorization: `Bearer ${credential!.access_token}` },
       success: (result) => {
         if (settled || !task.active()) {
           temporaryFile(path).release()

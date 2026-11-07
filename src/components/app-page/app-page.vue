@@ -2,7 +2,9 @@
 import { onHide, onShow } from '@dcloudio/uni-app'
 import { computed, ref, watch } from 'vue'
 
+import AppLoginPrompt from '@/components/app-login-prompt/app-login-prompt.vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
+import { dismissLoginPrompt } from '@/services/login-prompt'
 import { setShareMenu } from '@/services/native-share'
 import { backTo } from '@/services/navigation'
 import { pageBackgroundURL } from '@/services/page-backgrounds'
@@ -92,6 +94,7 @@ onShow(() => {
   setShareMenu(props.shareable ? props.shareChannels || true : false)
 })
 onHide(() => {
+  dismissLoginPrompt()
   visible = false
   setShareMenu(false)
 })
@@ -191,7 +194,7 @@ const goBack = () => {
           :description="publicSummary ? undefined : '把英语用进生活里'"
         /> </template
       ><slot v-else /></view
-    ><slot v-if="!browseOnly" name="footer"
+    ><AppLoginPrompt v-if="!browseOnly" /><slot v-if="!browseOnly" name="footer"
   /></view>
 </template>
 <style scoped lang="scss">

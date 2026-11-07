@@ -2,7 +2,12 @@ import { beforeEach, expect, it, vi } from 'vitest'
 
 const ports = vi.hoisted(() => ({ request: vi.fn(), owner: 'learner-one' }))
 vi.mock('@/services/api', () => ({
-  session: { request: ports.request, userId: () => ports.owner }
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => ports.owner,
+    userId: () => ports.owner
+  }
 }))
 vi.mock('@/services/platform', () => ({
   resourceURL: (path: string) => `https://mini.example${path}`

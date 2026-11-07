@@ -19,14 +19,16 @@ vi.mock('@dcloudio/uni-app', () => ({
   onLoad: (callback: typeof ports.load) => (ports.load = callback),
   onUnload: (callback: typeof ports.unload) => (ports.unload = callback)
 }))
-vi.mock('@/services/api', () => ({ session: { request: ports.request } }))
+vi.mock('@/services/api', () => ({
+  session: { contentRequest: ports.request, request: ports.request }
+}))
 vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
 vi.mock('@/services/navigation', () => ({ backTo: ports.back }))
 
 import { ApiError } from '@/services/errors'
-import { registerImagePreview } from '@/services/image-preview'
 import { runtimeMode } from '@/services/runtime-mode'
 import ImagePreview from '@/sub-packages/scenes/image-preview.vue'
+import { registerImagePreview } from '@/sub-packages/scenes/image-preview-service'
 
 beforeEach(() => {
   runtimeMode.update({ apiCategory: 'default' })

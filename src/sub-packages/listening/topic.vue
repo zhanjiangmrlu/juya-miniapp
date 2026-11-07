@@ -24,8 +24,10 @@ const redirect = async () => {
   busy.value = true
   error.value = ''
   try {
-    if (!(await account.ensure(`${Routes.TOPIC}?id=${encodeURIComponent(id.value)}`))) return
-    const result = await session.request<{ items: ListeningTopic[] }>(`${LISTENING_API}/topics`)
+    await account.restore()
+    const result = await session.contentRequest<{ items: ListeningTopic[] }>(
+      `${LISTENING_API}/topics`
+    )
     const categoryId = result.items.find((item) => item.id === id.value)?.category_id
     if (!categoryId) throw new Error('原分类暂不可用，请返回全部文章')
     uni.redirectTo({ url: `${Routes.LISTENING}?category_id=${encodeURIComponent(categoryId)}` })

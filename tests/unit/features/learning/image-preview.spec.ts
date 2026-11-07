@@ -29,10 +29,12 @@ vi.mock('@dcloudio/uni-app', () => ({
     ports.unload = cb
   }
 }))
-vi.mock('@/services/api', () => ({ session: { request: ports.request } }))
+vi.mock('@/services/api', () => ({
+  session: { contentRequest: ports.request, request: ports.request }
+}))
 vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
 vi.mock('@/services/navigation', () => ({ backTo: vi.fn() }))
-vi.mock('@/services/image-preview', () => ({
+vi.mock('@/sub-packages/scenes/image-preview-service', () => ({
   activeImagePreview: () => ports.context,
   discardImagePreview: vi.fn(),
   closeImagePreview: vi.fn(),

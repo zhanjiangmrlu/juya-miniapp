@@ -51,14 +51,16 @@ const { thumbnail, imageError, retryThumbnail } = useListeningThumbnail(
           ><text>{{
             !article.available
               ? '内容不可用'
-              : article.state.completed
+              : article.state?.completed
                 ? '已学过 · 可以复习'
                 : article.progress?.updated_at
                   ? `学习中 · ${listeningResumeText(article)}`
-                  : '未开始'
+                  : article.state
+                    ? '未开始'
+                    : ''
           }}</text
           ><text v-if="article.access.is_free" class="free-badge">免费</text
-          ><text v-if="article.state.favorite" class="favorite-badge">已收藏</text></view
+          ><text v-if="article.state?.favorite" class="favorite-badge">已收藏</text></view
         ><text v-if="timestamp" class="meta">{{ listeningTimestamp(article, timestamp) }}</text
         ><slot /></view
       ><image

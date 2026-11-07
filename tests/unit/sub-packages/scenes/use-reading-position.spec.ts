@@ -5,7 +5,7 @@ import { defineComponent, h, ref } from 'vue'
 
 const ports = vi.hoisted(() => ({ owner: 'first', run: vi.fn(), scroll: 0 }))
 vi.mock('@/services/api', () => ({
-  session: { userId: () => ports.owner },
+  session: { identity: () => ports.owner, userId: () => ports.owner },
   operations: { run: ports.run, pending: () => false, recover: vi.fn() }
 }))
 import { useReadingPosition } from '@/sub-packages/scenes/use-reading-position'

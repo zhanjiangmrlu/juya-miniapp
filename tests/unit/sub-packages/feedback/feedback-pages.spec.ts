@@ -3,9 +3,9 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 
-import { createFeedbackDraft } from '@/composables/use-feedback-draft'
 import { ApiError } from '@/services/errors'
 import { createOperationService } from '@/services/operation-service'
+import { createFeedbackDraft } from '@/sub-packages/feedback/use-feedback-draft'
 
 import type { FeedbackDetail } from '@/shared/types/feedback'
 const ports = vi.hoisted(() => ({
@@ -45,11 +45,18 @@ vi.mock('@/composables/use-unsaved-guard', () => ({
   })
 }))
 vi.mock('@/services/api', () => ({
-  session: { userId: () => 'owner', request: ports.request },
+  session: {
+    identity: () => 'owner',
+    userId: () => 'owner',
+    contentRequest: ports.request,
+    request: ports.request
+  },
   onSessionExpired: () => () => undefined
 }))
+vi.mock('@/sub-packages/feedback/feedback-draft-service', () => ({
+  feedbackDraft: () => ports.draft
+}))
 vi.mock('@/services/feedback-service', () => ({
-  feedbackDraft: () => ports.draft,
   feedbackInbox: { acknowledge: ports.acknowledge }
 }))
 vi.mock('@/stores/account-store', () => ({ useAccountStore: () => ({ ensure: ports.ensure }) }))

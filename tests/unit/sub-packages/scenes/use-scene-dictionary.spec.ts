@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest'
 
-import { useSceneDictionary } from '@/composables/use-scene-dictionary'
+import { useSceneDictionary } from '@/sub-packages/scenes/use-scene-dictionary'
 
 const token = {
   text: 'went',

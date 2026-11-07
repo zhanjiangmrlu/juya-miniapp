@@ -9,7 +9,14 @@ const ports = vi.hoisted(() => ({
   thumbnail: vi.fn()
 }))
 vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
-vi.mock('@/services/api', () => ({ session: { userId: () => 'learner', request: ports.request } }))
+vi.mock('@/services/api', () => ({
+  session: {
+    identity: () => 'learner',
+    userId: () => 'learner',
+    contentRequest: ports.request,
+    request: ports.request
+  }
+}))
 vi.mock('@/services/client-thumbnail', () => ({ clientThumbnail: ports.thumbnail }))
 beforeEach(() => vi.clearAllMocks())
 vi.mock('@/services/navigation', () => ({ openScene: vi.fn() }))

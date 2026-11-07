@@ -5,19 +5,25 @@ import type { ListeningCategorySummaryProps } from '@/shared/types/listening-com
 const props = defineProps<ListeningCategorySummaryProps>()
 const progress = computed(() =>
   props.category.total_articles
-    ? Math.min(100, (props.category.completed_articles / props.category.total_articles) * 100)
+    ? Math.min(
+        100,
+        ((props.category.completed_articles ?? 0) / props.category.total_articles) * 100
+      )
     : 0
 )
 </script>
 <template>
   <view class="category-summary">
     <view class="category-counts"
-      ><text>{{ category.total_articles }}篇短文 · 已学{{ category.completed_articles }}篇</text
+      ><text
+        >{{ category.total_articles }}篇短文<template v-if="category.completed_articles !== null">
+          · 已学{{ category.completed_articles }}篇</template
+        ></text
       ><text v-if="category.restricted_articles"
         >{{ category.restricted_articles }}篇需学习授权</text
       ><text v-else>当前篇目可学习</text></view
     >
-    <view class="category-progress"
+    <view v-if="category.completed_articles !== null" class="category-progress"
       ><view class="progress-fill" :style="{ width: `${progress}%` }"
     /></view>
   </view>

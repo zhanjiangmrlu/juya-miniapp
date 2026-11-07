@@ -5,6 +5,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 const ports = vi.hoisted(() => ({
   load: undefined as undefined | ((query: { id: string }) => void),
   unload: undefined as undefined | (() => void),
+  owner: 'learner' as string | null,
+  ensure: vi.fn(async () => true),
   media: vi.fn(),
   request: vi.fn()
 }))
@@ -18,14 +20,24 @@ vi.mock('@dcloudio/uni-app', () => ({
   onUnload: (callback: typeof ports.unload) => (ports.unload = callback)
 }))
 vi.mock('@/services/api', () => ({
-  session: { request: ports.request, userId: () => 'learner' },
-  operations: { pending: () => false },
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => ports.owner || 'guest:0',
+    userId: () => ports.owner
+  },
+  operations: {
+    pending: () => {
+      if (!ports.owner) throw new Error('请先登录')
+      return false
+    }
+  },
   onSessionExpired: () => () => undefined
 }))
 vi.mock('@/services/audio-port', () => ({ createAudioPort: () => ({}) }))
 vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
 vi.mock('@/stores/account-store', () => ({
-  useAccountStore: () => ({ ensure: () => Promise.resolve(true) })
+  useAccountStore: () => ({ restore: async () => null, ensure: ports.ensure })
 }))
 vi.mock('@/services/audio-controller', () => ({
   createAudioController: () => ({ state: {}, dispose: vi.fn() })
@@ -33,8 +45,8 @@ vi.mock('@/services/audio-controller', () => ({
 
 import { clearClientThumbnails } from '@/services/client-thumbnail'
 import { ApiError } from '@/services/errors'
-import { activeImagePreview } from '@/services/image-preview'
 import SceneDetail from '@/sub-packages/scenes/detail.vue'
+import { activeImagePreview } from '@/sub-packages/scenes/image-preview-service'
 
 const scene = {
   card_id: 'scene-1',
@@ -54,6 +66,8 @@ const scene = {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  ports.owner = 'learner'
+  ports.ensure.mockResolvedValue(true)
   clearClientThumbnails()
   ports.request.mockResolvedValue(scene)
   ports.media.mockImplementation(async (_card: string, media: string) =>
@@ -81,7 +95,7 @@ afterEach(() => vi.unstubAllGlobals())
 /** 挂载正文并直接进入详情，图片请求外的学习模块保持隔离 */
 const openDetail = () => {
   const page = shallowMount(SceneDetail, {
-    global: { stubs: { AppPage: { template: '<view><slot /></view>' } } }
+    global: { stubs: { AppPage: { template: '<view><slot /><slot name="footer" /></view>' } } }
   })
   ports.load?.({ id: 'scene-1' })
   return page
@@ -244,5 +258,32 @@ it('still opens the full original when front-end thumbnail processing fails', as
   await page.get('.expand-image').trigger('click')
   await expect(activeImagePreview()?.loadSource?.()).resolves.toBe('wxfile://scene-original')
   expect(uni.compressImage).toHaveBeenCalledOnce()
+  page.unmount()
+})
+
+it('opens a free guest scene without private access, personal state or an identity gate', async () => {
+  ports.owner = null
+  ports.request.mockImplementation(async (path: string) =>
+    path.endsWith('/summary')
+      ? {
+          id: 'scene-1',
+          name: '晨间慢慢活动身体',
+          version_id: 'version-1',
+          state: null,
+          available: true,
+          thumbnail_id: 'thumb-1',
+          access: { can_learn: true, can_lookup: false, is_free: true }
+        }
+      : { ...scene, state: null, access: { can_learn: true, can_lookup: false, is_free: true } }
+  )
+  const page = openDetail()
+  await flushPromises()
+  expect(ports.ensure).not.toHaveBeenCalled()
+  expect(page.text()).toContain('晨间慢慢活动身体')
+  expect(page.text()).toContain('当前为游客体验')
+  expect(page.get('.safe-footer').text()).toContain('完成本次学习')
+  expect(page.get('.safe-footer').text()).not.toContain('已完成学习')
+  expect(ports.request.mock.calls.some(([path]) => path.endsWith('/access'))).toBe(false)
+  expect(ports.request.mock.calls[0][0]).toContain('mark_started=false')
   page.unmount()
 })

@@ -30,7 +30,12 @@ vi.mock('@dcloudio/uni-app', () => ({
   onUnload: vi.fn()
 }))
 vi.mock('@/services/api', () => ({
-  session: { request: ports.request, userId: () => 'learner' },
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => 'learner',
+    userId: () => 'learner'
+  },
   operations: { run: ports.run, pending: ports.pending, recover: ports.recover },
   onSessionExpired: () => () => undefined
 }))
@@ -50,7 +55,11 @@ vi.mock('@/services/source-queue', () => ({
 }))
 vi.mock('@/services/audio-port', () => ({ createAudioPort: () => ({}) }))
 vi.mock('@/stores/account-store', () => ({
-  useAccountStore: () => ({ ensure: async () => true, refreshStatistics: async () => undefined })
+  useAccountStore: () => ({
+    restore: async () => null,
+    ensure: async () => true,
+    refreshStatistics: async () => undefined
+  })
 }))
 vi.mock('@/services/audio-controller', () => ({
   createAudioController: () => ({ state: {}, dispose: vi.fn() })

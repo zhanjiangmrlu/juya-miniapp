@@ -46,6 +46,14 @@ let starting = false
  * @param day 某日打卡来源日期
  */
 export const openSourceScene = async (source: QueueSource, cardId: string, day?: string) => {
+  if (!session.userId()) {
+    sourceQueue.clear()
+    discardPreparedScene()
+    uni.navigateTo({
+      url: `/sub-packages/scenes/detail?id=${encodeURIComponent(cardId)}${source === QueueSource.LEARNING_NOTES ? '&source=learning_notes' : ''}`
+    })
+    return
+  }
   if (starting) return
   starting = true
   try {

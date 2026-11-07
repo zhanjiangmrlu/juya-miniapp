@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { onShareAppMessage, onShareTimeline, onShow } from '@dcloudio/uni-app'
-import { ref } from 'vue'
+import { onHide, onShareAppMessage, onShareTimeline, onShow, onUnload } from '@dcloudio/uni-app'
+import { nextTick, ref } from 'vue'
 
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { getListeningHome } from '@/features/listening/listening-service'
+import { onSessionExpired, session } from '@/services/api'
+import { loginReturn } from '@/services/login-return'
+import { openLogin } from '@/services/navigation'
 import { pageShare } from '@/services/page-share'
 import { HOME_BACKGROUND_IMAGE_URL } from '@/shared/constants/brand'
 import { Routes } from '@/shared/constants/navigation'
@@ -15,21 +18,25 @@ import type { ListeningHome } from '@/shared/types/listening'
 
 const account = useAccountStore(),
   home = ref<ListeningHome | null>(null),
+  scrollTop = ref(0),
   busy = ref(false),
   error = ref(''),
   refreshing = ref(false)
+let generation = 0,
+  visible = false
 /** 读取本人双模块入口，不将读取失败展示为零成绩 */
 const load = async () => {
   busy.value = true
   error.value = ''
+  const run = ++generation
   try {
-    if (await account.ensure(Routes.HOME)) {
-      home.value = await getListeningHome()
-    }
+    await account.restore()
+    const value = await getListeningHome()
+    if (run === generation) home.value = value
   } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : '首页暂未获取'
+    if (run === generation) error.value = reason instanceof Error ? reason.message : '首页暂未获取'
   } finally {
-    busy.value = false
+    if (run === generation) busy.value = false
   }
 }
 /** 在首页内容区下拉时刷新入口统计并收起刷新提示 */
@@ -47,8 +54,48 @@ const pullRefresh = async () => {
  */
 const open = (path: string) => uni.navigateTo({ url: path })
 onShow(() => {
+  visible = true
+  loginReturn.register(
+    Routes.HOME,
+    () => ({
+      page: Routes.HOME,
+      type: 'page',
+      id: '',
+      tab: '',
+      category: '',
+      scroll: scrollTop.value,
+      translation: false,
+      audioPosition: 0,
+      playbackRate: 1,
+      version: ''
+    }),
+    () => {
+      if (visible) void load()
+    }
+  )
+  const restored = loginReturn.take(Routes.HOME)
+  if (restored) scrollTop.value = restored.scroll
   uni.hideTabBar({ animation: false, fail: () => undefined })
   void load()
+})
+
+const unsubscribe = onSessionExpired(() => {
+  generation++
+  home.value = null
+  error.value = ''
+  busy.value = false
+  if (visible && !loginReturn.pending())
+    void nextTick(() => {
+      if (visible && !loginReturn.pending()) void load()
+    })
+})
+onHide(() => {
+  visible = false
+})
+onUnload(() => {
+  generation++
+  visible = false
+  unsubscribe()
 })
 
 onShareAppMessage(() => ({ ...pageShare.friends }))
@@ -63,14 +110,20 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
     ><scroll-view
       class="home-scroll"
       scroll-y
+      :scroll-top="scrollTop"
       enhanced
       :show-scrollbar="false"
       refresher-enabled
       :refresher-triggered="refreshing"
       refresher-background="transparent"
+      @scroll="scrollTop = $event.detail.scrollTop"
       @refresherrefresh="pullRefresh"
       ><view class="hero"
-        ><text class="hello">{{ account.profile?.nickname || '学习者' }}，今天也学一点</text
+        ><text class="hello">{{
+          account.profile
+            ? `${account.profile.nickname || '学习者'}，今天也学一点`
+            : '今天，也学一点英语'
+        }}</text
         ><text class="welcome">今天，想学些什么？</text></view
       ><AppState :busy="busy && !home" :error="error" @retry="load" /><button
         class="module scene-module"
@@ -84,11 +137,13 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
           ><text class="description-line">积累约3,700个词汇。</text></view
         ><view class="module-foot"
           ><text v-if="home"
-            >已学{{ home.statistics.completed_cards }}张 ·
+            ><template v-if="home.statistics"
+              >已学{{ home.statistics.completed_cards }}张 ·
+            </template>
             {{
               home?.scene_free_count === null
                 ? '免费范围准备中'
-                : `免费开放${home.scene_actual_free_count}张`
+                : `免费开放${home.scene_actual_free_count}张${home.statistics ? '' : ' · 直接体验'}`
             }}</text
           ><text>开始学习 ›</text></view
         ></button
@@ -109,19 +164,30 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
           ></view
         ><view class="module-foot"
           ><text v-if="home"
-            >已学{{ home.statistics.completed_articles }}篇 ·
+            ><template v-if="home.statistics"
+              >已学{{ home.statistics.completed_articles }}篇 ·
+            </template>
             {{
-              home?.free_count === null ? '免费范围准备中' : `免费开放${home.actual_free_count}篇`
+              home?.free_count === null
+                ? '免费范围准备中'
+                : `免费开放${home.actual_free_count}篇${home.statistics ? '' : ' · 直接体验'}`
             }}</text
           ><text>开始听读 ›</text></view
         ></button
-      ><view v-if="home" class="home-note"
+      ><view v-if="home?.statistics" class="home-note"
         ><image src="/static/design/home-checkin.svg" mode="aspectFit" aria-hidden="true" /><text
           >连续打卡{{ home.statistics.current_streak }}天 ·
           {{ home.statistics.checked_in_today ? '今日已打卡' : '今日待打卡' }}</text
         ></view
       ></scroll-view
-    ><template #footer><AppBottomTabs active="home" embedded /></template
+    ><template #footer
+      ><button
+        v-if="!account.profile && !session.userId()"
+        class="text-button"
+        @click="openLogin(Routes.HOME)"
+      >
+        登录，保存学习记录</button
+      ><AppBottomTabs active="home" embedded /></template
   ></AppPage>
 </template>
 <style scoped lang="scss">

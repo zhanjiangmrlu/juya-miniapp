@@ -7,7 +7,12 @@ vi.mock('@/services/api', () => ({
   get operations() {
     return current.operations
   },
-  session: { request: current.request, userId: () => 'owner' }
+  session: {
+    contentRequest: current.request,
+    request: current.request,
+    identity: () => 'owner',
+    userId: () => 'owner'
+  }
 }))
 vi.mock('@/services/platform', () => ({ resourceURL: (path: string) => path }))
 import { saveListeningProgress, writeListening } from '@/features/listening/listening-service'

@@ -1,6 +1,6 @@
 import { operations, session } from '@/services/api'
 import { ApiError } from '@/services/errors'
-import { resourceURL } from '@/services/platform'
+import { operationKey, resourceURL } from '@/services/platform'
 import { LISTENING_API } from '@/shared/constants/listening'
 
 import type {
@@ -10,12 +10,12 @@ import type {
   ListeningSummary
 } from '@/shared/types/listening'
 /** 读取听读双模块首页真实权限与继续学习目标 */
-export const getListeningHome = () => session.request<ListeningHome>(`${LISTENING_API}/home`)
+export const getListeningHome = () => session.contentRequest<ListeningHome>(`${LISTENING_API}/home`)
 /** 按文章身份读取当前正文，冻结队列仅用于下一篇查询，拒绝时不回退缓存正文
  * @param id 稳定文章身份
  */
 export const getListeningArticle = (id: string) =>
-  session.request<ListeningArticle>(`${LISTENING_API}/articles/${encodeURIComponent(id)}`)
+  session.contentRequest<ListeningArticle>(`${LISTENING_API}/articles/${encodeURIComponent(id)}`)
 /** 兼容旧版仅存元数据的未知记录，先查回执再明确确认同账号同版本正文
  * @param action 当前待确认的听读操作
  * @param path 当前文章的业务路径
@@ -93,7 +93,7 @@ export const saveListeningProgress = async (id: string, progress: ListeningProgr
 export const listeningThumbnail = async (path: string) => {
   if (!/^\/api\/mini\/v1\/listening\/articles\/[^/?]+\/thumbnail\?version_id=[^&]+$/.test(path))
     throw new Error('缩略图地址暂不可用')
-  const grant = await session.request<{ url: string }>(
+  const grant = await session.contentRequest<{ url: string }>(
     path.replace('/thumbnail?', '/thumbnail-ticket?')
   )
   return resourceURL(grant.url)
@@ -103,12 +103,21 @@ export const listeningThumbnail = async (path: string) => {
  * @param mediaId 本篇音频或原图资源
  */
 export const listeningMedia = async (article: ListeningArticle, mediaId: string) => {
-  const value = await writeListening<{ url: string; expires_at: string }>(
-    `listening-media:${article.id}:${mediaId}`,
-    `/articles/${article.id}/media-ticket`,
-    'POST',
-    { version_id: article.version_id, media_id: mediaId }
-  )
+  const value = session.userId()
+    ? await writeListening<{ url: string; expires_at: string }>(
+        `listening-media:${article.id}:${mediaId}`,
+        `/articles/${article.id}/media-ticket`,
+        'POST',
+        { version_id: article.version_id, media_id: mediaId }
+      )
+    : await session.contentRequest<{ url: string; expires_at: string }>(
+        `${LISTENING_API}/articles/${article.id}/media-ticket`,
+        {
+          method: 'POST',
+          key: operationKey(),
+          body: { version_id: article.version_id, media_id: mediaId }
+        }
+      )
   return resourceURL(value.url)
 }
 /** 打开文章详情，受限历史仍可显示安全摘要

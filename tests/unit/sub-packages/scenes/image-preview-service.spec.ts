@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
 
-import { prepareImagePreviewSource } from '@/services/image-preview'
+import { prepareImagePreviewSource } from '@/sub-packages/scenes/image-preview-service'
 
 afterEach(() => {
   vi.unstubAllGlobals()

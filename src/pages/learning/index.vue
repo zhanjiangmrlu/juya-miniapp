@@ -20,6 +20,8 @@ import ShareSummary from '@/features/share/components/share-summary.vue'
 import { onSessionExpired, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
 import { listPageSize } from '@/services/list-page-size'
+import { loginReturn } from '@/services/login-return'
+import { openLogin } from '@/services/navigation'
 import { runtimeMode } from '@/services/runtime-mode'
 import { homeShare } from '@/services/share-service'
 import { Routes } from '@/shared/constants/navigation'
@@ -39,10 +41,10 @@ const browseOnly = runtimeMode.browseOnly,
 // 原生分享属于编译期可选生命周期，必须直接在页面声明
 onShareAppMessage(() => ({ ...homeShare.friends }))
 onShareTimeline(() => ({ ...homeShare.timeline }))
-let listOwner = session.userId(),
+let listOwner = session.identity(),
   browseGeneration = 0,
   sharedEntry = false,
-  requiresIdentityCheck = browseOnly.value
+  visible = false
 const activeTab = ref<LearningTab>(LearningTab.ALL)
 /** 为每个分区建立独立可信快照与服务端分页
  * @param path 当前分区的服务端集合查询
@@ -51,9 +53,9 @@ const createList = (path: string) =>
   useSceneList<CardBrief>({
     path,
     pageSize: () => listPageSize(268.577, 1050),
-    request: session.request,
-    userId: session.userId,
-    ensure: () => account.ensure(Routes.LEARNING)
+    request: session.contentRequest,
+    userId: session.identity,
+    ensure: async () => !runtimeMode.update()
   })
 const lists = {
   [LearningTab.ALL]: createList('/api/mini/v1/cards'),
@@ -93,9 +95,9 @@ const dispose = () => Object.values(lists).forEach((list) => list.dispose())
 const resetList = () => Object.values(lists).forEach((list) => list.reset())
 const authorizationLabel = computed(() => {
   if (!accessContext.value) return '权限准备中'
-  return accessContext.value.authorization.status === LearningAuthorizationStatus.ACTIVE
+  return accessContext.value.authorization?.status === LearningAuthorizationStatus.ACTIVE
     ? '授权有效'
-    : accessContext.value.authorization.status === LearningAuthorizationStatus.EXPIRED
+    : accessContext.value.authorization?.status === LearningAuthorizationStatus.EXPIRED
       ? '授权已到期'
       : '未授权'
 })
@@ -106,8 +108,8 @@ const restoreScroll = (top: number) => {
   scrollTop.value = top
 }
 const positions = {
-  [LearningTab.ALL]: useListPosition(session.userId, restoreScroll),
-  [LearningTab.NOTES]: useListPosition(session.userId, restoreScroll)
+  [LearningTab.ALL]: useListPosition(session.identity, restoreScroll),
+  [LearningTab.NOTES]: useListPosition(session.identity, restoreScroll)
 }
 const position = {
   scroll: (top: number) => positions[activeTab.value].scroll(top),
@@ -147,7 +149,7 @@ const restart = async () => {
   if (
     run === browseGeneration &&
     tab === activeTab.value &&
-    listOwner === session.userId() &&
+    listOwner === session.identity() &&
     !list.error.value
   ) {
     positions[tab].reset()
@@ -157,23 +159,29 @@ const restart = async () => {
 /** 账号切换同时清除上一账号的列表和位置 */
 const reset = () => {
   browseGeneration++
-  listOwner = session.userId()
+  listOwner = session.identity()
   resetList()
   position.reset()
   scrollTop.value = 0
 }
 /** 任一账号边界先清理两栏，禁止新账号回退到另一栏的旧授权或位置 */
 const syncOwner = () => {
-  if (listOwner !== session.userId()) reset()
+  if (listOwner !== session.identity()) reset()
 }
 watch(() => account.profile?.id, syncOwner, { flush: 'sync' })
-const unsubscribe = onSessionExpired(reset)
+const unsubscribe = onSessionExpired(() => {
+  reset()
+  if (visible && !session.userId() && !loginReturn.pending())
+    void Promise.resolve().then(() => {
+      if (visible && !loginReturn.pending()) void showPage()
+    })
+})
 /** 统计单独失败时仍允许查看场景卡片 */
 const refreshStats = async () => {
   if (runtimeMode.update()) return
   statsError.value = ''
   try {
-    if (await account.ensure(Routes.LEARNING)) {
+    if (session.userId()) {
       await account.refreshStatistics()
       await account.refreshAvatar()
     }
@@ -189,32 +197,38 @@ const records = () => uni.switchTab({ url: Routes.RECORDS })
 const favorites = () => uni.navigateTo({ url: Routes.FAVORITES })
 /** 分享进入时先重验本人会话，再读取私人列表和统计 */
 const showPage = async () => {
+  visible = true
   if (runtimeMode.update()) return
   syncOwner()
+  const showRun = browseGeneration
   // H5 直接刷新路由时可能尚未建立原生底栏，使用回调处理该状态
   uni.hideTabBar({ animation: false, fail: () => undefined })
-  if (sharedEntry || requiresIdentityCheck) {
-    try {
-      if (
-        !(await account.ensure(`${Routes.LEARNING}?target=learning`)) ||
-        !(await account.restore())
-      )
-        return
-    } catch (reason) {
-      statsError.value = reason instanceof Error ? reason.message : '会话暂未确认，请重试'
-      return
+  await account.restore()
+  if (!visible || showRun !== browseGeneration || runtimeMode.update()) return
+  loginReturn.register(
+    Routes.LEARNING,
+    () => ({
+      page: Routes.LEARNING,
+      type: 'page',
+      id: '',
+      tab: activeTab.value,
+      category: '',
+      scroll: scrollTop.value,
+      translation: false,
+      audioPosition: 0,
+      playbackRate: 1,
+      version: ''
+    }),
+    () => {
+      if (visible) void showPage()
     }
-  }
-  if (runtimeMode.update()) return
-  try {
-    if (!(await account.ensure(notes.value ? `${Routes.LEARNING}?tab=notes` : Routes.LEARNING)))
-      return
-  } catch (reason) {
-    statsError.value = reason instanceof Error ? reason.message : '会话暂未确认，请重试'
-    return
+  )
+  const restored = loginReturn.take(Routes.LEARNING)
+  if (restored) {
+    activeTab.value = restored.tab === LearningTab.NOTES ? LearningTab.NOTES : LearningTab.ALL
+    scrollTop.value = restored.scroll
   }
   syncOwner()
-  requiresIdentityCheck = false
   await Promise.allSettled([refresh(), refreshStats(), feedbackInbox.refresh()])
   if (!runtimeMode.update()) accessReady.value = true
 }
@@ -230,7 +244,6 @@ watch(
     share.hide()
     if (restricted) {
       accessReady.value = false
-      requiresIdentityCheck = true
       reset()
     }
     if (!restricted) void showPage()
@@ -238,6 +251,7 @@ watch(
   { flush: 'sync' }
 )
 onHide(() => {
+  visible = false
   browseGeneration++
   share.hide()
   position.dispose()
@@ -277,7 +291,17 @@ onUnload(() => {
     <template v-else>
       <view class="list-header">
         <text class="home-title">English, every day.</text>
-        <text class="learner-status"
+        <view v-if="!account.profile && !session.userId()" class="guest-list-intro"
+          ><text>游客浏览 · 免费内容可直接体验</text
+          ><view
+            >登录后可同步收藏与学习记录<button
+              class="text-button"
+              @click="openLogin(notes ? `${Routes.LEARNING}?tab=notes` : Routes.LEARNING)"
+            >
+              登录 ›
+            </button></view
+          ></view
+        ><text v-else class="learner-status"
           >{{ account.profile?.nickname || '学习者' }} · {{ authorizationLabel }} ·
           {{
             account.statistics
@@ -287,7 +311,7 @@ onUnload(() => {
               : '打卡状态准备中'
           }}</text
         >
-        <view class="scene-summary">
+        <view v-if="account.profile || session.userId()" class="scene-summary">
           <button v-if="account.statistics" class="summary-link learned-link" @click="records">
             已学 {{ account.statistics.completed_cards }} 张场景卡
           </button>
@@ -316,7 +340,7 @@ onUnload(() => {
           <text>累计打卡 {{ account.statistics.total_checkin_days }} 天</text>
         </view>
         <AppState
-          v-else
+          v-else-if="account.profile || session.userId()"
           :busy="!statsError"
           :error="statsError && '统计暂未获取'"
           @retry="refreshStats"
@@ -338,14 +362,17 @@ onUnload(() => {
           </button>
         </view>
         <view class="catalog-heading between">
-          <text class="section-title">{{ notes ? '含学习笔记' : '待学场景' }}</text>
+          <text class="section-title">{{
+            notes ? '含学习笔记' : account.profile || session.userId() ? '待学场景' : '场景列表'
+          }}</text>
           <text v-if="total !== null" class="catalog-count">{{ total }} 张</text>
         </view>
         <view
           v-if="
+            (account.profile || session.userId()) &&
             !notes &&
             accessContext?.enabled &&
-            accessContext.authorization.status !== LearningAuthorizationStatus.ACTIVE
+            accessContext.authorization?.status !== LearningAuthorizationStatus.ACTIVE
           "
           class="access-notice"
           >{{

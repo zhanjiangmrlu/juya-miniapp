@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
-import { computed, inject, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, ref } from 'vue'
 
 import AppAvatar from '@/components/app-avatar/app-avatar.vue'
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
+import AppGuestState from '@/components/app-guest-state/app-guest-state.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import ProfileLogoutDialog from '@/features/profile/components/profile-logout-dialog.vue'
 import { maskPhone } from '@/features/profile/contact-model'
-import { session } from '@/services/api'
+import { onSessionExpired, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
 import { Routes } from '@/shared/constants/navigation'
 import { PAGE_SHARE_ENTRY_KEY } from '@/shared/constants/share'
@@ -46,8 +47,8 @@ const load = async () => {
   busy.value = true
   error.value = ''
   try {
-    if (await account.ensure(Routes.PROFILE)) {
-      await account.restore()
+    await account.restore()
+    if (session.userId()) {
       await account.refreshAvatar()
       await Promise.all([loadAuthorization(), loadStatistics()])
     }
@@ -108,6 +109,14 @@ const logout = async () => {
     logoutBusy.value = false
   }
 }
+const unsubscribe = onSessionExpired(() => {
+  authorization.value = null
+  authorizationError.value = ''
+  statisticsError.value = ''
+  logoutConfirm.value = false
+  logoutError.value = ''
+})
+onBeforeUnmount(unsubscribe)
 onShow(() => {
   if (pageShareEntry?.value) return
   if (props.primary) uni.hideTabBar({ animation: false, fail: () => undefined })
@@ -122,6 +131,14 @@ onShow(() => {
     :back="!primary"
     :footer="primary"
   >
+    <AppGuestState
+      v-if="!account.profile && !session.userId()"
+      title="登录句芽英语"
+      description="登录后同步收藏和学习记录。"
+      :target="Routes.PROFILE"
+      icon="/static/design/account.svg"
+      show-privacy
+    />
     <AppState :busy="busy && !account.profile" :error="error" @retry="load" />
     <template v-if="account.profile">
       <view class="profile-summary"

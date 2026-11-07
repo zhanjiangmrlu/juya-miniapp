@@ -5,6 +5,8 @@ import { ref } from 'vue'
 
 import type { FullAudioOptions } from '@/shared/types/audio'
 const ports = vi.hoisted(() => ({
+  owner: 'owner' as string | null,
+  ensure: vi.fn(async () => true),
   background: false,
   options: undefined as FullAudioOptions | undefined,
   load: null as null | ((query: Record<string, string>) => void),
@@ -38,9 +40,16 @@ vi.mock('@dcloudio/uni-app', () => ({
   },
   onPageScroll: vi.fn()
 }))
-vi.mock('@/stores/account-store', () => ({ useAccountStore: () => ({ ensure: async () => true }) }))
+vi.mock('@/stores/account-store', () => ({
+  useAccountStore: () => ({ restore: async () => null, ensure: ports.ensure })
+}))
 vi.mock('@/services/api', () => ({
-  session: { request: ports.request, userId: () => 'owner' },
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => ports.owner || 'guest:0',
+    userId: () => ports.owner
+  },
   operations: { pending: () => false, run: ports.run },
   onSessionExpired: () => () => undefined
 }))
@@ -178,6 +187,8 @@ const detail = {
   timeline: { state: 'missing', words: [] }
 }
 beforeEach(() => {
+  ports.owner = 'owner'
+  ports.ensure.mockResolvedValue(true)
   ports.background = false
   ports.options = undefined
   vi.useFakeTimers()
@@ -378,6 +389,7 @@ it('replaces the current detail after saving progress and preserves the frozen q
   const redirect = vi.fn((options: { success: () => void }) => options.success())
   vi.stubGlobal('uni', { pageScrollTo: vi.fn(), showToast: vi.fn(), redirectTo: redirect })
   const model = await open()
+  model.translation.value = false
   model.nextArticle.value = { ...detail, id: 'a2' }
   ports.run.mockClear()
   await model.advance()
@@ -444,7 +456,7 @@ it('preserves the confirmed completion result for the completion dialog and expo
   )
   await model.complete()
   expect(model.completionResult.value?.first_checkin_today).toBe(true)
-  expect(model.article.value?.state.today_completed).toBe(true)
+  expect(model.article.value?.state?.today_completed).toBe(true)
   model.article.value!.access.can_lookup = false
   ports.request.mockClear().mockImplementation(async () => ({
     ...structuredClone(detail),
@@ -708,4 +720,27 @@ it('ignores a late media rejection after the page has hidden and disposed its pr
   await flushPromises()
   expect(model.article.value?.id).toBe('a1')
   expect(model.error.value).toBe('')
+})
+
+it('reads a guest article without personal progress, writes or the login gate', async () => {
+  ports.owner = null
+  ports.request.mockResolvedValue({
+    ...detail,
+    state: null,
+    progress: null,
+    queue_token: null,
+    access: { ...detail.access, can_lookup: false }
+  })
+  const model = useListeningArticle()
+  ports.load?.({ id: 'a1' })
+  ports.show?.()
+  await flushPromises()
+  expect(ports.ensure).not.toHaveBeenCalled()
+  expect(model.article.value?.id).toBe('a1')
+  model.translation.value = true
+  ports.hide?.()
+  await flushPromises()
+  expect(ports.run).not.toHaveBeenCalled()
+  expect(ports.drafts.size).toBe(0)
+  ports.unload?.()
 })

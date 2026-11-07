@@ -2,7 +2,7 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 
 import { mediaAddress } from '@/services/media-service'
-import { backTo } from '@/services/navigation'
+import { backTo, openLogin } from '@/services/navigation'
 import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
 import { Routes } from '@/shared/constants/navigation'
 import { LearningAccessReason } from '@/shared/enums/learning-access'
@@ -56,8 +56,17 @@ onBeforeUnmount(() => {
           ? '这张场景卡已被删除。'
           : '这张场景卡已下线，暂时无法学习。'
     }}</text>
-    <text class="description">已有学习记录和打卡数据会保留。</text>
-    <button v-if="summary.state.favorite" :disabled="favoriteBusy" @click="emit('unfavorite')">
+    <text v-if="summary.state" class="description">已有学习记录和打卡数据会保留。</text
+    ><template v-else
+      ><text class="description">登录后可查看当前账号的学习授权状态。免费内容可继续体验。</text
+      ><button
+        class="primary"
+        @click="openLogin(`${Routes.SCENE}?id=${encodeURIComponent(summary.id)}`)"
+      >
+        登录查看授权
+      </button></template
+    >
+    <button v-if="summary.state?.favorite" :disabled="favoriteBusy" @click="emit('unfavorite')">
       {{ favoriteBusy ? '处理中…' : '取消整卡收藏' }}
     </button>
     <button class="primary" @click="returnToList">

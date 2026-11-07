@@ -5,7 +5,7 @@ import { expect, it, vi } from 'vitest'
 vi.mock('@/services/navigation', () => ({ backTo: vi.fn() }))
 vi.mock('@/services/api', () => ({
   onSessionExpired: () => () => undefined,
-  session: { userId: () => 'owner' }
+  session: { identity: () => 'owner', userId: () => 'owner' }
 }))
 vi.mock('@dcloudio/uni-app', () => ({
   onLoad: vi.fn(),

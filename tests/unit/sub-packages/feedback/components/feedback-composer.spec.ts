@@ -2,8 +2,8 @@
 import { mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 
-import { createFeedbackDraft } from '@/composables/use-feedback-draft'
 import FeedbackComposer from '@/sub-packages/feedback/components/feedback-composer.vue'
+import { createFeedbackDraft } from '@/sub-packages/feedback/use-feedback-draft'
 
 it('shows per-image failure controls and Unicode count while unresolved submission locks replacement edits', async () => {
   const draft = createFeedbackDraft({

@@ -26,7 +26,12 @@ vi.mock('@dcloudio/uni-app', () => ({
   }
 }))
 vi.mock('@/services/api', () => ({
-  session: { userId: () => ports.owner, request: ports.request },
+  session: {
+    identity: () => ports.owner,
+    userId: () => ports.owner,
+    contentRequest: ports.request,
+    request: ports.request
+  },
   onSessionExpired: (callback: () => void) => {
     ports.expired = callback
     return () => {
@@ -34,7 +39,9 @@ vi.mock('@/services/api', () => ({
     }
   }
 }))
-vi.mock('@/stores/account-store', () => ({ useAccountStore: () => ({ ensure: async () => true }) }))
+vi.mock('@/stores/account-store', () => ({
+  useAccountStore: () => ({ restore: async () => null, ensure: async () => true })
+}))
 vi.mock('@/features/listening/listening-service', () => ({
   getListeningHome: ports.home,
   openListeningArticle: vi.fn()
@@ -250,4 +257,14 @@ it('preserves loaded pagination and scroll when refreshing after an article retu
     expect.stringContaining('page=2')
   ])
   expect(model.list.value.hasMore.value).toBe(true)
+})
+
+it('falls back to the actual all-articles collection when a restored category no longer exists', async () => {
+  model = useListeningCatalog()
+  model.category.value = 'c2'
+  ports.home.mockResolvedValue({ categories: [{ id: 'c1' }], continue_learning: null })
+  await model.load()
+  expect(model.category.value).toBe('')
+  expect(ports.request.mock.calls.at(-1)?.[0]).not.toContain('category_id=')
+  expect(model.articles.value.map((item) => item.id)).toEqual(['c1-article', 'c2-article'])
 })

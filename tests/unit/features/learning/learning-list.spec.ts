@@ -26,7 +26,12 @@ vi.mock('@dcloudio/uni-app', () => ({
   onUnload: vi.fn()
 }))
 vi.mock('@/services/api', () => ({
-  session: { request: ports.request, userId: () => ports.owner },
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => ports.owner,
+    userId: () => ports.owner
+  },
   onSessionExpired: () => () => undefined
 }))
 vi.mock('@/stores/account-store', () => ({

@@ -1,5 +1,5 @@
 import { onHide, onLoad, onPageScroll, onShow, onUnload } from '@dcloudio/uni-app'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import {
   getListeningArticle,
@@ -13,8 +13,9 @@ import { createAudioController } from '@/services/audio-controller'
 import { createAudioPort } from '@/services/audio-port'
 import { ApiError } from '@/services/errors'
 import { createFullAudioPreparation } from '@/services/full-audio-preparation'
+import { loginReturn } from '@/services/login-return'
 import { backTo } from '@/services/navigation'
-import { resourceURL, storage } from '@/services/platform'
+import { operationKey, resourceURL, storage } from '@/services/platform'
 import { prepareAudioCacheFile } from '@/services/word-audio-file'
 import { LISTENING_API, LISTENING_PROGRESS_DRAFT_PREFIX } from '@/shared/constants/listening'
 import { Routes } from '@/shared/constants/navigation'
@@ -38,6 +39,7 @@ import type {
   ListeningToken
 } from '@/shared/types/listening'
 import type { ListeningBodyHandle } from '@/shared/types/listening-components'
+import type { LoginSnapshot } from '@/shared/types/navigation'
 import type { Ref } from 'vue'
 /** 管理文章受控权限、同版本进度、互斥音轨及完成后的分类顺序
  * @param pageShareEntry 通用分享入口标记，分享落地不启动文章加载
@@ -96,10 +98,21 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     audioOwner = '',
     lastParagraph = -1,
     autosave = 0,
+    progressDirty = false,
+    restoringProgress = false,
+    guestProgress: (ListeningProgress & { identity: string }) | null = null,
+    restoringSnapshot: LoginSnapshot | null = null,
     fullPreparation: ReturnType<typeof createFullAudioPreparation> | null = null,
     saveChain: Promise<void> = Promise.resolve(),
     anchorTimer: ReturnType<typeof setTimeout> | undefined,
     lastAction: (() => Promise<void>) | null = null
+  watch(
+    [translation, () => audio.value.rate, () => audio.value.position],
+    () => {
+      if (!restoringProgress && visible && article.value) progressDirty = true
+    },
+    { flush: 'sync' }
+  )
   const target = computed(() => `${Routes.ARTICLE}?id=${id.value}`)
   /** 释放当前文章的两个音轨和未完成异步处理 */
   const stop = () => {
@@ -153,7 +166,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   const save = async () => {
     const value = article.value,
       owner = session.userId()
-    if (!value?.version_id || !owner) return
+    if (!value?.version_id) return
     const progress = {
       version_id: value.version_id,
       reading_position: Math.round(readingPosition),
@@ -161,9 +174,16 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       audio_position: audio.value.position,
       playback_rate: audio.value.rate
     }
+    if (!owner) {
+      guestProgress = { ...progress, identity: session.identity() }
+      return
+    }
+    if (!progressDirty) return
+    const epoch = session.identity()
     const key = LISTENING_PROGRESS_DRAFT_PREFIX + owner + ':' + value.id + ':' + value.version_id
     storage.set(key, progress)
     saveChain = saveChain.then(async () => {
+      if (epoch !== session.identity()) return
       try {
         await saveListeningProgress(value.id, progress)
         if (JSON.stringify(storage.get(key)) === JSON.stringify(progress)) storage.remove(key)
@@ -236,17 +256,17 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   const authorize = async () => {
     const current = article.value,
       run = ++authorizationGeneration,
-      owner = session.userId(),
+      owner = session.identity(),
       track = controller
     if (
       !current ||
       !alive ||
       (!visible && !full?.background) ||
-      (audioOwner && audioOwner !== session.userId())
+      (audioOwner && audioOwner !== session.identity())
     )
       return false
     try {
-      const checked = await session.request<ListeningSummary>(
+      const checked = await session.contentRequest<ListeningSummary>(
         `${LISTENING_API}/articles/${current.id}/summary`
       )
       if (
@@ -256,7 +276,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
         !alive ||
         (!visible && !full?.background) ||
         audioOwner !== owner ||
-        owner !== session.userId()
+        owner !== session.identity()
       )
         return false
       if (!checked.access.can_learn || !checked.available) {
@@ -289,7 +309,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
         run === authorizationGeneration &&
         article.value === current &&
         controller === track &&
-        owner === session.userId() &&
+        owner === session.identity() &&
         alive &&
         (visible || full?.background)
       )
@@ -331,7 +351,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   const setup = () => {
     const value = article.value
     if (!value?.version_id) return
-    audioOwner = session.userId() || ''
+    audioOwner = session.identity()
     full = createAudioPort(false, {
       title: value.title_zh || value.title_en || '听读文章',
       resume: async (active) => {
@@ -361,7 +381,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     )
     const currentController = controller
     if (value.payload.audio_id) {
-      const owner = session.userId()
+      const owner = session.identity()
       fullPreparation = createFullAudioPreparation({
         networkOnly: full.background,
         active: () =>
@@ -369,7 +389,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
           (visible || Boolean(full?.background)) &&
           controller === currentController &&
           article.value === value &&
-          session.userId() === owner,
+          session.identity() === owner,
         resolve: () => guardResource(listeningMedia(value, value.payload.audio_id!), value),
         download: prepareAudioCacheFile,
         prepared: (url) => currentController.prepareFull(url),
@@ -386,12 +406,19 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     }
     const draftKey =
       LISTENING_PROGRESS_DRAFT_PREFIX + session.userId() + ':' + value.id + ':' + value.version_id
-    const pending = storage.get(draftKey) as ListeningProgress | undefined
+    restoringProgress = true
+    progressDirty = false
+    const pending = session.userId()
+      ? (storage.get(draftKey) as ListeningProgress | undefined)
+      : guestProgress?.identity === session.identity() &&
+          guestProgress.version_id === value.version_id
+        ? guestProgress
+        : undefined
     const restored = restoreProgress(
       value.version_id,
       pending?.version_id === value.version_id ? pending : value.progress
     )
-    saveError.value = pending ? '上次阅读进度未同步，请重试' : ''
+    saveError.value = pending && session.userId() ? '上次阅读进度未同步，请重试' : ''
     translation.value = restored.translation_open
     readingPosition = restored.reading_position
     controller.state.position = restored.audio_position
@@ -410,6 +437,20 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
           uni.pageScrollTo({ scrollTop: Math.max(0, currentScroll + block.top - 110), duration: 0 })
       })
     }
+    const snapshot = restoringSnapshot
+    restoringSnapshot = null
+    if (snapshot?.version === value.version_id && !value.progress) {
+      translation.value = snapshot.translation
+      controller.state.position = snapshot.audioPosition
+      controller.setRate(snapshot.playbackRate)
+      audio.value = { ...controller.state }
+      void nextTick(() => {
+        if (article.value === value) uni.pageScrollTo?.({ scrollTop: snapshot.scroll, duration: 0 })
+      })
+    }
+    void nextTick(() => {
+      restoringProgress = false
+    })
     startClock()
     scheduleExpiry(value.access)
   }
@@ -420,10 +461,10 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     error.value = ''
     const run = ++generation
     try {
-      if (!(await account.ensure(target.value))) return
+      await account.restore()
       const value = await getListeningArticle(id.value)
       if (!value.version_id) throw new ApiError('response_invalid', '文章版本暂未获取，请重试')
-      if (!queueToken.value) queueToken.value = value.queue_token
+      if (!queueToken.value && !restoringSnapshot) queueToken.value = value.queue_token || ''
       if (run !== generation || !alive || !visible) return
       stop()
       article.value = value
@@ -436,9 +477,19 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       setup()
     } catch (reason) {
       if (run === generation) {
+        if (restoringSnapshot && reason instanceof ApiError && [404, 410].includes(reason.status)) {
+          const category = restoringSnapshot.category
+          restoringSnapshot = null
+          backTo(
+            `${Routes.LISTENING}${category ? `?category_id=${encodeURIComponent(category)}` : ''}`
+          )
+          return
+        }
         deny(reason)
         try {
-          summary.value = await session.request(`${LISTENING_API}/articles/${id.value}/summary`)
+          summary.value = await session.contentRequest(
+            `${LISTENING_API}/articles/${id.value}/summary`
+          )
         } catch {
           summary.value = null
         }
@@ -484,21 +535,22 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   const setRate = (rate: number) => controller?.setRate(rate)
   /** 主动收藏或取消；已失效的本人收藏仍可取消 */
   const favorite = async () => {
+    if (!(await account.ensure(target.value))) return
     const value = article.value || summary.value
     if (!value || actionBusy.value) return
-    if (!value.state.favorite && (!(await authorize()) || article.value !== value)) return
+    if (!value.state?.favorite && (!(await authorize()) || article.value !== value)) return
     actionBusy.value = true
     actionError.value = ''
     lastAction = favorite
     try {
-      const remove = value.state.favorite
+      const remove = value.state?.favorite || false
       const result = await writeListening<{ favorite: boolean }>(
         `listening-favorite:${value.id}`,
         remove ? `/favorites/${value.id}` : `/articles/${value.id}/favorite`,
         remove ? 'DELETE' : 'PUT',
         remove ? undefined : { version_id: value.version_id }
       )
-      value.state.favorite = result.favorite
+      if (value.state) value.state.favorite = result.favorite
     } catch (reason) {
       actionError.value = reason instanceof Error ? reason.message : '收藏未成功，请重试'
     } finally {
@@ -507,6 +559,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   }
   /** 完成成功后才展示成绩和服务端下一篇；读取失败不当作分类结束 */
   const complete = async () => {
+    if (!(await account.ensure(target.value))) return
     lastAction = complete
     if (actionBusy.value || !(await authorize()) || !article.value) return
     const value = article.value
@@ -645,12 +698,17 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
         const path = `/articles/${encodeURIComponent(value.id)}/words/${encodeURIComponent(wordId)}/pronunciation`
         if (!active()) throw new Error('已取消')
         let result = await guardResource(
-          writeListening<components['schemas']['SpeechState']>(
-            `listening.word:${value.id}:${wordId}`,
-            path,
-            'POST',
-            { version_id: value.version_id }
-          ),
+          session.userId()
+            ? writeListening<components['schemas']['SpeechState']>(
+                `listening.word:${value.id}:${wordId}`,
+                path,
+                'POST',
+                { version_id: value.version_id }
+              )
+            : session.contentRequest<components['schemas']['SpeechState']>(
+                `${LISTENING_API}${path}`,
+                { method: 'POST', key: operationKey(), body: { version_id: value.version_id } }
+              ),
           value
         )
         for (let count = 0; count < 12 && result.state === 'processing'; count++) {
@@ -659,7 +717,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
           )
           if (!active()) throw new Error('已取消')
           result = await guardResource(
-            session.request<components['schemas']['SpeechState']>(
+            session.contentRequest<components['schemas']['SpeechState']>(
               `${LISTENING_API}${path}?version_id=${encodeURIComponent(value.version_id!)}`
             ),
             value
@@ -675,8 +733,17 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   /** 清除账号失效后的私有文章和覆盖层 */
   const reset = () => {
     generation++
+    queueToken.value = ''
+    guestProgress = null
+    restoringSnapshot = null
+    progressDirty = false
+    busy.value = false
     deny(new ApiError('unauthenticated', '请先同意并登录'))
     summary.value = null
+    if (visible && !session.userId() && !loginReturn.pending())
+      void nextTick(() => {
+        if (visible && alive && !loginReturn.pending()) void load()
+      })
   }
   const unsubscribe = onSessionExpired(reset)
   /** 还原页面地址中的队列凭证，避免下一篇请求再次编码后破坏签名
@@ -697,6 +764,34 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   onShow(() => {
     if (pageShareEntry?.value) return
     visible = true
+    loginReturn.register(
+      Routes.ARTICLE,
+      () => ({
+        page: Routes.ARTICLE,
+        type: 'listening',
+        id: id.value,
+        tab: '',
+        category: (article.value || summary.value)?.category_id || '',
+        scroll: currentScroll,
+        translation: translation.value,
+        audioPosition: audio.value.position,
+        playbackRate: audio.value.rate,
+        version: article.value?.version_id || ''
+      }),
+      () => {
+        if (!visible || !alive) return
+        restoringSnapshot = loginReturn.take(Routes.ARTICLE, id.value)
+        queueToken.value = ''
+        void load()
+      }
+    )
+    const restored = loginReturn.take(Routes.ARTICLE, id.value)
+    if (restored) {
+      restoringSnapshot = restored
+      queueToken.value = ''
+      void load()
+      return
+    }
     if (controller && full?.background) {
       void authorize().then((allowed) => {
         if (!allowed || !visible || !controller) return
@@ -704,11 +799,12 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
         lastParagraph = -1
         startClock()
         scrollFollow()
-        void save()
       })
     } else void load()
   })
   onPageScroll((event) => {
+    if (!restoringProgress && visible && Math.abs(currentScroll - event.scrollTop) > 1)
+      progressDirty = true
     currentScroll = event.scrollTop
     clearTimeout(anchorTimer)
     anchorTimer = setTimeout(captureAnchor, 120)

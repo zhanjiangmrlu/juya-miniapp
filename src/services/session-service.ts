@@ -41,6 +41,7 @@ export const createSessionService = (ports: SessionPorts) => {
       ports.onExpired()
       throw new ApiError('unauthenticated', '请先同意并登录')
     }
+    const epoch = loginGeneration
     const credential = current?.access_token
     let response
     try {
@@ -56,7 +57,7 @@ export const createSessionService = (ports: SessionPorts) => {
     }
     if (runtimeMode.update() || modeRevision !== runtimeMode.revision.value)
       throw new ApiError('session_changed', '运行模式已变化，请重新确认当前操作结果')
-    if (authenticated && current?.access_token !== credential)
+    if (epoch !== loginGeneration || (authenticated && current?.access_token !== credential))
       throw new ApiError('session_changed', '账号状态已变化，请重新登录')
     const result = response.data as {
       error?: { code?: string; message?: string; details?: { field?: string; message?: string }[] }
@@ -125,6 +126,7 @@ export const createSessionService = (ports: SessionPorts) => {
       )
       if (generation !== loginGeneration)
         throw new ApiError('session_changed', '登录已取消，请重新发起')
+      loginGeneration++
       current = {
         access_token: result.access_token,
         user_id: result.user.id,
@@ -160,12 +162,61 @@ export const createSessionService = (ports: SessionPorts) => {
       },
       true
     )
+  /** 按当前身份读取发布内容，只有过期的公共GET允许匿名重查一次
+   * @param path 已发布内容、摘要或受控素材的白名单路径
+   * @param options 方法、预置引用及本次资源操作标识
+   */
+  const contentRequest = async <T>(
+    path: string,
+    options: { method?: string; body?: unknown; key?: string } = {}
+  ): Promise<T> => {
+    const method = options.method || 'GET',
+      route = path.split('?')[0] || ''
+    const readable =
+      /^\/api\/mini\/v1\/(?:cards(?:\/[A-Za-z0-9-]+(?:\/summary|\/media\/[A-Za-z0-9-]+\/url|\/words\/[A-Za-z0-9-]+\/pronunciation)?)?|listening\/(?:home|topics(?:\/[A-Za-z0-9-]+\/articles)?|articles(?:\/[A-Za-z0-9-]+(?:\/summary|\/thumbnail-ticket|\/words\/[A-Za-z0-9-]+\/pronunciation)?)?))$/.test(
+        route
+      )
+    const resourcePost =
+      method === 'POST' &&
+      /^\/api\/mini\/v1\/(?:cards\/[A-Za-z0-9-]+\/words\/[A-Za-z0-9-]+\/pronunciation|listening\/articles\/[A-Za-z0-9-]+\/(?:media-ticket|words\/[A-Za-z0-9-]+\/pronunciation))$/.test(
+        route
+      )
+    if (!(method === 'GET' && readable) && !resourcePost)
+      throw new ApiError('content_path_invalid', '内容请求地址暂不可用')
+    const input: HttpRequest = {
+      path,
+      method,
+      body: options.body,
+      headers: options.key ? { 'Idempotency-Key': options.key } : {}
+    }
+    const authenticated = Boolean(current)
+    try {
+      return await send<T>(input, authenticated)
+    } catch (reason) {
+      if (
+        authenticated &&
+        method === 'GET' &&
+        reason instanceof ApiError &&
+        reason.status === 401 &&
+        !current
+      )
+        return send<T>(input, false)
+      throw reason
+    }
+  }
+  /** 主动身份切换时通知所有敏感界面释放异步任务 */
+  const invalidate = () => {
+    clear()
+    ports.onExpired()
+  }
+  /** 当前身份代次同时隔离不同游客阶段和同账号重新登录 */
+  const identity = () => `${loginGeneration}:${current?.user_id || 'guest'}`
   /** 注销服务端会话后再清除本地凭证 */
   const logout = async () => {
     await request('/api/mini/v1/auth/logout', { method: 'POST' })
-    clear()
+    invalidate()
   }
   /** 返回当前稳定账号编号，用于隔离待确认操作 */
   const userId = () => current?.user_id || null
-  return { restore, login, request, logout, clear, userId }
+  return { restore, login, request, contentRequest, identity, invalidate, logout, clear, userId }
 }

@@ -1,9 +1,9 @@
 import { nextTick, onBeforeUnmount, ref } from 'vue'
 
 import { useReadingAnchors } from '@/composables/use-reading-anchors'
-import { readingPositionAt, restoreReadingOffset } from '@/features/learning/reading-position'
 import { operations, session } from '@/services/api'
-import { createReadingPositionWriter } from '@/services/reading-position'
+import { readingPositionAt, restoreReadingOffset } from '@/sub-packages/scenes/reading-position'
+import { createReadingPositionWriter } from '@/sub-packages/scenes/reading-position-writer'
 
 import type {
   PublishedScene,

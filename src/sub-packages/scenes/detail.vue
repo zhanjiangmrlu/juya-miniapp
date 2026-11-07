@@ -14,10 +14,8 @@ import AppLoading from '@/components/app-loading/app-loading.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { useNativeShare } from '@/composables/use-native-share'
-import { useSceneDictionary } from '@/composables/use-scene-dictionary'
 import SceneAudioPlayer from '@/features/learning/components/scene-audio-player.vue'
 import SceneDictionary from '@/features/learning/components/scene-dictionary.vue'
-import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
 import { dictionaryTokens } from '@/features/learning/scene-model'
 import ShareSheet from '@/features/share/components/share-sheet.vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
@@ -25,10 +23,10 @@ import { onSessionExpired, operations, session } from '@/services/api'
 import { createAudioController } from '@/services/audio-controller'
 import { createAudioPort } from '@/services/audio-port'
 import { clientThumbnail } from '@/services/client-thumbnail'
-import { createDictionarySpeechCache } from '@/services/dictionary-service'
 import { ApiError } from '@/services/errors'
 import { createFullAudioPreparation } from '@/services/full-audio-preparation'
-import { prepareImagePreviewSource, registerImagePreview } from '@/services/image-preview'
+import { promptLogin } from '@/services/login-prompt'
+import { loginReturn } from '@/services/login-return'
 import { clearMediaAddresses, mediaAddress } from '@/services/media-service'
 import { backTo } from '@/services/navigation'
 import { operationKey, resourceURL, sendPublicRequest } from '@/services/platform'
@@ -36,7 +34,7 @@ import { loadPronunciation } from '@/services/pronunciation-service'
 import { runtimeMode } from '@/services/runtime-mode'
 import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
 import { prepareShareCover } from '@/services/share-cover-file'
-import { parseShareTarget, shareTargetURL } from '@/services/share-service'
+import { parseShareTarget } from '@/services/share-service'
 import {
   discardPreparedScene,
   prepareSourceScene,
@@ -55,12 +53,19 @@ import { useAccountStore } from '@/stores/account-store'
 import { createAccessMonitor } from '@/sub-packages/scenes/access-monitor'
 import SceneDialogue from '@/sub-packages/scenes/components/scene-dialogue.vue'
 import SceneQueueEnd from '@/sub-packages/scenes/components/scene-queue-end.vue'
+import SceneSectionHeading from '@/sub-packages/scenes/components/scene-section-heading.vue'
 import SceneUnavailable from '@/sub-packages/scenes/components/scene-unavailable.vue'
 import SceneVocabulary from '@/sub-packages/scenes/components/scene-vocabulary.vue'
+import { createDictionarySpeechCache } from '@/sub-packages/scenes/dictionary-service'
+import {
+  prepareImagePreviewSource,
+  registerImagePreview
+} from '@/sub-packages/scenes/image-preview-service'
 import { createShareService } from '@/sub-packages/scenes/scene-share-service'
 import { createStudyNote } from '@/sub-packages/scenes/study-note'
 import { downloadStudyNote, openStudyNoteDocument } from '@/sub-packages/scenes/study-note-platform'
 import { useReadingPosition } from '@/sub-packages/scenes/use-reading-position'
+import { useSceneDictionary } from '@/sub-packages/scenes/use-scene-dictionary'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { AudioState } from '@/shared/types/audio'
@@ -70,6 +75,7 @@ import type {
   DictionaryToken
 } from '@/shared/types/dictionary'
 import type { PublishedScene } from '@/shared/types/learning'
+import type { LoginSnapshot } from '@/shared/types/navigation'
 const account = useAccountStore(),
   accessError = ref(''),
   card = ref<PublishedScene | null>(null),
@@ -132,6 +138,7 @@ let id = '',
   alive = true,
   visible = true,
   generation = 0,
+  pageIdentity = session.identity(),
   audio: ReturnType<typeof createAudioController> | null = null,
   fullAudio: ReturnType<typeof createFullAudioPreparation> | null = null,
   fullAudioBackgroundPending = false,
@@ -145,6 +152,7 @@ let id = '',
   dictionaryMeasureRequested: DictionarySpeechCache | null = null,
   scrollTop = 0,
   imageOpen = false,
+  restoringSnapshot: LoginSnapshot | null = null,
   imageGeneration = 0,
   originalSrc = '',
   imageRequest: Promise<string> | null = null,
@@ -158,7 +166,7 @@ const pauseForNote = () => {
   dictionary.close()
 }
 const note = createStudyNote({
-  userId: session.userId,
+  userId: session.identity,
   context: () =>
     alive && card.value && !stale.value
       ? {
@@ -167,11 +175,8 @@ const note = createStudyNote({
           noteVersion: card.value.study_note?.version_id
         }
       : null,
-  ensure: () =>
-    account.ensure(
-      `${Routes.SCENE}?id=${encodeURIComponent(id)}&intent=study_note${queueSource.value === QueueSource.LEARNING_NOTES ? '&source=learning_notes' : ''}`
-    ),
-  request: session.request,
+  ensure: async () => !runtimeMode.update(),
+  request: session.contentRequest,
   refreshBody: async () => {
     noteBodyRefresh = true
     try {
@@ -241,25 +246,31 @@ const images = computed(() =>
   imageSrc.value && !imageError.value ? [{ src: imageSrc.value, generation: imageKey.value }] : []
 )
 const favorite = computed(
-  () => card.value?.state.favorite || summary.value?.state.favorite || false
+  () => card.value?.state?.favorite || summary.value?.state?.favorite || false
 )
 const canAdvance = computed(() =>
   Boolean(
-    card.value?.state.today_completed ||
-    (queueSource.value === QueueSource.LEARNING && card.value?.state.completed)
+    card.value?.state?.today_completed ||
+    (queueSource.value === QueueSource.LEARNING && card.value?.state?.completed)
   )
 )
 const completionLabel = computed(() => {
+  if (card.value && !card.value.state) return '完成本次学习'
+  if (canAdvance.value && queueSource.value && !queueId.value) return '返回来源列表'
   if (canAdvance.value)
     return queueSource.value
       ? queueSource.value !== QueueSource.LEARNING && reviewOnEntry.value
         ? '复习下一张'
         : '继续学习下一张'
       : '前往学习页'
-  return card.value?.state.completed ? '完成本次复习' : '已完成学习'
+  return card.value?.state?.completed ? '完成本次复习' : '已完成学习'
 })
 /** 反馈作为新的原生页面入栈，返回时保留当前译文和阅读实例 */
 const feedback = () => {
+  if (!session.userId()) {
+    promptLogin(`${Routes.SCENE}?id=${encodeURIComponent(id)}`)
+    return
+  }
   if (card.value && !stale.value)
     uni.navigateTo({
       url: `${Routes.FEEDBACK_CREATE}?card_id=${encodeURIComponent(id)}&version_id=${encodeURIComponent(card.value.version_id)}`
@@ -280,7 +291,7 @@ const returnSource = () =>
 const learn = () => uni.reLaunch({ url: Routes.LEARNING })
 /** 检查持久待确认完成，换页面或重新显示不能绕过原操作查询 */
 const checkPendingCompletion = () => {
-  const pending = operations.pending(`complete:${id}`)
+  const pending = Boolean(session.userId()) && operations.pending(`complete:${id}`)
   awaitingState.value = pending
   if (pending) actionError.value = '上次完成结果待确认，请先查询结果'
   return pending
@@ -403,7 +414,7 @@ const createAudio = () => {
   }
   const current = card.value,
     owner = account.profile,
-    userId = session.userId()
+    userId = session.identity()
   const full = createAudioPort(false, {
       title: current.content.name || current.content.title_en || '场景学习',
       resume: async (active) => {
@@ -415,7 +426,7 @@ const createAudio = () => {
           !alive ||
           audio !== player ||
           account.profile !== owner ||
-          session.userId() !== userId ||
+          session.identity() !== userId ||
           card.value !== current ||
           stale.value
         )
@@ -452,7 +463,7 @@ const createAudio = () => {
     alive &&
     audio === player &&
     account.profile === owner &&
-    session.userId() === userId &&
+    session.identity() === userId &&
     card.value?.version_id === current.version_id &&
     !stale.value
   /** 仅处理服务端确认的失效，后台网络失败不打断正文
@@ -489,7 +500,7 @@ const createAudio = () => {
           active: task.active,
           pause: (milliseconds) => waitForWordAudio(milliseconds, task),
           request: (method, path, reference) =>
-            session.request<components['schemas']['SpeechState']>(
+            session.contentRequest<components['schemas']['SpeechState']>(
               method === 'GET'
                 ? `${path}?version_id=${encodeURIComponent(reference.version_id || '')}`
                 : path,
@@ -561,7 +572,7 @@ const applyAccess = (value: components['schemas']['CardAccessView']) => {
     previous.access = value.access
     createDictionaryAudio()
     previous.state = value.summary.state
-    if (!previous.state.today_completed && message.value === '今日已完成学习') message.value = ''
+    if (!previous.state?.today_completed && message.value === '今日已完成学习') message.value = ''
     checkPendingCompletion()
     return
   }
@@ -580,12 +591,21 @@ const applyAccess = (value: components['schemas']['CardAccessView']) => {
 }
 const accessMonitor = createAccessMonitor(
   async () => {
-    const owner = session.userId(),
+    const owner = session.identity(),
       target = id
-    const value = await session.request<components['schemas']['CardAccessView']>(
-      `/api/mini/v1/cards/${encodeURIComponent(target)}/access`
-    )
-    if (!alive || owner !== session.userId() || target !== id)
+    const value = session.userId()
+      ? await session.request<components['schemas']['CardAccessView']>(
+          `/api/mini/v1/cards/${encodeURIComponent(target)}/access`
+        )
+      : await session
+          .contentRequest<components['schemas']['PersonalSummary']>(
+            `/api/mini/v1/cards/${encodeURIComponent(target)}/summary`
+          )
+          .then((summary) => {
+            if (!summary.access) throw new ApiError('response_invalid', '权限暂未获取')
+            return { summary, access: summary.access }
+          })
+    if (!alive || owner !== session.identity() || target !== id)
       throw new ApiError('session_changed', '账号或页面已变化')
     return value
   },
@@ -593,7 +613,8 @@ const accessMonitor = createAccessMonitor(
   (reason) => {
     accessError.value = '权限暂未获取，请重试'
     stopAudio()
-    if (reason instanceof ApiError && [409, 410].includes(reason.status)) void invalid(reason)
+    if (reason instanceof ApiError && [403, 404, 409, 410].includes(reason.status))
+      void invalid(reason)
   }
 )
 /** 当前受控操作执行前重新核对权限 */
@@ -636,25 +657,38 @@ const lookup = async (token: DictionaryToken) => {
 }
 /** 会话变化时释放私人文档和两路音频 */
 const releasePrivateMedia = () => {
+  pageIdentity = session.identity()
+  generation++
+  busy.value = false
+  accessMonitor.suspend()
   note.cancel()
+  card.value = null
+  summary.value = null
+  imageGeneration++
+  imageSrc.value = ''
+  originalSrc = ''
+  imageRequest = null
+  queueId.value = ''
+  queueSource.value = null
+  reading.dispose()
   stopAudio()
+  if (visible && !session.userId() && !loginReturn.pending())
+    void nextTick(() => {
+      if (visible && alive && !loginReturn.pending()) void load()
+    })
 }
 const releaseAudioSession = onSessionExpired(releasePrivateMedia)
-watch(() => account.profile, releasePrivateMedia)
+watch(
+  () => account.profile,
+  () => {
+    if (pageIdentity !== session.identity()) releasePrivateMedia()
+  }
+)
 /** 真实下线、删除或版本变化后关闭可操作正文
  * @param reason 服务端已确认的访问错误
  */
 const invalid = async (reason: unknown) => {
   if (!(reason instanceof ApiError)) return
-  if (
-    reason.status === 403 &&
-    [LearningAccessReason.REQUIRED, LearningAccessReason.LOOKUP_REQUIRED].some(
-      (code) => code === reason.code
-    )
-  ) {
-    await checkAccess()
-    return
-  }
   if (reason.status === 409) {
     publicShare.clear()
     share.hide()
@@ -663,7 +697,7 @@ const invalid = async (reason: unknown) => {
     actionError.value = '内容已更新，请刷新后继续'
     return
   }
-  if (reason.status !== 410) return
+  if (![403, 404, 410].includes(reason.status)) return
   publicShare.clear()
   share.hide()
   const previous = card.value
@@ -678,15 +712,10 @@ const invalid = async (reason: unknown) => {
     available: false,
     version_id: null,
     unavailable_reason: reason.code === 'card_deleted' ? 'deleted' : 'offline',
-    state: previous?.state || {
-      completed: false,
-      today_completed: false,
-      favorite: false,
-      started: false
-    }
+    state: session.userId() ? previous?.state || null : null
   }
   try {
-    const value = await session.request<components['schemas']['PersonalSummary']>(
+    const value = await session.contentRequest<components['schemas']['PersonalSummary']>(
       `/api/mini/v1/cards/${id}/summary`
     )
     if (alive) summary.value = value
@@ -748,7 +777,7 @@ const loadImage = async (renew = false) => {
         imageSrc.value = value
     } else {
       const result = await clientThumbnail(
-        JSON.stringify([session.userId(), id, version]),
+        JSON.stringify([session.identity(), id, version]),
         () => mediaAddress(id, imageId, version, false, renew),
         renew
       )
@@ -791,22 +820,14 @@ const load = async () => {
   stale.value = false
   const run = ++generation
   try {
-    const target =
-      noteIntent || noteBodyRefresh
-        ? `${Routes.SCENE}?id=${encodeURIComponent(id)}&intent=study_note${queueSource.value === QueueSource.LEARNING_NOTES ? '&source=learning_notes' : ''}`
-        : sharedEntry
-          ? shareTargetURL({ target: ShareTarget.SCENE, id })
-          : `${Routes.SCENE}?id=${encodeURIComponent(id)}${queueSource.value === QueueSource.LEARNING_NOTES ? '&source=learning_notes' : ''}`
-    if (!(await account.ensure(target))) return
-    const revalidate = sharedEntry || requiresIdentityCheck
-    if (revalidate && !(await account.restore())) return
+    await account.restore()
     const prepared = !requiresIdentityCheck && takePreparedScene(queueId.value, id)
     const value =
       (prepared &&
         (!prepared.access || queueSource.value === QueueSource.LEARNING_NOTES) &&
         prepared) ||
-      (await session.request<PublishedScene>(
-        `/api/mini/v1/cards/${id}${noteRecovery || noteBodyRefresh ? '?mark_started=false' : queueSource.value === QueueSource.LEARNING_NOTES ? '?require_study_note=true' : ''}`
+      (await session.contentRequest<PublishedScene>(
+        `/api/mini/v1/cards/${id}${!session.userId() || restoringSnapshot || noteRecovery || noteBodyRefresh ? '?mark_started=false' : queueSource.value === QueueSource.LEARNING_NOTES ? '?require_study_note=true' : ''}`
       ))
     if (!alive || run !== generation) return
     stopAudio()
@@ -814,8 +835,8 @@ const load = async () => {
     accessError.value = ''
     card.value = value
     if (value.access) void checkAccess()
-    reviewOnEntry.value = value.state.completed
-    if (value.state.today_completed) message.value = '今日已完成学习'
+    reviewOnEntry.value = value.state?.completed || false
+    if (value.state?.today_completed) message.value = '今日已完成学习'
     imageSrc.value = ''
     imageError.value = ''
     imageLoading.value = false
@@ -826,15 +847,24 @@ const load = async () => {
     checkPendingCompletion()
     createAudio()
     void loadImage()
-    void reading.restore(value)
+    const snapshot = restoringSnapshot
+    restoringSnapshot = null
+    void reading.restore(value).then(async () => {
+      if (!snapshot || snapshot.version !== value.version_id || card.value !== value) return
+      dialogueView.value?.restoreTranslation?.(snapshot.translation)
+      if (!value.reading_position) uni.pageScrollTo?.({ scrollTop: snapshot.scroll, duration: 0 })
+      audio?.setRate(snapshot.playbackRate)
+      audio?.seekFull(snapshot.audioPosition)
+    })
     if (visible) void publicShare.prepare(id, value.version_id)
-    if (noteIntent) {
-      noteIntent = false
-      void note.open()
-    }
   } catch (reason) {
     if (!alive || run !== generation) return
-    if (reason instanceof ApiError && [403, 410].includes(reason.status)) await invalid(reason)
+    if (restoringSnapshot && reason instanceof ApiError && [404, 410].includes(reason.status)) {
+      restoringSnapshot = null
+      returnSource()
+      return
+    }
+    if (reason instanceof ApiError && [403, 404, 410].includes(reason.status)) await invalid(reason)
     else if (reason instanceof ApiError && reason.code === 'study_note_unavailable') returnSource()
     else error.value = reason instanceof Error ? reason.message : '场景暂未获取'
   } finally {
@@ -846,8 +876,8 @@ const refreshState = async () => {
   if (runtimeMode.update()) return
   if (!card.value) return
   const version = card.value.version_id
-  const value = await session.request<PublishedScene>(
-    `/api/mini/v1/cards/${id}?version_id=${encodeURIComponent(version)}`
+  const value = await session.contentRequest<PublishedScene>(
+    `/api/mini/v1/cards/${id}?mark_started=false&version_id=${encodeURIComponent(version)}`
   )
   if (alive && card.value?.version_id === version) {
     card.value.state = value.state
@@ -935,6 +965,7 @@ const previewImage = async () => {
 }
 /** 收藏或取消只改变整卡关联，未知响应保留原状态 */
 const toggleFavorite = async () => {
+  if (!(await account.ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`))) return
   if (!favorite.value && card.value?.access && !(await checkAccess())) return
   if (runtimeMode.update()) return
   if (favoriteBusy.value || stale.value) return
@@ -943,8 +974,8 @@ const toggleFavorite = async () => {
   try {
     if (favorite.value) {
       await operations.run(`favorite:${id}`, `/api/mini/v1/favorites/${id}`, 'DELETE')
-      if (card.value) card.value.state.favorite = false
-      if (summary.value) {
+      if (card.value?.state) card.value.state.favorite = false
+      if (summary.value?.state) {
         summary.value.state.favorite = false
         message.value = '已取消收藏'
       }
@@ -963,7 +994,14 @@ const toggleFavorite = async () => {
 }
 /** 完成查实后只预查后续资格，最后一张立即显示本次范围结束 */
 const probeQueueEnd = async () => {
-  if (!queueSource.value || !card.value || !canAdvance.value || awaitingState.value || !alive)
+  if (
+    !queueId.value ||
+    !queueSource.value ||
+    !card.value ||
+    !canAdvance.value ||
+    awaitingState.value ||
+    !alive
+  )
     return
   try {
     if (!sourceQueue.matches(queueId.value, id))
@@ -983,13 +1021,14 @@ const probeQueueEnd = async () => {
 }
 /** 主动确认完成或复习，服务器成功后再读取可信统计 */
 const complete = async () => {
+  if (!(await account.ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`))) return
   if (runtimeMode.update()) return
   if (card.value?.access && !(await checkAccess())) return
   if (accessError.value) return
   if (checkPendingCompletion()) return
   if (
     !card.value ||
-    card.value.state.today_completed ||
+    card.value.state?.today_completed ||
     completeBusy.value ||
     awaitingState.value ||
     stale.value
@@ -1017,7 +1056,7 @@ const complete = async () => {
     } else await probeQueueEnd()
   } catch (reason) {
     await invalid(reason)
-    awaitingState.value = operations.pending(`complete:${id}`)
+    awaitingState.value = Boolean(session.userId()) && operations.pending(`complete:${id}`)
     actionError.value = reason instanceof Error ? reason.message : '完成结果暂未确认，请查询或重试'
   } finally {
     completeBusy.value = false
@@ -1145,6 +1184,43 @@ onLoad((query) => {
 })
 onShow(() => {
   visible = true
+  loginReturn.register(
+    Routes.SCENE,
+    () => ({
+      page: Routes.SCENE,
+      type: 'scene',
+      id,
+      tab: queueSource.value === QueueSource.LEARNING_NOTES ? 'notes' : 'all',
+      category: '',
+      scroll: scrollTop,
+      translation: dialogueView.value?.translated || false,
+      audioPosition: audioState.value.position,
+      playbackRate: audioState.value.rate,
+      version: card.value?.version_id || ''
+    }),
+    () => {
+      if (!visible || !alive) return
+      restoringSnapshot = loginReturn.take(Routes.SCENE, id)
+      noteRecovery = true
+      queueId.value = ''
+      queueSource.value = restoringSnapshot?.tab === 'notes' ? QueueSource.LEARNING_NOTES : null
+      void load()
+    }
+  )
+  const restored = loginReturn.take(Routes.SCENE, id)
+  if (restored) {
+    restoringSnapshot = restored
+    noteRecovery = true
+    queueId.value = ''
+    queueSource.value = restored.tab === 'notes' ? QueueSource.LEARNING_NOTES : null
+    sourceQueue.clear()
+    void load()
+    return
+  }
+  if (!card.value && id && !busy.value && !runtimeMode.update()) {
+    void load()
+    return
+  }
   if (runtimeMode.update()) {
     if (visible && !homeSummary.value && id) void publicShare.prepare(id)
     return
@@ -1286,6 +1362,8 @@ onUnload(() => {
         :message="message"
         :shared-entry="sharedEntry"
         @unfavorite="toggleFavorite" /><template v-else-if="card && !accessError"
+        ><text v-if="!card.state" class="guest-reading-note"
+          >当前为游客体验，登录后可保存学习记录。</text
         ><view v-if="reading.notice.value" class="notice">{{ reading.notice.value }}</view
         ><view class="reading-anchor" data-reading-anchor="top"
           ><view class="scene-title between"

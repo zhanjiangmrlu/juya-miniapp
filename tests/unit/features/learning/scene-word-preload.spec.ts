@@ -18,6 +18,7 @@ const ports = vi.hoisted(() => ({
   fullRelease: vi.fn(),
   release: vi.fn(),
   unsubscribe: vi.fn(),
+  epoch: 0,
   ensure: vi.fn(async (_target?: string) => true),
   account: null as null | { profile: { id: string } | null; restore: () => Promise<unknown> },
   tracks: [] as { src: string; play: ReturnType<typeof vi.fn>; destroy: ReturnType<typeof vi.fn> }[]
@@ -40,11 +41,17 @@ vi.mock('@dcloudio/uni-app', () => ({
   }
 }))
 vi.mock('@/stores/account-store', () => ({
-  useAccountStore: () => Object.assign(ports.account!, { ensure: ports.ensure })
+  useAccountStore: () =>
+    Object.assign(ports.account!, { restore: async () => null, ensure: ports.ensure })
 }))
 vi.mock('@/services/api', () => ({
   operations: { pending: () => false },
-  session: { request: ports.request, userId: () => ports.account?.profile?.id || null },
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => `${ports.epoch}:${ports.account?.profile?.id || 'guest'}`,
+    userId: () => ports.account?.profile?.id || null
+  },
   onSessionExpired: (callback: () => void) => {
     ports.expired = callback
     return ports.unsubscribe
@@ -232,6 +239,7 @@ it('disposes cached local audio when the authenticated session expires', async (
 
 it('does not reuse a cached local file after another session logs into the same account', async () => {
   const page = await open()
+  ports.epoch++
   ports.account!.profile = { id: 'learner' }
   await flushPromises()
   expect(ports.release).toHaveBeenCalledTimes(2)
@@ -366,7 +374,7 @@ it('opens a fresh native note without replacing audio and keeps all playback pau
   page.unmount()
 })
 
-it('restores the note login intent with read-only detail requests before automatically opening its current PDF', async () => {
+it('restores the note source read-only without automatically opening its PDF', async () => {
   const current = {
     ...scene(),
     study_note: {
@@ -391,15 +399,15 @@ it('restores the note login intent with read-only detail requests before automat
   const details = ports.request.mock.calls
     .map(([path]) => path)
     .filter((path) => /^\/api\/mini\/v1\/cards\/card(?:\?|$)/.test(path))
-  expect(details.length).toBeGreaterThanOrEqual(2)
+  expect(details.length).toBe(1)
   expect(details.every((path) => path.includes('mark_started=false'))).toBe(true)
-  expect(ports.noteOpen).toHaveBeenCalledOnce()
-  expect(ports.ensure.mock.calls[0]?.[0]).toContain('intent=study_note')
+  expect(ports.noteOpen).not.toHaveBeenCalled()
+  expect(ports.ensure).not.toHaveBeenCalled()
   ports.unload?.()
   page.unmount()
 })
 
-it('retains the PDF login intent when a read-only body refresh receives 401', async () => {
+it('never opens a PDF automatically when a read-only body refresh receives 401', async () => {
   const { ApiError } = await import('@/services/errors')
   const first = {
       ...scene(),
@@ -429,9 +437,8 @@ it('retains the PDF login intent when a read-only body refresh receives 401', as
   await flushPromises()
   await page.get('.note-entry').trigger('click')
   await flushPromises()
-  expect(ports.ensure.mock.calls.at(-1)?.[0]).toBe(
-    '/sub-packages/scenes/detail?id=card&intent=study_note&source=learning_notes'
-  )
+  expect(ports.ensure).not.toHaveBeenCalled()
+  expect(ports.noteOpen).not.toHaveBeenCalled()
   expect(
     ports.request.mock.calls
       .filter(([path]) => !path.includes('/pronunciation'))

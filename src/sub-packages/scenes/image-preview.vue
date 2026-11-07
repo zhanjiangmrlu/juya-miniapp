@@ -14,12 +14,6 @@ import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import ShareSummary from '@/features/share/components/share-summary.vue'
 import { session } from '@/services/api'
 import { ApiError } from '@/services/errors'
-import {
-  activeImagePreview,
-  closeImagePreview,
-  discardImagePreview,
-  prepareImagePreviewSource
-} from '@/services/image-preview'
 import { mediaAddress } from '@/services/media-service'
 import { setShareMenu } from '@/services/native-share'
 import { backTo } from '@/services/navigation'
@@ -36,6 +30,12 @@ import {
 } from '@/shared/constants/share'
 import { ShareTarget } from '@/shared/enums/share'
 import { createAccessMonitor } from '@/sub-packages/scenes/access-monitor'
+import {
+  activeImagePreview,
+  closeImagePreview,
+  discardImagePreview,
+  prepareImagePreviewSource
+} from '@/sub-packages/scenes/image-preview-service'
 import { createShareService } from '@/sub-packages/scenes/scene-share-service'
 
 import type { components } from '@/shared/contracts/generated/mini-api'

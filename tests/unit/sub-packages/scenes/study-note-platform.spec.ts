@@ -86,3 +86,16 @@ it('sweeps only owned orphan PDFs and protects both active downloads and open do
     call.success?.({ statusCode: 200, tempFilePath: call.filePath!, errMsg: 'ok' })
   for (const file of [opened, await second, await third]) file.release()
 })
+
+it('downloads a public PDF without any token or Authorization header', async () => {
+  Object.assign(uni, { getStorageSync: () => undefined })
+  const pending = downloadStudyNote(
+    '/api/mini/v1/public/resources/pub1_example',
+    '[guest:1,card,note]',
+    { active: () => true, onCancel: () => () => undefined }
+  )
+  expect(callback!.header).toEqual({})
+  callback!.success?.({ statusCode: 200, tempFilePath: callback!.filePath!, errMsg: 'ok' })
+  const file = await pending
+  file.release()
+})

@@ -22,8 +22,18 @@ vi.mock('@dcloudio/uni-app', () => ({
   onReachBottom: vi.fn(),
   onUnload: vi.fn()
 }))
-vi.mock('@/services/api', () => ({ session: { request: ports.request, userId: () => 'learner' } }))
-vi.mock('@/stores/account-store', () => ({ useAccountStore: () => ({ ensure: async () => true }) }))
+vi.mock('@/services/api', () => ({
+  onSessionExpired: () => () => undefined,
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => 'learner',
+    userId: () => 'learner'
+  }
+}))
+vi.mock('@/stores/account-store', () => ({
+  useAccountStore: () => ({ restore: async () => null, ensure: async () => true })
+}))
 vi.mock('@/composables/use-scene-list', () => ({
   useSceneList: (options: { path: string }) => ({
     refresh: ports.refresh,

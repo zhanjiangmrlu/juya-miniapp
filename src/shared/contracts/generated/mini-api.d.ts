@@ -113,7 +113,7 @@ export interface paths {
     }
     /**
      * 分页查询已发布词汇卡片
-     * @description 先按本人完成记录过滤，免费内容优先，各组内保留人工顺序，再进行分页。
+     * @description 游客按全部发布集合查询，显式uncompleted也按published处理且个人字段为null；已登录先按本人完成记录过滤。免费优先、人工顺序及有效PDF过滤在分页前执行。
      */
     get: operations['listing_api_mini_v1_cards_get']
     put?: never
@@ -133,7 +133,7 @@ export interface paths {
     }
     /**
      * 读取词汇卡片学习内容
-     * @description 读取卡片当前版本，沿用mark_started记录正文首次有效打开，不计完成。require_study_note=true要求当前有效发布PDF；失效409且不新增开始记录。
+     * @description 读取卡片当前版本，沿用mark_started记录正文首次有效打开，不计完成。require_study_note=true要求当前有效发布PDF；失效409且不新增开始记录。 无Authorization时允许游客读取当前发布列表、安全摘要及免费正文/资源，个人字段为null；非空无效凭据返回401。
      */
     get: operations['detail_api_mini_v1_cards__card_id__get']
     put?: never
@@ -153,7 +153,7 @@ export interface paths {
     }
     /**
      * 获取词汇素材访问地址
-     * @description 校验本人对卡片发布版本及素材的访问权限后签发受控访问地址。
+     * @description 校验本人对卡片发布版本及素材的访问权限后签发受控访问地址。 无Authorization时允许游客读取当前发布列表、安全摘要及免费正文/资源，个人字段为null；非空无效凭据返回401。
      */
     get: operations['issue_api_mini_v1_cards__card_id__media__media_id__url_get']
     put?: never
@@ -176,6 +176,26 @@ export interface paths {
      * @description 校验素材访问凭证和当前内容权限后交付素材。
      */
     get: operations['read_api_mini_v1_media__credential__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/mini/v1/public/resources/{credential}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * 读取游客受控资源
+     * @description 校验独立公开票据的用途、有效期、当前发布及免费权限和版本，支持GET、HEAD与Range；不依赖本人会话，不返回永久存储地址。
+     */
+    get: operations['resource_api_mini_v1_public_resources__credential__get']
     put?: never
     post?: never
     delete?: never
@@ -312,8 +332,8 @@ export interface paths {
       cookie?: never
     }
     /**
-     * 查询个人记录中的词汇摘要
-     * @description 读取本人收藏或完成记录中指定词汇卡片的摘要及当前状态。
+     * 读取当前发布或本人历史词汇摘要
+     * @description 游客可读当前发布安全摘要；下线及删除摘要继续要求本人收藏或完成归属。摘要不含正文、词汇原句或PDF元信息。
      */
     get: operations['summary_api_mini_v1_cards__card_id__summary_get']
     put?: never
@@ -573,13 +593,13 @@ export interface paths {
     }
     /**
      * 查询词汇卡片单词发音
-     * @description 读取当前可访问卡片中指定词汇的发音状态及音频信息。
+     * @description 读取当前可访问卡片中指定词汇的发音状态及音频信息。 游客仅允许当前发布免费预置词汇及版本引用，复用共享缓存和任务，不创建用户或个人幂等记录；不允许任意文本及正文点词。
      */
     get: operations['read_api_mini_v1_cards__card_id__words__word_id__pronunciation_get']
     put?: never
     /**
      * 生成词汇卡片单词发音
-     * @description 校验本人权限及服务端词汇引用后请求受控单词发音合成。
+     * @description 校验本人权限及服务端词汇引用后请求受控单词发音合成。 游客仅允许当前发布免费预置词汇及版本引用，复用共享缓存和任务，不创建用户或个人幂等记录；不允许任意文本及正文点词。
      */
     post: operations['generate_api_mini_v1_cards__card_id__words__word_id__pronunciation_post']
     delete?: never
@@ -945,7 +965,7 @@ export interface paths {
     }
     /**
      * 查询主题听读首页
-     * @description 返回各分类学习进度、独立计算的继续学习目标及本人授权和学习统计。
+     * @description 返回各分类学习进度、独立计算的继续学习目标及本人授权和学习统计。 无Authorization时允许游客读取当前发布列表、安全摘要及免费正文/资源，个人字段为null；非空无效凭据返回401。
      */
     get: operations['home_api_mini_v1_listening_home_get']
     put?: never
@@ -965,7 +985,7 @@ export interface paths {
     }
     /**
      * 查询兼容听读主题列表
-     * @description 读取兼容接口提供的听读主题及学习进度，可按分类筛选。
+     * @description 读取兼容接口提供的听读主题及学习进度，可按分类筛选。 无Authorization时允许游客读取当前发布列表、安全摘要及免费正文/资源，个人字段为null；非空无效凭据返回401。
      */
     get: operations['topics_api_mini_v1_listening_topics_get']
     put?: never
@@ -985,7 +1005,7 @@ export interface paths {
     }
     /**
      * 查询旧主题所属分类文章
-     * @description 按旧主题对应的直接分类分页查询文章，免费文章优先，各组内保留人工顺序。
+     * @description 按旧主题对应的直接分类分页查询文章，免费文章优先，各组内保留人工顺序。 无Authorization时允许游客读取当前发布列表、安全摘要及免费正文/资源，个人字段为null；非空无效凭据返回401。
      */
     get: operations['articles_api_mini_v1_listening_topics__topic_id__articles_get']
     put?: never
@@ -1005,7 +1025,7 @@ export interface paths {
     }
     /**
      * 分页查询已发布听读文章
-     * @description 可按分类筛选；免费内容优先，各组内保留分类及文章顺序。
+     * @description 可按分类筛选；免费内容优先，各组内保留分类及文章顺序。 无Authorization时允许游客读取当前发布列表、安全摘要及免费正文/资源，个人字段为null；非空无效凭据返回401。
      */
     get: operations['category_articles_api_mini_v1_listening_articles_get']
     put?: never
@@ -1125,7 +1145,7 @@ export interface paths {
     }
     /**
      * 查询听读文章个人摘要
-     * @description 读取指定听读文章的摘要及本人学习、收藏和可用状态。
+     * @description 读取指定听读文章的摘要及本人学习、收藏和可用状态。 无Authorization时允许游客读取当前发布列表、安全摘要及免费正文/资源，个人字段为null；非空无效凭据返回401。
      */
     get: operations['summary_api_mini_v1_listening_articles__article_id__summary_get']
     put?: never
@@ -1145,7 +1165,7 @@ export interface paths {
     }
     /**
      * 读取听读文章学习内容
-     * @description 校验本人学习权限后读取文章当前有效发布内容及个人进度。
+     * @description 校验本人学习权限后读取文章当前有效发布内容及个人进度。 无Authorization时允许游客读取当前发布列表、安全摘要及免费正文/资源，个人字段为null；非空无效凭据返回401。
      */
     get: operations['detail_api_mini_v1_listening_articles__article_id__get']
     put?: never
@@ -1285,7 +1305,7 @@ export interface paths {
     }
     /**
      * 读取听读文章缩略图
-     * @description 校验文章发布版本和缩略图引用后交付列表缩略图。
+     * @description 校验文章发布版本和缩略图引用后交付列表缩略图。 无Authorization时允许游客读取当前发布列表、安全摘要及免费正文/资源，个人字段为null；非空无效凭据返回401。
      */
     get: operations['thumbnail_api_mini_v1_listening_articles__article_id__thumbnail_get']
     put?: never
@@ -1305,7 +1325,7 @@ export interface paths {
     }
     /**
      * 获取听读缩略图访问凭证
-     * @description 为指定文章发布版本的缩略图签发短期访问凭证。
+     * @description 为指定文章发布版本的缩略图签发短期访问凭证。 无Authorization时允许游客读取当前发布列表、安全摘要及免费正文/资源，个人字段为null；非空无效凭据返回401。
      */
     get: operations['thumbnail_ticket_api_mini_v1_listening_articles__article_id__thumbnail_ticket_get']
     put?: never
@@ -1409,13 +1429,13 @@ export interface paths {
     }
     /**
      * 查询听读文章词汇发音
-     * @description 读取已持久化的发音状态，不启动云端合成任务。
+     * @description 读取已持久化的发音状态，不启动云端合成任务。 游客仅允许当前发布免费预置词汇及版本引用，复用共享缓存和任务，不创建用户或个人幂等记录；不允许任意文本及正文点词。
      */
     get: operations['read_api_mini_v1_listening_articles__article_id__words__word_id__pronunciation_get']
     put?: never
     /**
      * 生成听读文章词汇发音
-     * @description 由服务端解析指定词汇并生成单词发音，使用持久化幂等记录。
+     * @description 由服务端解析指定词汇并生成单词发音，使用持久化幂等记录。 游客仅允许当前发布免费预置词汇及版本引用，复用共享缓存和任务，不创建用户或个人幂等记录；不允许任意文本及正文点词。
      */
     post: operations['generate_api_mini_v1_listening_articles__article_id__words__word_id__pronunciation_post']
     delete?: never
@@ -1444,7 +1464,7 @@ export interface components {
        * 本人听读进度
        * @description 绑定当前发布版本的阅读字符位置、音频秒数、译文展开状态及播放倍速。
        */
-      progress: components['schemas']['Progress']
+      progress: components['schemas']['Progress'] | null
       /**
        * 资源标识
        * @description 当前对象的唯一标识；具体对象类型由所在模型确定。
@@ -1523,7 +1543,7 @@ export interface components {
        * 本人文章状态
        * @description 当前用户对文章的收藏、累计完成和今日完成标记。
        */
-      state: components['schemas']['ArticleState']
+      state: components['schemas']['ArticleState'] | null
       /**
        * 首次完成时间
        * @description 当前用户首次完成该内容的时间；从未完成时可为空。
@@ -1558,7 +1578,7 @@ export interface components {
        * 听读队列凭据
        * @description 服务端签发的分类连续学习凭据，读取下一篇时按原值携带。
        */
-      queue_token: string
+      queue_token: string | null
       /**
        * 音频时长
        * @description 关联正文音频的总时长，单位为秒。
@@ -1727,7 +1747,7 @@ export interface components {
        * 本人场景状态
        * @description 当前用户对场景的收藏、累计完成、今日完成和开始学习标记。
        */
-      state: components['schemas']['CardState']
+      state: components['schemas']['CardState'] | null
     }
     /** 本人场景学习状态 */
     CardState: {
@@ -1791,7 +1811,7 @@ export interface components {
        * 已完成听读篇数
        * @description 当前统计范围内用户已完成的不同听读文章数量。
        */
-      completed_articles: number
+      completed_articles: number | null
       /**
        * 受限听读篇数
        * @description 分类中当前用户没有学习权限的文章数量。
@@ -1986,7 +2006,7 @@ export interface components {
        * 学习授权
        * @description 当前用户的统一学习授权状态、有效日期及修订号。
        */
-      authorization: components['schemas']['AuthorizationView']
+      authorization: components['schemas']['AuthorizationView'] | null
       /**
        * 服务端当前时间
        * @description 计算本次权限和有效期时使用的服务端时间。
@@ -2504,7 +2524,7 @@ export interface components {
        */
       authorization: {
         [key: string]: unknown
-      }
+      } | null
       /**
        * 免费内容数量
        * @description 当前模块返回或预览配置的免费内容数量；尚未配置时可为空。
@@ -2529,7 +2549,7 @@ export interface components {
        * 本人学习统计
        * @description 场景、听读完成数量、收藏数量及打卡情况等统计。
        */
-      statistics: components['schemas']['Statistics']
+      statistics: components['schemas']['Statistics'] | null
     }
     /** 学习端场景列表分页 */
     LearningCardPage: {
@@ -2563,7 +2583,7 @@ export interface components {
        * @description 当前用户尚未完成且当前可用的免费场景数量。
        * @default 0
        */
-      free_uncompleted_total: number
+      free_uncompleted_total: number | null
       /**
        * 已发布场景总数
        * @description 当前学习列表统计的已发布场景总数。
@@ -2813,7 +2833,7 @@ export interface components {
        * 本人文章状态
        * @description 当前用户对文章的收藏、累计完成和今日完成标记。
        */
-      state: components['schemas']['ArticleState']
+      state: components['schemas']['ArticleState'] | null
       /**
        * 首次完成时间
        * @description 当前用户首次完成该内容的时间；从未完成时可为空。
@@ -3238,7 +3258,7 @@ export interface components {
        * 本人场景状态
        * @description 当前用户对场景的收藏、累计完成、今日完成和开始学习标记。
        */
-      state: components['schemas']['CardState']
+      state: components['schemas']['CardState'] | null
       /**
        * 收藏时间
        * @description 当前用户收藏该内容的时间；未收藏时为空。
@@ -3432,7 +3452,7 @@ export interface components {
        * 本人场景状态
        * @description 当前用户对场景的收藏、累计完成、今日完成和开始学习标记。
        */
-      state: components['schemas']['CardState']
+      state: components['schemas']['CardState'] | null
       /**
        * 已保存的场景阅读位置
        * @description 当前发布版本可恢复的正文锚点及块内进度；无有效位置时为空。
@@ -3863,7 +3883,7 @@ export interface components {
        * 本人文章状态
        * @description 当前用户对文章的收藏、累计完成和今日完成标记。
        */
-      state: components['schemas']['ArticleState']
+      state: components['schemas']['ArticleState'] | null
       /**
        * 首次完成时间
        * @description 当前用户首次完成该内容的时间；从未完成时可为空。
@@ -4008,7 +4028,7 @@ export interface components {
        * 已完成听读篇数
        * @description 当前统计范围内用户已完成的不同听读文章数量。
        */
-      completed_articles: number
+      completed_articles: number | null
     }
     /** 用户反馈补充消息 */
     UserMessage: {
@@ -5206,6 +5226,122 @@ export interface operations {
     }
   }
   read_api_mini_v1_media__credential__get: {
+    parameters: {
+      query?: {
+        /** @description list 表示用于列表展示的缩略图。 */
+        thumbnail?: 'list' | null
+      }
+      header?: never
+      path: {
+        /** @description 服务端签发的短期资源访问凭据，按原值使用，不解析或自行构造。 */
+        credential: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description 请求成功 */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
+        }
+      }
+      /** @description 请求不符合业务规则 */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 尚未登录，或登录凭证已失效 */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 当前身份无权执行该操作 */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源不存在，或当前身份不可访问 */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 状态、版本或幂等请求发生冲突，请按错误码处理 */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源或功能已不可用 */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求参数校验失败，或业务内容不符合要求 */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求过于频繁，请稍后重试 */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务器暂未完成请求，请按错误信息处理 */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务暂不可用，请稍后重试 */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
+  resource_api_mini_v1_public_resources__credential__get: {
     parameters: {
       query?: {
         /** @description list 表示用于列表展示的缩略图。 */

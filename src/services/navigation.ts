@@ -2,6 +2,8 @@ import { Routes } from '@/shared/constants/navigation'
 
 import type { QueueSource } from '@/shared/enums/learning'
 
+import { session } from './api'
+import { loginReturn } from './login-return'
 import { runtimeMode } from './runtime-mode'
 import { parseShareTarget, shareTargetURL } from './share-service'
 import { openSourceScene } from './source-queue'
@@ -18,6 +20,21 @@ export const safeTarget = (target: string) => {
   )
     return Routes.HOME
   const query = (target.split('?')[1] || '').split('#')[0]
+  if (path === Routes.LISTENING) {
+    try {
+      const category = decodeURIComponent(
+        query
+          .split('&')
+          .find((part) => part.startsWith('category_id='))
+          ?.slice(12) || ''
+      )
+      return /^[A-Za-z0-9-]{1,64}$/.test(category)
+        ? `${path}?category_id=${encodeURIComponent(category)}`
+        : path
+    } catch {
+      return path
+    }
+  }
   if (path === Routes.LEARNING && query.split('&').includes('tab=notes')) return `${path}?tab=notes`
   if (path === Routes.SCENE || path === Routes.LEARNING) {
     const values: Record<string, string> = {}
@@ -66,12 +83,11 @@ export const safeTarget = (target: string) => {
     } catch {
       return Routes.HOME
     }
-    const noteIntent = path === Routes.SCENE && query.split('&').includes('intent=study_note')
     const source = query.split('&').includes('source=learning_notes')
       ? '&source=learning_notes'
       : ''
     return /^[A-Za-z0-9-]{1,64}$/.test(id)
-      ? `${path}?id=${encodeURIComponent(id)}${noteIntent ? '&intent=study_note' : ''}${path === Routes.SCENE ? source : ''}`
+      ? `${path}?id=${encodeURIComponent(id)}${path === Routes.SCENE ? source : ''}`
       : Routes.LEARNING
   }
   if (path === Routes.RECORDS && query.split('&').includes('tab=checkins'))
@@ -98,9 +114,16 @@ export const openLogin = (target: string) => {
   if (runtimeMode.update()) return
   const pages = getCurrentPages()
   if (loginNavigationPending || pages[pages.length - 1]?.route === Routes.LOGIN.slice(1)) return
+  const safe = safeTarget(target)
+  loginReturn.begin(safe)
+  session.invalidate()
   loginNavigationPending = true
-  uni.reLaunch({
-    url: `${Routes.LOGIN}?return=${encodeURIComponent(safeTarget(target))}`,
+  uni.navigateTo({
+    url: `${Routes.LOGIN}?return=${encodeURIComponent(safe)}`,
+    fail: () => {
+      loginNavigationPending = false
+      loginReturn.resumeGuest(true)
+    },
     complete: () => {
       loginNavigationPending = false
     }

@@ -37,12 +37,21 @@ vi.mock('@dcloudio/uni-app', () => ({
   }
 }))
 vi.mock('@/services/api', () => ({
-  session: { request: ports.request, userId: () => 'owner' },
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => 'owner',
+    userId: () => 'owner'
+  },
   operations: { pending: () => false, run: ports.run },
   onSessionExpired: () => () => undefined
 }))
 vi.mock('@/stores/account-store', () => ({
-  useAccountStore: () => ({ profile: { id: 'owner' }, ensure: async () => true })
+  useAccountStore: () => ({
+    profile: { id: 'owner' },
+    restore: async () => null,
+    ensure: async () => true
+  })
 }))
 vi.mock('@/services/full-audio-preparation', () => ({
   createFullAudioPreparation: () => ({
