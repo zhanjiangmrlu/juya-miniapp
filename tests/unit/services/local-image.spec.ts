@@ -30,3 +30,13 @@ it('rejects failed downloads so the existing image retry remains available', asy
   })
   await expect(localImageSource('http://localhost:8002/image')).rejects.toThrow('图片下载失败')
 })
+
+it('downloads development LAN HTTP thumbnails for the native image component while retaining WebP bytes', async () => {
+  vi.stubGlobal('uni', {
+    downloadFile: (options: UniApp.DownloadFileOption) =>
+      options.success?.({ statusCode: 200, tempFilePath: 'wxfile://lan-thumbnail.webp' } as never)
+  })
+  await expect(
+    localImageSource('http://192.168.0.119:8493/thumbnail?thumbnail=list')
+  ).resolves.toBe('wxfile://lan-thumbnail.webp')
+})

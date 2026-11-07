@@ -7,6 +7,11 @@ import { clientThumbnail } from '@/services/client-thumbnail'
 import { dateText } from '@/services/display'
 import { localImageSource } from '@/services/local-image'
 import { mediaAddress } from '@/services/media-service'
+import {
+  nativeErrorFields,
+  probeNativeImage,
+  recordNativeDiagnostic
+} from '@/services/native-diagnostics'
 import { openScene } from '@/services/navigation'
 import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
 import { QueueSource } from '@/shared/enums/learning'
@@ -133,11 +138,21 @@ const loadImage = async (renew = false) => {
 }
 /** 本次缩略图像素加载完成，run 为该图片建立时的请求代次 */
 const imageLoaded = (run: number) => {
+  if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true' && run === generation)
+    recordNativeDiagnostic('image-load', { surface: 'list', local: !/^https?:/.test(src.value) })
   if (run === generation) imageLoading.value = false
 }
 /** 本次缩略图像素失败，run 为该图片建立时的请求代次 */
-const imageFailed = (run: number) => {
+const imageFailed = (run: number, event?: Event | { detail?: unknown }) => {
   if (run !== generation) return
+  if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true') {
+    recordNativeDiagnostic('image-error', {
+      surface: 'list',
+      local: !/^https?:/.test(src.value),
+      ...nativeErrorFields(event && 'detail' in event ? event.detail : undefined)
+    })
+    probeNativeImage(src.value, 'list')
+  }
   imageLoading.value = false
   imageError.value = true
 }
@@ -164,7 +179,7 @@ onBeforeUnmount(() => {
         mode="aspectFit"
         :webp="true"
         @load="imageLoaded(image.generation)"
-        @error="imageFailed(image.generation)"
+        @error="imageFailed(image.generation, $event)"
       /><button v-if="imageError" class="retry-image" @click.stop="loadImage(true)">重试图片</button
       ><view v-if="imageLoading" class="image-loading"
         ><AppLoading compact stacked label="正在加载图片" /></view

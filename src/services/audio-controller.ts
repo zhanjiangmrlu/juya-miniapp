@@ -58,6 +58,8 @@ export const createAudioController = (
     fullIntent = false,
     fullStarting = false,
     ratePausing = false,
+    rateRebinding = false,
+    stagedRate: PlaybackRate | null = null,
     pendingRate: PlaybackRate | null = null,
     wordRecover: ((reason: unknown) => void) | null = null,
     wordRetryTimer: ReturnType<typeof setTimeout> | undefined,
@@ -119,6 +121,21 @@ export const createAudioController = (
     state.position = pendingSeek
     full.pause()
   }
+  /** 原生背景音轨静默重绑倍率，等待下一次真实播放回调确认
+   * @param rate 用户最后选择的有效倍率
+   */
+  const stageRate = (rate: PlaybackRate) => {
+    stagedRate = rate
+    rateRebinding = !!full.stagePlaybackRate?.(rate)
+    if (rateRebinding) {
+      pendingRate = rate
+      state.pendingRate = rate
+    } else {
+      pendingRate = null
+      delete state.pendingRate
+      confirmRate(rate)
+    }
+  }
   /** 播放中排队切速，暂停时直接设置且不主动播放
    * @param rate 用户最后选择的完整音频倍率
    */
@@ -133,6 +150,11 @@ export const createAudioController = (
       pendingRate = rate as PlaybackRate
       state.rateError = ''
       if (!ratePausing && !fullStarting) pauseForRate()
+      notify()
+      return !state.rateError
+    }
+    if (full.stagePlaybackRate && rate !== state.rate) {
+      stageRate(rate as PlaybackRate)
       notify()
       return !state.rateError
     }
@@ -162,13 +184,24 @@ export const createAudioController = (
       full.pause()
       return
     }
-    if (pendingRate !== null && pendingRate !== state.rate) {
+    if (rateRebinding && pendingRate !== null && pendingRate !== stagedRate) {
+      pauseForRate()
+      return
+    }
+    const confirmingRate = rateRebinding && pendingRate !== null
+    if (confirmingRate) {
+      const rate = pendingRate!
+      pendingRate = null
+      rateRebinding = false
+      delete state.pendingRate
+      confirmRate(rate)
+    } else if (pendingRate !== null && pendingRate !== state.rate) {
       if (!ratePausing) pauseForRate()
       return
     }
     pendingRate = null
     state.status = AudioStatus.PLAYING
-    restoreRate()
+    if (!confirmingRate) restoreRate()
     if (pendingSeek > 0) {
       full.seek(pendingSeek)
       pendingSeek = 0
@@ -183,7 +216,8 @@ export const createAudioController = (
     if (pendingRate !== null) {
       const rate = pendingRate
       pendingRate = null
-      confirmRate(rate)
+      if (full.stagePlaybackRate) stageRate(rate)
+      else confirmRate(rate)
       if (fullIntent) startFull()
     } else if (!fullStarting) {
       fullIntent = false
@@ -198,6 +232,8 @@ export const createAudioController = (
     fullStarting = false
     ratePausing = false
     pendingRate = null
+    rateRebinding = false
+    delete state.pendingRate
     pendingSeek = state.position
     state.status = AudioStatus.PAUSED
     notify()
@@ -208,6 +244,8 @@ export const createAudioController = (
     fullIntent = false
     fullStarting = false
     pendingRate = null
+    rateRebinding = false
+    delete state.pendingRate
     state.position = state.duration
     notify()
   })
@@ -223,6 +261,8 @@ export const createAudioController = (
     fullIntent = false
     fullStarting = false
     pendingRate = null
+    rateRebinding = false
+    delete state.pendingRate
     state.error = '音频暂不可用，点击重试'
     fullFailed()
     notify()
@@ -293,7 +333,7 @@ export const createAudioController = (
         full.src = url
         fullSource = url
       }
-      restoreRate()
+      if (!rateRebinding) restoreRate()
       // 背景播放器绑定地址即自动播放，须提前设置原生开始位置
       if (full.background) full.seek(pendingSeek)
       startFull()
@@ -320,6 +360,9 @@ export const createAudioController = (
     fullGeneration++
     const cancelFull = fullIntent || fullStarting || ratePausing
     fullIntent = false
+    pendingRate = null
+    rateRebinding = false
+    delete state.pendingRate
     if (
       cancelFull ||
       state.status === AudioStatus.PLAYING ||
@@ -469,6 +512,8 @@ export const createAudioController = (
     fullGeneration++
     fullIntent = false
     pendingRate = null
+    rateRebinding = false
+    delete state.pendingRate
     full.pause()
     state.status = AudioStatus.PAUSED
     notify()
@@ -495,6 +540,8 @@ export const createAudioController = (
     cancelWordRecovery()
     fullIntent = false
     pendingRate = null
+    rateRebinding = false
+    delete state.pendingRate
     fullGeneration++
     wordGeneration++
     full.stop()

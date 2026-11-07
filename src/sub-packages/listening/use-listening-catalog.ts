@@ -123,6 +123,7 @@ export const useListeningCatalog = () => {
         tab: '',
         category: category.value,
         scroll: scrollTop.value,
+        loadedCount: list.value.items.value.length,
         translation: false,
         audioPosition: 0,
         playbackRate: 1,
@@ -135,10 +136,24 @@ export const useListeningCatalog = () => {
     const restored = loginReturn.take(Routes.LISTENING)
     if (restored) {
       category.value = restored.category
-      scrollTop.value = restored.scroll
     }
     syncCategory()
-    await Promise.all([loadHome(), list.value.refresh()])
+    const run = generation,
+      currentList = list.value
+    await Promise.all([loadHome(), currentList.refresh()])
+    if (run !== generation || currentList !== list.value) return
+    if (restored && category.value === restored.category) {
+      while (
+        currentList.items.value.length < (restored.loadedCount || 0) &&
+        currentList.hasMore.value
+      ) {
+        const count = currentList.items.value.length
+        await currentList.more()
+        if (run !== generation || currentList !== list.value) return
+        if (currentList.items.value.length <= count) break
+      }
+      if (run === generation && currentList === list.value) scrollTop.value = restored.scroll
+    }
   }
   /** 切换分类开始该分类第一页；详情往返不调用此方法
    * @param id 当前真实分类身份，空值为全部

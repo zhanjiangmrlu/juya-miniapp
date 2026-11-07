@@ -48,11 +48,14 @@ vi.mock('@/features/listening/listening-service', () => ({
 }))
 
 import ListeningArticleCard from '@/features/listening/components/listening-article-card.vue'
+import { loginReturn } from '@/services/login-return'
+import { Routes } from '@/shared/constants/navigation'
 import ListeningCatalogPage from '@/sub-packages/listening/index.vue'
 import { useListeningCatalog } from '@/sub-packages/listening/use-listening-catalog'
 
 let model: ReturnType<typeof useListeningCatalog> | undefined
 beforeEach(() => {
+  loginReturn.cancel()
   ports.owner = 'owner-1'
   ports.request.mockReset().mockImplementation(async (path: string) => ({
     items: path.includes('category_id=c2')
@@ -267,4 +270,46 @@ it('falls back to the actual all-articles collection when a restored category no
   expect(model.category.value).toBe('')
   expect(ports.request.mock.calls.at(-1)?.[0]).not.toContain('category_id=')
   expect(model.articles.value.map((item) => item.id)).toEqual(['c1-article', 'c2-article'])
+})
+
+it.each(['success', 'cancel'])(
+  'restores a valid category, position and loaded range after login %s',
+  async (result) => {
+    ports.request.mockImplementation(async (path: string) => {
+      const page = Number(new URL(path, 'https://fixture.invalid').searchParams.get('page'))
+      return { items: [{ id: `article-${page}` }], total: 3, page, limit: 1 }
+    })
+    model = useListeningCatalog()
+    await model.load()
+    await model.select('c2')
+    await model.list.value.more()
+    model.scrollTop.value = 480
+    loginReturn.begin(Routes.LISTENING)
+    ports.expired?.()
+    if (result === 'success') {
+      ports.owner = 'owner-2'
+      loginReturn.succeed()
+    } else loginReturn.resumeGuest()
+    await model.load()
+    expect(model.category.value).toBe('c2')
+    expect(model.scrollTop.value).toBe(480)
+    expect(model.articles.value.map((item) => item.id)).toEqual(['article-1', 'article-2'])
+  }
+)
+
+it('does not replay an all-category snapshot after identity invalidates during restoration', async () => {
+  model = useListeningCatalog()
+  await model.load()
+  model.scrollTop.value = 480
+  loginReturn.begin(Routes.LISTENING)
+  ports.expired?.()
+  loginReturn.succeed()
+  const home = deferred<unknown>()
+  ports.home.mockReturnValueOnce(home.promise)
+  const loading = model.load()
+  await flushPromises()
+  ports.expired?.()
+  home.resolve({ categories: [{ id: 'c1' }], continue_learning: null })
+  await loading
+  expect(model.scrollTop.value).toBe(0)
 })

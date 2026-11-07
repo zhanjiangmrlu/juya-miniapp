@@ -100,6 +100,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     autosave = 0,
     progressDirty = false,
     restoringProgress = false,
+    snapshotReadonly = false,
     guestProgress: (ListeningProgress & { identity: string }) | null = null,
     restoringSnapshot: LoginSnapshot | null = null,
     fullPreparation: ReturnType<typeof createFullAudioPreparation> | null = null,
@@ -109,7 +110,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   watch(
     [translation, () => audio.value.rate, () => audio.value.position],
     () => {
-      if (!restoringProgress && visible && article.value) progressDirty = true
+      if (!restoringProgress && !snapshotReadonly && visible && article.value) progressDirty = true
     },
     { flush: 'sync' }
   )
@@ -172,7 +173,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       reading_position: Math.round(readingPosition),
       translation_open: translation.value,
       audio_position: audio.value.position,
-      playback_rate: audio.value.rate
+      playback_rate: owner ? audio.value.rate : (audio.value.pendingRate ?? audio.value.rate)
     }
     if (!owner) {
       guestProgress = { ...progress, identity: session.identity() }
@@ -414,6 +415,9 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
           guestProgress.version_id === value.version_id
         ? guestProgress
         : undefined
+    const hasHistory =
+      pending?.version_id === value.version_id ||
+      (value.progress?.version_id === value.version_id && !!value.progress.updated_at)
     const restored = restoreProgress(
       value.version_id,
       pending?.version_id === value.version_id ? pending : value.progress
@@ -439,7 +443,8 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     }
     const snapshot = restoringSnapshot
     restoringSnapshot = null
-    if (snapshot?.version === value.version_id && !value.progress) {
+    if (snapshot) snapshotReadonly = true
+    if (snapshot?.version === value.version_id && !hasHistory) {
       translation.value = snapshot.translation
       controller.state.position = snapshot.audioPosition
       controller.setRate(snapshot.playbackRate)
@@ -500,6 +505,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   }
   /** 手动播放先验权，隐藏或切换会话后取消迟到的页面点击 */
   const toggle = async () => {
+    snapshotReadonly = false
     const run = generation,
       player = controller
     if (!alive || !visible || !player) return
@@ -525,6 +531,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
    * @param seconds 媒体原始时间轴的秒数
    */
   const seek = (seconds: number) => {
+    snapshotReadonly = false
     follow.value = true
     lastParagraph = -1
     controller?.seekFull(seconds)
@@ -532,7 +539,46 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   /** 切换五档倍速只委托现有音频控制器
    * @param rate 用户选择的倍率
    */
-  const setRate = (rate: number) => controller?.setRate(rate)
+  const setRate = (rate: number) => {
+    snapshotReadonly = false
+    return controller?.setRate(rate)
+  }
+  /** 主动切换译文后才允许为当前账号保存展示进度 */
+  const toggleTranslation = () => {
+    snapshotReadonly = false
+    translation.value = !translation.value
+  }
+  /** 真实滚动输入解除来源展示的只读边界，布局回调本身不能解除
+   * @param event 当前页面的触摸移动、滚轮或有效滚动按键
+   */
+  const startUserScroll = (event: Event) => {
+    if (!visible || !article.value) return
+    if (event.type === 'keydown') {
+      const target = event.target as HTMLElement | null,
+        key = (event as KeyboardEvent).key
+      if (target?.isContentEditable || /^(?:input|textarea|select)$/i.test(target?.tagName || ''))
+        return
+      if (target?.tagName === 'BUTTON' && key === ' ') return
+      if (!/^(?:Arrow(?:Up|Down|Left|Right)|Page(?:Up|Down)|Home|End| |Spacebar)$/.test(key)) return
+    } else if (!['touchmove', 'wheel'].includes(event.type)) return
+    snapshotReadonly = false
+  }
+  /** H5 页面接收焦点位于正文外层的真实滚动输入 */
+  const listenForUserScroll = () => {
+    // #ifdef H5
+    if (typeof window !== 'undefined')
+      for (const type of ['touchmove', 'wheel', 'keydown'])
+        window.addEventListener(type, startUserScroll, { passive: true })
+    // #endif
+  }
+  /** 离页后移除输入监听，其他页面不能解除当前来源只读边界 */
+  const stopListeningForUserScroll = () => {
+    // #ifdef H5
+    if (typeof window !== 'undefined')
+      for (const type of ['touchmove', 'wheel', 'keydown'])
+        window.removeEventListener(type, startUserScroll)
+    // #endif
+  }
   /** 主动收藏或取消；已失效的本人收藏仍可取消 */
   const favorite = async () => {
     if (!(await account.ensure(target.value))) return
@@ -764,6 +810,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   onShow(() => {
     if (pageShareEntry?.value) return
     visible = true
+    listenForUserScroll()
     loginReturn.register(
       Routes.ARTICLE,
       () => ({
@@ -775,7 +822,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
         scroll: currentScroll,
         translation: translation.value,
         audioPosition: audio.value.position,
-        playbackRate: audio.value.rate,
+        playbackRate: audio.value.pendingRate ?? audio.value.rate,
         version: article.value?.version_id || ''
       }),
       () => {
@@ -803,7 +850,12 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     } else void load()
   })
   onPageScroll((event) => {
-    if (!restoringProgress && visible && Math.abs(currentScroll - event.scrollTop) > 1)
+    if (
+      !restoringProgress &&
+      !snapshotReadonly &&
+      visible &&
+      Math.abs(currentScroll - event.scrollTop) > 1
+    )
       progressDirty = true
     currentScroll = event.scrollTop
     clearTimeout(anchorTimer)
@@ -811,6 +863,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     if (!following && audio.value.status === AudioStatus.PLAYING) follow.value = false
   })
   onHide(() => {
+    stopListeningForUserScroll()
     visible = false
     generation++
     busy.value = false
@@ -826,6 +879,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     if (!full?.background) stop()
   })
   onUnload(() => {
+    stopListeningForUserScroll()
     controller?.refreshFull()
     void save()
     alive = false
@@ -861,6 +915,8 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   const retryAction = () => lastAction?.()
   return {
     bodyRef,
+    startUserScroll,
+    toggleTranslation,
     leave,
     advance,
     queueToken,

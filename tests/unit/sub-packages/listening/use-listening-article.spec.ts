@@ -13,6 +13,7 @@ const ports = vi.hoisted(() => ({
   show: null as null | (() => void),
   hide: null as null | (() => void),
   unload: null as null | (() => void),
+  scroll: undefined as undefined | ((event: { scrollTop: number }) => void),
   request: vi.fn(),
   run: vi.fn(),
   download: vi.fn(),
@@ -38,7 +39,9 @@ vi.mock('@dcloudio/uni-app', () => ({
   onUnload: (cb: typeof ports.unload) => {
     ports.unload = cb
   },
-  onPageScroll: vi.fn()
+  onPageScroll: (cb: typeof ports.scroll) => {
+    ports.scroll = cb
+  }
 }))
 vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({ restore: async () => null, ensure: ports.ensure })
@@ -108,6 +111,8 @@ vi.mock('@/services/audio-port', () => ({
   }
 }))
 import { ApiError } from '@/services/errors'
+import { loginReturn } from '@/services/login-return'
+import { Routes } from '@/shared/constants/navigation'
 import { useListeningArticle } from '@/sub-packages/listening/use-listening-article'
 const detail = {
   id: 'a1',
@@ -178,6 +183,7 @@ const detail = {
     image_id: null
   },
   progress: {
+    updated_at: '2026-11-07T00:00:00Z',
     version_id: 'v1',
     reading_position: 0,
     translation_open: true,
@@ -187,6 +193,7 @@ const detail = {
   timeline: { state: 'missing', words: [] }
 }
 beforeEach(() => {
+  loginReturn.cancel()
   ports.owner = 'owner'
   ports.ensure.mockResolvedValue(true)
   ports.background = false
@@ -743,4 +750,144 @@ it('reads a guest article without personal progress, writes or the login gate', 
   expect(ports.run).not.toHaveBeenCalled()
   expect(ports.drafts.size).toBe(0)
   ports.unload?.()
+})
+
+/** 通过真实登录来源服务冻结同版展示，随后切换当前身份 */
+const returnFromGuest = async (
+  saved: boolean,
+  pendingVersion?: string,
+  measureReading?: () => Promise<{ anchor: string; top: number; height: number }[]>
+) => {
+  ports.owner = null
+  ports.request.mockResolvedValue({ ...structuredClone(detail), progress: null, state: null })
+  const model = await open()
+  model.translation.value = true
+  model.seek(25)
+  model.setRate(1.5)
+  ports.scroll?.({ scrollTop: 530 })
+  loginReturn.begin(Routes.ARTICLE + '?id=a1')
+  ports.hide?.()
+  ports.owner = 'owner'
+  if (pendingVersion)
+    ports.drafts.set('juya-listening-progress-draft:owner:a1:v1', {
+      version_id: pendingVersion,
+      reading_position: 0,
+      translation_open: false,
+      audio_position: 9,
+      playback_rate: 1.25
+    })
+  vi.mocked(uni.pageScrollTo).mockClear()
+  ports.request.mockResolvedValue({
+    ...structuredClone(detail),
+    progress: {
+      version_id: 'v1',
+      reading_position: saved ? 10 : 0,
+      translation_open: false,
+      audio_position: saved ? 7 : 0,
+      playback_rate: 1,
+      updated_at: saved ? '2026-11-07T00:00:00Z' : null
+    }
+  })
+  if (measureReading) model.bodyRef.value = { measureReading } as never
+  loginReturn.succeed()
+  ports.show?.()
+  await flushPromises()
+  return model
+}
+
+it('restores guest display when the actual signed-in progress has no saved row', async () => {
+  const model = await returnFromGuest(false)
+  expect(model.translation.value).toBe(true)
+  expect(model.audio.value).toMatchObject({ position: 25, rate: 1.5 })
+  expect(uni.pageScrollTo).toHaveBeenCalledWith(expect.objectContaining({ scrollTop: 530 }))
+  await model.save()
+  expect(
+    ports.run.mock.calls.filter(([action]) => String(action).startsWith('listening-progress:'))
+  ).toHaveLength(0)
+})
+
+it.each([false, true])(
+  'keeps late clamped and repeated restoration scrolls read-only with saved history=%s',
+  async (saved) => {
+    const model = await returnFromGuest(saved)
+    model.bodyRef.value = {
+      measureReading: async () => [{ anchor: '10', top: 640, height: 40 }]
+    } as never
+    // 重新加载后测量发生在 nextTick 之后，原生回调又晚于异步测量
+    await model.load()
+    await flushPromises()
+    ports.run.mockClear()
+    ports.scroll?.({ scrollTop: 490 })
+    ports.scroll?.({ scrollTop: 480 })
+    await vi.advanceTimersByTimeAsync(150)
+    ports.hide?.()
+    await flushPromises()
+    expect(
+      ports.run.mock.calls.filter(([action]) => String(action).startsWith('listening-progress:'))
+    ).toHaveLength(0)
+  }
+)
+
+it('gives actual saved account history priority over guest display', async () => {
+  const model = await returnFromGuest(true)
+  expect(model.translation.value).toBe(false)
+  expect(model.audio.value).toMatchObject({ position: 7, rate: 1 })
+  expect(uni.pageScrollTo).not.toHaveBeenCalledWith(expect.objectContaining({ scrollTop: 530 }))
+})
+
+it.each(['scroll', 'translation', 'rate', 'seek'])(
+  'saves only after a new user %s interaction following display restoration',
+  async (action) => {
+    const model = await returnFromGuest(false)
+    ports.run.mockClear()
+    if (action === 'scroll') {
+      model.startUserScroll(new Event('touchmove'))
+      ports.scroll?.({ scrollTop: 600 })
+    } else if (action === 'translation') model.toggleTranslation()
+    else if (action === 'rate') model.setRate(1.25)
+    else model.seek(30)
+    await model.save()
+    expect(
+      ports.run.mock.calls.filter(([key]) => String(key).startsWith('listening-progress:'))
+    ).toHaveLength(1)
+  }
+)
+
+it('ignores a stale-version pending draft when choosing whether to restore guest display', async () => {
+  const model = await returnFromGuest(false, 'old-version')
+  expect(model.translation.value).toBe(true)
+  expect(model.audio.value.position).toBe(25)
+})
+
+it('keeps actual deferred anchor measurement and subsequent native callbacks read-only on login return', async () => {
+  let finish!: (blocks: { anchor: string; top: number; height: number }[]) => void
+  const blocks = new Promise<{ anchor: string; top: number; height: number }[]>((resolve) => {
+    finish = resolve
+  })
+  const model = await returnFromGuest(true, undefined, () => blocks)
+  expect(uni.pageScrollTo).not.toHaveBeenCalled()
+  finish([{ anchor: '10', top: 110, height: 40 }])
+  await flushPromises()
+  expect(uni.pageScrollTo).toHaveBeenCalledWith({ scrollTop: 530, duration: 0 })
+  ports.scroll?.({ scrollTop: 490 })
+  await vi.advanceTimersByTimeAsync(150)
+  ports.scroll?.({ scrollTop: 480 })
+  await model.save()
+  expect(
+    ports.run.mock.calls.filter(([key]) => String(key).startsWith('listening-progress:'))
+  ).toHaveLength(0)
+})
+
+it('gives a same-account same-version pending draft priority over guest display', async () => {
+  const model = await returnFromGuest(false, 'v1')
+  expect(model.translation.value).toBe(false)
+  expect(model.audio.value).toMatchObject({ position: 9, rate: 1.25 })
+})
+
+it('captures the selected pending native rate for read-only login display restoration', async () => {
+  const model = await open()
+  model.audio.value = { ...model.audio.value, rate: 1, pendingRate: 1.75 }
+  loginReturn.begin(Routes.ARTICLE + '?id=a1')
+  loginReturn.succeed()
+  expect(loginReturn.take(Routes.ARTICLE, 'a1')?.playbackRate).toBe(1.75)
 })

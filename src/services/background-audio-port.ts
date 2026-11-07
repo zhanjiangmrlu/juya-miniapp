@@ -1,3 +1,9 @@
+import {
+  nativeDiagnosticNow,
+  nativeErrorFields,
+  recordNativeDiagnostic
+} from '@/services/native-diagnostics'
+
 import type {
   AudioFailure,
   AudioPort,
@@ -44,7 +50,12 @@ export const createBackgroundAudioPort = (
     starting = false,
     holding = false,
     heldRevision = 0,
-    pausing = false
+    pausing = false,
+    sampleAt = 0,
+    samplePosition = 0,
+    samples = 0,
+    running = false,
+    discardedStops = 0
   const plays = new Set<() => void>(),
     pauses = new Set<() => void>(),
     stops = new Set<() => void>(),
@@ -57,14 +68,33 @@ export const createBackgroundAudioPort = (
   const capture = () => {
     if (bound && Number.isFinite(native.currentTime)) position = native.currentTime
   }
+  /** 记录播放器边界状态，临时诊断构建外不执行
+   * @param event 固定的原生或命令事件名
+   */
+  const diagnose = (event: string) => {
+    if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true')
+      recordNativeDiagnostic(event, {
+        paused: native.paused,
+        bound,
+        starting,
+        holding,
+        pausing,
+        revision,
+        rate: native.playbackRate,
+        position: native.currentTime
+      })
+  }
   const events: BackgroundAudioEvents = {
     play: () => {
+      diagnose('native-play')
       if (!active() || native.paused) return
       if (starting) {
         starting = false
+        running = true
         for (const callback of plays) callback()
         return
       }
+      if (running) return
       // 外部播放已经由系统发起，立即暂停，验权后再由控制器启动
       if (pausing) {
         native.pause()
@@ -75,8 +105,10 @@ export const createBackgroundAudioPort = (
       native.pause()
     },
     pause: () => {
+      diagnose('native-pause')
       if (!active() || !native.paused) return
       capture()
+      running = false
       starting = false
       pausing = false
       const run = holding ? heldRevision : 0
@@ -88,36 +120,65 @@ export const createBackgroundAudioPort = (
         void Promise.resolve().then(async () => {
           if (!active() || run !== revision) return
           try {
+            diagnose('resume-start')
             await options.resume(() => active() && run === revision)
+            diagnose('resume-end')
           } catch {
             if (active() && run === revision) port.pause()
           }
         })
     },
     stop: () => {
+      diagnose('native-stop')
+      if (discardedStops) {
+        discardedStops--
+        return
+      }
       if (!active() || !native.paused) return
       bound = false
+      running = false
       starting = false
       revision++
       for (const callback of stops) callback()
     },
     ended: () => {
+      diagnose('native-ended')
       if (!active() || !native.paused) return
       capture()
       bound = false
+      running = false
       starting = false
       revision++
       for (const callback of ends) callback()
     },
     time: () => {
+      if (
+        import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true' &&
+        samples < 8 &&
+        nativeDiagnosticNow() - sampleAt >= 1000
+      ) {
+        recordNativeDiagnostic('native-time', {
+          position: native.currentTime,
+          rate: native.playbackRate,
+          paused: native.paused,
+          delta: native.currentTime - samplePosition,
+          elapsed: sampleAt ? nativeDiagnosticNow() - sampleAt : 0
+        })
+        sampleAt = nativeDiagnosticNow()
+        samplePosition = native.currentTime
+        samples++
+      }
       if (!active()) return
       capture()
       for (const callback of times) callback()
     },
     error: (reason) => {
+      if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true')
+        recordNativeDiagnostic('native-error', nativeErrorFields(reason))
       if (!active()) return
       capture()
       bound = false
+      running = false
       starting = false
       revision++
       for (const callback of errors) callback(reason)
@@ -137,7 +198,38 @@ export const createBackgroundAudioPort = (
     prepare: (src) => {
       if (active()) source = src
     },
+    stagePlaybackRate: (value) => {
+      if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true') {
+        recordNativeDiagnostic('rate-stage', {
+          requested: value,
+          previous: native.playbackRate,
+          bound
+        })
+        sampleAt = nativeDiagnosticNow()
+        samplePosition = native.currentTime
+        samples = 0
+      }
+      if (!active()) return false
+      rate = value
+      if (
+        bound &&
+        typeof native.playbackRate === 'number' &&
+        Math.abs(native.playbackRate - value) < 0.001
+      )
+        return false
+      // iPhone 已绑定音源时忽略倍率写入，先静默停止，下一次显式播放重绑后回读确认
+      capture()
+      if (bound) {
+        bound = false
+        running = false
+        starting = false
+        discardedStops++
+        native.stop()
+      }
+      return true
+    },
     play: () => {
+      diagnose('port-play')
       if (!active() || !source) return
       revision++
       starting = true
@@ -151,10 +243,12 @@ export const createBackgroundAudioPort = (
       } else native.play()
     },
     pause: () => {
+      diagnose('port-pause')
       if (!active()) return
       revision++
       starting = false
       pausing = true
+      running = false
       capture()
       native.pause()
     },
@@ -207,8 +301,23 @@ export const createBackgroundAudioPort = (
     duration: { get: () => (active() && bound ? native.duration : 0) },
     paused: { get: () => !active() || native.paused },
     playbackRate: {
-      get: () => (active() && bound ? native.playbackRate : rate),
+      get: () => {
+        const value = active() && bound ? native.playbackRate : rate
+        if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true')
+          recordNativeDiagnostic('rate-read', { rate: value, bound })
+        return value
+      },
       set: (value: number) => {
+        if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true') {
+          recordNativeDiagnostic('rate-write', {
+            requested: value,
+            previous: native.playbackRate,
+            bound
+          })
+          sampleAt = nativeDiagnosticNow()
+          samplePosition = native.currentTime
+          samples = 0
+        }
         rate = value
         if (active() && bound) native.playbackRate = value
       }

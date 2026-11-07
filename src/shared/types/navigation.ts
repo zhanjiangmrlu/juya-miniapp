@@ -4,6 +4,7 @@ export interface LoginSnapshot {
   id: string
   tab: string
   category: string
+  loadedCount?: number
   scroll: number
   translation: boolean
   audioPosition: number

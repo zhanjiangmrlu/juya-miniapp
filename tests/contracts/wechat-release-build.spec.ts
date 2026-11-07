@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { runInNewContext } from 'node:vm'
 
 import { expect, it, vi } from 'vitest'
 
@@ -22,6 +23,23 @@ it('builds an isolated production candidate without changing source manifest or 
       path.join(root, 'scripts/verify-mp-package-budget.mjs')
     )
     expect(measureMainPackage(output).sourceBytes).toBeLessThan(450 * 1024)
+    const compiledImage: { localImageSource?: (url: string) => Promise<string> } = {}
+    runInNewContext(readFileSync(path.join(output, 'services/local-image.js'), 'utf8'), {
+      exports: compiledImage,
+      require: () => ({
+        index: {
+          downloadFile: (options: UniApp.DownloadFileOption) =>
+            options.success?.({ statusCode: 200, tempFilePath: 'wxfile://thumbnail.webp' } as never)
+        }
+      })
+    })
+    await expect(
+      compiledImage.localImageSource?.('http://fixture.invalid/thumbnail.webp')
+    ).resolves.toBe('wxfile://thumbnail.webp')
+    await expect(
+      compiledImage.localImageSource?.('https://fixture.invalid/thumbnail.webp')
+    ).resolves.toBe('https://fixture.invalid/thumbnail.webp')
+
     expect(input.versionName).toBe('1.0.1')
     expect(input.versionCode).toBe('101')
     expect(output).toBe(path.join(root, 'dist/release/mp-weixin'))

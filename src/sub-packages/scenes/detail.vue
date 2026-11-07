@@ -25,9 +25,15 @@ import { createAudioPort } from '@/services/audio-port'
 import { clientThumbnail } from '@/services/client-thumbnail'
 import { ApiError } from '@/services/errors'
 import { createFullAudioPreparation } from '@/services/full-audio-preparation'
+import { localImageSource } from '@/services/local-image'
 import { promptLogin } from '@/services/login-prompt'
 import { loginReturn } from '@/services/login-return'
 import { clearMediaAddresses, mediaAddress } from '@/services/media-service'
+import {
+  nativeErrorFields,
+  probeNativeImage,
+  recordNativeDiagnostic
+} from '@/services/native-diagnostics'
 import { backTo } from '@/services/navigation'
 import { operationKey, resourceURL, sendPublicRequest } from '@/services/platform'
 import { loadPronunciation } from '@/services/pronunciation-service'
@@ -789,8 +795,9 @@ const loadImage = async (renew = false) => {
       const value = await mediaAddress(id, thumbnailId, version, false, renew).then(
         sceneThumbnailURL
       )
+      const displaySource = await localImageSource(value)
       if (alive && run === imageGeneration && card.value?.version_id === version && !stale.value)
-        imageSrc.value = value
+        imageSrc.value = displaySource
     } else {
       const result = await clientThumbnail(
         JSON.stringify([session.identity(), id, version]),
@@ -811,11 +818,24 @@ const loadImage = async (renew = false) => {
 }
 /** 同一详情图片的像素完成，run 为该图片建立时的请求代次 */
 const imageLoaded = (run: number) => {
+  if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true' && alive && run === imageGeneration)
+    recordNativeDiagnostic('image-load', {
+      surface: 'detail',
+      local: !/^https?:/.test(imageSrc.value)
+    })
   if (alive && run === imageGeneration) imageLoading.value = false
 }
 /** 同一详情图片的像素失败，run 为该图片建立时的请求代次 */
-const imageFailed = (run: number) => {
+const imageFailed = (run: number, event?: Event | { detail?: unknown }) => {
   if (!alive || run !== imageGeneration) return
+  if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true') {
+    recordNativeDiagnostic('image-error', {
+      surface: 'detail',
+      local: !/^https?:/.test(imageSrc.value),
+      ...nativeErrorFields(event && 'detail' in event ? event.detail : undefined)
+    })
+    probeNativeImage(imageSrc.value, 'detail')
+  }
   imageLoading.value = false
   imageError.value = '图片暂未加载，可重试'
 }
@@ -1216,7 +1236,7 @@ onShow(() => {
       scroll: scrollTop,
       translation: dialogueView.value?.translated || false,
       audioPosition: audioState.value.position,
-      playbackRate: audioState.value.rate,
+      playbackRate: audioState.value.pendingRate ?? audioState.value.rate,
       version: card.value?.version_id || ''
     }),
     () => {
@@ -1455,7 +1475,7 @@ onUnload(() => {
                 :webp="true"
                 :alt="card.content.name"
                 @load="imageLoaded(image.generation)"
-                @error="imageFailed(image.generation)"
+                @error="imageFailed(image.generation, $event)"
               />
               <text v-if="!card.thumbnail_id && !card.content.image_id" class="image-retry"
                 >暂无场景图</text

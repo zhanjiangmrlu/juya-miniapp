@@ -6,10 +6,21 @@ import { defineConfig, loadEnv } from 'vite'
 import { localDesignAssetsPlugin } from './build/local-design-assets'
 import { localShareH5Plugin } from './build/local-share-h5'
 const uniPlugin = (uni as typeof uni & { default?: typeof uni }).default || uni
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const localShareH5 = mode === 'local-share-h5'
   return {
+    define:
+      command === 'build'
+        ? {
+            'import.meta.env.VITE_NATIVE_DIAGNOSTICS': JSON.stringify(
+              env.VITE_NATIVE_DIAGNOSTICS === 'true' ? 'true' : ''
+            ),
+            'import.meta.env.VITE_NATIVE_DIAGNOSTICS_ENDPOINT': JSON.stringify(
+              env.VITE_NATIVE_DIAGNOSTICS_ENDPOINT || ''
+            )
+          }
+        : undefined,
     plugins: [
       localDesignAssetsPlugin(),
       uniPlugin(),

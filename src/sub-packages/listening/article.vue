@@ -27,6 +27,8 @@ onPageScroll((event) => {
 })
 const {
   bodyRef,
+  startUserScroll,
+  toggleTranslation,
   leave,
   advance,
   retryAction,
@@ -125,6 +127,9 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
     back
     custom-back
     :fallback="Routes.LISTENING"
+    @touchmove="startUserScroll"
+    @wheel="startUserScroll"
+    @keydown="startUserScroll"
     @back="leave"
     ><AppState
       :busy="busy && !article"
@@ -248,11 +253,7 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
         >
           关闭
         </button></view
-      ><button
-        class="translation-toggle"
-        :aria-expanded="translation"
-        @click="translation = !translation"
-      >
+      ><button class="translation-toggle" :aria-expanded="translation" @click="toggleTranslation">
         {{ translation ? '收起全文译文' : '展开全文中文译文' }}
         <image
           class="translation-chevron"

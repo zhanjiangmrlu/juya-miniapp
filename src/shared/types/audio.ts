@@ -21,6 +21,7 @@ export interface AudioPort {
   background?: boolean
   paused?: boolean
   prepare?: (src: string) => void
+  stagePlaybackRate?: (rate: number) => boolean
   playbackRate?: number
   src: string
   currentTime: number
@@ -92,6 +93,7 @@ export interface FullAudioPreparationEntry {
   timer: ReturnType<typeof setTimeout>
 }
 export interface AudioState {
+  pendingRate?: PlaybackRate
   rate: PlaybackRate
   rateError: string
   status: AudioStatus
