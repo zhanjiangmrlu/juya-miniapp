@@ -1,4 +1,5 @@
 import {
+  nativeDiagnosticInstance,
   nativeDiagnosticNow,
   nativeErrorFields,
   recordNativeDiagnostic
@@ -11,6 +12,7 @@ import type {
   BackgroundAudioNative,
   FullAudioOptions
 } from '@/shared/types/audio'
+import type { NativeDiagnosticFields } from '@/shared/types/native-diagnostics'
 
 const managers = new WeakMap<BackgroundAudioNative, { owner?: BackgroundAudioEvents }>()
 
@@ -55,7 +57,8 @@ export const createBackgroundAudioPort = (
     samplePosition = 0,
     samples = 0,
     running = false,
-    discardedStops = 0
+    discardedStops = 0,
+    diagnosticPort = 0
   const plays = new Set<() => void>(),
     pauses = new Set<() => void>(),
     stops = new Set<() => void>(),
@@ -70,10 +73,16 @@ export const createBackgroundAudioPort = (
   }
   /** 记录播放器边界状态，临时诊断构建外不执行
    * @param event 固定的原生或命令事件名
+   * @param fields 本次实际分支与守卫判断结果
    */
-  const diagnose = (event: string) => {
+  const diagnose = (event: string, fields: NativeDiagnosticFields = {}) => {
     if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true')
       recordNativeDiagnostic(event, {
+        port: diagnosticPort,
+        alive,
+        active: active(),
+        running,
+        discardedStops,
         paused: native.paused,
         bound,
         starting,
@@ -81,32 +90,102 @@ export const createBackgroundAudioPort = (
         pausing,
         revision,
         rate: native.playbackRate,
-        position: native.currentTime
+        position: native.currentTime,
+        ...fields
       })
   }
   const events: BackgroundAudioEvents = {
     play: () => {
       diagnose('native-play')
-      if (!active() || native.paused) return
+      if (!active()) {
+        diagnose('port-state', {
+          operation: 'native-play',
+          phase: 'after',
+          branch: 'inactive',
+          active: false
+        })
+        return
+      }
+      const guardPaused = native.paused
+      // 受控start的onPlay早于paused属性更新；主动暂停会先清starting，不能误确认旧播放
+      if (guardPaused && !starting) {
+        diagnose('port-state', {
+          operation: 'native-play',
+          phase: 'after',
+          branch: 'native-paused',
+          guardPaused
+        })
+        return
+      }
       if (starting) {
         starting = false
         running = true
+        diagnose('port-state', {
+          operation: 'native-play',
+          phase: 'before',
+          branch: 'start-ack',
+          guardPaused
+        })
         for (const callback of plays) callback()
+        diagnose('port-state', {
+          operation: 'native-play',
+          phase: 'after',
+          branch: 'forward',
+          guardPaused
+        })
         return
       }
-      if (running) return
+      if (running) {
+        diagnose('port-state', {
+          operation: 'native-play',
+          phase: 'after',
+          branch: 'duplicate-play',
+          guardPaused
+        })
+        return
+      }
       // 外部播放已经由系统发起，立即暂停，验权后再由控制器启动
       if (pausing) {
+        diagnose('port-state', {
+          operation: 'native-play',
+          phase: 'after',
+          branch: 'command-pause',
+          guardPaused
+        })
         native.pause()
         return
       }
       heldRevision = ++revision
       holding = true
+      diagnose('port-state', {
+        operation: 'native-play',
+        phase: 'after',
+        branch: 'held-external',
+        guardPaused
+      })
       native.pause()
     },
     pause: () => {
       diagnose('native-pause')
-      if (!active() || !native.paused) return
+      if (!active()) {
+        diagnose('port-state', {
+          operation: 'native-pause',
+          phase: 'after',
+          branch: 'inactive',
+          active: false
+        })
+        return
+      }
+      const guardPaused = native.paused
+      if (!guardPaused) {
+        diagnose('port-state', {
+          operation: 'native-pause',
+          phase: 'after',
+          branch: 'native-playing',
+          guardPaused
+        })
+        return
+      }
       capture()
       running = false
       starting = false
@@ -115,7 +194,19 @@ export const createBackgroundAudioPort = (
       if (!holding) revision++
       holding = false
       heldRevision = 0
+      diagnose('port-state', {
+        operation: 'native-pause',
+        phase: 'before',
+        branch: 'forward',
+        guardPaused
+      })
       for (const callback of pauses) callback()
+      diagnose('port-state', {
+        operation: 'native-pause',
+        phase: 'after',
+        branch: 'forward',
+        guardPaused
+      })
       if (run)
         void Promise.resolve().then(async () => {
           if (!active() || run !== revision) return
@@ -131,15 +222,46 @@ export const createBackgroundAudioPort = (
     stop: () => {
       diagnose('native-stop')
       if (discardedStops) {
+        diagnose('port-state', { operation: 'native-stop', phase: 'after', branch: 'discard-stop' })
         discardedStops--
         return
       }
-      if (!active() || !native.paused) return
+      if (!active()) {
+        diagnose('port-state', {
+          operation: 'native-stop',
+          phase: 'after',
+          branch: 'inactive',
+          active: false
+        })
+        return
+      }
+      const guardPaused = native.paused
+      if (!guardPaused) {
+        diagnose('port-state', {
+          operation: 'native-stop',
+          phase: 'after',
+          branch: 'native-playing',
+          guardPaused
+        })
+        return
+      }
       bound = false
       running = false
       starting = false
       revision++
+      diagnose('port-state', {
+        operation: 'native-stop',
+        phase: 'before',
+        branch: 'forward',
+        guardPaused
+      })
       for (const callback of stops) callback()
+      diagnose('port-state', {
+        operation: 'native-stop',
+        phase: 'after',
+        branch: 'forward',
+        guardPaused
+      })
     },
     ended: () => {
       diagnose('native-ended')
@@ -323,5 +445,9 @@ export const createBackgroundAudioPort = (
       }
     }
   })
+  if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true') {
+    diagnosticPort = nativeDiagnosticInstance('port', port)
+    diagnose('port-state', { operation: 'create', phase: 'after' })
+  }
   return port
 }

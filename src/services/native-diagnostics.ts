@@ -17,7 +17,22 @@ const started = nativeDiagnosticsEnabled ? nativeDiagnosticNow() : 0,
 let sequence = 0,
   timer: ReturnType<typeof setTimeout> | undefined
 const queue: Record<string, unknown>[] = []
+const instances = { port: new WeakMap<object, number>(), controller: new WeakMap<object, number>() }
+const instanceSequence = { port: 0, controller: 0 }
+/** 为本次进程的诊断对象建立自增序号，不包含任何内容或账号身份
+ * @param kind 音轨或控制器边界
+ * @param value 只在内存中关联的对象
+ */
+export const nativeDiagnosticInstance = (kind: 'port' | 'controller', value: object) => {
+  const existing = instances[kind].get(value)
+  if (existing) return existing
+  const id = ++instanceSequence[kind]
+  instances[kind].set(value, id)
+  return id
+}
 const events = new Set([
+  'port-state',
+  'controller-state',
   'native-play',
   'native-pause',
   'native-stop',
@@ -37,6 +52,11 @@ const events = new Set([
   'image-download'
 ])
 const numbers = [
+  'port',
+  'controller',
+  'discardedStops',
+  'pendingRate',
+  'stagedRate',
   'delta',
   'elapsed',
   'rate',
@@ -49,7 +69,51 @@ const numbers = [
   'width',
   'height'
 ]
-const booleans = ['paused', 'bound', 'starting', 'holding', 'pausing', 'local', 'ok']
+const booleans = [
+  'paused',
+  'bound',
+  'starting',
+  'holding',
+  'pausing',
+  'local',
+  'ok',
+  'active',
+  'alive',
+  'running',
+  'guardPaused',
+  'fullIntent',
+  'fullStarting',
+  'ratePausing',
+  'rateRebinding'
+]
+const labels = {
+  operation: [
+    'create',
+    'toggle',
+    'set-rate',
+    'native-play',
+    'native-pause',
+    'native-stop',
+    'refresh',
+    'pause',
+    'suspend',
+    'start',
+    'notify'
+  ],
+  phase: ['before', 'after'],
+  branch: [
+    'inactive',
+    'native-paused',
+    'native-playing',
+    'start-ack',
+    'duplicate-play',
+    'held-external',
+    'command-pause',
+    'discard-stop',
+    'forward'
+  ],
+  audioStatus: ['idle', 'loading', 'playing', 'paused', 'ended', 'error']
+}
 const errorWords = [
   'image',
   'download',
@@ -119,6 +183,10 @@ export const recordNativeDiagnostic = (event: string, fields: NativeDiagnosticFi
   for (const key of numbers)
     if (typeof values[key] === 'number' && Number.isFinite(values[key])) safe[key] = values[key]
   for (const key of booleans) if (typeof values[key] === 'boolean') safe[key] = values[key]
+  for (const key of ['pendingRate', 'stagedRate']) if (values[key] === null) safe[key] = null
+  for (const [key, allowed] of Object.entries(labels))
+    if (typeof values[key] === 'string' && allowed.includes(values[key] as string))
+      safe[key] = values[key]
   if (fields.surface === 'list' || fields.surface === 'detail') safe.surface = fields.surface
   if (fields.error)
     safe.error = fields.error

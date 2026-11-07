@@ -188,3 +188,45 @@ it.each(['error', 'stop', 'ended'])(
     controller.dispose()
   }
 )
+
+it('acknowledges an owned native play when paused is stale true at callback delivery and then advances normally', async () => {
+  const { native, events, controller } = setup()
+  await controller.toggleFull(() => '/full')
+  events.play?.()
+  native.currentTime = 3.47
+  events.time?.()
+  controller.setRate(1.5)
+  // 真机seq62：原生已发onPlay且rate1.5生效，但paused第一次仍读到旧true
+  let reads = 0,
+    paused = false
+  Object.defineProperty(native, 'paused', {
+    configurable: true,
+    get: () => (reads++ === 0 ? true : paused),
+    set: (value: boolean) => {
+      paused = value
+    }
+  })
+  events.play?.()
+  expect(controller.state).toMatchObject({
+    status: 'playing',
+    rate: 1.5,
+    rateError: ''
+  })
+  expect(controller.state.pendingRate).toBeUndefined()
+  controller.setRate(1.75)
+  events.play?.()
+  expect(controller.state).toMatchObject({
+    status: 'playing',
+    rate: 1.75,
+    rateError: ''
+  })
+  expect(controller.state.pendingRate).toBeUndefined()
+  await controller.toggleFull(() => '/unused')
+  expect(native.paused).toBe(true)
+  expect(controller.state.status).toBe('paused')
+  // 用户主动暂停后的旧onPlay不能被当成尚未确认的受控start
+  events.play?.()
+  expect(native.paused).toBe(true)
+  expect(controller.state.status).toBe('paused')
+  controller.dispose()
+})
