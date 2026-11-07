@@ -46,6 +46,7 @@ export const useReadingPosition = (ports: ReadingPositionViewPorts) => {
     timer: ReturnType<typeof setTimeout> | null = null,
     restoredOffset = 0,
     userScrolled = false,
+    snapshotReadonly = false,
     pageOwner: string | null = null
   /** 合并页面与隔离子组件的绝对正文位置 */
   const measure = async () => {
@@ -83,6 +84,7 @@ export const useReadingPosition = (ports: ReadingPositionViewPorts) => {
     restoring = true
     dirty = null
     userScrolled = false
+    snapshotReadonly = typeof snapshotScroll === 'number' && Number.isFinite(snapshotScroll)
     const reset = 'reading_position_reset' in scene && scene.reading_position_reset
     notice.value = reset ? '内容已更新，已从顶部开始阅读' : ''
     await nextTick()
@@ -114,11 +116,31 @@ export const useReadingPosition = (ports: ReadingPositionViewPorts) => {
       }
     })
   }
+  /** 来源回放只在用户实际发起滚动后进入个人保存，裁剪和布局回调保持只读
+   * @param event 真实触摸移动、滚轮或键盘滚动输入，不把普通按键和表单编辑当成阅读滚动
+   */
+  const startUserScroll = (event: Event) => {
+    if (!snapshotReadonly || !ports.scene.value) return
+    if (event.type === 'keydown') {
+      const key = (event as KeyboardEvent).key,
+        target = event.target as HTMLElement | null
+      if (target?.isContentEditable || /^(?:input|textarea|select)$/i.test(target?.tagName || ''))
+        return
+      if (target?.tagName === 'BUTTON' && key === ' ') return
+      if (!/^(?:Arrow(?:Up|Down|Left|Right)|Page(?:Up|Down)|Home|End| |Spacebar)$/.test(key)) return
+    } else if (!['touchmove', 'wheel'].includes(event.type)) return
+    snapshotReadonly = false
+    restoredOffset = currentScroll
+  }
   /** 滚动即时采样已有可信布局，停稳后重新核对实际块位置
    * @param scrollTop uni页面实际报告的滚动距离
    */
   const scroll = (scrollTop: number) => {
     currentScroll = scrollTop
+    if (snapshotReadonly) {
+      restoredOffset = scrollTop
+      return
+    }
     if (
       restoring ||
       !ports.scene.value ||
@@ -162,5 +184,5 @@ export const useReadingPosition = (ports: ReadingPositionViewPorts) => {
     timer = null
   }
   onBeforeUnmount(dispose)
-  return { notice, restore, refresh, scroll, save, dispose }
+  return { notice, restore, refresh, scroll, startUserScroll, save, dispose }
 }

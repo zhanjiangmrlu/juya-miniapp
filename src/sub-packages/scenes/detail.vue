@@ -205,6 +205,22 @@ const reading = useReadingPosition({
   cardId: () => id,
   children: () => [dialogueView.value, vocabularyView.value]
 })
+/** H5页面可见时接收实际滚动输入，覆盖焦点位于页面外层时的键盘和滚轮 */
+const listenForUserScroll = () => {
+  // #ifdef H5
+  if (typeof window !== 'undefined')
+    for (const type of ['touchmove', 'wheel', 'keydown'])
+      window.addEventListener(type, reading.startUserScroll, { passive: true })
+  // #endif
+}
+/** 隐藏及卸载后停止接收其他页面输入，不能解除旧来源的只读边界 */
+const stopListeningForUserScroll = () => {
+  // #ifdef H5
+  if (typeof window !== 'undefined')
+    for (const type of ['touchmove', 'wheel', 'keydown'])
+      window.removeEventListener(type, reading.startUserScroll)
+  // #endif
+}
 const dictionary = useSceneDictionary({
   context: () =>
     !browseOnly.value &&
@@ -1188,6 +1204,7 @@ onLoad((query) => {
 })
 onShow(() => {
   visible = true
+  listenForUserScroll()
   loginReturn.register(
     Routes.SCENE,
     () => ({
@@ -1280,6 +1297,7 @@ onPageScroll((event) => {
   scheduleDictionaryPrefetch()
 })
 onHide(() => {
+  stopListeningForUserScroll()
   visible = false
   audioClickGeneration++
   dictionaryMeasureRequested = null
@@ -1308,6 +1326,7 @@ onHide(() => {
   }
 })
 onUnload(() => {
+  stopListeningForUserScroll()
   share.hide()
   publicShare.clear()
   if (!runtimeMode.update()) void reading.save()
@@ -1351,7 +1370,12 @@ onUnload(() => {
       :error="homeSummary ? '' : publicShare.error.value || error"
       @retry="load"
     />
-    <template v-else
+    <view
+      v-else
+      class="scene-reading"
+      @touchmove="reading.startUserScroll"
+      @wheel="reading.startUserScroll"
+      @keydown="reading.startUserScroll"
       ><AppState :busy="busy && !card" :error="error" @retry="load" /><view
         v-if="accessError"
         class="notice error"
@@ -1533,9 +1557,12 @@ onUnload(() => {
         :summary-busy="publicShare.summaryBusy.value"
         :error="publicShare.error.value"
         @retry="publicShare.retry"
-        @close="share.close" /></template
+        @close="share.close" /></view
     ><template #footer
-      ><view v-if="card && !stale && !accessError" class="safe-footer"
+      ><view
+        v-if="card && !stale && !accessError"
+        class="safe-footer"
+        @touchmove="reading.startUserScroll"
         ><button
           class="primary"
           :disabled="completeBusy || nextBusy || awaitingState || busy"

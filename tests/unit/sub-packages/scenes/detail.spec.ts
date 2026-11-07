@@ -309,58 +309,73 @@ it('opens a free guest scene without private access, personal state or an identi
   page.unmount()
 })
 
-it('restores guest scroll after login without migrating it on generated scroll/hide, then saves a later real scroll', async () => {
-  ports.owner = null
-  Object.assign(uni, {
-    pageScrollTo: vi.fn(({ scrollTop, complete }) => {
-      ports.scroll = scrollTop
-      complete?.({ errMsg: 'ok' })
-      ports.pageScroll?.({ scrollTop })
-    }),
-    createSelectorQuery: () => {
-      const query = {
-        in: () => query,
-        selectAll: () => query,
-        fields: (_options: unknown, cb: (value: unknown) => void) => {
-          cb([
-            { top: 550 - ports.scroll, height: 100, dataset: { readingAnchor: 'dialogue:line-1' } }
-          ])
-          return query
-        },
-        exec: vi.fn()
+it.each([
+  { maximum: 530, input: 'touchmove' },
+  { maximum: 500, input: 'touchmove' },
+  { maximum: 500, input: 'wheel' },
+  { maximum: 500, input: 'PageDown' }
+])(
+  'restores guest scroll with maximum $maximum readonly then saves actual $input input',
+  async ({ maximum, input }) => {
+    ports.owner = null
+    Object.assign(uni, {
+      pageScrollTo: vi.fn(({ scrollTop, complete }) => {
+        ports.scroll = Math.min(scrollTop, maximum)
+        complete?.({ errMsg: 'ok' })
+        ports.pageScroll?.({ scrollTop: ports.scroll })
+      }),
+      createSelectorQuery: () => {
+        const query = {
+          in: () => query,
+          selectAll: () => query,
+          fields: (_options: unknown, cb: (value: unknown) => void) => {
+            cb([
+              {
+                top: 550 - ports.scroll,
+                height: 100,
+                dataset: { readingAnchor: 'dialogue:line-1' }
+              }
+            ])
+            return query
+          },
+          exec: vi.fn()
+        }
+        return query
       }
-      return query
-    }
-  })
-  const page = openDetail()
-  ports.show?.()
-  await flushPromises()
-  ports.scroll = 530
-  ports.pageScroll?.({ scrollTop: 530 })
-  loginReturn.begin('/sub-packages/scenes/detail?id=scene-1')
-  ports.hide?.()
-  ports.owner = 'new-member'
-  loginReturn.succeed()
-  ports.show?.()
-  await flushPromises()
-  expect(ports.scroll).toBe(530)
-  expect(ports.request.mock.calls.at(-1)?.[0]).toContain('mark_started=false')
-  ports.hide?.()
-  await flushPromises()
-  expect(ports.run).not.toHaveBeenCalled()
-  ports.show?.()
-  await flushPromises()
-  ports.scroll = 540
-  ports.pageScroll?.({ scrollTop: 540 })
-  ports.hide?.()
-  await flushPromises()
-  expect(ports.run).toHaveBeenCalledExactlyOnceWith(
-    'reading:scene-1:version-1',
-    '/api/mini/v1/cards/scene-1/reading-position',
-    'PUT',
-    { version_id: 'version-1', anchor: 'dialogue:line-1', progress: 0.78 }
-  )
-  ports.unload?.()
-  page.unmount()
-  loginReturn.cancel()
-})
+    })
+    const page = openDetail()
+    ports.show?.()
+    await flushPromises()
+    ports.scroll = 530
+    ports.pageScroll?.({ scrollTop: 530 })
+    loginReturn.begin('/sub-packages/scenes/detail?id=scene-1')
+    ports.hide?.()
+    ports.owner = 'new-member'
+    loginReturn.succeed()
+    ports.show?.()
+    await flushPromises()
+    expect(ports.scroll).toBe(Math.min(530, maximum))
+    expect(ports.request.mock.calls.at(-1)?.[0]).toContain('mark_started=false')
+    ports.hide?.()
+    await flushPromises()
+    expect(ports.run).not.toHaveBeenCalled()
+    ports.show?.()
+    await flushPromises()
+    if (input === 'touchmove') await page.get('.scene-reading').trigger('touchmove')
+    else if (input === 'wheel') window.dispatchEvent(new WheelEvent('wheel', { deltaY: 12 }))
+    else window.dispatchEvent(new KeyboardEvent('keydown', { key: input }))
+    ports.scroll = 480
+    ports.pageScroll?.({ scrollTop: 480 })
+    ports.hide?.()
+    await flushPromises()
+    expect(ports.run).toHaveBeenCalledExactlyOnceWith(
+      'reading:scene-1:version-1',
+      '/api/mini/v1/cards/scene-1/reading-position',
+      'PUT',
+      { version_id: 'version-1', anchor: 'dialogue:line-1', progress: 0.18 }
+    )
+    ports.unload?.()
+    page.unmount()
+    loginReturn.cancel()
+  }
+)

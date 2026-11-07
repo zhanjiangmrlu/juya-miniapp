@@ -107,6 +107,7 @@ it.each(['before', 'after'] as const)(
     expect(ports.scroll).toBe(530)
     await reading.save()
     expect(ports.run).not.toHaveBeenCalled()
+    reading.startUserScroll(new Event('touchmove'))
     ports.scroll = 540
     reading.scroll(540)
     await reading.save()
@@ -124,6 +125,85 @@ it('prefers the account anchor over a login display snapshot without saving eith
   await reading.restore(scene.value, 530)
   expect(ports.scroll).toBe(512)
   reading.scroll(512)
+  await reading.save()
+  expect(ports.run).not.toHaveBeenCalled()
+  page.unmount()
+})
+
+it.each(['before', 'after'] as const)(
+  'never saves clamped or layout-driven snapshot scroll %s completion until real scroll input',
+  async (order) => {
+    const { page, reading, scene } = open()
+    scene.value.reading_position = null
+    vi.mocked(uni.pageScrollTo).mockImplementation((options = {}) => {
+      expect(options.scrollTop).toBe(530)
+      ports.scroll = 500
+      if (order === 'before') reading.scroll(500)
+      options.complete?.({ errMsg: 'ok' })
+      if (order === 'after') reading.scroll(500)
+    })
+    await reading.restore(scene.value, 530)
+    await reading.save()
+    expect(ports.run).not.toHaveBeenCalled()
+    for (const value of [495, 490, 485]) {
+      ports.scroll = value
+      reading.scroll(value)
+      await reading.save()
+    }
+    expect(ports.run).not.toHaveBeenCalled()
+    reading.startUserScroll(new Event('touchmove'))
+    ports.scroll = 480
+    reading.scroll(480)
+    await reading.save()
+    expect(ports.run).toHaveBeenCalledExactlyOnceWith(
+      'reading:card:v1',
+      '/api/mini/v1/cards/card/reading-position',
+      'PUT',
+      { version_id: 'v1', anchor: 'dialogue:line-1', progress: 0.18 }
+    )
+    page.unmount()
+  }
+)
+it.each(['wheel', 'PageDown'] as const)(
+  'ends only the snapshot readonly fence after an actual %s scroll input',
+  async (kind) => {
+    const { page, reading, scene } = open()
+    scene.value.reading_position = null
+    await reading.restore(scene.value, 530)
+    reading.startUserScroll(new KeyboardEvent('keydown', { key: 'a' }))
+    ports.scroll = 500
+    reading.scroll(500)
+    await reading.save()
+    expect(ports.run).not.toHaveBeenCalled()
+    reading.startUserScroll(
+      kind === 'wheel' ? new Event('wheel') : new KeyboardEvent('keydown', { key: kind })
+    )
+    ports.scroll = 490
+    reading.scroll(490)
+    await reading.save()
+    expect(ports.run).toHaveBeenCalledExactlyOnceWith(
+      'reading:card:v1',
+      '/api/mini/v1/cards/card/reading-position',
+      'PUT',
+      { version_id: 'v1', anchor: 'dialogue:line-1', progress: 0.28 }
+    )
+    page.unmount()
+  }
+)
+
+it('re-enters readonly display mode for every later login snapshot after an earlier real scroll', async () => {
+  const { page, reading, scene } = open()
+  scene.value.reading_position = null
+  await reading.restore(scene.value, 530)
+  reading.startUserScroll(new Event('touchmove'))
+  ports.scroll = 480
+  reading.scroll(480)
+  await reading.save()
+  expect(ports.run).toHaveBeenCalledTimes(1)
+  ports.run.mockClear()
+  await reading.restore(scene.value, 530)
+  ports.scroll = 500
+  reading.scroll(500)
   await reading.save()
   expect(ports.run).not.toHaveBeenCalled()
   page.unmount()
