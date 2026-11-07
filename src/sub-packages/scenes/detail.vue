@@ -847,12 +847,16 @@ const load = async () => {
     checkPendingCompletion()
     createAudio()
     void loadImage()
-    const snapshot = restoringSnapshot
+    const snapshot = restoringSnapshot,
+      restoredCard = card.value
     restoringSnapshot = null
-    void reading.restore(value).then(async () => {
-      if (!snapshot || snapshot.version !== value.version_id || card.value !== value) return
-      dialogueView.value?.restoreTranslation?.(snapshot.translation)
-      if (!value.reading_position) uni.pageScrollTo?.({ scrollTop: snapshot.scroll, duration: 0 })
+    // 译文布局与来源滚动共用一次程序化恢复，恢复事件不进入本人进度
+    void nextTick().then(async () => {
+      if (!alive || run !== generation || card.value !== restoredCard) return
+      const sameVersion = snapshot?.version === value.version_id
+      if (sameVersion) dialogueView.value?.restoreTranslation?.(snapshot.translation)
+      await reading.restore(value, sameVersion ? snapshot.scroll : undefined)
+      if (!sameVersion || !alive || run !== generation || card.value !== restoredCard) return
       audio?.setRate(snapshot.playbackRate)
       audio?.seekFull(snapshot.audioPosition)
     })

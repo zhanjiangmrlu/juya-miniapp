@@ -75,14 +75,14 @@ export const useReadingPosition = (ports: ReadingPositionViewPorts) => {
   }
   /** 同版本按语义块恢复，新版本明确从顶部开始
    * @param scene 刚由接口或受控预取确认的发布详情
+   * @param snapshotScroll 登录前同版本的展示位置，仅在账号无已存位置时恢复且不计为用户滚动
    */
-  const restore = async (scene: PublishedScene) => {
+  const restore = async (scene: PublishedScene, snapshotScroll?: number) => {
     const run = ++generation
     pageOwner = session.userId()
     restoring = true
     dirty = null
     userScrolled = false
-    currentScroll = 0
     const reset = 'reading_position_reset' in scene && scene.reading_position_reset
     notice.value = reset ? '内容已更新，已从顶部开始阅读' : ''
     await nextTick()
@@ -97,7 +97,9 @@ export const useReadingPosition = (ports: ReadingPositionViewPorts) => {
           readingHeaderHeight(),
           scene.version_id
         )
-      : 0
+      : typeof snapshotScroll === 'number' && Number.isFinite(snapshotScroll)
+        ? Math.max(0, snapshotScroll)
+        : 0
     restoredOffset = offset ?? 0
     currentScroll = restoredOffset
     if (typeof uni === 'undefined' || typeof uni.pageScrollTo !== 'function') {

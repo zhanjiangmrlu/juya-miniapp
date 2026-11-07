@@ -90,3 +90,41 @@ it('does not save the previous account reading position after another account ta
   reading.dispose()
   page.unmount()
 })
+
+it.each(['before', 'after'] as const)(
+  'keeps login snapshot scroll readonly when its event arrives %s native completion, then saves real scrolling',
+  async (order) => {
+    const { page, reading, scene } = open()
+    scene.value.reading_position = null
+    vi.mocked(uni.pageScrollTo).mockImplementation((options = {}) => {
+      const { scrollTop = 0, complete } = options
+      ports.scroll = scrollTop
+      if (order === 'before') reading.scroll(scrollTop)
+      complete?.({ errMsg: 'ok' })
+      if (order === 'after') reading.scroll(scrollTop)
+    })
+    await reading.restore(scene.value, 530)
+    expect(ports.scroll).toBe(530)
+    await reading.save()
+    expect(ports.run).not.toHaveBeenCalled()
+    ports.scroll = 540
+    reading.scroll(540)
+    await reading.save()
+    expect(ports.run).toHaveBeenCalledExactlyOnceWith(
+      'reading:card:v1',
+      '/api/mini/v1/cards/card/reading-position',
+      'PUT',
+      { version_id: 'v1', anchor: 'dialogue:line-1', progress: 0.78 }
+    )
+    page.unmount()
+  }
+)
+it('prefers the account anchor over a login display snapshot without saving either restoration', async () => {
+  const { page, reading, scene } = open()
+  await reading.restore(scene.value, 530)
+  expect(ports.scroll).toBe(512)
+  reading.scroll(512)
+  await reading.save()
+  expect(ports.run).not.toHaveBeenCalled()
+  page.unmount()
+})

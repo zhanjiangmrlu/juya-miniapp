@@ -4,6 +4,11 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 const ports = vi.hoisted(() => ({
   load: undefined as undefined | ((query: { id: string }) => void),
+  show: undefined as undefined | (() => void),
+  hide: undefined as undefined | (() => void),
+  pageScroll: undefined as undefined | ((event: { scrollTop: number }) => void),
+  scroll: 0,
+  run: vi.fn(),
   unload: undefined as undefined | (() => void),
   owner: 'learner' as string | null,
   ensure: vi.fn(async () => true),
@@ -14,9 +19,15 @@ vi.mock('@dcloudio/uni-app', () => ({
   onShareAppMessage: vi.fn(),
   onShareTimeline: vi.fn(),
   onLoad: (callback: typeof ports.load) => (ports.load = callback),
-  onShow: vi.fn(),
-  onHide: vi.fn(),
-  onPageScroll: vi.fn(),
+  onShow: (cb: () => void) => {
+    ports.show = cb
+  },
+  onHide: (cb: () => void) => {
+    ports.hide = cb
+  },
+  onPageScroll: (cb: (event: { scrollTop: number }) => void) => {
+    ports.pageScroll = cb
+  },
   onUnload: (callback: typeof ports.unload) => (ports.unload = callback)
 }))
 vi.mock('@/services/api', () => ({
@@ -27,6 +38,7 @@ vi.mock('@/services/api', () => ({
     userId: () => ports.owner
   },
   operations: {
+    run: ports.run,
     pending: () => {
       if (!ports.owner) throw new Error('请先登录')
       return false
@@ -40,11 +52,18 @@ vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({ restore: async () => null, ensure: ports.ensure })
 }))
 vi.mock('@/services/audio-controller', () => ({
-  createAudioController: () => ({ state: {}, dispose: vi.fn() })
+  createAudioController: () => ({
+    state: {},
+    dispose: vi.fn(),
+    refreshFull: vi.fn(),
+    setRate: vi.fn(),
+    seekFull: vi.fn()
+  })
 }))
 
 import { clearClientThumbnails } from '@/services/client-thumbnail'
 import { ApiError } from '@/services/errors'
+import { loginReturn } from '@/services/login-return'
 import SceneDetail from '@/sub-packages/scenes/detail.vue'
 import { activeImagePreview } from '@/sub-packages/scenes/image-preview-service'
 
@@ -67,6 +86,8 @@ const scene = {
 beforeEach(() => {
   vi.resetAllMocks()
   ports.owner = 'learner'
+  ports.scroll = 0
+  ports.run.mockResolvedValue(undefined)
   ports.ensure.mockResolvedValue(true)
   clearClientThumbnails()
   ports.request.mockResolvedValue(scene)
@@ -286,4 +307,60 @@ it('opens a free guest scene without private access, personal state or an identi
   expect(ports.request.mock.calls.some(([path]) => path.endsWith('/access'))).toBe(false)
   expect(ports.request.mock.calls[0][0]).toContain('mark_started=false')
   page.unmount()
+})
+
+it('restores guest scroll after login without migrating it on generated scroll/hide, then saves a later real scroll', async () => {
+  ports.owner = null
+  Object.assign(uni, {
+    pageScrollTo: vi.fn(({ scrollTop, complete }) => {
+      ports.scroll = scrollTop
+      complete?.({ errMsg: 'ok' })
+      ports.pageScroll?.({ scrollTop })
+    }),
+    createSelectorQuery: () => {
+      const query = {
+        in: () => query,
+        selectAll: () => query,
+        fields: (_options: unknown, cb: (value: unknown) => void) => {
+          cb([
+            { top: 550 - ports.scroll, height: 100, dataset: { readingAnchor: 'dialogue:line-1' } }
+          ])
+          return query
+        },
+        exec: vi.fn()
+      }
+      return query
+    }
+  })
+  const page = openDetail()
+  ports.show?.()
+  await flushPromises()
+  ports.scroll = 530
+  ports.pageScroll?.({ scrollTop: 530 })
+  loginReturn.begin('/sub-packages/scenes/detail?id=scene-1')
+  ports.hide?.()
+  ports.owner = 'new-member'
+  loginReturn.succeed()
+  ports.show?.()
+  await flushPromises()
+  expect(ports.scroll).toBe(530)
+  expect(ports.request.mock.calls.at(-1)?.[0]).toContain('mark_started=false')
+  ports.hide?.()
+  await flushPromises()
+  expect(ports.run).not.toHaveBeenCalled()
+  ports.show?.()
+  await flushPromises()
+  ports.scroll = 540
+  ports.pageScroll?.({ scrollTop: 540 })
+  ports.hide?.()
+  await flushPromises()
+  expect(ports.run).toHaveBeenCalledExactlyOnceWith(
+    'reading:scene-1:version-1',
+    '/api/mini/v1/cards/scene-1/reading-position',
+    'PUT',
+    { version_id: 'version-1', anchor: 'dialogue:line-1', progress: 0.78 }
+  )
+  ports.unload?.()
+  page.unmount()
+  loginReturn.cancel()
 })
