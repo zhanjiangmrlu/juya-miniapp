@@ -2,9 +2,9 @@
 import { ref } from 'vue'
 
 import { useReadingAnchors } from '@/composables/use-reading-anchors'
-import { dictionaryGroups, dictionaryTokens } from '@/features/learning/scene-model'
 import { SCENE_HIGHLIGHT_COLORS } from '@/shared/constants/learning'
 import SceneSectionHeading from '@/sub-packages/scenes/components/scene-section-heading.vue'
+import { dictionaryGroups, dictionaryTokens } from '@/sub-packages/scenes/scene-model'
 
 import type { SceneDialogueProps } from '@/shared/types/learning-components'
 defineProps<SceneDialogueProps>()

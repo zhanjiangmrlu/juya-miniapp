@@ -1,3 +1,4 @@
+import { ApiError } from '@/services/errors'
 import { WORD_ADDRESS_LIFETIME_MS, WORD_AUDIO_CLICK_WAIT_MS } from '@/shared/constants/media'
 
 import type {
@@ -7,8 +8,6 @@ import type {
   WordAudioPreparationJob,
   WordAudioPreparationPorts
 } from '@/shared/types/pronunciation'
-
-import { ApiError } from './errors'
 
 /** 等待服务端建议的查询间隔，离页或切词时立即取消
  * @param milliseconds 服务端建议的下一次查询间隔

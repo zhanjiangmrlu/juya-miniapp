@@ -301,7 +301,7 @@ it('opens a free guest scene without private access, personal state or an identi
   await flushPromises()
   expect(ports.ensure).not.toHaveBeenCalled()
   expect(page.text()).toContain('晨间慢慢活动身体')
-  expect(page.text()).toContain('当前为游客体验')
+  expect(page.text()).not.toContain('当前为游客体验')
   expect(page.get('.safe-footer').text()).toContain('完成本次学习')
   expect(page.get('.safe-footer').text()).not.toContain('已完成学习')
   expect(ports.request.mock.calls.some(([path]) => path.endsWith('/access'))).toBe(false)
@@ -379,3 +379,42 @@ it.each([
     loginReturn.cancel()
   }
 )
+
+it.each([false, true])(
+  'keeps the title above the note tools and shows authorization priority %s',
+  async (authorized) => {
+    const value = {
+      ...scene,
+      content: { ...scene.content, title_en: 'A Gentle Start to the Morning' },
+      access: { can_learn: true, can_lookup: authorized, is_free: true },
+      study_note: { state: 'ready', version_id: 'note-v1', media_id: 'pdf-1' }
+    }
+    ports.request.mockImplementation(async (path: string) =>
+      path.endsWith('/access')
+        ? { access: value.access, summary: { ...value, id: value.card_id } }
+        : value
+    )
+    const page = openDetail()
+    await flushPromises()
+    expect(page.get('.scene-heading').find('.note-entry').exists()).toBe(false)
+    expect(page.get('.scene-state-line .note-entry').text()).toBe('查看学习笔记')
+    expect(page.get('.scene-state-line').text()).toContain(authorized ? '授权有效' : '免费开放')
+    expect(page.find('.lookup-hint').exists()).toBe(!authorized)
+    if (!authorized) expect(page.get('.lookup-hint').text()).toBe('正文点词查询需学习授权')
+    expect(page.find('.guest-reading-note').exists()).toBe(false)
+    page.unmount()
+  }
+)
+it('keeps the status without reserving a note button for a scene without a published PDF', async () => {
+  ports.owner = null
+  ports.request.mockResolvedValue({
+    ...scene,
+    access: { can_learn: true, can_lookup: false, is_free: true }
+  })
+  const page = openDetail()
+  await flushPromises()
+  expect(page.get('.scene-state-line').text()).toBe('免费开放')
+  expect(page.find('.note-entry').exists()).toBe(false)
+  expect(page.get('.scene-state-line').classes()).not.toContain('has-note')
+  page.unmount()
+})

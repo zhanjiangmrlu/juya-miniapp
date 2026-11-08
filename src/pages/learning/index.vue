@@ -290,17 +290,14 @@ onUnload(() => {
     <AppState v-else-if="!accessReady" :busy="!statsError" :error="statsError" @retry="showPage" />
     <template v-else>
       <view class="list-header">
-        <text class="home-title">English, every day.</text>
+        <text class="home-title">Let English grow with you</text>
         <view v-if="!account.profile && !session.userId()" class="guest-list-intro"
-          ><text>游客浏览 · 免费内容可直接体验</text
-          ><view
-            >登录后可同步收藏与学习记录<button
-              class="text-button"
-              @click="openLogin(notes ? `${Routes.LEARNING}?tab=notes` : Routes.LEARNING)"
-            >
-              登录 ›
-            </button></view
-          ></view
+          ><text>登录后可同步收藏与学习记录</text
+          ><button
+            class="guest-login"
+            @click="openLogin(notes ? `${Routes.LEARNING}?tab=notes` : Routes.LEARNING)"
+          >
+            登录<image src="/static/design/profile-chevron.svg" mode="aspectFit" /></button></view
         ><text v-else class="learner-status"
           >{{ account.profile?.nickname || '学习者' }} · {{ authorizationLabel }} ·
           {{
@@ -463,6 +460,42 @@ onUnload(() => {
   font-size: 51.923rpx;
   font-weight: 400;
   line-height: 1.5;
+}
+
+.guest-list-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 23.077rpx;
+  color: #586c5b;
+
+  .guest-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex: none;
+    min-width: 70px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 25rpx;
+    color: #2b4438;
+
+    &::after {
+      border: 0;
+    }
+
+    image {
+      width: 14px;
+      height: 14px;
+    }
+  }
 }
 
 .learner-status {

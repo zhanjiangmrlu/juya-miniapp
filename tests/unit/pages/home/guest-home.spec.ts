@@ -61,7 +61,7 @@ it('loads real free totals for guests without reading personal statistics or for
   expect(ports.ensure).not.toHaveBeenCalled()
   expect(ports.request).toHaveBeenCalledExactlyOnceWith('/api/mini/v1/listening/home')
   expect(wrapper.text()).toContain('免费开放2张 · 直接体验')
-  expect(wrapper.text()).toContain('登录，保存学习记录')
+  expect(wrapper.get('.home-scroll').text()).toContain('登录，保存学习记录')
   expect(wrapper.text()).not.toContain('已学0')
   expect(wrapper.text()).not.toContain('连续打卡')
   wrapper.unmount()

@@ -227,3 +227,15 @@ it.each([
   expect(scroll.attributes('scroll-top')).toBe('510')
   page.unmount()
 })
+
+it('uses the new slogan and a single guest sync row in both scene tabs', async () => {
+  ports.owner = ''
+  const page = await open(2)
+  expect(page.get('.home-title').text()).toBe('Let English grow with you')
+  expect(page.get('.guest-list-intro > text').text()).toBe('登录后可同步收藏与学习记录')
+  expect(page.get('.guest-login').text()).toBe('登录')
+  await page.get('[data-tab="notes"]').trigger('click')
+  await flushPromises()
+  expect(page.get('.home-title').text()).toBe('Let English grow with you')
+  page.unmount()
+})

@@ -216,7 +216,8 @@ it('cancels preparations owned by the previous selection before switching or res
 })
 
 it('shares the foreground budget across real vocabulary and dictionary preparation services', async () => {
-  const { createWordAudioPreparation } = await import('@/services/word-audio-preparation')
+  const { createWordAudioPreparation } =
+    await import('@/sub-packages/scenes/word-audio-preparation')
   const activeJobs = new Set<string>()
   const ports = {
     active: () => true,

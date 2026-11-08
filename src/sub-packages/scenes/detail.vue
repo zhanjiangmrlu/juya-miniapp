@@ -16,7 +16,6 @@ import AppState from '@/components/app-state/app-state.vue'
 import { useNativeShare } from '@/composables/use-native-share'
 import SceneAudioPlayer from '@/features/learning/components/scene-audio-player.vue'
 import SceneDictionary from '@/features/learning/components/scene-dictionary.vue'
-import { dictionaryTokens } from '@/features/learning/scene-model'
 import ShareSheet from '@/features/share/components/share-sheet.vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
 import { onSessionExpired, operations, session } from '@/services/api'
@@ -48,7 +47,6 @@ import {
   takePreparedScene
 } from '@/services/source-queue'
 import { prepareAudioCacheFile, prepareWordAudioFile } from '@/services/word-audio-file'
-import { createWordAudioPreparation, waitForWordAudio } from '@/services/word-audio-preparation'
 import { DICTIONARY_PREFETCH_SCROLL_DELAY_MS } from '@/shared/constants/dictionary'
 import { Routes } from '@/shared/constants/navigation'
 import { AudioStatus } from '@/shared/enums/audio'
@@ -67,11 +65,16 @@ import {
   prepareImagePreviewSource,
   registerImagePreview
 } from '@/sub-packages/scenes/image-preview-service'
+import { dictionaryTokens } from '@/sub-packages/scenes/scene-model'
 import { createShareService } from '@/sub-packages/scenes/scene-share-service'
 import { createStudyNote } from '@/sub-packages/scenes/study-note'
 import { downloadStudyNote, openStudyNoteDocument } from '@/sub-packages/scenes/study-note-platform'
 import { useReadingPosition } from '@/sub-packages/scenes/use-reading-position'
 import { useSceneDictionary } from '@/sub-packages/scenes/use-scene-dictionary'
+import {
+  createWordAudioPreparation,
+  waitForWordAudio
+} from '@/sub-packages/scenes/word-audio-preparation'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { AudioState } from '@/shared/types/audio'
@@ -1410,8 +1413,6 @@ onUnload(() => {
         :message="message"
         :shared-entry="sharedEntry"
         @unfavorite="toggleFavorite" /><template v-else-if="card && !accessError"
-        ><text v-if="!card.state" class="guest-reading-note"
-          >当前为游客体验，登录后可保存学习记录。</text
         ><view v-if="reading.notice.value" class="notice">{{ reading.notice.value }}</view
         ><view class="reading-anchor" data-reading-anchor="top"
           ><view class="scene-title between"
@@ -1435,14 +1436,16 @@ onUnload(() => {
                 aria-hidden="true"
               /><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏' }}</text>
             </button></view
-          ><view v-if="card.access" class="between"
-            ><text>{{ card.access.is_free ? '免费开放' : '授权有效' }}</text
-            ><text v-if="!card.access.can_lookup" class="access-hint"
-              >点词查询需学习授权</text
-            ></view
-          ><view class="scene-heading" :class="{ 'has-note': card.study_note?.state === 'ready' }"
+          ><view class="scene-heading"
             ><text v-if="card.content.title_en" class="scene-english">{{
               card.content.title_en
+            }}</text></view
+          ><view
+            v-if="card.access || card.study_note?.state === 'ready'"
+            class="scene-state-line"
+            :class="{ 'has-note': card.study_note?.state === 'ready' }"
+            ><text v-if="card.access">{{
+              card.access.can_lookup ? '授权有效' : card.access.is_free ? '免费开放' : '授权有效'
             }}</text
             ><button
               v-if="card.study_note?.state === 'ready'"
@@ -1498,6 +1501,8 @@ onUnload(() => {
             @toggle="playFull"
             @seek="seekFull"
             @rate="setRate" /></view
+        ><view v-if="card.access && !card.access.can_lookup" class="lookup-hint"
+          >正文点词查询需学习授权</view
         ><SceneDialogue
           ref="dialogueView"
           :key="`${id}:${card.version_id}`"
@@ -1675,14 +1680,27 @@ onUnload(() => {
 }
 
 .scene-heading {
-  margin-bottom: 53.846rpx;
+  margin-bottom: 23.077rpx;
+}
+
+.lookup-hint {
+  margin: 26px 0 18px;
+  color: #586c5b;
+  font-size: 26.923rpx;
+  line-height: 1.9;
+}
+
+.scene-state-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+  margin-bottom: 20px;
+  color: #41664d;
+  font-size: 25rpx;
 
   &.has-note {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    column-gap: 16px;
+    min-height: 44px;
   }
 
   .note-entry {
@@ -1753,8 +1771,8 @@ onUnload(() => {
 .scene-english {
   display: block;
   font-family: var(--app-serif-font, Fraunces, Georgia, serif);
-  font-size: 42.308rpx;
-  line-height: 1.42;
+  font-size: 51.923rpx;
+  line-height: 1.3;
   min-width: 0;
   max-width: 100%;
   overflow-wrap: anywhere;

@@ -18,7 +18,7 @@ it.each([
     [3, 17]
   ]
 ])('preserves the union of overlapping highlights and original UTF16 text', async (...ranges) => {
-  const { highlightSegments } = await import('@/features/learning/scene-model')
+  const { highlightSegments } = await import('@/sub-packages/scenes/scene-model')
   const english = '😀 tea and coffee.'
   const parts = highlightSegments(
     { id: 'one', speaker: 'A', english, chinese: '' },
@@ -41,7 +41,7 @@ it.each([
   ).toBe('tea and coffee')
 })
 it('highlights only a confirmed source range, including UTF-16 emoji offsets', async () => {
-  const { highlightSegments } = await import('@/features/learning/scene-model')
+  const { highlightSegments } = await import('@/sub-packages/scenes/scene-model')
   const parts = highlightSegments(
     { id: 'one', speaker: 'A', english: '😀 tea and tea', chinese: '茶' },
     [

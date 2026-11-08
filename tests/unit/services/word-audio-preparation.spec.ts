@@ -2,7 +2,7 @@ import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '@/services/errors'
-import { createWordAudioPreparation } from '@/services/word-audio-preparation'
+import { createWordAudioPreparation } from '@/sub-packages/scenes/word-audio-preparation'
 
 import type { WordAudioCancellation, WordAudioFile } from '@/shared/types/pronunciation'
 
@@ -114,7 +114,7 @@ describe('scene word audio preparation', () => {
   })
 
   it('cancels a pending polling delay immediately instead of waiting for its timer', async () => {
-    const { waitForWordAudio } = await import('@/services/word-audio-preparation')
+    const { waitForWordAudio } = await import('@/sub-packages/scenes/word-audio-preparation')
     const { service, resolve } = setup()
     resolve.mockImplementation(async (_id, task) => {
       await waitForWordAudio(5000, task)

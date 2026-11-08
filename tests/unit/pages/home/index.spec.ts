@@ -22,16 +22,23 @@ it('shows the fixed IELTS introduction and three listening descriptions while op
   const navigateTo = vi.fn()
   vi.stubGlobal('uni', { navigateTo })
   const page = shallowMount(Home, {
-    global: { stubs: { AppPage: { template: '<view><slot /></view>' } } }
+    global: {
+      stubs: {
+        AppPage: { template: '<view><slot /></view>' },
+        'scroll-view': { template: '<view><slot /></view>' }
+      }
+    }
   })
   expect(page.text()).toContain('雅思词汇')
   expect(page.text()).toContain('IELTS Vocabulary')
-  expect(page.text()).toContain('积累约3,700个词汇。')
-  expect(page.text()).toContain('English in Real Life：')
+  expect(page.text()).toContain('246张场景卡，覆盖约3,600个核心词汇，累计9,840次词汇呈现。')
+  expect(page.text()).toContain('看图文、听音频，在场景对话中反复巩固词汇。')
+  expect(page.text()).toContain('配套246篇精读笔记，逐句翻译、解析搭配，帮你读懂句子、学会表达。')
+  expect(page.text()).toContain('English in Real Life')
   expect(page.text()).toContain('涵盖10类日常英语内容。')
-  expect(page.text()).toContain('IELTS Speaking B2–C1：')
+  expect(page.text()).toContain('IELTS Speaking B2–C1')
   expect(page.text()).toContain('涵盖10类口语内容。')
-  expect(page.text()).toContain('生活场景听读：')
+  expect(page.text()).toContain('生活场景听读')
   expect(page.text()).toContain('约覆盖1.5万—2万词汇。')
   await page.get('.scene-module').trigger('click')
   expect(navigateTo).toHaveBeenCalledWith({ url: '/pages/learning/index' })
