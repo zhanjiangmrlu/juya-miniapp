@@ -1,0 +1,99 @@
+{
+  "verifiedAt": "2026-11-09T15:41:50.994436+08:00",
+  "environment": "production",
+  "version": "1.0.1",
+  "versionCode": 103,
+  "previousVersion": "1.0.2",
+  "previousVersionCode": 102,
+  "explicitUserVersion": true,
+  "sourceCommit": "8b171a56661933e6a8f6b9531d7e6805c11f35b1",
+  "versionRecordCommit": "f560b4c7950b1ef1420d4f6ddbcb85846f3167b6",
+  "uploadedAt": "2026-11-09T07:40:01.592Z",
+  "status": "success",
+  "officialReceipt": {
+    "size": {
+      "total": 1331532,
+      "packages": [
+        {
+          "name": "TOTAL",
+          "size": 1331532
+        },
+        {
+          "name": "main",
+          "size": 758021
+        },
+        {
+          "name": "/sub-packages/account/",
+          "size": 57822
+        },
+        {
+          "name": "/sub-packages/feedback/",
+          "size": 91602
+        },
+        {
+          "name": "/sub-packages/listening/",
+          "size": 158214
+        },
+        {
+          "name": "/sub-packages/records/",
+          "size": 24978
+        },
+        {
+          "name": "/sub-packages/scenes/",
+          "size": 240895
+        }
+      ]
+    }
+  },
+  "quality": {
+    "files": 121,
+    "testsPassed": 709,
+    "staticChecks": "passed",
+    "review": "approved"
+  },
+  "packageChecks": {
+    "productionApi": true,
+    "productionAssets": true,
+    "noTestApi": true,
+    "noTestOss": true,
+    "noLocalBackend": true,
+    "noPrivateConfigOrProductionKeys": true,
+    "sourceCopyMatches": true,
+    "sourceFiles": 251,
+    "globalAndInstanceMutePolicyCompiled": true,
+    "mainSourceBytes": 458269
+  },
+  "assets": {
+    "bucket": "juya",
+    "uploaded": 0,
+    "reused": 13
+  },
+  "productionApiProbes": [
+    {
+      "url": "https://api.juyayingyu.com/health/ready",
+      "status": 200,
+      "anonymous": true
+    },
+    {
+      "url": "https://api.juyayingyu.com/api/mini/v1/listening/home",
+      "status": 200,
+      "anonymous": true
+    },
+    {
+      "url": "https://api.juyayingyu.com/api/mini/v1/cards?limit=1",
+      "status": 200,
+      "anonymous": true
+    },
+    {
+      "url": "https://api.juyayingyu.com/api/mini/v1/listening/articles?limit=1",
+      "status": 200,
+      "anonymous": true
+    }
+  ],
+  "backendDeployedInThisOperation": false,
+  "databaseModifiedInThisOperation": false,
+  "experienceVersionSwitched": false,
+  "submittedForReview": false,
+  "productionReleased": false,
+  "realIPhoneSilentAudioVerified": false
+}
