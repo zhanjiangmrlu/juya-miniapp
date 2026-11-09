@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { isDeepStrictEqual } from 'node:util'
+import { isDeepStrictEqual, parseArgs } from 'node:util'
 
 import { publishAssets } from './asset-publish.mjs'
 import { buildProduction, uploadWeChat } from './wechat-release-build.mjs'
@@ -25,8 +25,8 @@ const save = (file, value) => {
   writeFileSync(temp, JSON.stringify(value, null, 2) + '\n', { mode: 0o600 })
   renameSync(temp, file)
 }
-/** 校验成功记录并计算下一版，record 为最近一次成功上传的版本 */
-export const nextVersion = (record) => {
+/** 校验成功记录并计算候选版，record 为最近成功版本，requestedVersion 为用户明确指定的展示版本 */
+export const nextVersion = (record, requestedVersion) => {
   if (
     !record ||
     typeof record.version !== 'string' ||
@@ -43,8 +43,15 @@ export const nextVersion = (record) => {
     !Number.isSafeInteger(record.versionCode + 1)
   )
     throw new Error('版本号超出安全整数范围')
+  if (
+    requestedVersion !== undefined &&
+    (typeof requestedVersion !== 'string' ||
+      !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(requestedVersion) ||
+      requestedVersion.split('.').some((number) => !Number.isSafeInteger(Number(number))))
+  )
+    throw new Error('指定版本号格式错误')
   numbers[2] += 1
-  return { version: numbers.join('.'), versionCode: record.versionCode + 1 }
+  return { version: requestedVersion ?? numbers.join('.'), versionCode: record.versionCode + 1 }
 }
 /** 检查发布分支，root 为仓库目录 */
 const checkBranch = (root) => {
@@ -76,7 +83,7 @@ const checkClean = (root, allowed = []) => {
 }
 /** 验证恢复日志，journal 为待处理记录 */
 const validateJournal = (journal) => {
-  const expected = nextVersion(journal.previous)
+  const expected = nextVersion(journal.previous, journal.requestedVersion)
   if (
     !['uploading', 'succeeded', 'committed'].includes(journal.phase) ||
     !/^[a-f0-9]{40}$/.test(journal.sourceCommit || '') ||
@@ -176,6 +183,7 @@ const finish = (root, journal, journalFile) => {
 export const runRelease = async ({
   root,
   mode = 'upload',
+  requestedVersion,
   build = buildProduction,
   publish = publishAssets,
   upload = uploadWeChat
@@ -191,6 +199,8 @@ export const runRelease = async ({
     ].includes(mode)
   )
     throw new Error('未知发布模式')
+  if (requestedVersion !== undefined && !['upload', 'dry-run', 'build-only'].includes(mode))
+    throw new Error('恢复必须沿用原日志版本，不能指定新版本')
   checkBranch(root)
   const common = path.resolve(root, git(root, 'rev-parse', '--git-common-dir'))
   const journalFile = path.join(common, 'juya-wechat-release.json')
@@ -202,7 +212,7 @@ export const runRelease = async ({
     checkClean(root)
     if (remoteHead(root) !== git(root, 'rev-parse', 'HEAD'))
       throw new Error('请先同步本地与远程 release')
-    const candidate = nextVersion(read(path.join(root, recordPath)))
+    const candidate = nextVersion(read(path.join(root, recordPath)), requestedVersion)
     console.info(`下一版本：${candidate.version} / ${candidate.versionCode}`)
     return candidate
   }
@@ -240,7 +250,7 @@ export const runRelease = async ({
     const sourceCommit = git(root, 'rev-parse', 'HEAD')
     if (remoteHead(root) !== sourceCommit) throw new Error('请先同步本地与远程 release')
     const previous = read(path.join(root, recordPath))
-    const candidate = nextVersion(previous)
+    const candidate = nextVersion(previous, requestedVersion)
     console.info(`本次版本：${candidate.version} / ${candidate.versionCode}`)
     const output = await build({ root, candidate })
     if (mode === 'build-only') return candidate
@@ -258,7 +268,7 @@ export const runRelease = async ({
     checkClean(root)
     if (git(root, 'rev-parse', 'HEAD') !== sourceCommit || remoteHead(root) !== sourceCommit)
       throw new Error('资源同步期间源码或远程已变化，请重新构建')
-    const journal = { phase: 'uploading', sourceCommit, previous, candidate }
+    const journal = { phase: 'uploading', sourceCommit, previous, candidate, requestedVersion }
     save(journalFile, journal)
     const result = await upload({ root, candidate, output })
     if (result?.status === 'failed') {
@@ -276,25 +286,40 @@ export const runRelease = async ({
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  const args = process.argv.slice(2)
+/** 解析正式发布参数，args 为不含Node及脚本路径的命令行参数 */
+export const parseReleaseArgs = (args) => {
   const modes = ['dry-run', 'build-only', 'resume', 'confirm-uploaded', 'confirm-not-uploaded']
+  const { values, tokens } = parseArgs({
+    args,
+    options: {
+      ...Object.fromEntries(modes.map((mode) => [mode, { type: 'boolean' }])),
+      version: { type: 'string' }
+    },
+    tokens: true
+  })
+  const selected = modes.filter((mode) => values[mode])
+  const names = tokens.map((token) => token.name)
   if (
-    args.length > 1 ||
-    (args.length && !modes.includes(args[0].slice(2))) ||
-    args.some((arg) => !arg.startsWith('--'))
-  ) {
-    console.error(
-      '用法：pnpm release:mp-weixin [--dry-run|--build-only|--resume|--confirm-uploaded|--confirm-not-uploaded]'
-    )
-    process.exitCode = 1
-  } else {
+    selected.length > 1 ||
+    new Set(names).size !== names.length ||
+    (values.version !== undefined &&
+      selected.some((mode) => !['dry-run', 'build-only'].includes(mode)))
+  )
+    throw new Error('发布参数冲突；指定版本仅用于上传、dry-run或build-only')
+  return { mode: selected[0] || 'upload', requestedVersion: values.version }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  try {
     runRelease({
       root: fileURLToPath(new URL('../', import.meta.url)),
-      mode: args[0]?.slice(2) || 'upload'
+      ...parseReleaseArgs(process.argv.slice(2))
     }).catch((error) => {
       console.error(error.message)
       process.exitCode = 1
     })
+  } catch (error) {
+    console.error(error.message)
+    process.exitCode = 1
   }
 }

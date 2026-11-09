@@ -55,6 +55,33 @@ it('increments the patch as a number and rejects malformed records', async () =>
   for (const version of ['1.0', '1.0.0-beta', '01.0.0', '1.0.-1'])
     expect(() => nextVersion({ version, versionCode: 100, sourceCommit: 'a'.repeat(40) })).toThrow()
 })
+it('uses an explicitly requested display version while preserving the upload counter', async () => {
+  const { nextVersion } = await import(script)
+  const previous = { version: '1.0.2', versionCode: 102, sourceCommit: 'a'.repeat(40) }
+  expect(nextVersion(previous, '1.0.1')).toEqual({ version: '1.0.1', versionCode: 103 })
+  for (const version of ['', '1.0', '01.0.1', '1.0.1-beta', '9007199254740992.0.1'])
+    expect(() => nextVersion(previous, version)).toThrow(/版本/)
+})
+it('parses an explicit version only for upload or non-publishing checks', async () => {
+  const { parseReleaseArgs } = await import(script)
+  expect(parseReleaseArgs(['--version', '1.0.1'])).toEqual({
+    mode: 'upload',
+    requestedVersion: '1.0.1'
+  })
+  expect(parseReleaseArgs(['--dry-run', '--version', '1.0.1'])).toEqual({
+    mode: 'dry-run',
+    requestedVersion: '1.0.1'
+  })
+  for (const args of [
+    ['--resume', '--version', '1.0.1'],
+    ['--dry-run', '--build-only'],
+    ['--version'],
+    ['--version', '1.0.1', '--version', '1.0.2'],
+    ['--unknown'],
+    ['1.0.1']
+  ])
+    expect(() => parseReleaseArgs(args)).toThrow()
+})
 it('uploads 1.0.1 then 1.0.2 without requiring publication and syncs only release records', async () => {
   const { runRelease } = await import(script)
   const f = fixture()
@@ -76,20 +103,38 @@ it('uploads 1.0.1 then 1.0.2 without requiring publication and syncs only releas
   expect(JSON.parse(readFileSync(path.join(f.root, 'src/manifest.json'), 'utf8')).versionName).toBe(
     '1.0.2'
   )
+  await runRelease({
+    publish: async () => {},
+    root: f.root,
+    requestedVersion: '1.0.1',
+    build,
+    upload
+  })
+  expect(versions).toEqual(['1.0.1', '1.0.2', '1.0.1'])
+  expect(f.record().version).toBe('1.0.1')
+  expect(f.record().versionCode).toBe(103)
+  expect(JSON.parse(readFileSync(path.join(f.root, 'src/manifest.json'), 'utf8')).versionName).toBe(
+    '1.0.1'
+  )
+  expect(f.git('rev-parse', 'HEAD')).toBe(
+    f.git('ls-remote', 'origin', 'refs/heads/release').split(/\s/)[0]
+  )
 })
 it.each(['dry-run', 'build-only'])('%s does not upload or advance records', async (mode) => {
   const { runRelease } = await import(script)
   const f = fixture()
   const head = f.git('rev-parse', 'HEAD')
-  await runRelease({
+  const candidate = await runRelease({
     publish: async () => {},
     root: f.root,
     mode,
+    requestedVersion: '0.9.0',
     build: () => {},
     upload: () => {
       throw new Error('must not upload')
     }
   })
+  expect(candidate).toEqual({ version: '0.9.0', versionCode: 101 })
   expect(f.record().version).toBe('1.0.0')
   expect(f.git('rev-parse', 'HEAD')).toBe(head)
 })
@@ -129,6 +174,7 @@ it('blocks unknown uploads until explicitly resolved and resumes without uploadi
     runRelease({
       publish: async () => {},
       root: f.root,
+      requestedVersion: '0.9.0',
       build: () => {},
       upload: () => {
         throw new Error('timeout')
@@ -146,7 +192,8 @@ it('blocks unknown uploads until explicitly resolved and resumes without uploadi
       throw new Error('must not upload')
     }
   })
-  expect(f.record().version).toBe('1.0.1')
+  expect(f.record().version).toBe('0.9.0')
+  expect(f.record().versionCode).toBe(101)
 })
 it('resumes a successful upload after a rejected push without uploading again', async () => {
   const { runRelease } = await import(script)

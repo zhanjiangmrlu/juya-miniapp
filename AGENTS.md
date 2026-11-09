@@ -67,6 +67,6 @@
 
 - 测试打包、测试OSS同步及微信开发版本上传统一使用 `pnpm release:mp-weixin:test`；只打包同步图片用 `pnpm build:mp-weixin:test`，两者均不切换体验版
 - 生产小程序打包上传统一使用 `pnpm release:mp-weixin`，不要使用临时脚本手填上传版本
-- 基准为 `release/wechat-version.json` 中最近成功上传的版本，patch 自动加1，与是否正式上线无关；测试包沿用原流程
+- 基准为 `release/wechat-version.json` 中最近成功上传的版本，默认patch自动加1，与是否正式上线无关；仅用户明确指定展示版本时使用`--version <x.y.z>`，内部versionCode仍加1，恢复沿用原日志；测试包沿用原流程
 - 该命令只允许干净且已与 origin 同步的 release 分支，上传成功后会自动提交并推送版本记录及清单；仅在用户授权本次上传时执行普通命令
 - 只检查或只构建分别使用 `--dry-run`、`--build-only`；未知上传结果或 Git 同步失败先按 `docs/operations/wechat-release.md` 恢复，禁止盲目重新上传或丢弃恢复日志

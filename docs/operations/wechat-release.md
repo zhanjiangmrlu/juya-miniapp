@@ -2,6 +2,8 @@
 
 `pnpm release:mp-weixin` 仅在 `release` 分支执行，自动使用上次成功上传版本的 patch + 1。初始记录来自 2026-11-04 官方 CLI 的 `1.0.0` 上传回执（见分享生产上传记录），不表示已审核或正式上线。连续成功上传依次为 `1.0.1`、`1.0.2`；正式版是否上线不影响编号。`1.0.9` 后为 `1.0.10`。独立的 `versionCode` 从100按成功上传次数加1，不从版本字符串拼接。
 
+用户明确指定展示版本号时，可用`--version <x.y.z>`覆盖默认候选版本，包括复用或降低展示版本号；内部versionCode仍按最近成功记录加1。默认命令继续自动递增。2026-11-09用户明确要求在1.0.2之后上传静音修复为1.0.1，对应内部versionCode为103，不回写或删除此前成功历史。
+
 ## 测试环境一键上传
 
 ```sh
@@ -29,9 +31,12 @@ pnpm release:mp-weixin --build-only
 
 # 构建、校验、上传，随后自动提交并推送版本记录
 pnpm release:mp-weixin
+
+# 仅在用户明确指定时使用该版本，内部versionCode继续递增
+pnpm release:mp-weixin --version 1.0.1
 ```
 
-每次只接受一个选项；不接受手填版本号。普通 `build:mp-weixin` 等命令不改变行为。新命令隔离输出到 `dist/release/mp-weixin`，源文件版本不在构建阶段修改；构建清单副本和版本说明位于 `dist/release/input/manifest.json`、`dist/release/build-info.json`。生产 API、静态域名、Mock 和本地登录模式由发布构建明确指定，忽略终端注入的测试配置。
+每次最多接受一个模式选项；`--version`可与`--dry-run`或`--build-only`组合，不能重复传入或与恢复命令组合。恢复始终使用原日志保存的候选版本。普通 `build:mp-weixin` 等命令不改变行为。新命令隔离输出到 `dist/release/mp-weixin`，源文件版本不在构建阶段修改；构建清单副本和版本说明位于 `dist/release/input/manifest.json`、`dist/release/build-info.json`。生产 API、静态域名、Mock 和本地登录模式由发布构建明确指定，忽略终端注入的测试配置。
 
 正式 `release:mp-weixin` 在微信上传前自动同步生产OSS及现有静态域名，失败即停止；`--build-only`、`--dry-run` 和恢复模式均不触发资源上传。测试打包 `build:mp-weixin:test` 同步测试OSS。新增资源规范和私有配置见[资源发布说明](asset-publish.md)。
 
