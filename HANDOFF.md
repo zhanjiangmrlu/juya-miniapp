@@ -1,3 +1,13 @@
+# 整合08合并release及测试开发版更新（2026-11-09）
+
+用户本轮授权将小程序test合入release并继续发布测试包。无冲突合并提交785a34f已推送origin/release，保留release原生产版本1.0.1/101。合并后706测试与check通过。
+
+使用pnpm release:mp-weixin:test从release上传 **1.5.0-test.20261109.134644**，官方success，体验版由用户手动切换。固定测试API/OSS、资源新增0/复用13；原生产版本记录及源码manifest哈希不变。API/后台本轮无代码变化，既有测试服务公网复核正常；无生产、数据库、审核或正式发布操作。
+
+详见[发布记录](docs/verification/release-merge-test-upload-20261109.md)及[无密钥回执](docs/verification/release-merge-test-upload-20261109.json)。下方为历史阶段记录。
+
+---
+
 # 整合08页面布局与文案测试版上传（2026-11-08）
 
 用户授权后，功能源码de8a07d已推送远程test，使用pnpm release:mp-weixin:test上传微信开发版 **1.5.0-test.20261108.224957**，官方success。体验版由用户手动切换，未提审或正式发布。706测试及check通过，测试OSS新增0/复用13；固定测试API、测试资源与源码一致性核验通过。

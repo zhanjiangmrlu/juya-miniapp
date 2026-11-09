@@ -1,0 +1,108 @@
+{
+  "date": "2026-11-09",
+  "verifiedAt": "2026-11-09T13:47:51.160821+08:00",
+  "branch": "release",
+  "sourceCommit": "785a34fd727652cdc4c33b308085a050c80c1b8f",
+  "mergeParents": [
+    "ddbb5ffa766da3059fab516b193d99992f3e1560",
+    "9c4c51c8f444098ab532a7c3b931a912b869b73f"
+  ],
+  "environment": "test",
+  "version": "1.5.0-test.20261109.134644",
+  "status": "success",
+  "uploadTask": "b05762a6-7844-4018-80b9-f16cdace2408",
+  "officialReceipt": {
+    "size": {
+      "total": 1333040,
+      "packages": [
+        {
+          "name": "TOTAL",
+          "size": 1333040
+        },
+        {
+          "name": "main",
+          "size": 759529
+        },
+        {
+          "name": "/sub-packages/account/",
+          "size": 57822
+        },
+        {
+          "name": "/sub-packages/feedback/",
+          "size": 91602
+        },
+        {
+          "name": "/sub-packages/listening/",
+          "size": 158214
+        },
+        {
+          "name": "/sub-packages/records/",
+          "size": 24978
+        },
+        {
+          "name": "/sub-packages/scenes/",
+          "size": 240895
+        }
+      ]
+    }
+  },
+  "sourceMainPackageBytes": 459323,
+  "assets": {
+    "bucket": "juya-test",
+    "uploaded": 0,
+    "reused": 13
+  },
+  "packageChecks": {
+    "testApi": true,
+    "testOss": true,
+    "noProductionApi": true,
+    "noLocalBackend": true,
+    "noPrivateConfiguration": true,
+    "productionManifestUnchanged": true,
+    "productionRecordUnchanged": true,
+    "sourceCopyMatches": true
+  },
+  "tests": {
+    "files": 121,
+    "passed": 706,
+    "staticChecks": "passed"
+  },
+  "publicProbes": [
+    {
+      "url": "https://test-api.juyayingyu.com/health/ready",
+      "status": 200,
+      "body": {
+        "status": "ready",
+        "service": "mini",
+        "environment": "test"
+      }
+    },
+    {
+      "url": "https://test-admin-api.juyayingyu.com/health/ready",
+      "status": 200,
+      "body": {
+        "status": "ready",
+        "service": "admin",
+        "environment": "test"
+      }
+    },
+    {
+      "url": "https://test-api.juyayingyu.com/api/mini/v1/listening/home",
+      "status": 200,
+      "anonymousPersonalStatistics": null
+    },
+    {
+      "url": "https://test-api.juyayingyu.com/api/mini/v1/cards?limit=1",
+      "status": 200,
+      "anonymousPersonalStatistics": null
+    },
+    {
+      "url": "https://test-admin.juyayingyu.com",
+      "status": 200
+    }
+  ],
+  "serverDeployment": "existing integration08 API/admin retained and checked; no server source changes",
+  "experienceVersionSwitched": false,
+  "submittedForReview": false,
+  "productionReleased": false
+}
