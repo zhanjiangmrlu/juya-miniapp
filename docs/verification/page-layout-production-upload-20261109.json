@@ -1,0 +1,88 @@
+{
+  "date": "2026-11-09",
+  "verifiedAt": "2026-11-09T14:04:06.780285+08:00",
+  "environment": "production",
+  "version": "1.0.2",
+  "versionCode": 102,
+  "previousVersion": "1.0.1",
+  "previousVersionCode": 101,
+  "sourceCommit": "21954d292de39e1a545e5f03b955689c8b424bbf",
+  "versionRecordCommit": "f9933e5120842d5fd6c9e00508cff171eb800969",
+  "status": "success",
+  "officialReceipt": {
+    "size": {
+      "total": 1331440,
+      "packages": [
+        {
+          "name": "TOTAL",
+          "size": 1331440
+        },
+        {
+          "name": "main",
+          "size": 757929
+        },
+        {
+          "name": "/sub-packages/account/",
+          "size": 57822
+        },
+        {
+          "name": "/sub-packages/feedback/",
+          "size": 91602
+        },
+        {
+          "name": "/sub-packages/listening/",
+          "size": 158214
+        },
+        {
+          "name": "/sub-packages/records/",
+          "size": 24978
+        },
+        {
+          "name": "/sub-packages/scenes/",
+          "size": 240895
+        }
+      ]
+    }
+  },
+  "packageChecks": {
+    "productionApi": true,
+    "productionAssets": true,
+    "noTestApi": true,
+    "noTestOss": true,
+    "noLocalBackend": true,
+    "noPrivateConfig": true,
+    "sourceCopyMatches": true
+  },
+  "sourceMainPackageBytes": 458200,
+  "assets": {
+    "bucket": "juya",
+    "uploaded": 0,
+    "reused": 13
+  },
+  "productionApiProbes": [
+    {
+      "url": "https://api.juyayingyu.com/health/ready",
+      "status": 200,
+      "body": {
+        "status": "ready",
+        "service": "mini",
+        "environment": "production"
+      }
+    },
+    {
+      "url": "https://api.juyayingyu.com/api/mini/v1/listening/home",
+      "status": 401,
+      "errorCode": "login_required"
+    },
+    {
+      "url": "https://api.juyayingyu.com/api/mini/v1/cards?limit=1",
+      "status": 401,
+      "errorCode": "login_required"
+    }
+  ],
+  "runtimeReadiness": "Production anonymous home/list return 401; integration08 backend capability not yet deployed; upload success is not full production functional acceptance",
+  "backendDeployed": false,
+  "experienceVersionSwitched": false,
+  "submittedForReview": false,
+  "productionReleased": false
+}
