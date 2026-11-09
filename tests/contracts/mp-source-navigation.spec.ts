@@ -6,8 +6,10 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runInNewContext } from 'node:vm'
 
-import { afterAll, beforeAll, expect, it } from 'vitest'
+import { afterAll, beforeAll, expect, it, vi } from 'vitest'
 import { readonly, ref } from 'vue'
+
+import type { AudioPort } from '@/shared/types/audio'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const output = mkdtempSync(path.join(tmpdir(), 'juya-mp-navigation-'))
@@ -81,8 +83,10 @@ it('packages only small generic share fallbacks while preserving the existing sh
   expect(existsSync(path.join(output, 'static/brand/brand-share-square.png'))).toBe(true)
 })
 
-/** 执行真实微信CommonJS产物，只替换原生界面及业务网络边界 */
-const nativeRuntime = () => {
+/** 执行真实微信CommonJS产物，只替换原生界面及业务网络边界
+ * @param overrides 当前用例提供的微信原生能力
+ */
+const nativeRuntime = (overrides: Record<string, unknown> = {}) => {
   const opened: string[] = [],
     toasts: string[] = [],
     requests: { path: string; options: unknown }[] = [],
@@ -93,7 +97,8 @@ const nativeRuntime = () => {
       opened.push(url)
       success()
     },
-    showToast: ({ title }: { title: string }) => toasts.push(title)
+    showToast: ({ title }: { title: string }) => toasts.push(title),
+    ...overrides
   }
   /** 加载实际编译模块，缓存语义与小程序require一致
    * @param filename 编译目录内模块的绝对路径
@@ -145,6 +150,54 @@ const nativeRuntime = () => {
   }
   return { load, opened, toasts, requests }
 }
+
+it('plays each word in silent mode without autoplay when native word contexts are recreated', () => {
+  let obeyMuteSwitch = true
+  const audible: string[] = [],
+    contexts: { autoplay: boolean; destroy: ReturnType<typeof vi.fn> }[] = []
+  const runtime = nativeRuntime({
+    setInnerAudioOption: (options: { obeyMuteSwitch?: boolean }) => {
+      if (options.obeyMuteSwitch !== undefined) obeyMuteSwitch = options.obeyMuteSwitch
+    },
+    createInnerAudioContext: () => {
+      const audio = {
+        autoplay: true,
+        obeyMuteSwitch: true,
+        src: '',
+        play: () => {
+          // 现代微信只按全局选项决定静音时是否发声，实例旧属性不能代替它
+          if (!obeyMuteSwitch) audible.push(audio.src)
+        },
+        destroy: vi.fn(),
+        onPlay: vi.fn(),
+        onPause: vi.fn(),
+        onEnded: vi.fn(),
+        onTimeUpdate: vi.fn(),
+        onError: vi.fn()
+      }
+      contexts.push(audio)
+      return audio
+    }
+  })
+  const createAudioPort = runtime.load(path.join(output, 'services/audio-port.js'))
+    .createAudioPort as (isolated: boolean) => AudioPort
+  const word = createAudioPort(true)
+  word.src = '/reference.mp3'
+  expect(contexts[0]!.autoplay).toBe(false)
+  expect(audible).toEqual([])
+  word.play()
+  expect(audible).toEqual(['/reference.mp3'])
+
+  // 录音等原生操作可能重置音频会话，新点读仍需应用静音策略
+  obeyMuteSwitch = true
+  word.src = '/cite.mp3'
+  expect(contexts[0]!.destroy).toHaveBeenCalledTimes(1)
+  expect(contexts[1]!.autoplay).toBe(false)
+  expect(audible).toEqual(['/reference.mp3'])
+  word.play()
+  expect(audible).toEqual(['/reference.mp3', '/cite.mp3'])
+  word.destroy()
+})
 
 it.each([
   ['learning', undefined],

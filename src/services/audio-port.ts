@@ -101,7 +101,7 @@ const browserAudioPort = (): AudioPort => {
 }
 // #endif
 
-/** 为当前平台创建音轨，词汇独立隔离每次切源的迟到回调
+/** 为当前平台创建音轨，主动点读不跟随静音开关，词汇独立隔离每次切源的迟到回调
  * @param isolateSources 为词汇音轨启用上下文隔离，避免切源后的迟到回调
  * @param options 整篇音频的系统标题、受控续播和离页清理
  */
@@ -124,8 +124,13 @@ export const createAudioPort = (isolateSources = false, options?: FullAudioOptio
   }
   // #endif
   // #ifndef H5
+  // #ifdef MP-WEIXIN
+  // 新版微信使用全局选项，每次重建词汇音轨时恢复主动播放的静音策略
+  uni.setInnerAudioOption({ obeyMuteSwitch: false })
+  // #endif
   const audio = uni.createInnerAudioContext()
   audio.autoplay = false
+  audio.obeyMuteSwitch = false
   return audio as AudioPort
   // #endif
 }
