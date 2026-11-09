@@ -28,14 +28,14 @@ export const mediaAddress = async (
   summary = false,
   renew = false
 ) => {
-  const key = JSON.stringify([session.userId(), cardId, mediaId, versionId, summary])
+  const key = JSON.stringify([session.identity(), cardId, mediaId, versionId, summary])
   const cached = addresses.get(key)
   if (!renew && cached && cached.expires > Date.now()) return cached.address
   const query = `purpose=${summary ? 'summary' : 'content'}${versionId ? `&version_id=${encodeURIComponent(versionId)}` : ''}`
   const entry: MediaAddressCacheEntry = {
     expires: Number.POSITIVE_INFINITY,
     address: session
-      .request<components['schemas']['ResourceURL']>(
+      .contentRequest<components['schemas']['ResourceURL']>(
         `/api/mini/v1/cards/${encodeURIComponent(cardId)}/media/${encodeURIComponent(mediaId)}/url?${query}`
       )
       .then((result) => {

@@ -489,3 +489,31 @@ it('stops only the selected popup word and leaves full playback position rate an
   expect(player.state.status).toBe('paused')
   player.dispose()
 })
+
+it('suspends both tracks and pending requests for native documents while preserving rate and real progress', async () => {
+  const { full, word, controller } = setup()
+  await controller.toggleFull(() => '/full')
+  full.currentTime = 7
+  controller.setRate(1.25)
+  let finish!: (value: string) => void
+  const late = controller.playWord(
+    'word',
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      })
+  )
+  const suspend = (controller as unknown as { suspend: () => void }).suspend
+  expect(suspend).toBeTypeOf('function')
+  suspend()
+  finish('/late')
+  await late
+  expect(full.playing).toBe(false)
+  expect(word.playing).toBe(false)
+  expect(controller.state.position).toBe(7)
+  expect(controller.state.rate).toBe(1.25)
+  expect(full.destroyed).toBe(false)
+  await controller.toggleFull(() => '/full')
+  expect(full.playing).toBe(true)
+  controller.dispose()
+})

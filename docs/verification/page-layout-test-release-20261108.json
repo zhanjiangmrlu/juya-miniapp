@@ -1,0 +1,127 @@
+{
+  "environment": "test",
+  "sourceCommit": "de8a07daa7aabd22d89c0d34259c92e1af478312",
+  "version": "1.5.0-test.20261108.224957",
+  "status": "success",
+  "verifiedAt": "2026-11-08T22:51:26.272291+08:00",
+  "uploadTask": "77c41c4f-dec1-440f-967d-001bde087965",
+  "officialReceipt": {
+    "size": {
+      "total": 1333040,
+      "packages": [
+        {
+          "name": "TOTAL",
+          "size": 1333040
+        },
+        {
+          "name": "main",
+          "size": 759529
+        },
+        {
+          "name": "/sub-packages/account/",
+          "size": 57822
+        },
+        {
+          "name": "/sub-packages/feedback/",
+          "size": 91602
+        },
+        {
+          "name": "/sub-packages/listening/",
+          "size": 158214
+        },
+        {
+          "name": "/sub-packages/records/",
+          "size": 24978
+        },
+        {
+          "name": "/sub-packages/scenes/",
+          "size": 240895
+        }
+      ]
+    }
+  },
+  "packageChecks": {
+    "production_record": true,
+    "source_manifest": true,
+    "no_private_project_configuration": true,
+    "no_private_or_env_files": true,
+    "test_api": true,
+    "test_oss": true,
+    "no_production_api": true,
+    "no_local_backend": true,
+    "source_copy_matches": true
+  },
+  "assets": {
+    "environment": "test",
+    "bucket": "juya-test",
+    "uploaded": 0,
+    "reused": 13
+  },
+  "sourceMainPackageBytes": 459323,
+  "verification": {
+    "testFiles": 121,
+    "testsPassed": 706,
+    "staticChecks": "passed",
+    "pageStates": 13
+  },
+  "publicProbes": [
+    {
+      "url": "https://test-api.juyayingyu.com/health/ready",
+      "status": 200,
+      "body": {
+        "status": "ready",
+        "service": "mini",
+        "environment": "test"
+      }
+    },
+    {
+      "url": "https://test-admin-api.juyayingyu.com/health/ready",
+      "status": 200,
+      "body": {
+        "status": "ready",
+        "service": "admin",
+        "environment": "test"
+      }
+    },
+    {
+      "url": "https://test-api.juyayingyu.com/api/mini/v1/listening/home",
+      "status": 200,
+      "anonymous_personal_statistics": null,
+      "keys": [
+        "categories",
+        "topics",
+        "continue_learning",
+        "configured",
+        "authorization",
+        "free_count",
+        "actual_free_count",
+        "scene_free_count",
+        "scene_actual_free_count",
+        "statistics"
+      ]
+    },
+    {
+      "url": "https://test-api.juyayingyu.com/api/mini/v1/cards?limit=1",
+      "status": 200,
+      "anonymous_personal_statistics": null,
+      "keys": [
+        "items",
+        "total",
+        "page",
+        "limit",
+        "learning_access",
+        "free_uncompleted_total",
+        "published_total"
+      ]
+    },
+    {
+      "url": "https://test-admin.juyayingyu.com",
+      "status": 200,
+      "html": true
+    }
+  ],
+  "apiAdminDeployment": "unchanged; existing integration08 services verified ready",
+  "experienceVersionSwitched": false,
+  "submittedForReview": false,
+  "productionReleased": false
+}

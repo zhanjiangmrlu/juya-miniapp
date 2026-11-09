@@ -32,6 +32,16 @@ beforeAll(() => {
 
 afterAll(() => rmSync(output, { recursive: true, force: true }))
 
+it('emits native scene-note row selectors without unsupported functional pseudo-classes', () => {
+  const css = readFileSync(
+    path.join(output, 'features/learning/components/scene-card.wxss'),
+    'utf8'
+  )
+  expect(css).not.toMatch(/:(?:where|is|has)\(/)
+  expect(css).toContain('.scene-state-line.has-note')
+  expect(css).toContain('.note-label')
+})
+
 it('keeps 100KB below the main-package limit after 20 percent WeChat conversion expansion', () => {
   const result = spawnSync(
     process.execPath,

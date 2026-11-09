@@ -159,3 +159,67 @@ it('retains login replay credentials after a gateway server error', async () => 
     fixture.send.mock.calls[1]?.[0].headers['Idempotency-Key']
   )
 })
+
+// Losing optional authentication must never replay an account write or cross an identity epoch
+it('reads public content as a guest without requesting an identity', async () => {
+  const f = setup()
+  f.send.mockResolvedValue({ status: 200, data: { items: [] } })
+  await expect(f.service.contentRequest('/api/mini/v1/cards')).resolves.toEqual({ items: [] })
+  expect(f.send.mock.calls[0][0].headers.Authorization).toBeUndefined()
+  expect(f.wechatLogin).not.toHaveBeenCalled()
+})
+it('retries an expired public GET exactly once anonymously and clears identity', async () => {
+  const f = setup()
+  f.storage.set(SESSION_STORAGE_KEY, { access_token: 'mini_old', user_id: 'old' })
+  f.send.mockResolvedValueOnce({ status: 200, data: { ...user, id: 'old' } })
+  await f.service.restore()
+  f.send
+    .mockResolvedValueOnce({ status: 401, data: { error: { code: 'unauthenticated' } } })
+    .mockResolvedValueOnce({ status: 200, data: { state: null } })
+  await expect(f.service.contentRequest('/api/mini/v1/cards/card')).resolves.toEqual({
+    state: null
+  })
+  expect(f.send.mock.calls[1][0].headers.Authorization).toBe('Bearer mini_old')
+  expect(f.send.mock.calls[2][0].headers.Authorization).toBeUndefined()
+  expect(f.service.userId()).toBeNull()
+  expect(f.onExpired).toHaveBeenCalledTimes(1)
+})
+it('does not retry optional POST or private writes after 401', async () => {
+  const f = setup()
+  f.storage.set(SESSION_STORAGE_KEY, { access_token: 'mini_old', user_id: 'old' })
+  f.send.mockResolvedValueOnce({ status: 200, data: { ...user, id: 'old' } })
+  await f.service.restore()
+  f.send.mockResolvedValue({ status: 401, data: { error: { code: 'unauthenticated' } } })
+  await expect(
+    f.service.contentRequest('/api/mini/v1/cards/card/words/word/pronunciation', {
+      method: 'POST',
+      key: 'key-long-enough-123'
+    })
+  ).rejects.toMatchObject({ status: 401 })
+  expect(f.send).toHaveBeenCalledTimes(2)
+  await expect(f.service.request('/api/mini/v1/me', { method: 'PUT' })).rejects.toMatchObject({
+    code: 'unauthenticated'
+  })
+  expect(f.send).toHaveBeenCalledTimes(2)
+})
+it('rejects an old guest response after guest identity invalidation', async () => {
+  const f = setup()
+  let finish!: (response: unknown) => void
+  f.send.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      })
+  )
+  const pending = f.service.contentRequest('/api/mini/v1/cards')
+  f.service.clear()
+  finish({ status: 200, data: { items: ['old'] } })
+  await expect(pending).rejects.toMatchObject({ code: 'session_changed' })
+})
+it('does not let the content channel call personal endpoints', async () => {
+  const f = setup()
+  await expect(f.service.contentRequest('/api/mini/v1/me')).rejects.toMatchObject({
+    code: 'content_path_invalid'
+  })
+  expect(f.send).not.toHaveBeenCalled()
+})

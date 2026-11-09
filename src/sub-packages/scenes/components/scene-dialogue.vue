@@ -2,9 +2,9 @@
 import { ref } from 'vue'
 
 import { useReadingAnchors } from '@/composables/use-reading-anchors'
-import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
-import { dictionaryGroups, dictionaryTokens } from '@/features/learning/scene-model'
 import { SCENE_HIGHLIGHT_COLORS } from '@/shared/constants/learning'
+import SceneSectionHeading from '@/sub-packages/scenes/components/scene-section-heading.vue'
+import { dictionaryGroups, dictionaryTokens } from '@/sub-packages/scenes/scene-model'
 
 import type { SceneDialogueProps } from '@/shared/types/learning-components'
 defineProps<SceneDialogueProps>()
@@ -14,7 +14,13 @@ const emit = defineEmits<{
   lookup: [token: import('@/shared/types/dictionary').DictionaryToken]
 }>()
 const { measureReading } = useReadingAnchors()
-defineExpose({ measureReading })
+/** 恢复登录前译文展示，不模拟用户点击或写入本人进度
+ * @param value 来源快照中的译文展开状态
+ */
+const restoreTranslation = (value: boolean) => {
+  translated.value = value
+}
+defineExpose({ measureReading, translated, restoreTranslation })
 /** 展开全文译文后通知详情重新测量正文布局 */
 const toggleTranslation = () => {
   translated.value = !translated.value

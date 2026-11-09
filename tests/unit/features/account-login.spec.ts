@@ -3,15 +3,21 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, expect, it, vi } from 'vitest'
 
 vi.hoisted(() => {
-  vi.stubGlobal('uni', { getStorageSync: () => undefined })
+  vi.stubGlobal('uni', { getStorageSync: () => undefined, removeStorageSync: vi.fn() })
+  vi.stubGlobal('getCurrentPages', () => [])
 })
 
-const ports = vi.hoisted(() => ({ load: null as null | ((query: Record<string, string>) => void) }))
+const ports = vi.hoisted(() => ({
+  unload: undefined as undefined | (() => void),
+  load: null as null | ((query: Record<string, string>) => void)
+}))
 const { login, openTarget } = vi.hoisted(() => ({ login: vi.fn(), openTarget: vi.fn() }))
 vi.mock('@dcloudio/uni-app', () => ({
   onShow: vi.fn(),
   onHide: vi.fn(),
-  onUnload: vi.fn(),
+  onUnload: (callback: () => void) => {
+    ports.unload = callback
+  },
   onShareAppMessage: vi.fn(),
   onShareTimeline: vi.fn(),
   onLoad: (callback: typeof ports.load) => {
@@ -118,14 +124,48 @@ it('keeps the stable shared target after failed login and restores it on an expl
 })
 
 it.each(['/pages/learning/index', '/pages/records/index', '/sub-packages/listening/index'])(
-  'opens the dual-module home after ordinary login instead of restoring %s',
+  'returns to the selected safe source after ordinary login from %s',
   async (returnPath) => {
     const wrapper = page()
     ports.load?.({ return: encodeURIComponent(returnPath) })
     await wrapper.get('.checkbox-group').trigger('change', { detail: { value: ['agree'] } })
     await wrapper.get('button.primary').trigger('click')
     await flushPromises()
-    expect(openTarget).toHaveBeenCalledWith('/pages/home/index')
+    expect(openTarget).toHaveBeenCalledWith(returnPath)
     wrapper.unmount()
   }
 )
+
+it('restores the validated PDF source read-only after the real consent/login button without preserving a foreign queue', async () => {
+  const wrapper = page()
+  ports.load?.({
+    return: encodeURIComponent(
+      '/sub-packages/scenes/detail?id=card-1&intent=study_note&source=learning_notes&queue=foreign'
+    )
+  })
+  await wrapper.get('.checkbox-group').trigger('change', { detail: { value: ['agree'] } })
+  await wrapper.get('button.primary').trigger('click')
+  await flushPromises()
+  expect(openTarget).toHaveBeenCalledExactlyOnceWith(
+    '/sub-packages/scenes/detail?id=card-1&source=learning_notes'
+  )
+  wrapper.unmount()
+})
+
+it('does not navigate or continue an old login after native back unloads the login page', async () => {
+  let finish!: () => void
+  login.mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve
+      })
+  )
+  const wrapper = page()
+  await wrapper.get('.checkbox-group').trigger('change', { detail: { value: ['agree'] } })
+  await wrapper.get('button.primary').trigger('click')
+  ports.unload?.()
+  finish()
+  await flushPromises()
+  expect(openTarget).not.toHaveBeenCalled()
+  wrapper.unmount()
+})

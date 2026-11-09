@@ -3,6 +3,7 @@ import { onLoad, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/
 import { computed, ref } from 'vue'
 
 import AppAvatar from '@/components/app-avatar/app-avatar.vue'
+import AppGuestState from '@/components/app-guest-state/app-guest-state.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppReturnBarrier from '@/components/app-return-barrier/app-return-barrier.vue'
 import AppState from '@/components/app-state/app-state.vue'
@@ -10,7 +11,7 @@ import AppUnsavedDialog from '@/components/app-unsaved-dialog/app-unsaved-dialog
 import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useUnsavedGuard } from '@/composables/use-unsaved-guard'
 import { rebaseIdentity } from '@/features/profile/identity-model'
-import { operations, session } from '@/services/api'
+import { onSessionExpired, operations, session } from '@/services/api'
 import { ApiError, isUnconfirmedFailure } from '@/services/errors'
 import { waitForMedia } from '@/services/media-processing'
 import { pageShare } from '@/services/page-share'
@@ -92,6 +93,7 @@ const upload = async () => {
         fail: () => reject(new Error('暂未读取图片，请重新选择'))
       })
     )
+    if (!alive) return
     if (size > limit.value)
       throw new Error(`头像不能超过 ${Math.floor(limit.value / 1024 / 1024)} MB`)
     if (!accepted) {
@@ -140,7 +142,7 @@ const upload = async () => {
  * @param path 平台返回的本地临时图片
  */
 const selectImage = (path: string) => {
-  if (!path || busy.value) return
+  if (!alive || !path || busy.value) return
   selectedPath.value = path
   uploadKey = operationKey()
   accepted = null
@@ -263,7 +265,26 @@ onLoad(() => {
   if (pageShareEntry.value) return
   void load()
 })
+/** 身份失效后销毁本编辑页输入，重新登录只回到账号只读页面 */
+const unsubscribe = onSessionExpired(() => {
+  alive = false
+  base.value = null
+  error.value = ''
+  unknown.value = false
+  conflict.value = false
+  loading.value = false
+  nickname.value = ''
+  selectedPath.value = ''
+  preview.value = ''
+  avatarId.value = null
+  accepted = null
+  uploadKey = ''
+  uploadError.value = ''
+  uploading.value = false
+  saving.value = false
+})
 onUnload(() => {
+  unsubscribe()
   alive = false
   nickname.value = ''
   selectedPath.value = ''
@@ -283,7 +304,13 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
     custom-back
     :fallback="Routes.PROFILE"
     @back="guard.requestBack"
-    ><AppState
+    ><AppGuestState
+      v-if="!loading && !base"
+      title="登录句芽英语"
+      description="登录后查看和修改本人资料。"
+      :target="Routes.PROFILE"
+      icon="/static/design/account.svg"
+      show-privacy /><AppState
       v-if="!guard.canEdit.value"
       error="当前微信版本不支持安全返回，请升级微信后编辑资料" /><AppState
       :busy="loading"

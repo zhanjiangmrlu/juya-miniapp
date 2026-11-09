@@ -1,8 +1,8 @@
 import { expect, it, vi } from 'vitest'
 
-import { createFeedbackDraft } from '@/composables/use-feedback-draft'
 import { ApiError } from '@/services/errors'
 import { createOperationService } from '@/services/operation-service'
+import { createFeedbackDraft } from '@/sub-packages/feedback/use-feedback-draft'
 
 const setup = (feedbackId?: string) => {
   let owner: string | null = 'owner'

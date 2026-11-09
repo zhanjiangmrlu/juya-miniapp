@@ -43,7 +43,12 @@ vi.mock('@dcloudio/uni-app', () => ({
   }
 }))
 vi.mock('@/services/api', () => ({
-  session: { request: ports.request, userId: () => ports.owner },
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => ports.owner,
+    userId: () => ports.owner
+  },
   onSessionExpired: () => () => undefined
 }))
 vi.mock('@/services/feedback-service', () => ({
@@ -51,6 +56,7 @@ vi.mock('@/services/feedback-service', () => ({
 }))
 vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({
+    restore: async () => null,
     ensure: async () => true,
     refreshStatistics: vi.fn(),
     refreshAvatar: vi.fn(),

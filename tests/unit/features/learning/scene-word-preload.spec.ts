@@ -4,6 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { reactive } from 'vue'
 
 const ports = vi.hoisted(() => ({
+  noteDownload: vi.fn(),
+  noteOpen: vi.fn(),
   load: null as null | ((query: Record<string, string>) => void),
   hide: null as null | (() => void),
   show: null as null | (() => void),
@@ -16,7 +18,8 @@ const ports = vi.hoisted(() => ({
   fullRelease: vi.fn(),
   release: vi.fn(),
   unsubscribe: vi.fn(),
-  ensure: vi.fn(async () => true),
+  epoch: 0,
+  ensure: vi.fn(async (_target?: string) => true),
   account: null as null | { profile: { id: string } | null; restore: () => Promise<unknown> },
   tracks: [] as { src: string; play: ReturnType<typeof vi.fn>; destroy: ReturnType<typeof vi.fn> }[]
 }))
@@ -38,11 +41,17 @@ vi.mock('@dcloudio/uni-app', () => ({
   }
 }))
 vi.mock('@/stores/account-store', () => ({
-  useAccountStore: () => Object.assign(ports.account!, { ensure: ports.ensure })
+  useAccountStore: () =>
+    Object.assign(ports.account!, { restore: async () => null, ensure: ports.ensure })
 }))
 vi.mock('@/services/api', () => ({
   operations: { pending: () => false },
-  session: { request: ports.request, userId: () => ports.account?.profile?.id || null },
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => `${ports.epoch}:${ports.account?.profile?.id || 'guest'}`,
+    userId: () => ports.account?.profile?.id || null
+  },
   onSessionExpired: (callback: () => void) => {
     ports.expired = callback
     return ports.unsubscribe
@@ -58,6 +67,10 @@ vi.mock('@/services/word-audio-file', () => ({
   prepareAudioCacheFile: ports.fullFile
 }))
 vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
+vi.mock('@/sub-packages/scenes/study-note-platform', () => ({
+  downloadStudyNote: ports.noteDownload,
+  openStudyNoteDocument: ports.noteOpen
+}))
 vi.mock('@/services/audio-port', () => ({
   createAudioPort: () => {
     const track = {
@@ -84,6 +97,7 @@ vi.mock('@/services/audio-port', () => ({
 /** 返回场景测试所需的最小已发布内容 */
 const scene = () => ({
   id: 'card',
+  card_id: 'card',
   version_id: 'v1',
   audio_duration: 10,
   state: { favorite: false, completed: false, today_completed: false },
@@ -225,6 +239,7 @@ it('disposes cached local audio when the authenticated session expires', async (
 
 it('does not reuse a cached local file after another session logs into the same account', async () => {
   const page = await open()
+  ports.epoch++
   ports.account!.profile = { id: 'learner' }
   await flushPromises()
   expect(ports.release).toHaveBeenCalledTimes(2)
@@ -306,6 +321,131 @@ it('does not play a downloaded word after the click permission is revoked', asyn
   await flushPromises()
   expect(ports.tracks.every((value) => value.play.mock.calls.length === 0)).toBe(true)
   expect(ports.release).toHaveBeenCalledTimes(2)
+  ports.unload?.()
+  page.unmount()
+})
+
+it('opens a fresh native note without replacing audio and keeps all playback paused through document lifecycle', async () => {
+  const current = {
+    ...scene(),
+    study_note: {
+      state: 'ready',
+      media_id: 'pdf',
+      version_id: 'note-v1',
+      filename: 'note.pdf',
+      size: 1
+    }
+  }
+  ports.request.mockImplementation(async (path: string) =>
+    path.includes('/url?')
+      ? { url: '/api/mini/v1/note-ticket' }
+      : path.includes('/pronunciation')
+        ? { state: 'ready', url: '/api/mini/v1/pronunciation/ticket' }
+        : current
+  )
+  ports.noteDownload.mockResolvedValue({ path: 'wxfile://note.pdf', release: ports.release })
+  ports.noteOpen.mockResolvedValue(undefined)
+  const page = await open()
+  const before = ports.request.mock.calls.length
+  await page.get('.note-entry').trigger('click')
+  await flushPromises()
+  expect(ports.request.mock.calls.slice(before).map(([path]) => path)).toEqual([
+    '/api/mini/v1/cards/card?mark_started=false',
+    '/api/mini/v1/cards/card/media/pdf/url?purpose=study_note&study_note_version_id=note-v1',
+    '/api/mini/v1/cards/card?mark_started=false'
+  ])
+  expect(ports.noteOpen).toHaveBeenCalledWith('wxfile://note.pdf')
+  expect(ports.tracks).toHaveLength(2)
+  ports.hide?.()
+  expect(ports.tracks.every((track) => track.destroy.mock.calls.length === 0)).toBe(true)
+  page.getComponent({ name: 'scene-audio-player' }).vm.$emit('toggle')
+  await flushPromises()
+  expect(ports.tracks[0]!.play).not.toHaveBeenCalled()
+  const requestCount = ports.request.mock.calls.length
+  ports.show?.()
+  await flushPromises()
+  expect(ports.request).toHaveBeenCalledTimes(requestCount)
+  expect(ports.tracks).toHaveLength(2)
+  expect(ports.tracks[0]!.play).not.toHaveBeenCalled()
+  page.getComponent({ name: 'scene-audio-player' }).vm.$emit('toggle')
+  await flushPromises()
+  expect(ports.tracks[0]!.play).toHaveBeenCalledOnce()
+  ports.unload?.()
+  page.unmount()
+})
+
+it('restores the note source read-only without automatically opening its PDF', async () => {
+  const current = {
+    ...scene(),
+    study_note: {
+      state: 'ready',
+      media_id: 'pdf',
+      version_id: 'note-v2',
+      filename: 'note.pdf',
+      size: 1
+    }
+  }
+  ports.request.mockImplementation(async (path: string) =>
+    path.includes('/url?') ? { url: '/api/mini/v1/new-ticket' } : current
+  )
+  ports.noteDownload.mockResolvedValue({ path: 'wxfile://new.pdf', release: ports.release })
+  ports.noteOpen.mockResolvedValue(undefined)
+  const { default: Detail } = await import('@/sub-packages/scenes/detail.vue')
+  const page = shallowMount(Detail, {
+    global: { stubs: { AppPage: { template: '<div><slot /></div>' } } }
+  })
+  ports.load?.({ id: 'card', intent: 'study_note', source: 'learning_notes' })
+  await flushPromises()
+  const details = ports.request.mock.calls
+    .map(([path]) => path)
+    .filter((path) => /^\/api\/mini\/v1\/cards\/card(?:\?|$)/.test(path))
+  expect(details.length).toBe(1)
+  expect(details.every((path) => path.includes('mark_started=false'))).toBe(true)
+  expect(ports.noteOpen).not.toHaveBeenCalled()
+  expect(ports.ensure).not.toHaveBeenCalled()
+  ports.unload?.()
+  page.unmount()
+})
+
+it('never opens a PDF automatically when a read-only body refresh receives 401', async () => {
+  const { ApiError } = await import('@/services/errors')
+  const first = {
+      ...scene(),
+      study_note: {
+        state: 'ready',
+        media_id: 'pdf',
+        version_id: 'note',
+        filename: 'note.pdf',
+        size: 1
+      }
+    },
+    updated = { ...first, version_id: 'v2' }
+  let detailReads = 0
+  ports.request.mockImplementation(async (path: string) => {
+    if (path.includes('/pronunciation'))
+      return { state: 'ready', url: '/api/mini/v1/pronunciation/ticket' }
+    detailReads++
+    if (detailReads === 1) return first
+    if (detailReads === 2) return updated
+    throw new ApiError('unauthenticated', '请重新登录', 401)
+  })
+  const { default: Detail } = await import('@/sub-packages/scenes/detail.vue')
+  const page = shallowMount(Detail, {
+    global: { stubs: { AppPage: { template: '<div><slot /></div>' } } }
+  })
+  ports.load?.({ id: 'card', source: 'learning_notes' })
+  await flushPromises()
+  await page.get('.note-entry').trigger('click')
+  await flushPromises()
+  expect(ports.ensure).not.toHaveBeenCalled()
+  expect(ports.noteOpen).not.toHaveBeenCalled()
+  expect(
+    ports.request.mock.calls
+      .filter(([path]) => !path.includes('/pronunciation'))
+      .slice(1)
+      .every(([path]) => path.includes('mark_started=false'))
+  ).toBe(true)
+  expect(ports.noteOpen).not.toHaveBeenCalled()
   ports.unload?.()
   page.unmount()
 })

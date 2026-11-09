@@ -14,30 +14,32 @@ import AppLoading from '@/components/app-loading/app-loading.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { useNativeShare } from '@/composables/use-native-share'
-import { useReadingPosition } from '@/composables/use-reading-position'
-import { useSceneDictionary } from '@/composables/use-scene-dictionary'
 import SceneAudioPlayer from '@/features/learning/components/scene-audio-player.vue'
 import SceneDictionary from '@/features/learning/components/scene-dictionary.vue'
-import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
-import { dictionaryTokens } from '@/features/learning/scene-model'
 import ShareSheet from '@/features/share/components/share-sheet.vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
 import { onSessionExpired, operations, session } from '@/services/api'
 import { createAudioController } from '@/services/audio-controller'
 import { createAudioPort } from '@/services/audio-port'
 import { clientThumbnail } from '@/services/client-thumbnail'
-import { createDictionarySpeechCache } from '@/services/dictionary-service'
 import { ApiError } from '@/services/errors'
 import { createFullAudioPreparation } from '@/services/full-audio-preparation'
-import { prepareImagePreviewSource, registerImagePreview } from '@/services/image-preview'
+import { localImageSource } from '@/services/local-image'
+import { promptLogin } from '@/services/login-prompt'
+import { loginReturn } from '@/services/login-return'
 import { clearMediaAddresses, mediaAddress } from '@/services/media-service'
+import {
+  nativeErrorFields,
+  probeNativeImage,
+  recordNativeDiagnostic
+} from '@/services/native-diagnostics'
 import { backTo } from '@/services/navigation'
 import { operationKey, resourceURL, sendPublicRequest } from '@/services/platform'
 import { loadPronunciation } from '@/services/pronunciation-service'
 import { runtimeMode } from '@/services/runtime-mode'
 import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
 import { prepareShareCover } from '@/services/share-cover-file'
-import { parseShareTarget, shareTargetURL } from '@/services/share-service'
+import { parseShareTarget } from '@/services/share-service'
 import {
   discardPreparedScene,
   prepareSourceScene,
@@ -45,7 +47,6 @@ import {
   takePreparedScene
 } from '@/services/source-queue'
 import { prepareAudioCacheFile, prepareWordAudioFile } from '@/services/word-audio-file'
-import { createWordAudioPreparation, waitForWordAudio } from '@/services/word-audio-preparation'
 import { DICTIONARY_PREFETCH_SCROLL_DELAY_MS } from '@/shared/constants/dictionary'
 import { Routes } from '@/shared/constants/navigation'
 import { AudioStatus } from '@/shared/enums/audio'
@@ -56,9 +57,24 @@ import { useAccountStore } from '@/stores/account-store'
 import { createAccessMonitor } from '@/sub-packages/scenes/access-monitor'
 import SceneDialogue from '@/sub-packages/scenes/components/scene-dialogue.vue'
 import SceneQueueEnd from '@/sub-packages/scenes/components/scene-queue-end.vue'
+import SceneSectionHeading from '@/sub-packages/scenes/components/scene-section-heading.vue'
 import SceneUnavailable from '@/sub-packages/scenes/components/scene-unavailable.vue'
 import SceneVocabulary from '@/sub-packages/scenes/components/scene-vocabulary.vue'
+import { createDictionarySpeechCache } from '@/sub-packages/scenes/dictionary-service'
+import {
+  prepareImagePreviewSource,
+  registerImagePreview
+} from '@/sub-packages/scenes/image-preview-service'
+import { dictionaryTokens } from '@/sub-packages/scenes/scene-model'
 import { createShareService } from '@/sub-packages/scenes/scene-share-service'
+import { createStudyNote } from '@/sub-packages/scenes/study-note'
+import { downloadStudyNote, openStudyNoteDocument } from '@/sub-packages/scenes/study-note-platform'
+import { useReadingPosition } from '@/sub-packages/scenes/use-reading-position'
+import { useSceneDictionary } from '@/sub-packages/scenes/use-scene-dictionary'
+import {
+  createWordAudioPreparation,
+  waitForWordAudio
+} from '@/sub-packages/scenes/word-audio-preparation'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { AudioState } from '@/shared/types/audio'
@@ -68,6 +84,7 @@ import type {
   DictionaryToken
 } from '@/shared/types/dictionary'
 import type { PublishedScene } from '@/shared/types/learning'
+import type { LoginSnapshot } from '@/shared/types/navigation'
 const account = useAccountStore(),
   accessError = ref(''),
   card = ref<PublishedScene | null>(null),
@@ -104,7 +121,10 @@ const browseOnly = runtimeMode.browseOnly,
 // 原生分享属于编译期可选生命周期，必须直接在页面声明
 onShareAppMessage(() => ({ ...publicShare.friends() }))
 onShareTimeline(() => ({ ...publicShare.timeline() }))
-let sharedEntry = false,
+let noteBodyRefresh = false,
+  noteIntent = false,
+  noteRecovery = false,
+  sharedEntry = false,
   requiresIdentityCheck = browseOnly.value
 /** 点击后立即打开准备状态，复用当前场景和版本的公开分享请求 */
 const openShare = () => {
@@ -127,6 +147,7 @@ let id = '',
   alive = true,
   visible = true,
   generation = 0,
+  pageIdentity = session.identity(),
   audio: ReturnType<typeof createAudioController> | null = null,
   fullAudio: ReturnType<typeof createFullAudioPreparation> | null = null,
   fullAudioBackgroundPending = false,
@@ -140,18 +161,79 @@ let id = '',
   dictionaryMeasureRequested: DictionarySpeechCache | null = null,
   scrollTop = 0,
   imageOpen = false,
+  restoringSnapshot: LoginSnapshot | null = null,
   imageGeneration = 0,
   originalSrc = '',
   imageRequest: Promise<string> | null = null,
   releaseImage: (() => void) | null = null
+/** 暂停全部场景发音并撤销迟到点击，保留当前播放器和真实阅读状态 */
+const pauseForNote = () => {
+  audioClickGeneration++
+  audio?.suspend()
+  wordAudio?.cancelSelection()
+  dictionary.cancelSpeech()
+  dictionary.close()
+}
+const note = createStudyNote({
+  userId: session.identity,
+  context: () =>
+    alive && card.value && !stale.value
+      ? {
+          cardId: id,
+          bodyVersion: card.value.version_id,
+          noteVersion: card.value.study_note?.version_id
+        }
+      : null,
+  ensure: async () => !runtimeMode.update(),
+  request: session.contentRequest,
+  refreshBody: async () => {
+    noteBodyRefresh = true
+    try {
+      await load()
+    } finally {
+      noteBodyRefresh = false
+    }
+  },
+  resource: resourceURL,
+  pause: pauseForNote,
+  accept: (value) => {
+    if (card.value?.version_id === value.version_id) card.value.study_note = value.study_note
+  },
+  download: downloadStudyNote,
+  open: openStudyNoteDocument,
+  invalid: (reason) => {
+    if (reason instanceof ApiError && reason.status !== 409) void invalid(reason)
+  }
+})
+/** 主动打开当前笔记，平台错误在标题区原位展示 */
+const openNote = () => {
+  if (!runtimeMode.update() && visible) void note.open()
+}
 const reading = useReadingPosition({
   scene: card,
   cardId: () => id,
   children: () => [dialogueView.value, vocabularyView.value]
 })
+/** H5页面可见时接收实际滚动输入，覆盖焦点位于页面外层时的键盘和滚轮 */
+const listenForUserScroll = () => {
+  // #ifdef H5
+  if (typeof window !== 'undefined')
+    for (const type of ['touchmove', 'wheel', 'keydown'])
+      window.addEventListener(type, reading.startUserScroll, { passive: true })
+  // #endif
+}
+/** 隐藏及卸载后停止接收其他页面输入，不能解除旧来源的只读边界 */
+const stopListeningForUserScroll = () => {
+  // #ifdef H5
+  if (typeof window !== 'undefined')
+    for (const type of ['touchmove', 'wheel', 'keydown'])
+      window.removeEventListener(type, reading.startUserScroll)
+  // #endif
+}
 const dictionary = useSceneDictionary({
   context: () =>
     !browseOnly.value &&
+    !note.locked.value &&
     card.value &&
     card.value.access?.can_lookup !== false &&
     !accessError.value &&
@@ -173,6 +255,7 @@ const dictionary = useSceneDictionary({
   },
   stopSpeech: (key) => audio?.stopWord(key),
   playSpeech: (key, load) => {
+    if (note.locked.value || !visible) return
     createAudio()
     void audio?.playWord(
       key,
@@ -188,25 +271,31 @@ const images = computed(() =>
   imageSrc.value && !imageError.value ? [{ src: imageSrc.value, generation: imageKey.value }] : []
 )
 const favorite = computed(
-  () => card.value?.state.favorite || summary.value?.state.favorite || false
+  () => card.value?.state?.favorite || summary.value?.state?.favorite || false
 )
 const canAdvance = computed(() =>
   Boolean(
-    card.value?.state.today_completed ||
-    (queueSource.value === QueueSource.LEARNING && card.value?.state.completed)
+    card.value?.state?.today_completed ||
+    (queueSource.value === QueueSource.LEARNING && card.value?.state?.completed)
   )
 )
 const completionLabel = computed(() => {
+  if (card.value && !card.value.state) return '完成本次学习'
+  if (canAdvance.value && queueSource.value && !queueId.value) return '返回来源列表'
   if (canAdvance.value)
     return queueSource.value
       ? queueSource.value !== QueueSource.LEARNING && reviewOnEntry.value
         ? '复习下一张'
         : '继续学习下一张'
       : '前往学习页'
-  return card.value?.state.completed ? '完成本次复习' : '已完成学习'
+  return card.value?.state?.completed ? '完成本次复习' : '已完成学习'
 })
 /** 反馈作为新的原生页面入栈，返回时保留当前译文和阅读实例 */
 const feedback = () => {
+  if (!session.userId()) {
+    promptLogin(`${Routes.SCENE}?id=${encodeURIComponent(id)}`)
+    return
+  }
   if (card.value && !stale.value)
     uni.navigateTo({
       url: `${Routes.FEEDBACK_CREATE}?card_id=${encodeURIComponent(id)}&version_id=${encodeURIComponent(card.value.version_id)}`
@@ -219,13 +308,15 @@ const returnSource = () =>
       ? Routes.FAVORITES
       : queueSource.value === QueueSource.RECORDS || queueSource.value === QueueSource.DAY
         ? Routes.RECORDS
-        : Routes.LEARNING
+        : queueSource.value === QueueSource.LEARNING_NOTES
+          ? `${Routes.LEARNING}?tab=notes`
+          : Routes.LEARNING
   )
 /** 结束或直接单卡完成后回到学习入口 */
 const learn = () => uni.reLaunch({ url: Routes.LEARNING })
 /** 检查持久待确认完成，换页面或重新显示不能绕过原操作查询 */
 const checkPendingCompletion = () => {
-  const pending = operations.pending(`complete:${id}`)
+  const pending = Boolean(session.userId()) && operations.pending(`complete:${id}`)
   awaitingState.value = pending
   if (pending) actionError.value = '上次完成结果待确认，请先查询结果'
   return pending
@@ -285,6 +376,7 @@ const refreshDialogue = () => {
 const createDictionaryAudio = () => {
   if (
     dictionaryAudio ||
+    note.locked.value ||
     !visible ||
     !alive ||
     !card.value ||
@@ -331,7 +423,7 @@ const createDictionaryAudio = () => {
 }
 /** 页面可见且整段音频已准备结束时恢复后台词汇队列 */
 const resumeBackgroundAudio = () => {
-  if (!visible || !alive || !card.value || fullAudioBackgroundPending) return
+  if (note.locked.value || !visible || !alive || !card.value || fullAudioBackgroundPending) return
   void prefetchDictionary()
   wordAudio?.prefetch(
     (card.value.content.vocabulary || []).flatMap((word) => (word.id ? [word.id] : []))
@@ -339,7 +431,7 @@ const resumeBackgroundAudio = () => {
 }
 /** 进入当前场景时创建两路互斥音频，不自动播放 */
 const createAudio = () => {
-  if (runtimeMode.update() || !visible || !card.value || stale.value) return
+  if (runtimeMode.update() || note.locked.value || !visible || !card.value || stale.value) return
   createDictionaryAudio()
   if (audio) {
     resumeBackgroundAudio()
@@ -347,17 +439,19 @@ const createAudio = () => {
   }
   const current = card.value,
     owner = account.profile,
-    userId = session.userId()
+    userId = session.identity()
   const full = createAudioPort(false, {
       title: current.content.name || current.content.title_en || '场景学习',
       resume: async (active) => {
-        if (runtimeMode.update() || (current.access && !(await checkAccess()))) return
+        if (note.locked.value || runtimeMode.update() || (current.access && !(await checkAccess())))
+          return
         if (
           !active() ||
+          note.locked.value ||
           !alive ||
           audio !== player ||
           account.profile !== owner ||
-          session.userId() !== userId ||
+          session.identity() !== userId ||
           card.value !== current ||
           stale.value
         )
@@ -394,7 +488,7 @@ const createAudio = () => {
     alive &&
     audio === player &&
     account.profile === owner &&
-    session.userId() === userId &&
+    session.identity() === userId &&
     card.value?.version_id === current.version_id &&
     !stale.value
   /** 仅处理服务端确认的失效，后台网络失败不打断正文
@@ -431,7 +525,7 @@ const createAudio = () => {
           active: task.active,
           pause: (milliseconds) => waitForWordAudio(milliseconds, task),
           request: (method, path, reference) =>
-            session.request<components['schemas']['SpeechState']>(
+            session.contentRequest<components['schemas']['SpeechState']>(
               method === 'GET'
                 ? `${path}?version_id=${encodeURIComponent(reference.version_id || '')}`
                 : path,
@@ -503,7 +597,7 @@ const applyAccess = (value: components['schemas']['CardAccessView']) => {
     previous.access = value.access
     createDictionaryAudio()
     previous.state = value.summary.state
-    if (!previous.state.today_completed && message.value === '今日已完成学习') message.value = ''
+    if (!previous.state?.today_completed && message.value === '今日已完成学习') message.value = ''
     checkPendingCompletion()
     return
   }
@@ -522,12 +616,21 @@ const applyAccess = (value: components['schemas']['CardAccessView']) => {
 }
 const accessMonitor = createAccessMonitor(
   async () => {
-    const owner = session.userId(),
+    const owner = session.identity(),
       target = id
-    const value = await session.request<components['schemas']['CardAccessView']>(
-      `/api/mini/v1/cards/${encodeURIComponent(target)}/access`
-    )
-    if (!alive || owner !== session.userId() || target !== id)
+    const value = session.userId()
+      ? await session.request<components['schemas']['CardAccessView']>(
+          `/api/mini/v1/cards/${encodeURIComponent(target)}/access`
+        )
+      : await session
+          .contentRequest<components['schemas']['PersonalSummary']>(
+            `/api/mini/v1/cards/${encodeURIComponent(target)}/summary`
+          )
+          .then((summary) => {
+            if (!summary.access) throw new ApiError('response_invalid', '权限暂未获取')
+            return { summary, access: summary.access }
+          })
+    if (!alive || owner !== session.identity() || target !== id)
       throw new ApiError('session_changed', '账号或页面已变化')
     return value
   },
@@ -535,7 +638,8 @@ const accessMonitor = createAccessMonitor(
   (reason) => {
     accessError.value = '权限暂未获取，请重试'
     stopAudio()
-    if (reason instanceof ApiError && [409, 410].includes(reason.status)) void invalid(reason)
+    if (reason instanceof ApiError && [403, 404, 409, 410].includes(reason.status))
+      void invalid(reason)
   }
 )
 /** 当前受控操作执行前重新核对权限 */
@@ -545,7 +649,7 @@ const checkAccess = async () => {
 }
 /** 点击弹窗喇叭立即显示准备状态，由播放控制器并行核对当前权限 */
 const playDictionary = () => {
-  if (runtimeMode.update() || !visible || stale.value) return
+  if (note.locked.value || runtimeMode.update() || !visible || stale.value) return
   dictionary.play()
 }
 /** 拖动完整音频前核对当前场景权限
@@ -553,19 +657,20 @@ const playDictionary = () => {
  */
 const seekFull = async (value: number) => {
   if (card.value?.access && !(await checkAccess())) return
-  audio?.seekFull(value)
+  if (!note.locked.value && visible) audio?.seekFull(value)
 }
 /** 调整倍速前核对当前场景权限
  * @param value 用户选择的播放倍速
  */
 const setRate = async (value: number) => {
   if (card.value?.access && !(await checkAccess())) return
-  audio?.setRate(value)
+  if (!note.locked.value && visible) audio?.setRate(value)
 }
 /** 点词限制只显示提示，不能请求词典或暂停完整音频
  * @param token 用户点击的完整英文词元
  */
 const lookup = async (token: DictionaryToken) => {
+  if (note.locked.value || !visible) return
   if (card.value?.access) {
     if (!(await checkAccess())) return
     if (!card.value?.access?.can_lookup) {
@@ -573,24 +678,42 @@ const lookup = async (token: DictionaryToken) => {
       return
     }
   }
-  await dictionary.open(token)
+  if (!note.locked.value && visible) await dictionary.open(token)
 }
-const releaseAudioSession = onSessionExpired(stopAudio)
-watch(() => account.profile, stopAudio)
+/** 会话变化时释放私人文档和两路音频 */
+const releasePrivateMedia = () => {
+  pageIdentity = session.identity()
+  generation++
+  busy.value = false
+  accessMonitor.suspend()
+  note.cancel()
+  card.value = null
+  summary.value = null
+  imageGeneration++
+  imageSrc.value = ''
+  originalSrc = ''
+  imageRequest = null
+  queueId.value = ''
+  queueSource.value = null
+  reading.dispose()
+  stopAudio()
+  if (visible && !session.userId() && !loginReturn.pending())
+    void nextTick(() => {
+      if (visible && alive && !loginReturn.pending()) void load()
+    })
+}
+const releaseAudioSession = onSessionExpired(releasePrivateMedia)
+watch(
+  () => account.profile,
+  () => {
+    if (pageIdentity !== session.identity()) releasePrivateMedia()
+  }
+)
 /** 真实下线、删除或版本变化后关闭可操作正文
  * @param reason 服务端已确认的访问错误
  */
 const invalid = async (reason: unknown) => {
   if (!(reason instanceof ApiError)) return
-  if (
-    reason.status === 403 &&
-    [LearningAccessReason.REQUIRED, LearningAccessReason.LOOKUP_REQUIRED].some(
-      (code) => code === reason.code
-    )
-  ) {
-    await checkAccess()
-    return
-  }
   if (reason.status === 409) {
     publicShare.clear()
     share.hide()
@@ -599,7 +722,7 @@ const invalid = async (reason: unknown) => {
     actionError.value = '内容已更新，请刷新后继续'
     return
   }
-  if (reason.status !== 410) return
+  if (![403, 404, 410].includes(reason.status)) return
   publicShare.clear()
   share.hide()
   const previous = card.value
@@ -614,15 +737,10 @@ const invalid = async (reason: unknown) => {
     available: false,
     version_id: null,
     unavailable_reason: reason.code === 'card_deleted' ? 'deleted' : 'offline',
-    state: previous?.state || {
-      completed: false,
-      today_completed: false,
-      favorite: false,
-      started: false
-    }
+    state: session.userId() ? previous?.state || null : null
   }
   try {
-    const value = await session.request<components['schemas']['PersonalSummary']>(
+    const value = await session.contentRequest<components['schemas']['PersonalSummary']>(
       `/api/mini/v1/cards/${id}/summary`
     )
     if (alive) summary.value = value
@@ -680,11 +798,12 @@ const loadImage = async (renew = false) => {
       const value = await mediaAddress(id, thumbnailId, version, false, renew).then(
         sceneThumbnailURL
       )
+      const displaySource = await localImageSource(value)
       if (alive && run === imageGeneration && card.value?.version_id === version && !stale.value)
-        imageSrc.value = value
+        imageSrc.value = displaySource
     } else {
       const result = await clientThumbnail(
-        JSON.stringify([session.userId(), id, version]),
+        JSON.stringify([session.identity(), id, version]),
         () => mediaAddress(id, imageId, version, false, renew),
         renew
       )
@@ -702,11 +821,24 @@ const loadImage = async (renew = false) => {
 }
 /** 同一详情图片的像素完成，run 为该图片建立时的请求代次 */
 const imageLoaded = (run: number) => {
+  if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true' && alive && run === imageGeneration)
+    recordNativeDiagnostic('image-load', {
+      surface: 'detail',
+      local: !/^https?:/.test(imageSrc.value)
+    })
   if (alive && run === imageGeneration) imageLoading.value = false
 }
 /** 同一详情图片的像素失败，run 为该图片建立时的请求代次 */
-const imageFailed = (run: number) => {
+const imageFailed = (run: number, event?: Event | { detail?: unknown }) => {
   if (!alive || run !== imageGeneration) return
+  if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true') {
+    recordNativeDiagnostic('image-error', {
+      surface: 'detail',
+      local: !/^https?:/.test(imageSrc.value),
+      ...nativeErrorFields(event && 'detail' in event ? event.detail : undefined)
+    })
+    probeNativeImage(imageSrc.value, 'detail')
+  }
   imageLoading.value = false
   imageError.value = '图片暂未加载，可重试'
 }
@@ -727,24 +859,23 @@ const load = async () => {
   stale.value = false
   const run = ++generation
   try {
-    const target = sharedEntry
-      ? shareTargetURL({ target: ShareTarget.SCENE, id })
-      : `${Routes.SCENE}?id=${encodeURIComponent(id)}`
-    if (!(await account.ensure(target))) return
-    const revalidate = sharedEntry || requiresIdentityCheck
-    if (revalidate && !(await account.restore())) return
+    await account.restore()
     const prepared = !requiresIdentityCheck && takePreparedScene(queueId.value, id)
     const value =
-      (prepared && !prepared.access && prepared) ||
-      (await session.request<PublishedScene>(`/api/mini/v1/cards/${id}`))
+      (prepared &&
+        (!prepared.access || queueSource.value === QueueSource.LEARNING_NOTES) &&
+        prepared) ||
+      (await session.contentRequest<PublishedScene>(
+        `/api/mini/v1/cards/${id}${!session.userId() || restoringSnapshot || noteRecovery || noteBodyRefresh ? '?mark_started=false' : queueSource.value === QueueSource.LEARNING_NOTES ? '?require_study_note=true' : ''}`
+      ))
     if (!alive || run !== generation) return
     stopAudio()
     requiresIdentityCheck = false
     accessError.value = ''
     card.value = value
     if (value.access) void checkAccess()
-    reviewOnEntry.value = value.state.completed
-    if (value.state.today_completed) message.value = '今日已完成学习'
+    reviewOnEntry.value = value.state?.completed || false
+    if (value.state?.today_completed) message.value = '今日已完成学习'
     imageSrc.value = ''
     imageError.value = ''
     imageLoading.value = false
@@ -755,11 +886,29 @@ const load = async () => {
     checkPendingCompletion()
     createAudio()
     void loadImage()
-    void reading.restore(value)
+    const snapshot = restoringSnapshot,
+      restoredCard = card.value
+    restoringSnapshot = null
+    // 译文布局与来源滚动共用一次程序化恢复，恢复事件不进入本人进度
+    void nextTick().then(async () => {
+      if (!alive || run !== generation || card.value !== restoredCard) return
+      const sameVersion = snapshot?.version === value.version_id
+      if (sameVersion) dialogueView.value?.restoreTranslation?.(snapshot.translation)
+      await reading.restore(value, sameVersion ? snapshot.scroll : undefined)
+      if (!sameVersion || !alive || run !== generation || card.value !== restoredCard) return
+      audio?.setRate(snapshot.playbackRate)
+      audio?.seekFull(snapshot.audioPosition)
+    })
     if (visible) void publicShare.prepare(id, value.version_id)
   } catch (reason) {
     if (!alive || run !== generation) return
-    if (reason instanceof ApiError && [403, 410].includes(reason.status)) await invalid(reason)
+    if (restoringSnapshot && reason instanceof ApiError && [404, 410].includes(reason.status)) {
+      restoringSnapshot = null
+      returnSource()
+      return
+    }
+    if (reason instanceof ApiError && [403, 404, 410].includes(reason.status)) await invalid(reason)
+    else if (reason instanceof ApiError && reason.code === 'study_note_unavailable') returnSource()
     else error.value = reason instanceof Error ? reason.message : '场景暂未获取'
   } finally {
     if (alive && run === generation) busy.value = false
@@ -770,8 +919,8 @@ const refreshState = async () => {
   if (runtimeMode.update()) return
   if (!card.value) return
   const version = card.value.version_id
-  const value = await session.request<PublishedScene>(
-    `/api/mini/v1/cards/${id}?version_id=${encodeURIComponent(version)}`
+  const value = await session.contentRequest<PublishedScene>(
+    `/api/mini/v1/cards/${id}?mark_started=false&version_id=${encodeURIComponent(version)}`
   )
   if (alive && card.value?.version_id === version) {
     card.value.state = value.state
@@ -796,10 +945,11 @@ const refreshState = async () => {
 const playFull = async () => {
   const run = ++audioClickGeneration,
     current = card.value
-  if (current?.access && !(await checkAccess())) return
+  if (note.locked.value || (current?.access && !(await checkAccess()))) return
   if (runtimeMode.update()) return
   if (
     !visible ||
+    note.locked.value ||
     !alive ||
     run !== audioClickGeneration ||
     card.value !== current ||
@@ -816,7 +966,7 @@ const playFull = async () => {
  */
 const playWord = (wordId: string) => {
   if (runtimeMode.update()) return
-  if (!card.value || stale.value) return
+  if (note.locked.value || !visible || !card.value || stale.value) return
   createAudio()
   const prepared = wordAudio
   if (prepared)
@@ -858,6 +1008,7 @@ const previewImage = async () => {
 }
 /** 收藏或取消只改变整卡关联，未知响应保留原状态 */
 const toggleFavorite = async () => {
+  if (!(await account.ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`))) return
   if (!favorite.value && card.value?.access && !(await checkAccess())) return
   if (runtimeMode.update()) return
   if (favoriteBusy.value || stale.value) return
@@ -866,8 +1017,8 @@ const toggleFavorite = async () => {
   try {
     if (favorite.value) {
       await operations.run(`favorite:${id}`, `/api/mini/v1/favorites/${id}`, 'DELETE')
-      if (card.value) card.value.state.favorite = false
-      if (summary.value) {
+      if (card.value?.state) card.value.state.favorite = false
+      if (summary.value?.state) {
         summary.value.state.favorite = false
         message.value = '已取消收藏'
       }
@@ -886,26 +1037,41 @@ const toggleFavorite = async () => {
 }
 /** 完成查实后只预查后续资格，最后一张立即显示本次范围结束 */
 const probeQueueEnd = async () => {
-  if (!queueSource.value || !card.value || !canAdvance.value || awaitingState.value || !alive)
+  if (
+    !queueId.value ||
+    !queueSource.value ||
+    !card.value ||
+    !canAdvance.value ||
+    awaitingState.value ||
+    !alive
+  )
     return
   try {
     if (!sourceQueue.matches(queueId.value, id))
       throw new Error('本次来源已失效，请返回列表重新进入')
     const candidate = await sourceQueue.next()
-    if (alive && !candidate) queueEnd.value = true
+    if (alive && !candidate) {
+      if (
+        queueSource.value === QueueSource.LEARNING ||
+        queueSource.value === QueueSource.LEARNING_NOTES
+      )
+        returnSource()
+      else queueEnd.value = true
+    }
   } catch (reason) {
     if (alive) nextError.value = reason instanceof Error ? reason.message : '下一张暂未确认，请重试'
   }
 }
 /** 主动确认完成或复习，服务器成功后再读取可信统计 */
 const complete = async () => {
+  if (!(await account.ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`))) return
   if (runtimeMode.update()) return
   if (card.value?.access && !(await checkAccess())) return
   if (accessError.value) return
   if (checkPendingCompletion()) return
   if (
     !card.value ||
-    card.value.state.today_completed ||
+    card.value.state?.today_completed ||
     completeBusy.value ||
     awaitingState.value ||
     stale.value
@@ -933,7 +1099,7 @@ const complete = async () => {
     } else await probeQueueEnd()
   } catch (reason) {
     await invalid(reason)
-    awaitingState.value = operations.pending(`complete:${id}`)
+    awaitingState.value = Boolean(session.userId()) && operations.pending(`complete:${id}`)
     actionError.value = reason instanceof Error ? reason.message : '完成结果暂未确认，请查询或重试'
   } finally {
     completeBusy.value = false
@@ -975,25 +1141,49 @@ const advance = async () => {
       throw reason
     }
     if (!canAdvance.value || !alive) return
-    if (!sourceQueue.matches(queueId.value, id))
-      throw new Error('本次来源已失效，请返回列表重新进入')
-    const nextId = await sourceQueue.next()
-    if (!alive) return
-    if (!nextId) {
-      queueEnd.value = true
+    if (!sourceQueue.matches(queueId.value, id)) {
+      returnSource()
       return
     }
+    let nextId: string | null = null,
+      nextScene: PublishedScene | null = null
+    while (alive) {
+      nextId = await sourceQueue.next()
+      if (!alive) return
+      if (!nextId) {
+        if (
+          queueSource.value === QueueSource.LEARNING ||
+          queueSource.value === QueueSource.LEARNING_NOTES
+        )
+          returnSource()
+        else queueEnd.value = true
+        return
+      }
+      try {
+        // notes 的最终正文准入与开始记录由服务端同事务校验，普通来源不增加PDF条件
+        nextScene = await session.request<PublishedScene>(
+          `/api/mini/v1/cards/${encodeURIComponent(nextId)}${queueSource.value === QueueSource.LEARNING_NOTES ? '?require_study_note=true' : ''}`
+        )
+        break
+      } catch (reason) {
+        if (
+          reason instanceof ApiError &&
+          ([403, 410].includes(reason.status) || reason.code === 'study_note_unavailable')
+        ) {
+          sourceQueue.skip(nextId)
+          continue
+        }
+        throw reason
+      }
+    }
+    if (!alive || !nextId || !nextScene) return
     await reading.save()
-    const nextScene = await session.request<PublishedScene>(
-      `/api/mini/v1/cards/${encodeURIComponent(nextId)}`
-    )
-    if (!alive) return
     const rollback = sourceQueue.commit(nextId)
     prepareSourceScene(queueId.value, nextScene)
     try {
       await new Promise<void>((resolve, reject) =>
         uni.redirectTo({
-          url: `${Routes.SCENE}?id=${encodeURIComponent(nextId)}&queue=${encodeURIComponent(queueId.value)}`,
+          url: `${Routes.SCENE}?id=${encodeURIComponent(nextId)}&queue=${encodeURIComponent(queueId.value)}${queueSource.value === QueueSource.LEARNING_NOTES ? '&source=learning_notes' : ''}`,
           success: () => resolve(),
           fail: () => reject(new Error('下一张暂未打开，请重试'))
         })
@@ -1024,6 +1214,9 @@ onLoad((query) => {
   }
   sharedEntry = target?.target === ShareTarget.SCENE
   id = String(query?.id || '')
+  noteIntent = query?.intent === 'study_note'
+  noteRecovery = noteIntent
+  if (query?.source === QueueSource.LEARNING_NOTES) queueSource.value = QueueSource.LEARNING_NOTES
   queueId.value = sharedEntry ? '' : String(query?.queue || '')
   if (sourceQueue.matches(queueId.value, id)) queueSource.value = sourceQueue.source()
   if (!/^[A-Za-z0-9-]{1,64}$/.test(id)) {
@@ -1034,10 +1227,54 @@ onLoad((query) => {
 })
 onShow(() => {
   visible = true
+  listenForUserScroll()
+  loginReturn.register(
+    Routes.SCENE,
+    () => ({
+      page: Routes.SCENE,
+      type: 'scene',
+      id,
+      tab: queueSource.value === QueueSource.LEARNING_NOTES ? 'notes' : 'all',
+      category: '',
+      scroll: scrollTop,
+      translation: dialogueView.value?.translated || false,
+      audioPosition: audioState.value.position,
+      playbackRate: audioState.value.pendingRate ?? audioState.value.rate,
+      version: card.value?.version_id || ''
+    }),
+    () => {
+      if (!visible || !alive) return
+      restoringSnapshot = loginReturn.take(Routes.SCENE, id)
+      noteRecovery = true
+      queueId.value = ''
+      queueSource.value = restoringSnapshot?.tab === 'notes' ? QueueSource.LEARNING_NOTES : null
+      void load()
+    }
+  )
+  const restored = loginReturn.take(Routes.SCENE, id)
+  if (restored) {
+    restoringSnapshot = restored
+    noteRecovery = true
+    queueId.value = ''
+    queueSource.value = restored.tab === 'notes' ? QueueSource.LEARNING_NOTES : null
+    sourceQueue.clear()
+    void load()
+    return
+  }
+  if (!card.value && id && !busy.value && !runtimeMode.update()) {
+    void load()
+    return
+  }
   if (runtimeMode.update()) {
     if (visible && !homeSummary.value && id) void publicShare.prepare(id)
     return
   }
+  if (note.show()) {
+    audio?.refreshFull()
+    if (card.value?.access) void checkAccess()
+    return
+  }
+  if (note.locked.value) return
   if (card.value) {
     if (card.value.access) {
       void checkAccess().then((allowed) => {
@@ -1083,11 +1320,18 @@ onPageScroll((event) => {
   scheduleDictionaryPrefetch()
 })
 onHide(() => {
+  stopListeningForUserScroll()
   visible = false
   audioClickGeneration++
   dictionaryMeasureRequested = null
   clearTimeout(dictionaryScrollTimer)
   dictionaryScrollTimer = undefined
+  if (note.hide()) {
+    pauseForNote()
+    share.hide()
+    publicShare.clear()
+    return
+  }
   dictionary.close()
   dictionaryAudio?.dispose()
   dictionaryAudio = null
@@ -1105,11 +1349,13 @@ onHide(() => {
   }
 })
 onUnload(() => {
+  stopListeningForUserScroll()
   share.hide()
   publicShare.clear()
   if (!runtimeMode.update()) void reading.save()
   reading.dispose()
   accessMonitor.dispose()
+  note.cancel()
   alive = false
   visible = false
   generation++
@@ -1128,6 +1374,7 @@ onUnload(() => {
           : '场景学习'
     "
     :back="!browseOnly"
+    :custom-back="Boolean(queueSource)"
     :footer="!browseOnly"
     public-summary
     :shareable="!browseOnly && Boolean(card) && !stale && publicShare.ready.value"
@@ -1135,6 +1382,7 @@ onUnload(() => {
       friends: publicShare.channels.friends.ready,
       timeline: publicShare.channels.timeline.ready
     }"
+    @back="returnSource"
     ><ShareSummary
       v-if="browseOnly"
       :summary="homeSummary ? null : publicShare.summary.value"
@@ -1145,7 +1393,12 @@ onUnload(() => {
       :error="homeSummary ? '' : publicShare.error.value || error"
       @retry="load"
     />
-    <template v-else
+    <view
+      v-else
+      class="scene-reading"
+      @touchmove="reading.startUserScroll"
+      @wheel="reading.startUserScroll"
+      @keydown="reading.startUserScroll"
       ><AppState :busy="busy && !card" :error="error" @retry="load" /><view
         v-if="accessError"
         class="notice error"
@@ -1183,15 +1436,39 @@ onUnload(() => {
                 aria-hidden="true"
               /><text>{{ favoriteBusy ? '处理中' : favorite ? '已收藏' : '收藏' }}</text>
             </button></view
-          ><view v-if="card.access" class="between"
-            ><text>{{ card.access.is_free ? '免费开放' : '授权有效' }}</text
-            ><text v-if="!card.access.can_lookup" class="access-hint"
-              >点词查询需学习授权</text
-            ></view
-          ><text v-if="card.content.title_en" class="scene-english">{{
-            card.content.title_en
-          }}</text
-          ><view class="scene-picture">
+          ><view class="scene-heading"
+            ><text v-if="card.content.title_en" class="scene-english">{{
+              card.content.title_en
+            }}</text></view
+          ><view
+            v-if="card.access || card.study_note?.state === 'ready'"
+            class="scene-state-line"
+            :class="{ 'has-note': card.study_note?.state === 'ready' }"
+            ><text v-if="card.access">{{
+              card.access.can_lookup ? '授权有效' : card.access.is_free ? '免费开放' : '授权有效'
+            }}</text
+            ><button
+              v-if="card.study_note?.state === 'ready'"
+              class="note-entry"
+              :disabled="note.busy.value || note.locked.value"
+              @click="openNote"
+            >
+              <image
+                src="@/sub-packages/scenes/static/study-note.svg"
+                mode="aspectFit"
+              />查看学习笔记
+            </button></view
+          >
+          <view v-if="note.busy.value" class="note-loading"
+            ><AppLoading compact label="正在打开学习笔记"
+          /></view>
+          <view v-if="note.error.value" class="note-error" role="alert"
+            ><view
+              ><text class="note-error-title">学习笔记暂时无法打开</text
+              ><text>{{ note.error.value }}</text></view
+            ><button @click="openNote">重试</button></view
+          >
+          <view class="scene-picture">
             <view class="scene-thumbnail" @click="previewImage">
               <image
                 v-for="image in images"
@@ -1201,7 +1478,7 @@ onUnload(() => {
                 :webp="true"
                 :alt="card.content.name"
                 @load="imageLoaded(image.generation)"
-                @error="imageFailed(image.generation)"
+                @error="imageFailed(image.generation, $event)"
               />
               <text v-if="!card.thumbnail_id && !card.content.image_id" class="image-retry"
                 >暂无场景图</text
@@ -1224,6 +1501,8 @@ onUnload(() => {
             @toggle="playFull"
             @seek="seekFull"
             @rate="setRate" /></view
+        ><view v-if="card.access && !card.access.can_lookup" class="lookup-hint"
+          >正文点词查询需学习授权</view
         ><SceneDialogue
           ref="dialogueView"
           :key="`${id}:${card.version_id}`"
@@ -1293,7 +1572,7 @@ onUnload(() => {
         v-if="queueEnd"
         :source="queueSource"
         :free-complete="sourceQueue.endReason() === 'free_complete'"
-        @learn="learn"
+        @learn="returnSource"
         @stay="queueEnd = false" /><ShareSheet
         v-if="share.open.value"
         scene
@@ -1303,9 +1582,12 @@ onUnload(() => {
         :summary-busy="publicShare.summaryBusy.value"
         :error="publicShare.error.value"
         @retry="publicShare.retry"
-        @close="share.close" /></template
+        @close="share.close" /></view
     ><template #footer
-      ><view v-if="card && !stale && !accessError" class="safe-footer"
+      ><view
+        v-if="card && !stale && !accessError"
+        class="safe-footer"
+        @touchmove="reading.startUserScroll"
         ><button
           class="primary"
           :disabled="completeBusy || nextBusy || awaitingState || busy"
@@ -1397,12 +1679,102 @@ onUnload(() => {
   }
 }
 
+.scene-heading {
+  margin-bottom: 23.077rpx;
+}
+
+.lookup-hint {
+  margin: 26px 0 18px;
+  color: #586c5b;
+  font-size: 26.923rpx;
+  line-height: 1.9;
+}
+
+.scene-state-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+  margin-bottom: 20px;
+  color: #41664d;
+  font-size: 25rpx;
+
+  &.has-note {
+    min-height: 44px;
+  }
+
+  .note-entry {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    margin: 0 0 0 auto;
+    padding: 0 2px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #41664d;
+    font-size: 13px;
+    font-weight: 500;
+
+    &::after {
+      border: 0;
+    }
+
+    image {
+      width: 15px;
+      height: 17px;
+    }
+  }
+}
+
+.note-loading {
+  margin: -20rpx 0 24rpx;
+}
+
+.note-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -20rpx 0 34rpx;
+  padding: 12px 14px;
+  border: 1px solid #efc5ad;
+  border-radius: 8px;
+  background: #faeddf;
+  color: #ad4f32;
+  font-size: 12px;
+
+  text {
+    display: block;
+  }
+
+  .note-error-title {
+    color: #2b4438;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  button {
+    flex-shrink: 0;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #ad4f32;
+    font-size: 12px;
+  }
+}
+
 .scene-english {
   display: block;
   font-family: var(--app-serif-font, Fraunces, Georgia, serif);
-  font-size: 42.308rpx;
-  line-height: 1.42;
-  margin-bottom: 53.846rpx;
+  font-size: 51.923rpx;
+  line-height: 1.3;
+  min-width: 0;
+  max-width: 100%;
   overflow-wrap: anywhere;
 }
 

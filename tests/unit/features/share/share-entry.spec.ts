@@ -40,7 +40,12 @@ vi.mock('@dcloudio/uni-app', () => ({
   }
 }))
 vi.mock('@/services/api', () => ({
-  session: { request: ports.request, userId: () => 'owner' },
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => 'owner',
+    userId: () => 'owner'
+  },
   operations: { pending: () => false },
   onSessionExpired: () => () => undefined
 }))
@@ -159,7 +164,7 @@ it('shows only anonymous summary in browseOnly with a valid cached account and n
 it('rechecks the recipient identity and ignores a forged sender queue in full mode', async () => {
   const page = open()
   await flushPromises()
-  expect(ports.ensure).toHaveBeenCalledWith('/sub-packages/scenes/detail?target=scene&id=card-1')
+  expect(ports.ensure).not.toHaveBeenCalled()
   expect(ports.restore).toHaveBeenCalledOnce()
   expect(page.text()).toContain('前往学习页')
   expect(page.text()).not.toContain('复习下一张')
@@ -213,7 +218,7 @@ it('revalidates identity and the current publication before leaving a public sum
   )
   runtimeMode.update({ apiCategory: 'default' })
   await flushPromises()
-  expect(ports.ensure).toHaveBeenCalledWith('/sub-packages/scenes/detail?target=scene&id=card-1')
+  expect(ports.ensure).not.toHaveBeenCalled()
   expect(ports.restore).toHaveBeenCalledOnce()
   expect(page.text()).not.toContain('本人正文')
   expect(ports.audio).not.toHaveBeenCalled()
@@ -229,13 +234,13 @@ it('revalidates identity and the current publication before leaving a public sum
   page.unmount()
 })
 
-it('retains the safe target without reading private body or preparing audio when voluntary login is required', async () => {
+it('opens free content without requiring voluntary login in full mode', async () => {
   ports.ensure.mockResolvedValueOnce(false)
   const page = open()
   await flushPromises()
-  expect(ports.ensure).toHaveBeenCalledWith('/sub-packages/scenes/detail?target=scene&id=card-1')
-  expect(ports.request).not.toHaveBeenCalled()
-  expect(ports.audio).not.toHaveBeenCalled()
+  expect(ports.ensure).not.toHaveBeenCalled()
+  expect(ports.request).toHaveBeenCalled()
+  expect(page.text()).toContain('本人正文')
   page.unmount()
 })
 

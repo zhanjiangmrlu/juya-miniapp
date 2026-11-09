@@ -1,8 +1,8 @@
 import { onSessionExpired, operations, session } from '@/services/api'
 import { ApiError } from '@/services/errors'
 import { createLearningQueue } from '@/services/learning-queue'
+import { QueueSource } from '@/shared/enums/learning'
 
-import type { QueueSource } from '@/shared/enums/learning'
 import type { LearningQueue, PublishedScene } from '@/shared/types/learning'
 
 export const sourceQueue = createLearningQueue(session)
@@ -46,6 +46,14 @@ let starting = false
  * @param day 某日打卡来源日期
  */
 export const openSourceScene = async (source: QueueSource, cardId: string, day?: string) => {
+  if (!session.userId()) {
+    sourceQueue.clear()
+    discardPreparedScene()
+    uni.navigateTo({
+      url: `/sub-packages/scenes/detail?id=${encodeURIComponent(cardId)}${source === QueueSource.LEARNING_NOTES ? '&source=learning_notes' : ''}`
+    })
+    return
+  }
   if (starting) return
   starting = true
   try {
@@ -68,7 +76,7 @@ export const openSourceScene = async (source: QueueSource, cardId: string, day?:
     try {
       await new Promise<void>((resolve, reject) =>
         uni.navigateTo({
-          url: `/sub-packages/scenes/detail?id=${encodeURIComponent(cardId)}&queue=${encodeURIComponent(queue.id)}`,
+          url: `/sub-packages/scenes/detail?id=${encodeURIComponent(cardId)}&queue=${encodeURIComponent(queue.id)}${source === QueueSource.LEARNING_NOTES ? '&source=learning_notes' : ''}`,
           success: () => resolve(),
           fail: () => reject(new Error('场景暂未打开，请重试'))
         })

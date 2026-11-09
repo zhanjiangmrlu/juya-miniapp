@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 const ports = vi.hoisted(() => ({ request: vi.fn(), stored: new Map<string, unknown>() }))
 vi.mock('@/services/api', async () => {
   const { createOperationService } = await import('@/services/operation-service')
-  const session = { request: ports.request, userId: () => 'owner' }
+  const session = { request: ports.request, identity: () => 'owner', userId: () => 'owner' }
   return {
     session,
     operations: createOperationService({

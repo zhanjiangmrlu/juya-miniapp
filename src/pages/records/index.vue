@@ -3,6 +3,7 @@ import { onShareAppMessage, onShareTimeline, onShow, onUnload } from '@dcloudio/
 import { computed, ref } from 'vue'
 
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
+import AppGuestState from '@/components/app-guest-state/app-guest-state.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { usePageShareEntry } from '@/composables/use-page-share-entry'
@@ -11,7 +12,7 @@ import SceneCard from '@/features/learning/components/scene-card.vue'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import ListeningArticleCard from '@/features/listening/components/listening-article-card.vue'
 import ListeningCollection from '@/features/listening/components/listening-collection.vue'
-import { session } from '@/services/api'
+import { onSessionExpired, session } from '@/services/api'
 import { dateText } from '@/services/display'
 import { pageShare } from '@/services/page-share'
 import { RECORDS_TAB_STORAGE_KEY } from '@/shared/constants/learning'
@@ -84,7 +85,8 @@ const loadStats = async () => {
 }
 /** 刷新当前记录标签，失败保留已读取页 */
 const load = async () => {
-  if (await account.ensure(Routes.RECORDS)) {
+  await account.restore()
+  if (session.userId()) {
     await Promise.all([
       loadStats(),
       tab.value === RecordsTab.LISTENING ? Promise.resolve() : current.value.refresh()
@@ -119,6 +121,7 @@ const expand = async (date: string) => {
  * @param value 目标标签
  */
 const select = (value: RecordsTab) => {
+  if (!session.userId()) return
   tab.value = value
   if (value === RecordsTab.LISTENING) listeningVisited.value = true
   uni.setStorageSync(RECORDS_TAB_STORAGE_KEY, value)
@@ -147,7 +150,18 @@ const pullRefresh = async () => {
     refreshing.value = false
   }
 }
+const unsubscribe = onSessionExpired(() => {
+  stats.value = null
+  day.value = null
+  expanded.value = ''
+  statsError.value = ''
+  dayError.value = ''
+  listeningVisited.value = false
+  scenes.reset()
+  checkins.reset()
+})
 onUnload(() => {
+  unsubscribe()
   scenes.dispose()
   checkins.dispose()
 })
@@ -157,7 +171,12 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage :background-kind="PageBackgroundKind.RECORDS" title="学习记录" fixed-viewport
-    ><view class="records-header"
+    ><AppGuestState
+      v-if="!account.profile && !session.userId()"
+      title="留住每一次进步"
+      description="登录后查看已学内容和打卡记录。"
+      :target="Routes.RECORDS"
+      icon="/static/design/records.svg" /><view v-else class="records-header"
       ><view v-if="stats" class="record-summary"
         ><view class="statistics">
           <button class="metric" @click="select(RecordsTab.LEARNED)">
@@ -207,7 +226,7 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
       ></view
     ><scroll-view
       v-for="entry in recordLists"
-      v-show="tab === entry.tab"
+      v-show="Boolean(account.profile || session.userId()) && tab === entry.tab"
       :key="entry.tab"
       class="record-scroll"
       scroll-y
@@ -220,7 +239,7 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
       @refresherrefresh="pullRefresh"
     >
       <ListeningCollection
-        v-if="entry.tab === RecordsTab.LISTENING && listeningVisited"
+        v-if="session.userId() && entry.tab === RecordsTab.LISTENING && listeningVisited"
         ref="listeningCollections"
         mode="records" /><view v-if="entry.list"
         ><AppState

@@ -6,7 +6,7 @@ vi.mock('@/features/listening/use-listening-thumbnail', () => ({
   useListeningThumbnail: () => ({ thumbnail: '', imageError: false, retryThumbnail: vi.fn() })
 }))
 vi.mock('@/services/api', () => ({
-  session: { userId: () => 'owner' },
+  session: { identity: () => 'owner', userId: () => 'owner' },
   onSessionExpired: () => () => undefined
 }))
 import ListeningArticleCard from '@/features/listening/components/listening-article-card.vue'

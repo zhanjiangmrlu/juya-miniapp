@@ -9,6 +9,7 @@ import SceneAudioPlayer from '@/features/learning/components/scene-audio-player.
 import SceneDictionary from '@/features/learning/components/scene-dictionary.vue'
 import { listeningSourceSentence } from '@/features/listening/listening-presenter'
 import { useListeningThumbnail } from '@/features/listening/use-listening-thumbnail'
+import { openLogin } from '@/services/navigation'
 import { pageShare } from '@/services/page-share'
 import { Routes } from '@/shared/constants/navigation'
 import { PageBackgroundKind } from '@/shared/enums/ui'
@@ -26,6 +27,8 @@ onPageScroll((event) => {
 })
 const {
   bodyRef,
+  startUserScroll,
+  toggleTranslation,
   leave,
   advance,
   retryAction,
@@ -124,6 +127,9 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
     back
     custom-back
     :fallback="Routes.LISTENING"
+    @touchmove="startUserScroll"
+    @wheel="startUserScroll"
+    @keydown="startUserScroll"
     @back="leave"
     ><AppState
       :busy="busy && !article"
@@ -137,8 +143,24 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
         ><view class="article-tags"
           ><text v-for="tag in summary.tags" :key="tag" class="article-tag">{{ tag }}</text></view
         ><text class="article-counts">{{ summary.word_count }}词</text></view
+      ><view
+        v-if="!summary.state && summary.available && !summary.access.can_learn"
+        class="guest-locked"
+      >
+        <image src="/static/listening/r17-lock.svg" mode="aspectFit" aria-hidden="true" />
+        <text class="guest-locked-title">此内容需学习授权</text>
+        <text class="guest-locked-copy"
+          >登录后可查看当前账号的学习授权状态。免费内容可继续体验。</text
+        >
+        <button
+          class="primary"
+          @click="openLogin(`${Routes.ARTICLE}?id=${encodeURIComponent(summary.id)}`)"
+        >
+          登录查看授权
+        </button>
+        <button class="secondary" @click="topic">返回继续浏览</button> </view
       ><AppState
-        v-if="!summary.available || !summary.access.can_learn"
+        v-else-if="!summary.available || !summary.access.can_learn"
         empty
         prominent
         icon="/static/listening/r17-lock.svg"
@@ -156,28 +178,30 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
         centered-error
         title="内容暂时未加载出来"
         @retry="load"
-      /><button v-if="summary.state.favorite" class="text-button" @click="favorite">
+      /><button v-if="summary.state?.favorite" class="text-button" @click="favorite">
         取消收藏
       </button></view
     ><template v-if="article"
+      ><text v-if="!article.state" class="guest-reading-note"
+        >当前为游客体验，登录后可保存学习记录。</text
       ><view class="reading-actions"
         ><button
           :disabled="actionBusy"
           class="heading-favorite"
-          :aria-label="article.state.favorite ? '取消收藏本篇' : '收藏本篇'"
-          :aria-pressed="article.state.favorite"
+          :aria-label="article.state?.favorite ? '取消收藏本篇' : '收藏本篇'"
+          :aria-pressed="article.state?.favorite"
           @click="favorite"
         >
           <image
             class="favorite-icon"
-            :class="{ active: article.state.favorite }"
+            :class="{ active: article.state?.favorite }"
             :src="
-              article.state.favorite
+              article.state?.favorite
                 ? '/static/listening/r17-favorite-filled.svg'
                 : '/static/listening/r17-article-heart.svg'
             "
             mode="aspectFit"
-          /><text>{{ article.state.favorite ? '已收藏' : '收藏' }}</text>
+          /><text>{{ article.state?.favorite ? '已收藏' : '收藏' }}</text>
         </button></view
       ><view class="article-heading"
         ><view class="titles"
@@ -229,11 +253,7 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
         >
           关闭
         </button></view
-      ><button
-        class="translation-toggle"
-        :aria-expanded="translation"
-        @click="translation = !translation"
-      >
+      ><button class="translation-toggle" :aria-expanded="translation" @click="toggleTranslation">
         {{ translation ? '收起全文译文' : '展开全文中文译文' }}
         <image
           class="translation-chevron"
@@ -266,12 +286,18 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
       ><view class="article-actions"
         ><button :disabled="actionBusy" class="primary" @click="complete">
           {{
-            completed || article.state.today_completed ? '已完成 · 再次复习' : '完成本篇学习'
+            !article.state
+              ? '完成本次学习'
+              : completed || article.state.today_completed
+                ? '已完成 · 再次复习'
+                : '完成本篇学习'
           }}</button
         ><button v-if="nextArticle" class="next-action" :disabled="actionBusy" @click="advance">
           继续学习下一篇
         </button></view
-      ><text class="completion-help">完成后计入听读记录，并更新当日打卡</text
+      ><text class="completion-help">{{
+        article.state ? '完成后计入听读记录，并更新当日打卡' : '登录后可保存学习记录和打卡'
+      }}</text
       ><ListeningCompletion
         v-if="completed"
         :next="nextArticle"
@@ -314,6 +340,48 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
   </AppPage>
 </template>
 <style scoped lang="scss">
+.guest-locked {
+  margin-top: 53.846rpx;
+  text-align: center;
+
+  image {
+    width: 57.692rpx;
+    height: 57.692rpx;
+    margin: 0 auto 34.615rpx;
+  }
+
+  .guest-locked-title,
+  .guest-locked-copy {
+    display: block;
+  }
+
+  .guest-locked-title {
+    font-size: 38.462rpx;
+    font-weight: 700;
+    line-height: 57.692rpx;
+  }
+
+  .guest-locked-copy {
+    margin: 23.077rpx 0 38.462rpx;
+    color: #586c5b;
+    font-size: 25rpx;
+    line-height: 47.5rpx;
+  }
+
+  button {
+    width: 100%;
+    min-height: 84.615rpx;
+    border-radius: 17.308rpx;
+    font-size: 25rpx;
+  }
+
+  .secondary {
+    margin-top: 23.077rpx;
+    border: 1px solid #dfe5d8;
+    background: #fffcf5;
+  }
+}
+
 .article-heading {
   display: flex;
   gap: 22rpx;

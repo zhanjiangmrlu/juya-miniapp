@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest'
 
-import { readingPositionAt, restoreReadingOffset } from '@/features/learning/reading-position'
-import { createReadingPositionWriter } from '@/services/reading-position'
+import { readingPositionAt, restoreReadingOffset } from '@/sub-packages/scenes/reading-position'
+import { createReadingPositionWriter } from '@/sub-packages/scenes/reading-position-writer'
 
 const blocks = [
   { anchor: 'top', top: 100, height: 400 },

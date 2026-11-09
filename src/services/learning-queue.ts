@@ -81,6 +81,16 @@ export const createLearningQueue = (ports: LearningQueuePorts) => {
     pending = null
     return null
   }
+  /** 消费被服务端确认失效的候选索引，保持当前可见卡片不变
+   * @param cardId 队列查到但在原子准入时已失效的稳定卡片编号
+   */
+  const skip = (cardId: string) => {
+    if (!pending || pending.id !== cardId || owner !== ports.userId())
+      throw new Error('来源已变化，请重新进入列表')
+    offset = pending.nextOffset
+    pending = null
+    visited.add(cardId)
+  }
   /** 下一张正文读取成功后才提交游标，原生跳转失败可撤回
    * @param cardId 刚确认可读的下一张稳定编号
    */
@@ -104,5 +114,5 @@ export const createLearningQueue = (ports: LearningQueuePorts) => {
   }
   /** 读取原始来源用于完成按钮和结束说明 */
   const source = () => queue?.source || null
-  return { attach, matches, next, commit, clear, source, endReason: () => endReason }
+  return { attach, matches, next, skip, commit, clear, source, endReason: () => endReason }
 }

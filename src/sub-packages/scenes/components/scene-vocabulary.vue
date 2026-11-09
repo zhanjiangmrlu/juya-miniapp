@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import AppLoading from '@/components/app-loading/app-loading.vue'
 import { useReadingAnchors } from '@/composables/use-reading-anchors'
-import SceneSectionHeading from '@/features/learning/components/scene-section-heading.vue'
 import { AudioStatus } from '@/shared/enums/audio'
+import SceneSectionHeading from '@/sub-packages/scenes/components/scene-section-heading.vue'
 
 import type { SceneVocabularyProps } from '@/shared/types/learning-components'
 const { measureReading } = useReadingAnchors()

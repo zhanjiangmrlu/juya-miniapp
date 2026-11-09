@@ -5,8 +5,9 @@ import { resetLearningAudioSession } from '@/features/learning/learning-audio-se
 import { onSessionExpired, operations, session } from '@/services/api'
 import { ApiError } from '@/services/errors'
 import { clearFeedbackDrafts } from '@/services/feedback-service'
+import { promptLogin } from '@/services/login-prompt'
+import { loginReturn } from '@/services/login-return'
 import { clearMediaAddresses } from '@/services/media-service'
-import { openLogin } from '@/services/navigation'
 import { resourceURL } from '@/services/platform'
 import { runtimeMode } from '@/services/runtime-mode'
 import { Routes } from '@/shared/constants/navigation'
@@ -19,11 +20,12 @@ export const useAccountStore = defineStore('learner-account', () => {
     statistics = ref<components['schemas']['Statistics'] | null>(null),
     avatarURL = ref('')
   let restoring: Promise<AccountProfile | null> | null = null,
-    target: string = Routes.HOME,
     generation = 0
   /** 清除个人界面和含输入正文的内存，保留服务器成绩 */
   const clear = () => {
     generation++
+    restoring = null
+    clearFeedbackDrafts()
     resetLearningAudioSession()
     clearMediaAddresses()
     profile.value = null
@@ -33,33 +35,36 @@ export const useAccountStore = defineStore('learner-account', () => {
   }
   onSessionExpired(() => {
     clear()
-    openLogin(target)
   })
   /** 恢复已有业务会话并确认真实账号，不自动调用微信登录 */
   const restore = async () => {
     if (restoring) return restoring
     const version = generation
-    restoring = session
+    const job = session
       .restore()
+      .catch((reason) => {
+        if (reason instanceof ApiError && reason.status === 401) return null
+        throw reason
+      })
       .then((value) => {
         if (version === generation) profile.value = value
         return value
       })
       .finally(() => {
-        restoring = null
+        if (restoring === job) restoring = null
       })
-    return restoring
+    restoring = job
+    return job
   }
   /** 页面显示前验证本人身份，空联系方式不影响访问
    * @param returnTarget 会话失效后的安全返回路径
    */
   const ensure = async (returnTarget: string) => {
     if (runtimeMode.update()) return false
-    target = returnTarget
     try {
       const value = profile.value || (await restore())
       if (!value) {
-        openLogin(returnTarget)
+        promptLogin(returnTarget)
         return false
       }
       return true
@@ -72,7 +77,9 @@ export const useAccountStore = defineStore('learner-account', () => {
    * @param agreed 用户当前明确同意状态
    */
   const login = async (agreed: boolean) => {
+    const version = ++generation
     const result = await session.login(agreed)
+    if (version !== generation) throw new ApiError('session_changed', '登录身份已变化')
     clearMediaAddresses()
     resetLearningAudioSession()
     profile.value = result.user
@@ -84,7 +91,7 @@ export const useAccountStore = defineStore('learner-account', () => {
     const value = await session.request<components['schemas']['Statistics']>(
       '/api/mini/v1/me/statistics'
     )
-    if (owner === session.userId()) statistics.value = value
+    if (owner && owner === session.userId()) statistics.value = value
     return value
   }
   /** 读取当前本人头像受控地址，不把长期URL作为身份或缓存 */
@@ -104,7 +111,8 @@ export const useAccountStore = defineStore('learner-account', () => {
     await session.logout()
     clearFeedbackDrafts()
     clear()
-    openLogin(Routes.HOME)
+    loginReturn.cancel()
+    uni.switchTab({ url: Routes.HOME })
   }
   /** 更新一次已确认的同账号资料
    * @param value 已由服务器提交的本人资料

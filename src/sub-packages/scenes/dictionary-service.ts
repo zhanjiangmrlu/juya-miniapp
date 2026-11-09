@@ -1,12 +1,15 @@
-import { dictionaryQuery, dictionarySpeechKey } from '@/features/learning/dictionary-model'
 import { session } from '@/services/api'
 import { ApiError } from '@/services/errors'
 import { operationKey, resourceURL } from '@/services/platform'
 import { loadPronunciation } from '@/services/pronunciation-service'
 import { prepareWordAudioFile } from '@/services/word-audio-file'
-import { createWordAudioPreparation, waitForWordAudio } from '@/services/word-audio-preparation'
 import { DICTIONARY_PREFETCH_CONCURRENCY } from '@/shared/constants/dictionary'
 import { PRONUNCIATION_MAX_CHECKS } from '@/shared/constants/media'
+import { dictionaryQuery, dictionarySpeechKey } from '@/sub-packages/scenes/dictionary-model'
+import {
+  createWordAudioPreparation,
+  waitForWordAudio
+} from '@/sub-packages/scenes/word-audio-preparation'
 
 import type {
   DictionarySelection,

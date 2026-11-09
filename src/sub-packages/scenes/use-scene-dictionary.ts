@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-import { dictionaryQuery, dictionarySpeechKey } from '@/features/learning/dictionary-model'
+import { dictionaryQuery, dictionarySpeechKey } from '@/sub-packages/scenes/dictionary-model'
 
 import type {
   DictionaryPorts,

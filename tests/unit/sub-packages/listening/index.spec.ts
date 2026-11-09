@@ -23,10 +23,17 @@ vi.mock('@dcloudio/uni-app', () => ({
   }
 }))
 vi.mock('@/services/api', () => ({
-  session: { userId: () => 'owner', request: ports.request },
+  session: {
+    identity: () => 'owner',
+    userId: () => 'owner',
+    contentRequest: ports.request,
+    request: ports.request
+  },
   onSessionExpired: () => () => undefined
 }))
-vi.mock('@/stores/account-store', () => ({ useAccountStore: () => ({ ensure: async () => true }) }))
+vi.mock('@/stores/account-store', () => ({
+  useAccountStore: () => ({ restore: async () => null, ensure: async () => true })
+}))
 vi.mock('@/features/listening/listening-service', () => ({
   getListeningHome: ports.home,
   openListeningArticle: vi.fn()

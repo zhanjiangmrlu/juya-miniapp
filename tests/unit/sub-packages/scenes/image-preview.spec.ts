@@ -7,6 +7,8 @@ const ports = vi.hoisted(() => ({
   load: undefined as undefined | ((query: { id: string }) => void),
   show: undefined as undefined | (() => void),
   unload: undefined as undefined | (() => void),
+  owner: 'learner' as string | null,
+  privateRequest: vi.fn(),
   media: vi.fn(),
   request: vi.fn(),
   back: vi.fn()
@@ -19,18 +21,30 @@ vi.mock('@dcloudio/uni-app', () => ({
   onLoad: (callback: typeof ports.load) => (ports.load = callback),
   onUnload: (callback: typeof ports.unload) => (ports.unload = callback)
 }))
-vi.mock('@/services/api', () => ({ session: { request: ports.request } }))
+vi.mock('@/services/api', () => ({
+  session: {
+    contentRequest: ports.request,
+    request: ports.privateRequest,
+    userId: () => ports.owner,
+    identity: () => ports.owner || 'guest:0'
+  }
+}))
 vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
 vi.mock('@/services/navigation', () => ({ backTo: ports.back }))
 
 import { ApiError } from '@/services/errors'
-import { registerImagePreview } from '@/services/image-preview'
 import { runtimeMode } from '@/services/runtime-mode'
 import ImagePreview from '@/sub-packages/scenes/image-preview.vue'
+import { registerImagePreview } from '@/sub-packages/scenes/image-preview-service'
 
 beforeEach(() => {
   runtimeMode.update({ apiCategory: 'default' })
   vi.clearAllMocks()
+  ports.owner = 'learner'
+  ports.privateRequest.mockImplementation((...args) => {
+    if (!ports.owner) return Promise.reject(new ApiError('unauthenticated', '请先登录', 401))
+    return ports.request(...args)
+  })
   ports.media.mockResolvedValue('/fresh-original')
   ports.request.mockResolvedValue({})
   vi.stubGlobal('uni', {
@@ -248,3 +262,71 @@ it('shares the normal onLoad/onShow permission check and loads the original afte
   expect(page.get('.zoom-image image').attributes('src')).toBe('/verified-original')
   page.unmount()
 })
+
+const guestAccess = {
+  can_learn: true,
+  can_lookup: false,
+  is_free: true,
+  reason: null,
+  version: 'access-1',
+  server_now: '2026-11-07T00:00:00Z',
+  expires_at: null
+}
+const guestSummary = {
+  id: 'scene-1',
+  name: '免费场景',
+  thumbnail_id: 'thumb',
+  available: true,
+  version_id: 'version-1',
+  unavailable_reason: null,
+  state: null,
+  access: guestAccess
+}
+
+it('opens a guest original with nonempty access through current summary and readonly pixel recheck only', async () => {
+  ports.owner = null
+  ports.request.mockResolvedValue(guestSummary)
+  const source = vi.fn(async () => '/guest-original')
+  const { page } = openPreview(source, guestAccess)
+  ports.show?.()
+  await flushPromises()
+  expect(page.get('.zoom-image image').attributes('src')).toBe('/guest-original')
+  expect(ports.privateRequest).not.toHaveBeenCalled()
+  expect(ports.request).toHaveBeenCalledWith('/api/mini/v1/cards/scene-1/summary')
+  await page.get('.zoom-image image').trigger('error')
+  await flushPromises()
+  expect(ports.privateRequest).not.toHaveBeenCalled()
+  expect(ports.request).toHaveBeenLastCalledWith(
+    '/api/mini/v1/cards/scene-1?mark_started=false&version_id=version-1'
+  )
+  page.unmount()
+})
+it.each(['revoked', 'version', 'offline'] as const)(
+  'closes a visible guest original after live %s without a private request',
+  async (change) => {
+    ports.owner = null
+    ports.request.mockResolvedValueOnce(guestSummary)
+    const { page, onInvalid } = openPreview(async () => '/guest-original', guestAccess)
+    await flushPromises()
+    expect(page.find('.zoom-image image').exists()).toBe(true)
+    if (change === 'offline')
+      ports.request.mockRejectedValueOnce(new ApiError('card_offline', '已下线', 410))
+    else
+      ports.request.mockResolvedValueOnce(
+        change === 'version'
+          ? { ...guestSummary, version_id: 'version-2' }
+          : { ...guestSummary, access: { ...guestAccess, can_learn: false } }
+      )
+    ports.show?.()
+    await flushPromises()
+    expect(page.find('.zoom-image image').exists()).toBe(false)
+    expect(onInvalid).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: change === 'version' ? 409 : change === 'offline' ? 410 : 403
+      })
+    )
+    expect(ports.back).toHaveBeenCalledWith('/pages/learning/index')
+    expect(ports.privateRequest).not.toHaveBeenCalled()
+    page.unmount()
+  }
+)

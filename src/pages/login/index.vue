@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
 import AppPage from '@/components/app-page/app-page.vue'
 import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vue'
 import { usePageShareEntry } from '@/composables/use-page-share-entry'
+import { session } from '@/services/api'
+import { loginReturn } from '@/services/login-return'
 import { openTarget, safeTarget } from '@/services/navigation'
 import { pageShare } from '@/services/page-share'
 import { LOGIN_BOTANICAL_IMAGE_URL } from '@/shared/constants/brand'
@@ -20,7 +22,9 @@ const account = useAccountStore(),
   error = ref(''),
   privacy = ref(false),
   botanicalVisible = ref(Boolean(LOGIN_BOTANICAL_IMAGE_URL))
-let target: string = Routes.HOME
+let target: string = Routes.HOME,
+  alive = true,
+  settled = false
 /** 用户主动同意后登录，失败不改变页面身份 */
 const login = async () => {
   if (busy.value) return
@@ -32,8 +36,16 @@ const login = async () => {
   error.value = ''
   try {
     await account.login(agreed.value)
-    openTarget(target)
+    if (!alive) return
+    settled = true
+    loginReturn.succeed()
+    const previous = getCurrentPages().at(-2)?.route
+    if (target === Routes.PROFILE && previous?.startsWith('sub-packages/account/'))
+      openTarget(Routes.PROFILE)
+    else if (getCurrentPages().length > 1) uni.navigateBack()
+    else openTarget(target)
   } catch (reason) {
+    if (!alive) return
     error.value = target.includes('target=')
       ? '登录未成功，分享目标已保留，请重试。'
       : reason instanceof Error
@@ -54,11 +66,27 @@ onLoad((query) => {
   if (query?.return) {
     try {
       const requested = safeTarget(decodeURIComponent(String(query.return)))
-      // 普通登录统一进入双模块首页，明确的分享目标仍恢复到对应内容
-      target = requested.includes('target=') ? requested : Routes.HOME
+      target = requested
     } catch {
       target = Routes.HOME
     }
+  }
+})
+
+/** 取消主动登录后返回原位，单页入口回游客首页 */
+const browse = () => {
+  settled = true
+  loginReturn.resumeGuest()
+  if (getCurrentPages().length > 1) uni.navigateBack()
+  else openTarget(Routes.HOME)
+}
+
+/** 原生返回取消在途微信交换，迟到响应不得重新进入页面 */
+onUnload(() => {
+  alive = false
+  if (!settled) {
+    loginReturn.resumeGuest()
+    session.invalidate()
   }
 })
 
@@ -120,9 +148,10 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
           {{ busy ? '登录中…' : '同意并登录' }}
         </button>
       </view>
-      <text class="login-bottom">{{
-        '主动登录后创建或使用你的账号\n学习、收藏与打卡保存在同一账号'
-      }}</text>
+      <button class="text-button browse-button" :disabled="busy" @click="browse">
+        先逛一逛，继续免费体验
+      </button>
+      <text class="login-bottom">{{ '学习、收藏与打卡保存在同一账号' }}</text>
     </view>
     <AppPrivacySheet v-if="privacy" @close="privacy = false" />
   </AppPage>

@@ -4,7 +4,14 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 const ports = vi.hoisted(() => ({
   load: undefined as undefined | ((query: { id: string }) => void),
+  show: undefined as undefined | (() => void),
+  hide: undefined as undefined | (() => void),
+  pageScroll: undefined as undefined | ((event: { scrollTop: number }) => void),
+  scroll: 0,
+  run: vi.fn(),
   unload: undefined as undefined | (() => void),
+  owner: 'learner' as string | null,
+  ensure: vi.fn(async () => true),
   media: vi.fn(),
   request: vi.fn()
 }))
@@ -12,29 +19,53 @@ vi.mock('@dcloudio/uni-app', () => ({
   onShareAppMessage: vi.fn(),
   onShareTimeline: vi.fn(),
   onLoad: (callback: typeof ports.load) => (ports.load = callback),
-  onShow: vi.fn(),
-  onHide: vi.fn(),
-  onPageScroll: vi.fn(),
+  onShow: (cb: () => void) => {
+    ports.show = cb
+  },
+  onHide: (cb: () => void) => {
+    ports.hide = cb
+  },
+  onPageScroll: (cb: (event: { scrollTop: number }) => void) => {
+    ports.pageScroll = cb
+  },
   onUnload: (callback: typeof ports.unload) => (ports.unload = callback)
 }))
 vi.mock('@/services/api', () => ({
-  session: { request: ports.request, userId: () => 'learner' },
-  operations: { pending: () => false },
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => ports.owner || 'guest:0',
+    userId: () => ports.owner
+  },
+  operations: {
+    run: ports.run,
+    pending: () => {
+      if (!ports.owner) throw new Error('请先登录')
+      return false
+    }
+  },
   onSessionExpired: () => () => undefined
 }))
 vi.mock('@/services/audio-port', () => ({ createAudioPort: () => ({}) }))
 vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
 vi.mock('@/stores/account-store', () => ({
-  useAccountStore: () => ({ ensure: () => Promise.resolve(true) })
+  useAccountStore: () => ({ restore: async () => null, ensure: ports.ensure })
 }))
 vi.mock('@/services/audio-controller', () => ({
-  createAudioController: () => ({ state: {}, dispose: vi.fn() })
+  createAudioController: () => ({
+    state: {},
+    dispose: vi.fn(),
+    refreshFull: vi.fn(),
+    setRate: vi.fn(),
+    seekFull: vi.fn()
+  })
 }))
 
 import { clearClientThumbnails } from '@/services/client-thumbnail'
 import { ApiError } from '@/services/errors'
-import { activeImagePreview } from '@/services/image-preview'
+import { loginReturn } from '@/services/login-return'
 import SceneDetail from '@/sub-packages/scenes/detail.vue'
+import { activeImagePreview } from '@/sub-packages/scenes/image-preview-service'
 
 const scene = {
   card_id: 'scene-1',
@@ -54,6 +85,10 @@ const scene = {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  ports.owner = 'learner'
+  ports.scroll = 0
+  ports.run.mockResolvedValue(undefined)
+  ports.ensure.mockResolvedValue(true)
   clearClientThumbnails()
   ports.request.mockResolvedValue(scene)
   ports.media.mockImplementation(async (_card: string, media: string) =>
@@ -81,7 +116,7 @@ afterEach(() => vi.unstubAllGlobals())
 /** 挂载正文并直接进入详情，图片请求外的学习模块保持隔离 */
 const openDetail = () => {
   const page = shallowMount(SceneDetail, {
-    global: { stubs: { AppPage: { template: '<view><slot /></view>' } } }
+    global: { stubs: { AppPage: { template: '<view><slot /><slot name="footer" /></view>' } } }
   })
   ports.load?.({ id: 'scene-1' })
   return page
@@ -244,5 +279,142 @@ it('still opens the full original when front-end thumbnail processing fails', as
   await page.get('.expand-image').trigger('click')
   await expect(activeImagePreview()?.loadSource?.()).resolves.toBe('wxfile://scene-original')
   expect(uni.compressImage).toHaveBeenCalledOnce()
+  page.unmount()
+})
+
+it('opens a free guest scene without private access, personal state or an identity gate', async () => {
+  ports.owner = null
+  ports.request.mockImplementation(async (path: string) =>
+    path.endsWith('/summary')
+      ? {
+          id: 'scene-1',
+          name: '晨间慢慢活动身体',
+          version_id: 'version-1',
+          state: null,
+          available: true,
+          thumbnail_id: 'thumb-1',
+          access: { can_learn: true, can_lookup: false, is_free: true }
+        }
+      : { ...scene, state: null, access: { can_learn: true, can_lookup: false, is_free: true } }
+  )
+  const page = openDetail()
+  await flushPromises()
+  expect(ports.ensure).not.toHaveBeenCalled()
+  expect(page.text()).toContain('晨间慢慢活动身体')
+  expect(page.text()).not.toContain('当前为游客体验')
+  expect(page.get('.safe-footer').text()).toContain('完成本次学习')
+  expect(page.get('.safe-footer').text()).not.toContain('已完成学习')
+  expect(ports.request.mock.calls.some(([path]) => path.endsWith('/access'))).toBe(false)
+  expect(ports.request.mock.calls[0][0]).toContain('mark_started=false')
+  page.unmount()
+})
+
+it.each([
+  { maximum: 530, input: 'touchmove' },
+  { maximum: 500, input: 'touchmove' },
+  { maximum: 500, input: 'wheel' },
+  { maximum: 500, input: 'PageDown' }
+])(
+  'restores guest scroll with maximum $maximum readonly then saves actual $input input',
+  async ({ maximum, input }) => {
+    ports.owner = null
+    Object.assign(uni, {
+      pageScrollTo: vi.fn(({ scrollTop, complete }) => {
+        ports.scroll = Math.min(scrollTop, maximum)
+        complete?.({ errMsg: 'ok' })
+        ports.pageScroll?.({ scrollTop: ports.scroll })
+      }),
+      createSelectorQuery: () => {
+        const query = {
+          in: () => query,
+          selectAll: () => query,
+          fields: (_options: unknown, cb: (value: unknown) => void) => {
+            cb([
+              {
+                top: 550 - ports.scroll,
+                height: 100,
+                dataset: { readingAnchor: 'dialogue:line-1' }
+              }
+            ])
+            return query
+          },
+          exec: vi.fn()
+        }
+        return query
+      }
+    })
+    const page = openDetail()
+    ports.show?.()
+    await flushPromises()
+    ports.scroll = 530
+    ports.pageScroll?.({ scrollTop: 530 })
+    loginReturn.begin('/sub-packages/scenes/detail?id=scene-1')
+    ports.hide?.()
+    ports.owner = 'new-member'
+    loginReturn.succeed()
+    ports.show?.()
+    await flushPromises()
+    expect(ports.scroll).toBe(Math.min(530, maximum))
+    expect(ports.request.mock.calls.at(-1)?.[0]).toContain('mark_started=false')
+    ports.hide?.()
+    await flushPromises()
+    expect(ports.run).not.toHaveBeenCalled()
+    ports.show?.()
+    await flushPromises()
+    if (input === 'touchmove') await page.get('.scene-reading').trigger('touchmove')
+    else if (input === 'wheel') window.dispatchEvent(new WheelEvent('wheel', { deltaY: 12 }))
+    else window.dispatchEvent(new KeyboardEvent('keydown', { key: input }))
+    ports.scroll = 480
+    ports.pageScroll?.({ scrollTop: 480 })
+    ports.hide?.()
+    await flushPromises()
+    expect(ports.run).toHaveBeenCalledExactlyOnceWith(
+      'reading:scene-1:version-1',
+      '/api/mini/v1/cards/scene-1/reading-position',
+      'PUT',
+      { version_id: 'version-1', anchor: 'dialogue:line-1', progress: 0.18 }
+    )
+    ports.unload?.()
+    page.unmount()
+    loginReturn.cancel()
+  }
+)
+
+it.each([false, true])(
+  'keeps the title above the note tools and shows authorization priority %s',
+  async (authorized) => {
+    const value = {
+      ...scene,
+      content: { ...scene.content, title_en: 'A Gentle Start to the Morning' },
+      access: { can_learn: true, can_lookup: authorized, is_free: true },
+      study_note: { state: 'ready', version_id: 'note-v1', media_id: 'pdf-1' }
+    }
+    ports.request.mockImplementation(async (path: string) =>
+      path.endsWith('/access')
+        ? { access: value.access, summary: { ...value, id: value.card_id } }
+        : value
+    )
+    const page = openDetail()
+    await flushPromises()
+    expect(page.get('.scene-heading').find('.note-entry').exists()).toBe(false)
+    expect(page.get('.scene-state-line .note-entry').text()).toBe('查看学习笔记')
+    expect(page.get('.scene-state-line').text()).toContain(authorized ? '授权有效' : '免费开放')
+    expect(page.find('.lookup-hint').exists()).toBe(!authorized)
+    if (!authorized) expect(page.get('.lookup-hint').text()).toBe('正文点词查询需学习授权')
+    expect(page.find('.guest-reading-note').exists()).toBe(false)
+    page.unmount()
+  }
+)
+it('keeps the status without reserving a note button for a scene without a published PDF', async () => {
+  ports.owner = null
+  ports.request.mockResolvedValue({
+    ...scene,
+    access: { can_learn: true, can_lookup: false, is_free: true }
+  })
+  const page = openDetail()
+  await flushPromises()
+  expect(page.get('.scene-state-line').text()).toBe('免费开放')
+  expect(page.find('.note-entry').exists()).toBe(false)
+  expect(page.get('.scene-state-line').classes()).not.toContain('has-note')
   page.unmount()
 })

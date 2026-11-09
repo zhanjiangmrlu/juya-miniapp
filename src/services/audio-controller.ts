@@ -3,6 +3,7 @@ import {
   resetLearningAudioSession as resetSession
 } from '@/features/learning/learning-audio-session'
 import { wordAudioRecovery } from '@/services/errors'
+import { nativeDiagnosticInstance, recordNativeDiagnostic } from '@/services/native-diagnostics'
 import { recordWordAudio } from '@/services/word-audio-diagnostics'
 import { DEFAULT_PLAYBACK_RATE, PLAYBACK_RATES } from '@/shared/constants/audio'
 import { WORD_AUDIO_RECOVERY_DELAYS } from '@/shared/constants/media'
@@ -14,6 +15,7 @@ import type {
   LearningAudioSession,
   PlaybackRate
 } from '@/shared/types/audio'
+import type { NativeDiagnosticOperation } from '@/shared/types/native-diagnostics'
 
 /** 从应用共享音频入口结束本轮倍速会话，保证分包前已加载控制器 */
 export const resetLearningAudioSession = () => {
@@ -58,10 +60,61 @@ export const createAudioController = (
     fullIntent = false,
     fullStarting = false,
     ratePausing = false,
+    rateRebinding = false,
+    stagedRate: PlaybackRate | null = null,
     pendingRate: PlaybackRate | null = null,
     wordRecover: ((reason: unknown) => void) | null = null,
     wordRetryTimer: ReturnType<typeof setTimeout> | undefined,
-    wordStarted = 0
+    wordStarted = 0,
+    diagnosticSignature = ''
+  const diagnosticController =
+      import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true'
+        ? nativeDiagnosticInstance('controller', state)
+        : 0,
+    diagnosticPort =
+      import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true'
+        ? nativeDiagnosticInstance('port', full)
+        : 0
+  /** 仅临时诊断记录控制器的实际播放意图和状态
+   * @param operation 当前公开动作或原生回调边界
+   * @param phase 动作调用或回调的前后阶段
+   */
+  const diagnoseController = (operation: NativeDiagnosticOperation, phase: 'before' | 'after') => {
+    if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true')
+      recordNativeDiagnostic('controller-state', {
+        controller: diagnosticController,
+        port: diagnosticPort,
+        operation,
+        phase,
+        alive,
+        fullIntent,
+        fullStarting,
+        ratePausing,
+        rateRebinding,
+        pendingRate,
+        stagedRate,
+        audioStatus: state.status,
+        rate: state.rate,
+        position: state.position
+      })
+  }
+  /** 仅诊断构建装饰已有动作，保留原始返回值、异常与异步调用语义
+   * @param operation 当前公开动作或原生回调边界
+   * @param action 原有处理器，不插入额外播放或暂停操作
+   */
+  const observe =
+    <Args extends unknown[], Result>(
+      operation: NativeDiagnosticOperation,
+      action: (...args: Args) => Result
+    ) =>
+    (...args: Args): Result => {
+      diagnoseController(operation, 'before')
+      try {
+        return action(...args)
+      } finally {
+        diagnoseController(operation, 'after')
+      }
+    }
   /** 取消本次点读恢复任务，离页或切词后不再启动旧音源 */
   const cancelWordRecovery = () => {
     clearTimeout(wordRetryTimer)
@@ -69,6 +122,24 @@ export const createAudioController = (
   }
   /** 输出当前可信音频状态 */
   const notify = () => {
+    if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true') {
+      // 媒体位置更新不重复上报，只保留真正的控制状态变化
+      const signature = JSON.stringify([
+        alive,
+        fullIntent,
+        fullStarting,
+        ratePausing,
+        rateRebinding,
+        pendingRate,
+        stagedRate,
+        state.status,
+        state.rate
+      ])
+      if (signature !== diagnosticSignature) {
+        diagnosticSignature = signature
+        diagnoseController('notify', 'after')
+      }
+    }
     if (alive) changed({ ...state })
   }
   /** 设置并回读底层倍率，拒绝无效档位或原生静默忽略
@@ -109,8 +180,10 @@ export const createAudioController = (
   }
   /** 等待原生播放事件确认启动，期间仍允许词汇或暂停取消续播 */
   const startFull = () => {
+    if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true') diagnoseController('start', 'before')
     fullStarting = true
     full.play()
+    if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true') diagnoseController('start', 'after')
   }
   /** 等待原生暂停确认后切速，多次选择只应用最后一次 */
   const pauseForRate = () => {
@@ -118,6 +191,21 @@ export const createAudioController = (
     pendingSeek = Number.isFinite(full.currentTime) ? full.currentTime : state.position
     state.position = pendingSeek
     full.pause()
+  }
+  /** 原生背景音轨静默重绑倍率，等待下一次真实播放回调确认
+   * @param rate 用户最后选择的有效倍率
+   */
+  const stageRate = (rate: PlaybackRate) => {
+    stagedRate = rate
+    rateRebinding = !!full.stagePlaybackRate?.(rate)
+    if (rateRebinding) {
+      pendingRate = rate
+      state.pendingRate = rate
+    } else {
+      pendingRate = null
+      delete state.pendingRate
+      confirmRate(rate)
+    }
   }
   /** 播放中排队切速，暂停时直接设置且不主动播放
    * @param rate 用户最后选择的完整音频倍率
@@ -133,6 +221,11 @@ export const createAudioController = (
       pendingRate = rate as PlaybackRate
       state.rateError = ''
       if (!ratePausing && !fullStarting) pauseForRate()
+      notify()
+      return !state.rateError
+    }
+    if (full.stagePlaybackRate && rate !== state.rate) {
+      stageRate(rate as PlaybackRate)
       notify()
       return !state.rateError
     }
@@ -154,6 +247,18 @@ export const createAudioController = (
       notify()
     }
   }
+  if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true') {
+    const callbacks: [NativeDiagnosticOperation, 'onPlay' | 'onPause' | 'onStop'][] = [
+      ['native-play', 'onPlay'],
+      ['native-pause', 'onPause'],
+      ['native-stop', 'onStop']
+    ]
+    for (const [operation, method] of callbacks) {
+      const subscribe = full[method]
+      if (subscribe) full[method] = (callback) => subscribe(observe(operation, callback))
+    }
+    diagnoseController('create', 'after')
+  }
   full.onPlay(() => {
     if (!alive) return
     fullStarting = false
@@ -162,13 +267,24 @@ export const createAudioController = (
       full.pause()
       return
     }
-    if (pendingRate !== null && pendingRate !== state.rate) {
+    if (rateRebinding && pendingRate !== null && pendingRate !== stagedRate) {
+      pauseForRate()
+      return
+    }
+    const confirmingRate = rateRebinding && pendingRate !== null
+    if (confirmingRate) {
+      const rate = pendingRate!
+      pendingRate = null
+      rateRebinding = false
+      delete state.pendingRate
+      confirmRate(rate)
+    } else if (pendingRate !== null && pendingRate !== state.rate) {
       if (!ratePausing) pauseForRate()
       return
     }
     pendingRate = null
     state.status = AudioStatus.PLAYING
-    restoreRate()
+    if (!confirmingRate) restoreRate()
     if (pendingSeek > 0) {
       full.seek(pendingSeek)
       pendingSeek = 0
@@ -183,7 +299,8 @@ export const createAudioController = (
     if (pendingRate !== null) {
       const rate = pendingRate
       pendingRate = null
-      confirmRate(rate)
+      if (full.stagePlaybackRate) stageRate(rate)
+      else confirmRate(rate)
       if (fullIntent) startFull()
     } else if (!fullStarting) {
       fullIntent = false
@@ -198,6 +315,8 @@ export const createAudioController = (
     fullStarting = false
     ratePausing = false
     pendingRate = null
+    rateRebinding = false
+    delete state.pendingRate
     pendingSeek = state.position
     state.status = AudioStatus.PAUSED
     notify()
@@ -208,6 +327,8 @@ export const createAudioController = (
     fullIntent = false
     fullStarting = false
     pendingRate = null
+    rateRebinding = false
+    delete state.pendingRate
     state.position = state.duration
     notify()
   })
@@ -223,6 +344,8 @@ export const createAudioController = (
     fullIntent = false
     fullStarting = false
     pendingRate = null
+    rateRebinding = false
+    delete state.pendingRate
     state.error = '音频暂不可用，点击重试'
     fullFailed()
     notify()
@@ -293,7 +416,7 @@ export const createAudioController = (
         full.src = url
         fullSource = url
       }
-      restoreRate()
+      if (!rateRebinding) restoreRate()
       // 背景播放器绑定地址即自动播放，须提前设置原生开始位置
       if (full.background) full.seek(pendingSeek)
       startFull()
@@ -320,6 +443,9 @@ export const createAudioController = (
     fullGeneration++
     const cancelFull = fullIntent || fullStarting || ratePausing
     fullIntent = false
+    pendingRate = null
+    rateRebinding = false
+    delete state.pendingRate
     if (
       cancelFull ||
       state.status === AudioStatus.PLAYING ||
@@ -469,9 +595,25 @@ export const createAudioController = (
     fullGeneration++
     fullIntent = false
     pendingRate = null
+    rateRebinding = false
+    delete state.pendingRate
     full.pause()
     state.status = AudioStatus.PAUSED
     notify()
+  }
+  /** 原生文档打开前暂停所有音轨并取消在途播放，保留真实时钟和倍率 */
+  const suspend = () => {
+    if (!alive) return
+    refreshFull()
+    pauseFull()
+    if (state.wordId) stopWord(state.wordId)
+    else {
+      wordCancelled()
+      cancelWordRecovery()
+      wordGeneration++
+      wordSourceGeneration = 0
+      word.stop()
+    }
   }
   /** 离开场景时销毁音轨并取消所有未返回的资源请求 */
   const dispose = () => {
@@ -481,6 +623,8 @@ export const createAudioController = (
     cancelWordRecovery()
     fullIntent = false
     pendingRate = null
+    rateRebinding = false
+    delete state.pendingRate
     fullGeneration++
     wordGeneration++
     full.stop()
@@ -488,7 +632,7 @@ export const createAudioController = (
     full.destroy()
     word.destroy()
   }
-  return {
+  const controller = {
     prepareFull,
     toggleFull,
     playWord,
@@ -497,7 +641,16 @@ export const createAudioController = (
     setRate,
     refreshFull,
     pauseFull,
+    suspend,
     dispose,
     state
   }
+  if (import.meta.env.VITE_NATIVE_DIAGNOSTICS === 'true') {
+    controller.toggleFull = observe('toggle', toggleFull)
+    controller.setRate = observe('set-rate', setRate)
+    controller.refreshFull = observe('refresh', refreshFull)
+    controller.pauseFull = observe('pause', pauseFull)
+    controller.suspend = observe('suspend', suspend)
+  }
+  return controller
 }

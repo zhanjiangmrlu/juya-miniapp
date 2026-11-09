@@ -1,0 +1,99 @@
+{
+  "fixture": "独立本地SQLite/HTTP与合成微信网关，非真实微信身份",
+  "viewport": {
+    "width": 390,
+    "height": 845
+  },
+  "native_pdf": "SDK端口模拟；H5明确提示微信内查看；真机待验",
+  "empty_and_shrink": "round1使用实际后端集合变更，早期截图网络注入已分开",
+  "identity_boundary": "round2仅在身份边界注入隔离API的新会话，真实勾选及登录按钮决定目标",
+  "browser-results": {
+    "beforeScroll": 120,
+    "afterScroll": 120,
+    "geometry": {
+      "title": {
+        "x": 24,
+        "y": 179.0859375,
+        "width": 342,
+        "height": 124.9375,
+        "top": 179.0859375,
+        "right": 366,
+        "bottom": 304.0234375,
+        "left": 24
+      },
+      "button": {
+        "x": 263,
+        "y": 304.0234375,
+        "width": 103,
+        "height": 44,
+        "top": 304.0234375,
+        "right": 366,
+        "bottom": 348.0234375,
+        "left": 263
+      },
+      "overflow": false
+    },
+    "errors": []
+  },
+  "round1-results": {
+    "result": "passed",
+    "beforeRemoved": 0,
+    "afterRemoved": 0,
+    "errors": []
+  },
+  "round2-login-results": {
+    "result": "passed",
+    "target": "/sub-packages/scenes/detail?id=14f38407-ec99-48ab-ba31-4901b3d947e4&intent=study_note&source=learning_notes",
+    "resumed": [
+      {
+        "path": "/api/mini/v1/cards/14f38407-ec99-48ab-ba31-4901b3d947e4",
+        "query": "?mark_started=false"
+      },
+      {
+        "path": "/api/mini/v1/cards/14f38407-ec99-48ab-ba31-4901b3d947e4",
+        "query": "?mark_started=false"
+      }
+    ],
+    "newAccountReadingStarts": 0,
+    "errors": []
+  },
+  "round1-console": {
+    "result": "passed",
+    "guard409NoStart": true,
+    "validStarted": true,
+    "coldPdfOnlyNoStart": true,
+    "bodyRecoveryReadonly": true,
+    "shrinkSnapshots": true,
+    "accountARestoreB": true,
+    "errors": []
+  },
+  "round2-console": {
+    "result": "passed",
+    "returnIntent": true,
+    "autoNoteReadonly": true,
+    "newAccountReadingStarts": 0,
+    "errors": []
+  },
+  "final": {
+    "node": "22.23.3",
+    "pnpm": "11.25.0",
+    "check": "passed",
+    "testFiles": 114,
+    "tests": 625,
+    "h5Build": "passed",
+    "mpLocalBuild": "passed",
+    "pageConfigurations": 18,
+    "bottomTabs": 3,
+    "standardRemoteFontMainBytes": {
+      "test": 459435,
+      "production": 458354,
+      "limit": 460800
+    },
+    "mpLocalEmbeddedFontMainBytes": 865822,
+    "mpLocalEstimatedAfter20Percent": 1038987,
+    "originalDistDevPreserved": true,
+    "ossUpload": false,
+    "wechatUpload": false,
+    "pushed": false
+  }
+}

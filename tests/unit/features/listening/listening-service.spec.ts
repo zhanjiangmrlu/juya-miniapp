@@ -7,7 +7,12 @@ const ports = vi.hoisted(() => ({
 }))
 vi.mock('@/services/api', () => ({
   operations: { pending: ports.pending, recover: ports.recover, run: ports.run },
-  session: { request: ports.request, userId: () => 'owner' }
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => 'owner',
+    userId: () => 'owner'
+  }
 }))
 vi.mock('@/services/platform', () => ({ resourceURL: (path: string) => path }))
 import { listeningThumbnail, saveListeningProgress } from '@/features/listening/listening-service'

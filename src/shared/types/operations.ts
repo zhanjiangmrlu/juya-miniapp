@@ -10,6 +10,7 @@ export interface OperationRecord {
 }
 export interface OperationSession {
   userId: () => string | null
+  identity?: () => string
   request: <T>(
     path: string,
     options?: { method?: string; body?: unknown; key?: string }

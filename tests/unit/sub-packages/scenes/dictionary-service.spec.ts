@@ -1,13 +1,18 @@
 import { afterEach, expect, it, vi } from 'vitest'
 
 const ports = vi.hoisted(() => ({ request: vi.fn(), download: vi.fn(), release: vi.fn() }))
-vi.mock('@/services/api', () => ({ session: { request: ports.request } }))
+vi.mock('@/services/api', () => ({
+  session: { contentRequest: ports.request, request: ports.request }
+}))
 vi.mock('@/services/platform', () => ({
   operationKey: () => 'dictionary-operation-key',
   resourceURL: (url: string) => `https://api.example${url}`
 }))
 vi.mock('@/services/word-audio-file', () => ({ prepareWordAudioFile: ports.download }))
-import { createDictionarySpeech, createDictionarySpeechCache } from '@/services/dictionary-service'
+import {
+  createDictionarySpeech,
+  createDictionarySpeechCache
+} from '@/sub-packages/scenes/dictionary-service'
 
 afterEach(() => {
   vi.useRealTimers()

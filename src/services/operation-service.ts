@@ -16,8 +16,19 @@ export const createOperationService = (ports: OperationPorts) => {
     if (!userId) throw new ApiError('unauthenticated', '请先登录')
     const key = OPERATIONS_STORAGE_PREFIX + userId
     const stored = ports.storage.get(key)
-    return { userId, key, records: Array.isArray(stored) ? (stored as OperationRecord[]) : [] }
+    return {
+      userId,
+      identity: ports.session.identity?.() || userId,
+      key,
+      records: Array.isArray(stored) ? (stored as OperationRecord[]) : []
+    }
   }
+  /** 确认返回仍属于发起操作的会话代次，同账号重登也不复用旧响应
+   * @param state 操作发出时捕获的账号与会话边界
+   */
+  const current = (state: ReturnType<typeof context>) =>
+    ports.session.userId() === state.userId &&
+    (ports.session.identity?.() || state.userId) === state.identity
   /** 成功或确定失败后清理一项待确认记录
    * @param action 页面行为标识
    * @param owner 发起操作的账号上下文
@@ -67,11 +78,7 @@ export const createOperationService = (ports: OperationPorts) => {
       )
       result = value.result
     } catch (reason) {
-      if (
-        reason instanceof ApiError &&
-        reason.code === 'operation_unknown' &&
-        ports.session.userId() === state.userId
-      )
+      if (reason instanceof ApiError && reason.code === 'operation_unknown' && current(state))
         receiptMisses.set(scope, record.key)
       const frozen = fingerprints.get(`${state.userId}:${action}`) || record.frozenRequest
       if (
@@ -81,8 +88,7 @@ export const createOperationService = (ports: OperationPorts) => {
         !frozen
       )
         throw reason
-      if (ports.session.userId() !== state.userId)
-        throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
+      if (!current(state)) throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
       receiptMisses.delete(scope)
       try {
         result = await ports.session.request<T>(record.path, {
@@ -101,8 +107,7 @@ export const createOperationService = (ports: OperationPorts) => {
         throw retryError
       }
     }
-    if (ports.session.userId() !== state.userId)
-      throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
+    if (!current(state)) throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
     forget(action, state)
     return result
   }
@@ -149,8 +154,7 @@ export const createOperationService = (ports: OperationPorts) => {
     receiptMisses.delete(scope)
     try {
       const result = await ports.session.request<T>(path, { method, body, key: record.key })
-      if (ports.session.userId() !== state.userId)
-        throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
+      if (!current(state)) throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
       forget(action, state)
       return result
     } catch (reason) {

@@ -48,4 +48,4 @@ export const closeImagePreview = (context: ImagePreviewContext) => {
     context.onClose()
   }
 }
-import { runtimeMode } from './runtime-mode'
+import { runtimeMode } from '@/services/runtime-mode'

@@ -1,0 +1,109 @@
+{
+  "kind": "isolated-browser-fixtures",
+  "results": [
+    {
+      "name": "home-guest-375",
+      "width": 375,
+      "logged": false,
+      "note": true,
+      "authorized": false,
+      "errors": []
+    },
+    {
+      "name": "home-guest-390",
+      "width": 390,
+      "logged": false,
+      "note": true,
+      "authorized": false,
+      "errors": []
+    },
+    {
+      "name": "home-guest-414",
+      "width": 414,
+      "logged": false,
+      "note": true,
+      "authorized": false,
+      "errors": []
+    },
+    {
+      "name": "home-logged",
+      "width": 390,
+      "logged": true,
+      "note": true,
+      "authorized": false,
+      "errors": []
+    },
+    {
+      "name": "list-guest-all",
+      "width": 390,
+      "logged": false,
+      "note": true,
+      "authorized": false,
+      "errors": []
+    },
+    {
+      "name": "list-guest-notes",
+      "width": 390,
+      "logged": false,
+      "note": true,
+      "authorized": false,
+      "errors": []
+    },
+    {
+      "name": "list-logged-all",
+      "width": 390,
+      "logged": true,
+      "note": true,
+      "authorized": false,
+      "errors": []
+    },
+    {
+      "name": "list-logged-notes",
+      "width": 390,
+      "logged": true,
+      "note": true,
+      "authorized": false,
+      "errors": []
+    },
+    {
+      "name": "detail-free-375",
+      "width": 375,
+      "logged": false,
+      "note": true,
+      "authorized": false,
+      "errors": []
+    },
+    {
+      "name": "detail-free-390",
+      "width": 390,
+      "logged": false,
+      "note": true,
+      "authorized": false,
+      "errors": []
+    },
+    {
+      "name": "detail-free-414",
+      "width": 414,
+      "logged": false,
+      "note": true,
+      "authorized": false,
+      "errors": []
+    },
+    {
+      "name": "detail-authorized",
+      "width": 390,
+      "logged": true,
+      "note": true,
+      "authorized": true,
+      "errors": []
+    },
+    {
+      "name": "detail-no-pdf",
+      "width": 390,
+      "logged": false,
+      "note": false,
+      "authorized": false,
+      "errors": []
+    }
+  ]
+}

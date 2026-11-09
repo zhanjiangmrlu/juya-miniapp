@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 
-import { dictionaryTokens } from '@/features/learning/scene-model'
+import { dictionaryTokens } from '@/sub-packages/scenes/scene-model'
 
 it('splits overlapping manual ranges by vocabulary priority while retaining complete lookup words', () => {
   const line = { id: 'one', speaker: 'A', english: '😀 indoor exercise!', chinese: '' }

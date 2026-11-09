@@ -101,7 +101,7 @@ const change = (event: SliderChangeEvent) => {
         :aria-expanded="ratesOpen"
         @click="ratesOpen = !ratesOpen"
       >
-        {{ state.rate }}× 倍速
+        {{ state.pendingRate ?? state.rate }}× {{ state.pendingRate ? '播放后应用' : '倍速' }}
       </button>
     </view>
     <slider
@@ -128,8 +128,8 @@ const change = (event: SliderChangeEvent) => {
         :key="rate"
         class="rate-option"
         :data-rate="rate"
-        :class="{ selected: state.rate === rate }"
-        :aria-pressed="state.rate === rate"
+        :class="{ selected: (state.pendingRate ?? state.rate) === rate }"
+        :aria-pressed="(state.pendingRate ?? state.rate) === rate"
         @click="chooseRate(rate)"
       >
         {{ rate }}×

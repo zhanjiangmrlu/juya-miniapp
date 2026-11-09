@@ -3,6 +3,7 @@ import { computed, ref, shallowRef } from 'vue'
 import { useSceneList } from '@/composables/use-scene-list'
 import { getListeningHome } from '@/features/listening/listening-service'
 import { onSessionExpired, session } from '@/services/api'
+import { loginReturn } from '@/services/login-return'
 import { LISTENING_API } from '@/shared/constants/listening'
 import { Routes } from '@/shared/constants/navigation'
 import { useAccountStore } from '@/stores/account-store'
@@ -18,7 +19,7 @@ export const useListeningCatalog = () => {
     busy = ref(false),
     error = ref(''),
     refreshing = ref(false)
-  let owner = session.userId(),
+  let owner = session.identity(),
     generation = 0,
     listCategory = '',
     homeRequest: Promise<void> | null = null
@@ -29,12 +30,12 @@ export const useListeningCatalog = () => {
     useSceneList<ListeningSummary>({
       path: `${LISTENING_API}/articles`,
       request: (path, options) =>
-        session.request(
+        session.contentRequest(
           `${path}${categoryId ? `&category_id=${encodeURIComponent(categoryId)}` : ''}`,
           options
         ),
-      userId: session.userId,
-      ensure: () => account.ensure(Routes.LISTENING)
+      userId: session.identity,
+      ensure: async () => true
     })
   const list = shallowRef(createList(''))
   const selectedCategory = computed(() =>
@@ -61,7 +62,7 @@ export const useListeningCatalog = () => {
     scrollTop.value = 0
     list.value.dispose()
     list.value = createList('')
-    owner = session.userId()
+    owner = session.identity()
   }
   const unsubscribe = onSessionExpired(reset)
   /** 对齐直达分类和分页实例，不重复请求已经选中的分类 */
@@ -74,23 +75,33 @@ export const useListeningCatalog = () => {
   }
   /** 独立刷新分类统计，合并在途请求并拒绝旧账号的迟到响应 */
   const loadHome = (): Promise<void> => {
-    if (owner !== session.userId()) reset()
+    if (owner !== session.identity()) reset()
     if (homeRequest) return homeRequest
     const run = generation
     busy.value = true
     error.value = ''
     const job = (async () => {
       try {
-        if (!(await account.ensure(Routes.LISTENING))) return
-        if (run !== generation || owner !== session.userId()) return
+        await account.restore()
+        if (run !== generation || owner !== session.identity()) {
+          if (!session.userId()) await loadHome()
+          return
+        }
         const value = await getListeningHome()
-        if (run === generation && owner === session.userId()) home.value = value
+        if (run === generation && owner === session.identity()) {
+          home.value = value
+          if (category.value && !value.categories.some((item) => item.id === category.value)) {
+            category.value = ''
+            syncCategory()
+            await list.value.refresh()
+          }
+        }
       } catch (reason) {
-        if (run === generation && owner === session.userId())
+        if (run === generation && owner === session.identity())
           error.value = reason instanceof Error ? reason.message : '听读暂未获取'
       } finally {
         if (run === generation) {
-          if (owner !== session.userId()) reset()
+          if (owner !== session.identity()) reset()
           else busy.value = false
         }
       }
@@ -102,15 +113,53 @@ export const useListeningCatalog = () => {
   }
   /** 鉴权后并行刷新统计与已加载分页，任一失败不阻塞另一部分展示 */
   const load = async () => {
-    if (owner !== session.userId()) reset()
+    if (owner !== session.identity()) reset()
+    loginReturn.register(
+      Routes.LISTENING,
+      () => ({
+        page: Routes.LISTENING,
+        type: 'page',
+        id: '',
+        tab: '',
+        category: category.value,
+        scroll: scrollTop.value,
+        loadedCount: list.value.items.value.length,
+        translation: false,
+        audioPosition: 0,
+        playbackRate: 1,
+        version: ''
+      }),
+      () => {
+        void load()
+      }
+    )
+    const restored = loginReturn.take(Routes.LISTENING)
+    if (restored) {
+      category.value = restored.category
+    }
     syncCategory()
-    await Promise.all([loadHome(), list.value.refresh()])
+    const run = generation,
+      currentList = list.value
+    await Promise.all([loadHome(), currentList.refresh()])
+    if (run !== generation || currentList !== list.value) return
+    if (restored && category.value === restored.category) {
+      while (
+        currentList.items.value.length < (restored.loadedCount || 0) &&
+        currentList.hasMore.value
+      ) {
+        const count = currentList.items.value.length
+        await currentList.more()
+        if (run !== generation || currentList !== list.value) return
+        if (currentList.items.value.length <= count) break
+      }
+      if (run === generation && currentList === list.value) scrollTop.value = restored.scroll
+    }
   }
   /** 切换分类开始该分类第一页；详情往返不调用此方法
    * @param id 当前真实分类身份，空值为全部
    */
   const select = async (id: string) => {
-    if (owner !== session.userId()) reset()
+    if (owner !== session.identity()) reset()
     if (category.value === id && listCategory === id && list.value.total.value !== null) return
     category.value = id
     syncCategory()

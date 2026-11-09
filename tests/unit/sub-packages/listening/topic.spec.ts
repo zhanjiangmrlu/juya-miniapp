@@ -21,9 +21,16 @@ vi.mock('@dcloudio/uni-app', () => ({
 }))
 vi.mock('@/services/api', () => ({
   onSessionExpired: () => () => undefined,
-  session: { request: ports.request, userId: () => 'owner' }
+  session: {
+    contentRequest: ports.request,
+    request: ports.request,
+    identity: () => 'owner',
+    userId: () => 'owner'
+  }
 }))
-vi.mock('@/stores/account-store', () => ({ useAccountStore: () => ({ ensure: async () => true }) }))
+vi.mock('@/stores/account-store', () => ({
+  useAccountStore: () => ({ restore: async () => null, ensure: async () => true })
+}))
 import Topic from '@/sub-packages/listening/topic.vue'
 beforeEach(() => {
   vi.stubGlobal('uni', { redirectTo: vi.fn() })

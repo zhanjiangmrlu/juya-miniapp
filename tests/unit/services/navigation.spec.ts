@@ -20,20 +20,20 @@ it('coalesces concurrent unauthenticated page redirects and preserves the login 
   const { vi } = await import('vitest')
   const { openLogin } = await import('@/services/navigation')
   const callbacks: { complete: () => void }[] = [],
-    reLaunch = vi.fn((options: { complete: () => void }) => {
+    navigateTo = vi.fn((options: { complete: () => void }) => {
       callbacks.push(options)
     })
   let pages: { route: string }[] = []
-  vi.stubGlobal('uni', { reLaunch })
+  vi.stubGlobal('uni', { navigateTo, removeStorageSync: vi.fn() })
   vi.stubGlobal('getCurrentPages', () => pages)
   try {
     openLogin('/pages/learning/index')
     openLogin('/pages/learning/index')
-    expect(reLaunch).toHaveBeenCalledTimes(1)
+    expect(navigateTo).toHaveBeenCalledTimes(1)
     callbacks[0]!.complete()
     pages = [{ route: 'pages/login/index' }]
     openLogin('/pages/learning/index')
-    expect(reLaunch).toHaveBeenCalledTimes(1)
+    expect(navigateTo).toHaveBeenCalledTimes(1)
   } finally {
     vi.unstubAllGlobals()
   }
@@ -60,4 +60,48 @@ it('retains only the stable shared-card target across login, without restoring a
   expect(safeTarget('/pages/learning/index?target=learning&token=private')).toBe(
     '/pages/learning/index?target=learning'
   )
+})
+
+it('preserves a validated note login intent and notes fallback without accepting a foreign queue', () => {
+  expect(
+    safeTarget(
+      '/sub-packages/scenes/detail?id=card-1&intent=study_note&source=learning_notes&queue=foreign'
+    )
+  ).toBe('/sub-packages/scenes/detail?id=card-1&source=learning_notes')
+  expect(safeTarget('/pages/learning/index?tab=notes')).toBe('/pages/learning/index?tab=notes')
+})
+
+it('keeps a failed native login navigation at its source and makes its guest snapshot restorable', async () => {
+  const { openLogin } = await import('@/services/navigation')
+  const { loginReturn } = await import('@/services/login-return')
+  const resume = vi.fn()
+  const unregister = loginReturn.register(
+    '/pages/home/index',
+    () => ({
+      page: '/pages/home/index',
+      type: 'page',
+      id: '',
+      tab: '',
+      category: '',
+      scroll: 77,
+      translation: false,
+      audioPosition: 0,
+      playbackRate: 1,
+      version: ''
+    }),
+    resume
+  )
+  vi.stubGlobal('getCurrentPages', () => [{ route: 'pages/home/index' }])
+  vi.stubGlobal('uni', {
+    removeStorageSync: vi.fn(),
+    navigateTo: (options: UniApp.NavigateToOptions) => {
+      options.fail?.({ errMsg: 'stack full' })
+      options.complete?.({ errMsg: 'stack full' })
+    }
+  })
+  openLogin('/pages/home/index')
+  expect(resume).toHaveBeenCalledOnce()
+  expect(loginReturn.pending()).toBe(false)
+  expect(loginReturn.take('/pages/home/index')?.scroll).toBe(77)
+  unregister()
 })

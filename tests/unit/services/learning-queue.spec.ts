@@ -86,3 +86,22 @@ it('keeps the same next candidate until its body is confirmed and restores the c
   expect(queue.matches('q', 'current')).toBe(true)
   expect(await queue.next()).toBe('next')
 })
+
+it('consumes an invalidated note candidate without changing the visible card or retrying its index forever', async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce(row('removed-note', true, 1))
+    .mockResolvedValue(row('valid-note', true, null))
+  const queue = createLearningQueue({ request, userId: () => 'owner' })
+  queue.attach({ id: 'q', source: 'learning_notes', total: 2 }, 'current')
+  expect(await queue.next()).toBe('removed-note')
+  expect((queue as unknown as { skip?: unknown }).skip).toBeTypeOf('function')
+  ;(queue as unknown as { skip: (id: string) => void }).skip('removed-note')
+  expect(queue.matches('q', 'current')).toBe(true)
+  expect(await queue.next()).toBe('valid-note')
+  const rollback = queue.commit('valid-note')
+  rollback()
+  expect(queue.matches('q', 'current')).toBe(true)
+  expect(await queue.next()).toBe('valid-note')
+  expect(request.mock.calls.slice(1).every(([path]) => path.includes('offset=1'))).toBe(true)
+})

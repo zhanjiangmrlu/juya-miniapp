@@ -8,8 +8,12 @@ export const UnavailableReason = { DELETED: 'deleted', OFFLINE: 'offline' } as c
 export type UnavailableReason = (typeof UnavailableReason)[keyof typeof UnavailableReason] & string
 export const QueueSource = {
   LEARNING: 'learning',
+  LEARNING_NOTES: 'learning_notes',
   FAVORITES: 'favorites',
   RECORDS: 'records',
   DAY: 'day'
 } as const
 export type QueueSource = (typeof QueueSource)[keyof typeof QueueSource] & string
+
+export const LearningTab = { ALL: 'all', NOTES: 'notes' } as const
+export type LearningTab = (typeof LearningTab)[keyof typeof LearningTab] & string

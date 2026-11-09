@@ -14,12 +14,6 @@ import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import ShareSummary from '@/features/share/components/share-summary.vue'
 import { session } from '@/services/api'
 import { ApiError } from '@/services/errors'
-import {
-  activeImagePreview,
-  closeImagePreview,
-  discardImagePreview,
-  prepareImagePreviewSource
-} from '@/services/image-preview'
 import { mediaAddress } from '@/services/media-service'
 import { setShareMenu } from '@/services/native-share'
 import { backTo } from '@/services/navigation'
@@ -36,6 +30,12 @@ import {
 } from '@/shared/constants/share'
 import { ShareTarget } from '@/shared/enums/share'
 import { createAccessMonitor } from '@/sub-packages/scenes/access-monitor'
+import {
+  activeImagePreview,
+  closeImagePreview,
+  discardImagePreview,
+  prepareImagePreviewSource
+} from '@/sub-packages/scenes/image-preview-service'
 import { createShareService } from '@/sub-packages/scenes/scene-share-service'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
@@ -59,10 +59,29 @@ let context: ImagePreviewContext | null = null,
   alive = true,
   targetId = ''
 const accessMonitor = createAccessMonitor(
-  () =>
-    session.request<components['schemas']['CardAccessView']>(
-      `/api/mini/v1/cards/${encodeURIComponent(targetId)}/access`
-    ),
+  async () => {
+    const owner = session.identity(),
+      active = context
+    const value = session.userId()
+      ? await session.request<components['schemas']['CardAccessView']>(
+          `/api/mini/v1/cards/${encodeURIComponent(targetId)}/access`
+        )
+      : await session
+          .contentRequest<components['schemas']['PersonalSummary']>(
+            `/api/mini/v1/cards/${encodeURIComponent(targetId)}/summary`
+          )
+          .then((summary) => {
+            if (!summary.access) throw new ApiError('response_invalid', '权限暂未获取')
+            return { summary, access: summary.access }
+          })
+    if (!alive || context !== active || owner !== session.identity())
+      throw new ApiError('session_changed', '账号或页面已变化')
+    if (value.summary && !value.summary.available)
+      throw new ApiError('card_unavailable', '场景卡暂不可用', 410)
+    if (value.summary && value.summary.version_id !== active?.versionId)
+      throw new ApiError('version_changed', '内容已更新', 409)
+    return value
+  },
   (value) => {
     if (!value.access.can_learn && context) {
       imageGeneration.value++
@@ -71,11 +90,16 @@ const accessMonitor = createAccessMonitor(
       close()
     }
   },
-  () => {
+  (reason) => {
     imageGeneration.value++
     src.value = ''
     imageLoading.value = false
     busy.value = false
+    if (context && reason instanceof ApiError && [403, 404, 409, 410].includes(reason.status)) {
+      context.onInvalid(reason)
+      close()
+      return
+    }
     error.value = '权限暂未获取，请重试'
   }
 )
@@ -113,7 +137,7 @@ const load = async (reuse = false) => {
   } catch (reason) {
     if (!alive || run !== imageGeneration.value || runtimeMode.update()) return
     imageLoading.value = false
-    if (reason instanceof ApiError && [401, 403, 409, 410].includes(reason.status)) {
+    if (reason instanceof ApiError && [401, 403, 404, 409, 410].includes(reason.status)) {
       context.onInvalid(reason)
       backTo(Routes.LEARNING)
     } else error.value = '大图暂未加载，点击重试'
@@ -131,13 +155,13 @@ const imageFailed = async (run: number) => {
   const active = context
   if (!active) return
   try {
-    await session.request(
-      `/api/mini/v1/cards/${active.cardId}?version_id=${encodeURIComponent(active.versionId)}`
+    await session.contentRequest(
+      `/api/mini/v1/cards/${active.cardId}?mark_started=false&version_id=${encodeURIComponent(active.versionId)}`
     )
   } catch (reason) {
     if (!alive || run !== imageGeneration.value || context !== active || runtimeMode.update())
       return
-    if (reason instanceof ApiError && [401, 403, 409, 410].includes(reason.status)) {
+    if (reason instanceof ApiError && [401, 403, 404, 409, 410].includes(reason.status)) {
       active.onInvalid(reason)
       backTo(Routes.LEARNING)
     }
