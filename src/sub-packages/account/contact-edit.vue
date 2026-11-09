@@ -10,10 +10,16 @@ import AppUnsavedDialog from '@/components/app-unsaved-dialog/app-unsaved-dialog
 import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useUnsavedGuard } from '@/composables/use-unsaved-guard'
 import { contactChange, rebaseContact } from '@/features/profile/contact-model'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, operations } from '@/services/api'
 import { ApiError, isUnconfirmedFailure } from '@/services/errors'
 import { pageShare } from '@/services/page-share'
 import { Routes } from '@/shared/constants/navigation'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsAction } from '@/shared/enums/analytics'
+// #endif
 import { useAccountStore } from '@/stores/account-store'
 
 import type { AccountProfile } from '@/shared/types/account'
@@ -72,6 +78,14 @@ const save = async () => {
   try {
     body = contactChange(base.value, { phone: phone.value, wechat_contact: wechat.value })
   } catch (reason) {
+    // #ifdef JUYA_ANALYTICS
+    businessAnalytics.error(
+      AnalyticsAction.CONTACT_SAVE,
+      new ApiError('invalid', '', 422),
+      {},
+      'validation'
+    )
+    // #endif
     if (reason instanceof ApiError) {
       fieldError.value[reason.details[0]?.field || 'phone'] = reason.message
     } else error.value = '请核对填写内容'
@@ -90,6 +104,9 @@ const save = async () => {
     return true
   } catch (reason) {
     if (alive) {
+      // #ifdef JUYA_ANALYTICS
+      businessAnalytics.error(AnalyticsAction.CONTACT_SAVE, reason)
+      // #endif
       error.value = reason instanceof Error ? reason.message : '保存暂未成功，请重试'
       unknown.value = isUnconfirmedFailure(reason)
       conflict.value = reason instanceof ApiError && reason.code === 'contact_changed'
@@ -158,7 +175,12 @@ const recover = async () => {
       }
     } else error.value = '尚未查询到保存结果，可重试原操作'
   } catch (reason) {
-    if (alive) error.value = reason instanceof Error ? reason.message : '结果尚未确认，可重试原操作'
+    if (alive) {
+      // #ifdef JUYA_ANALYTICS
+      businessAnalytics.error(AnalyticsAction.CONTACT_SAVE, reason)
+      // #endif
+      error.value = reason instanceof Error ? reason.message : '结果尚未确认，可重试原操作'
+    }
   } finally {
     if (alive) busy.value = false
   }

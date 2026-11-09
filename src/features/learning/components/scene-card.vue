@@ -2,6 +2,9 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import AppLoading from '@/components/app-loading/app-loading.vue'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { session } from '@/services/api'
 import { clientThumbnail } from '@/services/client-thumbnail'
 import { dateText } from '@/services/display'
@@ -14,6 +17,9 @@ import {
 } from '@/services/native-diagnostics'
 import { openScene } from '@/services/navigation'
 import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsEvent } from '@/shared/enums/analytics'
+// #endif
 import { QueueSource } from '@/shared/enums/learning'
 
 import type { PublishedScene } from '@/shared/types/learning'
@@ -31,6 +37,14 @@ let generation = 0
 const locked = computed(() => props.card.access?.can_learn === false)
 /** 受限场景只提示授权，不建立来源队列或预取正文 */
 const open = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.track(AnalyticsEvent.CONTENT_CLICK, {
+    content_type: 'scene',
+    content_id: props.card.id,
+    entry_source: props.source || 'direct'
+  })
+  // #endif
+
   void openScene(
     props.card.id,
     available.value && !locked.value ? props.source : undefined,

@@ -10,6 +10,16 @@ import { ApiError, isUnconfirmedFailure } from './errors'
 export const createOperationService = (ports: OperationPorts) => {
   const fingerprints = new Map<string, string>(),
     receiptMisses = new Map<string, string>()
+  /** 通知非阻塞观察者，统计失败不改变业务成功结果
+   * @param record 当前身份已确认的原业务操作
+   */
+  const notifyConfirmed = (record: OperationRecord) => {
+    try {
+      ports.onConfirmed?.(record)
+    } catch {
+      /* 观察者异常不能导致业务操作重试 */
+    }
+  }
   /** 取得当前账号范围及待确认元数据，不能读取其他账号结果 */
   const context = () => {
     const userId = ports.session.userId()
@@ -108,6 +118,7 @@ export const createOperationService = (ports: OperationPorts) => {
       }
     }
     if (!current(state)) throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
+    notifyConfirmed(record)
     forget(action, state)
     return result
   }
@@ -155,6 +166,7 @@ export const createOperationService = (ports: OperationPorts) => {
     try {
       const result = await ports.session.request<T>(path, { method, body, key: record.key })
       if (!current(state)) throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
+      notifyConfirmed(record)
       forget(action, state)
       return result
     } catch (reason) {

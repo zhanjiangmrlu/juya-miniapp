@@ -2,6 +2,10 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { resetLearningAudioSession } from '@/features/learning/learning-audio-session'
+import { analytics } from '@/services/analytics'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, operations, session } from '@/services/api'
 import { ApiError } from '@/services/errors'
 import { clearFeedbackDrafts } from '@/services/feedback-service'
@@ -11,6 +15,12 @@ import { clearMediaAddresses } from '@/services/media-service'
 import { resourceURL } from '@/services/platform'
 import { runtimeMode } from '@/services/runtime-mode'
 import { Routes } from '@/shared/constants/navigation'
+import {
+  // #ifdef JUYA_ANALYTICS
+  AnalyticsAction,
+  // #endif
+  AnalyticsEvent
+} from '@/shared/enums/analytics'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { AccountProfile } from '@/shared/types/account'
@@ -29,6 +39,7 @@ export const useAccountStore = defineStore('learner-account', () => {
     resetLearningAudioSession()
     clearMediaAddresses()
     profile.value = null
+    analytics.setAuthenticated(false)
     statistics.value = null
     avatarURL.value = ''
     operations.clearMemory()
@@ -47,7 +58,10 @@ export const useAccountStore = defineStore('learner-account', () => {
         throw reason
       })
       .then((value) => {
-        if (version === generation) profile.value = value
+        if (version === generation) {
+          profile.value = value
+          analytics.setAuthenticated(!!value)
+        }
         return value
       })
       .finally(() => {
@@ -83,6 +97,8 @@ export const useAccountStore = defineStore('learner-account', () => {
     clearMediaAddresses()
     resetLearningAudioSession()
     profile.value = result.user
+    analytics.setAuthenticated(true)
+    analytics.track(AnalyticsEvent.LOGIN_SUCCESS)
     return result.user
   }
   /** 读取服务器北京时间下的最新学习统计 */
@@ -108,7 +124,17 @@ export const useAccountStore = defineStore('learner-account', () => {
   }
   /** 主动确认退出后撤销服务器会话，再清理个人界面 */
   const logout = async () => {
-    await session.logout()
+    try {
+      await session.logout()
+    } catch (reason) {
+      // #ifdef JUYA_ANALYTICS
+      businessAnalytics.error(AnalyticsAction.LOGOUT, reason)
+      // #endif
+      throw reason
+    }
+    // #ifdef JUYA_ANALYTICS
+    businessAnalytics.track(AnalyticsEvent.LOGOUT)
+    // #endif
     clearFeedbackDrafts()
     clear()
     loginReturn.cancel()

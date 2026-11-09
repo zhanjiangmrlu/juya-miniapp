@@ -17,6 +17,10 @@ import { useSceneList } from '@/composables/use-scene-list'
 import SceneCard from '@/features/learning/components/scene-card.vue'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
+import { analytics } from '@/services/analytics'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
 import { listPageSize } from '@/services/list-page-size'
@@ -25,6 +29,7 @@ import { openLogin } from '@/services/navigation'
 import { runtimeMode } from '@/services/runtime-mode'
 import { homeShare } from '@/services/share-service'
 import { Routes } from '@/shared/constants/navigation'
+import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { LearningTab, QueueSource } from '@/shared/enums/learning'
 import { LearningAuthorizationStatus } from '@/shared/enums/learning-access'
 import { PageBackgroundKind } from '@/shared/enums/ui'
@@ -39,8 +44,14 @@ const browseOnly = runtimeMode.browseOnly,
   accessReady = ref(!browseOnly.value),
   share = useNativeShare()
 // 原生分享属于编译期可选生命周期，必须直接在页面声明
-onShareAppMessage(() => ({ ...homeShare.friends }))
-onShareTimeline(() => ({ ...homeShare.timeline }))
+onShareAppMessage(() => {
+  analytics.track(AnalyticsEvent.SHARE_TRIGGER, { channel: 'friends' })
+  return { ...homeShare.friends }
+})
+onShareTimeline(() => {
+  analytics.track(AnalyticsEvent.SHARE_TRIGGER, { channel: 'timeline' })
+  return { ...homeShare.timeline }
+})
 let listOwner = session.identity(),
   browseGeneration = 0,
   sharedEntry = false,
@@ -125,6 +136,9 @@ const selectTab = async (tab: LearningTab) => {
   if (tab === activeTab.value || runtimeMode.update()) return
   position.dispose()
   browseGeneration++
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.track(AnalyticsEvent.TAB_CHANGE, { content_type: 'scene', tab_id: tab })
+  // #endif
   activeTab.value = tab
   positions[tab].reset()
   scrollTop.value = 0
@@ -190,11 +204,26 @@ const refreshStats = async () => {
   }
 }
 /** 打开账号只读资料页 */
-const profile = () => uni.switchTab({ url: Routes.PROFILE })
+const profile = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('learning_profile', Routes.PROFILE)
+  // #endif
+  uni.switchTab({ url: Routes.PROFILE })
+}
 /** 从显式记录入口打开最近使用的标签 */
-const records = () => uni.switchTab({ url: Routes.RECORDS })
+const records = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('learning_records', Routes.RECORDS)
+  // #endif
+  uni.switchTab({ url: Routes.RECORDS })
+}
 /** 当前场景全部学完后仍可从收藏选择复习 */
-const favorites = () => uni.navigateTo({ url: Routes.FAVORITES })
+const favorites = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('learning_favorites', Routes.FAVORITES)
+  // #endif
+  uni.navigateTo({ url: Routes.FAVORITES })
+}
 /** 分享进入时先重验本人会话，再读取私人列表和统计 */
 const showPage = async () => {
   visible = true

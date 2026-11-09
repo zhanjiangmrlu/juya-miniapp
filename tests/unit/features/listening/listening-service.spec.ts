@@ -1,4 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest'
+
+import { analytics } from '@/services/analytics'
 const ports = vi.hoisted(() => ({
   pending: vi.fn(() => false),
   recover: vi.fn(),
@@ -51,4 +53,24 @@ it('exchanges the protected thumbnail path for a session-bound short image ticke
   expect(ports.request).toHaveBeenCalledWith(
     '/api/mini/v1/listening/articles/a/thumbnail-ticket?version_id=v1'
   )
+})
+
+it('records list content clicks while leaving next-article tracking to its explicit caller', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  vi.stubGlobal('uni', {
+    navigateTo: ({ success }: { success: () => void }) => success(),
+    redirectTo: ({ success }: { success: () => void }) => success()
+  })
+  try {
+    const { openListeningArticle } = await import('@/features/listening/listening-service')
+    await openListeningArticle({ id: 'a1', version_id: 'v1' } as never)
+    await openListeningArticle({ id: 'a2', version_id: 'v2' } as never, 'private-queue', true)
+    expect(track.mock.calls.filter(([event]) => event === 'content_click')).toEqual([
+      ['content_click', expect.objectContaining({ content_type: 'listening', content_id: 'a1' })]
+    ])
+    expect(JSON.stringify(track.mock.calls)).not.toContain('private-queue')
+  } finally {
+    track.mockRestore()
+    vi.unstubAllGlobals()
+  }
 })

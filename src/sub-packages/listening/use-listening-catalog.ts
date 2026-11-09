@@ -2,10 +2,16 @@ import { computed, ref, shallowRef } from 'vue'
 
 import { useSceneList } from '@/composables/use-scene-list'
 import { getListeningHome } from '@/features/listening/listening-service'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, session } from '@/services/api'
 import { loginReturn } from '@/services/login-return'
 import { LISTENING_API } from '@/shared/constants/listening'
 import { Routes } from '@/shared/constants/navigation'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsEvent } from '@/shared/enums/analytics'
+// #endif
 import { useAccountStore } from '@/stores/account-store'
 
 import type { ListeningHome, ListeningSummary } from '@/shared/types/listening'
@@ -161,6 +167,13 @@ export const useListeningCatalog = () => {
   const select = async (id: string) => {
     if (owner !== session.identity()) reset()
     if (category.value === id && listCategory === id && list.value.total.value !== null) return
+    // #ifdef JUYA_ANALYTICS
+    if (category.value !== id)
+      businessAnalytics.track(AnalyticsEvent.CATEGORY_SELECT, {
+        content_type: 'listening',
+        category_id: id || 'all'
+      })
+    // #endif
     category.value = id
     syncCategory()
     await list.value.refresh()

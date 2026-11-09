@@ -1,8 +1,14 @@
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { operations, session } from '@/services/api'
 import { ApiError } from '@/services/errors'
 import { operationKey, resourceURL } from '@/services/platform'
 import { LISTENING_API } from '@/shared/constants/listening'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsAction, AnalyticsEvent } from '@/shared/enums/analytics'
 
+// #endif
 import type {
   ListeningArticle,
   ListeningHome,
@@ -127,10 +133,27 @@ export const listeningMedia = async (article: ListeningArticle, mediaId: string)
  */
 export const openListeningArticle = (article: ListeningSummary, queueToken = '', replace = false) =>
   new Promise<void>((resolve, reject) => {
+    // #ifdef JUYA_ANALYTICS
+    if (!replace)
+      businessAnalytics.track(AnalyticsEvent.CONTENT_CLICK, {
+        content_type: 'listening',
+        content_id: article.id,
+        version_id: article.version_id || undefined
+      })
+    // #endif
     const options = {
       url: `/sub-packages/listening/article?id=${encodeURIComponent(article.id)}${queueToken ? `&queue_token=${encodeURIComponent(queueToken)}` : ''}`,
       success: () => resolve(),
-      fail: () => reject(new Error('下一篇打开失败，请重试'))
+      fail: (reason: unknown) => {
+        // #ifdef JUYA_ANALYTICS
+        if (!replace)
+          businessAnalytics.error(AnalyticsAction.CONTENT_OPEN, reason, {
+            content_type: 'listening',
+            content_id: article.id
+          })
+        // #endif
+        reject(new Error('下一篇打开失败，请重试'))
+      }
     }
     if (replace) uni.redirectTo(options)
     else uni.navigateTo(options)

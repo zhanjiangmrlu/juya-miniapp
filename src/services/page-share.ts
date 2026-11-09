@@ -1,5 +1,7 @@
+import { analytics } from '@/services/analytics'
 import { Routes } from '@/shared/constants/navigation'
 import { PAGE_SHARE_COVERS, PAGE_SHARE_QUERY, PAGE_SHARE_TITLE } from '@/shared/constants/share'
+import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { ShareChannel } from '@/shared/enums/share'
 
 import type { FriendsShare, TimelineShare } from '@/shared/types/share'
@@ -14,6 +16,7 @@ export const preparePageShareCovers = () => covers.prepare()
 export const pageShare: { friends: FriendsShare; timeline: TimelineShare } = {
   /** 分享发生时同步确认缓存，未就绪或被系统回收则立即用本地小图 */
   get friends() {
+    analytics.track(AnalyticsEvent.SHARE_TRIGGER, { channel: 'friends' })
     return {
       title: PAGE_SHARE_TITLE,
       path: Routes.HOME,
@@ -22,6 +25,7 @@ export const pageShare: { friends: FriendsShare; timeline: TimelineShare } = {
   },
   /** 朋友圈保留原首页落地参数，图片准备与好友渠道相互独立 */
   get timeline() {
+    analytics.track(AnalyticsEvent.SHARE_TRIGGER, { channel: 'timeline' })
     return {
       title: PAGE_SHARE_TITLE,
       query: PAGE_SHARE_QUERY,

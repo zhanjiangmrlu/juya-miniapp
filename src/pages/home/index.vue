@@ -6,6 +6,9 @@ import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { getListeningHome } from '@/features/listening/listening-service'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, session } from '@/services/api'
 import { loginReturn } from '@/services/login-return'
 import { openLogin } from '@/services/navigation'
@@ -53,7 +56,12 @@ const pullRefresh = async () => {
 /** 打开选定的真实学习模块
  * @param path 场景或主题听读的已注册页面
  */
-const open = (path: string) => uni.navigateTo({ url: path })
+const open = (path: string) => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry(path === Routes.LEARNING ? 'home_learning' : 'home_listening', path)
+  // #endif
+  uni.navigateTo({ url: path })
+}
 onShow(() => {
   visible = true
   loginReturn.register(

@@ -14,3 +14,9 @@ declare module '*.vue' {
 }
 
 declare const __JUYA_ASSET_MANIFEST__: import('./shared/types/assets').AssetManifest
+
+declare const __JUYA_ANALYTICS_CONFIG__: import('./shared/types/analytics').AnalyticsConfig
+declare module 'virtual:juya-umeng-sdk' {
+  const sdk: import('./shared/types/analytics').AnalyticsSDK | null
+  export default sdk
+}

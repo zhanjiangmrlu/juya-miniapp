@@ -1,5 +1,11 @@
 import { computed, ref } from 'vue'
 
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsAction, AnalyticsEvent } from '@/shared/enums/analytics'
+// #endif
 import { dictionaryQuery, dictionarySpeechKey } from '@/sub-packages/scenes/dictionary-model'
 
 import type {
@@ -34,8 +40,9 @@ export const useSceneDictionary = (ports: DictionaryPorts) => {
   }
   /** 对最新原词查询，账号、卡片和版本变化立即使迟到结果失效
    * @param token 当前发布正文的完整英文词元
+   * @param recordAttempt 页面已记录点击时关闭共享层的重复通知
    */
-  const open = async (token: DictionaryToken) => {
+  const open = async (token: DictionaryToken, recordAttempt = true) => {
     if (!token.word) return
     const context = ports.context()
     if (!context) return
@@ -51,6 +58,15 @@ export const useSceneDictionary = (ports: DictionaryPorts) => {
       end: token.lookup?.end ?? token.end
     }
     selection.value = current
+    // #ifdef JUYA_ANALYTICS
+    const properties = {
+      content_type: 'scene' as const,
+      content_id: scope.cardId,
+      version_id: scope.versionId,
+      word_id: `${current.line_id}:${current.start}:${current.end}`
+    }
+    if (recordAttempt) businessAnalytics.track(AnalyticsEvent.DICTIONARY_LOOKUP, properties)
+    // #endif
     busy.value = true
     /** 只允许本次选择及本人同一发布版本继续查询或准备音频 */
     const active = () => {
@@ -75,11 +91,17 @@ export const useSceneDictionary = (ports: DictionaryPorts) => {
         return
       }
       result.value = value
+      // #ifdef JUYA_ANALYTICS
+      businessAnalytics.track(AnalyticsEvent.DICTIONARY_SUCCESS, properties)
+      // #endif
     } catch (reason) {
       if (!active()) {
         if (run === generation) close()
         return
       }
+      // #ifdef JUYA_ANALYTICS
+      businessAnalytics.error(AnalyticsAction.DICTIONARY_LOOKUP, reason, properties)
+      // #endif
       await ports.onFailure(reason)
       if (active()) error.value = reason instanceof Error ? reason.message : '查询失败，请重试'
     } finally {

@@ -517,3 +517,100 @@ it('suspends both tracks and pending requests for native documents while preserv
   expect(full.playing).toBe(true)
   controller.dispose()
 })
+
+it('observes concrete audio actions without treating recovery or system suspension as clicks', async () => {
+  const full = new AudioBoundary(),
+    word = new AudioBoundary(),
+    events: unknown[][] = []
+  const controller = createAudioController(
+    full,
+    word,
+    undefined,
+    { rate: 1 },
+    undefined,
+    undefined,
+    undefined,
+    (event, properties) => events.push([event, properties])
+  )
+  await controller.toggleFull(() => '/signed-full?token=private')
+  full.currentTime = 6
+  full.callbacks.time?.()
+  await controller.toggleFull(() => '')
+  controller.setRate(1.5)
+  controller.seekFull(10)
+  controller.setRate(1, 'restore')
+  controller.seekFull(3, 'restore')
+  controller.pauseFull()
+  await controller.playWord('vocabulary:word-17', () => '/signed-word?token=private')
+  word.callbacks.ended?.()
+  expect(events.map((event) => event[0])).toEqual([
+    'audio_play',
+    'audio_pause',
+    'audio_rate_change',
+    'audio_seek',
+    'audio_play',
+    'audio_ended'
+  ])
+  expect(events[1]?.[1]).toMatchObject({ audio_kind: 'full', position_s: 6, trigger: 'control' })
+  expect(events[2]?.[1]).toMatchObject({ playback_rate: 1.5 })
+  expect(events[3]?.[1]).toMatchObject({ position_s: 10 })
+  expect(events[4]?.[1]).toMatchObject({ audio_kind: 'word', word_id: 'vocabulary:word-17' })
+  expect(JSON.stringify(events)).not.toContain('private')
+  controller.dispose()
+})
+
+it('observes final playback failures and retains playback if the observer throws', async () => {
+  const full = new AudioBoundary(),
+    word = new AudioBoundary(),
+    events: string[] = []
+  const controller = createAudioController(
+    full,
+    word,
+    undefined,
+    { rate: 1 },
+    undefined,
+    undefined,
+    undefined,
+    (event) => {
+      events.push(event)
+      throw new Error('statistics unavailable')
+    }
+  )
+  await controller.toggleFull(() => '/full')
+  expect(full.playing).toBe(true)
+  full.callbacks.error?.()
+  await controller.playWord('word-1', () => {
+    throw new Error('not available')
+  })
+  expect(events).toEqual(['audio_play', 'audio_error', 'audio_play', 'audio_error'])
+  expect(controller.state.wordStatus).toBe('error')
+  controller.dispose()
+})
+
+it('observes a foreground system pause once while internal rate transitions remain silent', async () => {
+  const full = new AudioBoundary(),
+    word = new AudioBoundary(),
+    events: unknown[][] = []
+  const controller = createAudioController(
+    full,
+    word,
+    undefined,
+    { rate: 1 },
+    undefined,
+    undefined,
+    undefined,
+    (event, properties) => events.push([event, properties])
+  )
+  await controller.toggleFull(() => '/full')
+  controller.setRate(1.5)
+  expect(events.filter(([event]) => event === 'audio_pause')).toEqual([])
+  full.pause()
+  full.pause()
+  expect(events.filter(([event]) => event === 'audio_pause')).toEqual([
+    ['audio_pause', expect.objectContaining({ trigger: 'system', audio_kind: 'full' })]
+  ])
+  await controller.toggleFull(() => '/full', 'system')
+  full.callbacks.stop?.()
+  expect(events.filter(([event]) => event === 'audio_pause')).toHaveLength(2)
+  controller.dispose()
+})

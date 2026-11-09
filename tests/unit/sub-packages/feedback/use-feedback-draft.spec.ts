@@ -1,5 +1,6 @@
 import { expect, it, vi } from 'vitest'
 
+import { analytics } from '@/services/analytics'
 import { ApiError } from '@/services/errors'
 import { createOperationService } from '@/services/operation-service'
 import { createFeedbackDraft } from '@/sub-packages/feedback/use-feedback-draft'
@@ -331,3 +332,49 @@ it.each([undefined, 'feedback-1'])(
     expect(JSON.stringify(Array.from(rows.values()))).not.toContain('replacement B')
   }
 )
+
+it('reports explicit invalid and unknown submissions without private feedback input or automatic recovery errors', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  try {
+    const { draft, request } = setup()
+    await draft.submit()
+    draft.category.value = 'content'
+    draft.text.value = 'private-feedback-text'
+    request.mockRejectedValueOnce(new ApiError('network_unknown', 'private-error-text'))
+    await draft.submit()
+    expect(
+      track.mock.calls
+        .filter(([event]) => event === 'business_error')
+        .map(([, props]) => props?.error_kind)
+    ).toEqual(['validation', 'result_unknown'])
+    expect(track.mock.calls.some(([event]) => event === 'feedback_submit')).toBe(false)
+    expect(JSON.stringify(track.mock.calls)).not.toContain('private')
+    track.mockClear()
+    request.mockRejectedValueOnce(new ApiError('operation_unknown', 'not ready', 404))
+    await draft.resume()
+    expect(track).not.toHaveBeenCalled()
+  } finally {
+    track.mockRestore()
+  }
+})
+
+it('does not report a failed upload after its owner changes', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  try {
+    const { draft, request, setOwner } = setup()
+    let reject!: (error: unknown) => void
+    request.mockImplementationOnce(
+      () =>
+        new Promise((_, fail) => {
+          reject = fail
+        })
+    )
+    const pending = draft.addImages(['private-file'])
+    setOwner('other')
+    reject(new Error('private-error'))
+    await pending
+    expect(track).not.toHaveBeenCalled()
+  } finally {
+    track.mockRestore()
+  }
+})

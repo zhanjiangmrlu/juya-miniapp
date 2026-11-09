@@ -8,6 +8,13 @@ import {
   saveListeningProgress,
   writeListening
 } from '@/features/listening/listening-service'
+import { analytics } from '@/services/analytics'
+// #ifdef JUYA_ANALYTICS
+import { createAudioAnalytics } from '@/services/analytics-audio'
+// #endif
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, session } from '@/services/api'
 import { createAudioController } from '@/services/audio-controller'
 import { createAudioPort } from '@/services/audio-port'
@@ -19,6 +26,12 @@ import { operationKey, resourceURL, storage } from '@/services/platform'
 import { prepareAudioCacheFile } from '@/services/word-audio-file'
 import { LISTENING_API, LISTENING_PROGRESS_DRAFT_PREFIX } from '@/shared/constants/listening'
 import { Routes } from '@/shared/constants/navigation'
+import {
+  // #ifdef JUYA_ANALYTICS
+  AnalyticsAction,
+  // #endif
+  AnalyticsEvent
+} from '@/shared/enums/analytics'
 import { AudioStatus } from '@/shared/enums/audio'
 import { LearningAccessReason } from '@/shared/enums/learning-access'
 import { useAccountStore } from '@/stores/account-store'
@@ -83,6 +96,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     wordStatus: AudioStatus.IDLE,
     wordError: ''
   })
+  let analyticsStartedId = ''
   let controller: ReturnType<typeof createAudioController> | null = null,
     full: ReturnType<typeof createAudioPort> | null = null,
     timer: ReturnType<typeof setInterval> | undefined,
@@ -114,6 +128,16 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     },
     { flush: 'sync' }
   )
+  // #ifdef JUYA_ANALYTICS
+  let initialContentAttempt = true
+  /** 当前文章的有限统计维度，不读取正文 */
+  const analyticsContext = () => ({
+    content_type: 'listening' as const,
+    content_id: article.value?.id || id.value,
+    version_id: article.value?.version_id || undefined,
+    page_path: 'sub-packages/listening/article'
+  })
+  // #endif
   const target = computed(() => `${Routes.ARTICLE}?id=${id.value}`)
   /** 释放当前文章的两个音轨和未完成异步处理 */
   const stop = () => {
@@ -254,7 +278,11 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     if (until > 0) expiry = setTimeout(() => void authorize(), Math.min(until + 50, 2147483647))
   }
   /** 按音轨、身份和版本复核权限，后台保留同会话失效结果并拒绝旧请求 */
-  const authorize = async () => {
+  const authorize = async (
+    // #ifdef JUYA_ANALYTICS
+    action?: AnalyticsAction
+    // #endif
+  ) => {
     const current = article.value,
       run = ++authorizationGeneration,
       owner = session.identity(),
@@ -313,8 +341,17 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
         owner === session.identity() &&
         alive &&
         (visible || full?.background)
-      )
+      ) {
+        // #ifdef JUYA_ANALYTICS
+        if (action && visible)
+          businessAnalytics.error(action, reason, {
+            content_type: 'listening',
+            content_id: current.id,
+            version_id: current.version_id || undefined
+          })
+        // #endif
         deny(reason)
+      }
       return false
     }
   }
@@ -358,7 +395,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       resume: async (active) => {
         if (!(await authorize()) || !active() || controller !== currentController) return
         const prepared = fullPreparation
-        if (prepared) await currentController.toggleFull(() => prepared.load())
+        if (prepared) await currentController.toggleFull(() => prepared.load(), 'system')
       },
       leave: () => {
         void save()
@@ -378,7 +415,14 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       },
       () => {
         wordGeneration++
-      }
+      },
+      // #ifdef JUYA_ANALYTICS
+      createAudioAnalytics({
+        content_type: 'listening',
+        content_id: value.id,
+        version_id: value.version_id
+      })
+      // #endif
     )
     const currentController = controller
     if (value.payload.audio_id) {
@@ -426,7 +470,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     translation.value = restored.translation_open
     readingPosition = restored.reading_position
     controller.state.position = restored.audio_position
-    controller.setRate(restored.playback_rate)
+    controller.setRate(restored.playback_rate, 'restore')
     controller.state.duration = value.audio_duration
     audio.value = { ...controller.state }
     if (readingPosition) {
@@ -447,7 +491,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     if (snapshot?.version === value.version_id && !hasHistory) {
       translation.value = snapshot.translation
       controller.state.position = snapshot.audioPosition
-      controller.setRate(snapshot.playbackRate)
+      controller.setRate(snapshot.playbackRate, 'restore')
       audio.value = { ...controller.state }
       void nextTick(() => {
         if (article.value === value) uni.pageScrollTo?.({ scrollTop: snapshot.scroll, duration: 0 })
@@ -462,6 +506,10 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   /** 文章进入及回到前台按身份重新鉴权，读取失败展示明确重试 */
   const load = async () => {
     if (!id.value || busy.value) return
+    // #ifdef JUYA_ANALYTICS
+    const reportFailure = initialContentAttempt
+    initialContentAttempt = false
+    // #endif
     busy.value = true
     error.value = ''
     const run = ++generation
@@ -473,6 +521,13 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       if (run !== generation || !alive || !visible) return
       stop()
       article.value = value
+      if (session.userId() && !restoringSnapshot && analyticsStartedId !== value.id) {
+        analytics.track(AnalyticsEvent.LEARNING_START, {
+          content_type: 'listening',
+          content_id: value.id
+        })
+        analyticsStartedId = value.id
+      }
       summary.value = value
       completed.value = false
       completionResult.value = null
@@ -482,6 +537,10 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       setup()
     } catch (reason) {
       if (run === generation) {
+        // #ifdef JUYA_ANALYTICS
+        if (reportFailure && alive && visible)
+          businessAnalytics.error(AnalyticsAction.CONTENT_OPEN, reason, analyticsContext())
+        // #endif
         if (restoringSnapshot && reason instanceof ApiError && [404, 410].includes(reason.status)) {
           const category = restoringSnapshot.category
           restoringSnapshot = null
@@ -547,6 +606,12 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   const toggleTranslation = () => {
     snapshotReadonly = false
     translation.value = !translation.value
+    // #ifdef JUYA_ANALYTICS
+    businessAnalytics.track(AnalyticsEvent.TRANSLATION_TOGGLE, {
+      ...analyticsContext(),
+      expanded: Number(translation.value)
+    })
+    // #endif
   }
   /** 真实滚动输入解除来源展示的只读边界，布局回调本身不能解除
    * @param event 当前页面的触摸移动、滚轮或有效滚动按键
@@ -581,10 +646,34 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   }
   /** 主动收藏或取消；已失效的本人收藏仍可取消 */
   const favorite = async () => {
-    if (!(await account.ensure(target.value))) return
+    // #ifdef JUYA_ANALYTICS
+    const attemptOwner = session.identity(),
+      attemptRun = generation,
+      attemptProperties = analyticsContext()
+    // #endif
+    if (!(await account.ensure(target.value))) {
+      // #ifdef JUYA_ANALYTICS
+      if (alive && visible && attemptOwner === session.identity() && attemptRun === generation)
+        businessAnalytics.error(
+          AnalyticsAction.FAVORITE_CHANGE,
+          new ApiError('unauthenticated', '', 401),
+          attemptProperties
+        )
+      // #endif
+      return
+    }
     const value = article.value || summary.value
     if (!value || actionBusy.value) return
-    if (!value.state?.favorite && (!(await authorize()) || article.value !== value)) return
+    if (
+      !value.state?.favorite &&
+      (!(await authorize(
+        // #ifdef JUYA_ANALYTICS
+        AnalyticsAction.FAVORITE_CHANGE
+        // #endif
+      )) ||
+        article.value !== value)
+    )
+      return
     actionBusy.value = true
     actionError.value = ''
     lastAction = favorite
@@ -598,6 +687,14 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       )
       if (value.state) value.state.favorite = result.favorite
     } catch (reason) {
+      // #ifdef JUYA_ANALYTICS
+      if (alive && visible && article.value === value)
+        businessAnalytics.error(AnalyticsAction.FAVORITE_CHANGE, reason, {
+          content_type: 'listening',
+          content_id: value.id,
+          version_id: value.version_id || undefined
+        })
+      // #endif
       actionError.value = reason instanceof Error ? reason.message : '收藏未成功，请重试'
     } finally {
       actionBusy.value = false
@@ -605,9 +702,33 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   }
   /** 完成成功后才展示成绩和服务端下一篇；读取失败不当作分类结束 */
   const complete = async () => {
-    if (!(await account.ensure(target.value))) return
+    // #ifdef JUYA_ANALYTICS
+    const attemptOwner = session.identity(),
+      attemptRun = generation,
+      attemptProperties = analyticsContext()
+    // #endif
+    if (!(await account.ensure(target.value))) {
+      // #ifdef JUYA_ANALYTICS
+      if (alive && visible && attemptOwner === session.identity() && attemptRun === generation)
+        businessAnalytics.error(
+          AnalyticsAction.LEARNING_COMPLETE,
+          new ApiError('unauthenticated', '', 401),
+          attemptProperties
+        )
+      // #endif
+      return
+    }
     lastAction = complete
-    if (actionBusy.value || !(await authorize()) || !article.value) return
+    if (
+      actionBusy.value ||
+      !(await authorize(
+        // #ifdef JUYA_ANALYTICS
+        AnalyticsAction.LEARNING_COMPLETE
+        // #endif
+      )) ||
+      !article.value
+    )
+      return
     const value = article.value
     actionBusy.value = true
     actionError.value = ''
@@ -623,6 +744,14 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       value.state = result.state
       await getNext()
     } catch (reason) {
+      // #ifdef JUYA_ANALYTICS
+      if (alive && visible && article.value === value)
+        businessAnalytics.error(AnalyticsAction.LEARNING_COMPLETE, reason, {
+          content_type: 'listening',
+          content_id: value.id,
+          version_id: value.version_id || undefined
+        })
+      // #endif
       actionError.value = reason instanceof Error ? reason.message : '完成结果未确认，请重试'
     } finally {
       actionBusy.value = false
@@ -647,12 +776,37 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   /** 查询本篇原图受控地址，打开覆盖层保留音轨与阅读状态 */
   const openImage = async () => {
     const value = article.value
-    if (!value?.payload.image_id || !(await authorize()) || article.value !== value) return
+    if (!value?.payload.image_id) return
+    // #ifdef JUYA_ANALYTICS
+    const properties = analyticsContext(),
+      attemptOwner = session.identity(),
+      attemptRun = generation
+    businessAnalytics.track(AnalyticsEvent.IMAGE_OPEN, properties)
+    // #endif
+    if (
+      !(await authorize(
+        // #ifdef JUYA_ANALYTICS
+        AnalyticsAction.IMAGE_OPEN
+        // #endif
+      )) ||
+      article.value !== value
+    )
+      return
     imageOpen.value = true
     imageError.value = ''
     try {
       image.value = await guardResource(listeningMedia(value, value.payload.image_id), value)
     } catch (reason) {
+      // #ifdef JUYA_ANALYTICS
+      if (
+        alive &&
+        visible &&
+        attemptRun === generation &&
+        attemptOwner === session.identity() &&
+        (article.value === value || summary.value?.id === value.id)
+      )
+        businessAnalytics.error(AnalyticsAction.IMAGE_OPEN, reason, properties)
+      // #endif
       imageError.value = reason instanceof Error ? reason.message : '原图加载失败，请重试'
     }
   }
@@ -661,9 +815,29 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
    */
   const lookup = async (token: ListeningToken) => {
     const value = article.value
-    if (!value?.version_id || !(await authorize()) || article.value !== value) return
+    if (!value?.version_id) return
+    // #ifdef JUYA_ANALYTICS
+    const properties = { ...analyticsContext(), word_id: `body:${token.start}:${token.end}` }
+    businessAnalytics.track(AnalyticsEvent.DICTIONARY_LOOKUP, properties)
+    // #endif
+    if (
+      !(await authorize(
+        // #ifdef JUYA_ANALYTICS
+        AnalyticsAction.DICTIONARY_LOOKUP
+        // #endif
+      )) ||
+      article.value !== value
+    )
+      return
     if (!value.access.can_lookup) {
       lookupRestricted.value = true
+      // #ifdef JUYA_ANALYTICS
+      businessAnalytics.error(
+        AnalyticsAction.DICTIONARY_LOOKUP,
+        new ApiError('forbidden', '', 403),
+        properties
+      )
+      // #endif
       return
     }
     lookupRestricted.value = false
@@ -684,10 +858,19 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       const result = await session.request<DictionaryResult>(
         `${LISTENING_API}/articles/${value.id}/dictionary?version_id=${encodeURIComponent(value.version_id)}&start=${token.start}&end=${token.end}`
       )
-      if (selection.value === current) dictionary.value = result
+      if (selection.value === current && article.value === value && alive && visible) {
+        dictionary.value = result
+        // #ifdef JUYA_ANALYTICS
+        businessAnalytics.track(AnalyticsEvent.DICTIONARY_SUCCESS, properties)
+        // #endif
+      }
     } catch (reason) {
-      if (selection.value === current)
+      if (selection.value === current && article.value === value && alive && visible) {
+        // #ifdef JUYA_ANALYTICS
+        businessAnalytics.error(AnalyticsAction.DICTIONARY_LOOKUP, reason, properties)
+        // #endif
         dictionaryError.value = reason instanceof Error ? reason.message : '查询失败，请重试'
+      }
     } finally {
       if (selection.value === current) dictionaryBusy.value = false
     }
@@ -897,6 +1080,12 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   /** 同队列前进前同步本篇，替换详情以保留原列表来源和冻结队列 */
   const advance = async () => {
     if (!nextArticle.value || actionBusy.value) return
+    // #ifdef JUYA_ANALYTICS
+    const properties = analyticsContext(),
+      owner = session.identity(),
+      run = generation
+    businessAnalytics.track(AnalyticsEvent.CONTENT_NEXT, properties)
+    // #endif
     actionBusy.value = true
     actionError.value = ''
     lastAction = advance
@@ -906,10 +1095,22 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       if (saveError.value) throw new Error('进度尚未同步，请重试后打开下一篇')
       await openListeningArticle(nextArticle.value, queueToken.value, true)
     } catch (reason) {
+      // #ifdef JUYA_ANALYTICS
+      if (alive && visible && run === generation && owner === session.identity())
+        businessAnalytics.error(AnalyticsAction.CONTENT_NEXT, reason, properties)
+      // #endif
       actionError.value = reason instanceof Error ? reason.message : '下一篇打开失败，请重试'
     } finally {
       actionBusy.value = false
     }
+  }
+  /** 用户明确重试正文，前台自动加载不重置观察标记 */
+  const retryLoad = () => {
+    if (busy.value) return
+    // #ifdef JUYA_ANALYTICS
+    initialContentAttempt = true
+    // #endif
+    return load()
   }
   /** 重试最后失败的明确操作，收藏失败不会触发完成 */
   const retryAction = () => lastAction?.()
@@ -921,6 +1122,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     advance,
     queueToken,
     retryAction,
+    retryLoad,
     article,
     summary,
     busy,

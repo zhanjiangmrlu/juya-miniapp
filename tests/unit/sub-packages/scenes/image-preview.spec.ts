@@ -32,6 +32,7 @@ vi.mock('@/services/api', () => ({
 vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
 vi.mock('@/services/navigation', () => ({ backTo: ports.back }))
 
+import { analytics } from '@/services/analytics'
 import { ApiError } from '@/services/errors'
 import { runtimeMode } from '@/services/runtime-mode'
 import ImagePreview from '@/sub-packages/scenes/image-preview.vue'
@@ -330,3 +331,52 @@ it.each(['revoked', 'version', 'offline'] as const)(
     page.unmount()
   }
 )
+
+it('records current original download failures on opening and explicit retry without leaking paths', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  const { page } = openPreview(vi.fn().mockRejectedValue(new Error('private-url')))
+  try {
+    await flushPromises()
+    expect(track.mock.calls.filter(([event]) => event === 'business_error')).toHaveLength(1)
+    await page.get('.overlay-message button').trigger('click')
+    await flushPromises()
+    expect(track.mock.calls.filter(([event]) => event === 'business_error')).toEqual([
+      ['business_error', expect.objectContaining({ action: 'image_open', content_id: 'scene-1' })],
+      ['business_error', expect.objectContaining({ action: 'image_open', content_id: 'scene-1' })]
+    ])
+    expect(JSON.stringify(track.mock.calls)).not.toContain('private-url')
+  } finally {
+    page.unmount()
+    track.mockRestore()
+  }
+})
+
+it('records one current pixel failure and discards a late abandoned image failure', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  const { page } = openPreview(vi.fn().mockResolvedValue('/original'))
+  try {
+    await flushPromises()
+    const image = page.get('.zoom-image image')
+    await image.trigger('error')
+    await image.trigger('error')
+    expect(track.mock.calls.filter(([event]) => event === 'business_error')).toHaveLength(1)
+  } finally {
+    page.unmount()
+    track.mockRestore()
+  }
+  const late = vi.spyOn(analytics, 'track')
+  let reject!: (reason: unknown) => void
+  const preview = openPreview(
+    () =>
+      new Promise((_, failed) => {
+        reject = failed
+      })
+  )
+  await flushPromises()
+  ports.unload?.()
+  preview.page.unmount()
+  reject(new Error('private-late-error'))
+  await flushPromises()
+  expect(late).not.toHaveBeenCalled()
+  late.mockRestore()
+})

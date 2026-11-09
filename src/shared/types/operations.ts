@@ -20,4 +20,5 @@ export interface OperationPorts {
   session: OperationSession
   storage: StoragePort
   key: () => string
+  onConfirmed?: (record: OperationRecord) => void
 }

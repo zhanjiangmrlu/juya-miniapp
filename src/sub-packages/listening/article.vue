@@ -56,7 +56,7 @@ const {
   dictionaryError,
   audio,
   follow,
-  load,
+  retryLoad,
   save,
   toggle,
   seek,
@@ -135,7 +135,7 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
       :busy="busy && !article"
       :error="!summary ? error : ''"
       centered-error
-      @retry="load"
+      @retry="retryLoad"
     /><view v-if="!article && summary" class="locked"
       ><text class="article-title">{{ summary.title_zh }}</text
       ><text class="article-english">{{ summary.title_en }}</text
@@ -170,14 +170,14 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
         :error="error"
         centered-error
         action-label="返回分类文章"
-        @retry="load"
+        @retry="retryLoad"
         @action="topic"
       /><AppState
         v-else
         :error="error"
         centered-error
         title="内容暂时未加载出来"
-        @retry="load"
+        @retry="retryLoad"
       /><button v-if="summary.state?.favorite" class="text-button" @click="favorite">
         取消收藏
       </button></view
@@ -237,7 +237,11 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
         @toggle="toggle"
         @seek="seek"
         @rate="setRate"
-      /><AppState v-if="permissionError" :error="permissionError" @retry="load" /><ListeningBody
+      /><AppState
+        v-if="permissionError"
+        :error="permissionError"
+        @retry="retryLoad"
+      /><ListeningBody
         ref="bodyRef"
         :article="article"
         :milliseconds="audio.position * 1000"

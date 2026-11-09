@@ -2,6 +2,8 @@
 import { config, flushPromises, shallowMount } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
+import { analytics } from '@/services/analytics'
+
 config.global.stubs['scroll-view'] = { template: '<div><slot /></div>' }
 
 const ports = vi.hoisted(() => ({
@@ -211,5 +213,28 @@ it.each([
     await flushPromises()
     expect(ports.request.mock.calls.at(-1)?.[0]).toBe(`${path}?page=2&limit=${newLimit}`)
     page.unmount()
+  }
+)
+
+it.each([LearningPage, FavoritesPage])(
+  'records actual tab changes and ignores repeated selection on %s',
+  async (component) => {
+    ports.request.mockResolvedValue({ items: [], total: 0 })
+    const track = vi.spyOn(analytics, 'track')
+    const page = shallowMount(component, {
+      global: { stubs: { AppPage: { template: '<view><slot /></view>' } } }
+    })
+    try {
+      ports.show?.()
+      await flushPromises()
+      const tabs = page.findAll('.tabs button, .catalog-tabs button')
+      expect(tabs.length).toBeGreaterThan(1)
+      await tabs[1]!.trigger('click')
+      await tabs[1]!.trigger('click')
+      expect(track.mock.calls.filter(([event]) => event === 'tab_change')).toHaveLength(1)
+    } finally {
+      page.unmount()
+      track.mockRestore()
+    }
   }
 )

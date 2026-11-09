@@ -42,6 +42,7 @@ vi.mock('@/stores/account-store', () => ({
     avatarURL: ''
   })
 }))
+import { analytics } from '@/services/analytics'
 import Contact from '@/sub-packages/account/contact-edit.vue'
 import Identity from '@/sub-packages/account/identity-edit.vue'
 beforeEach(() => {
@@ -87,4 +88,26 @@ it('discards a late avatar chooser callback after the editor identity has ended'
   expect(uni.getFileInfo).not.toHaveBeenCalled()
   expect(ports.request.mock.calls.some(([path]) => path === '/api/mini/v1/me/avatar')).toBe(false)
   page.unmount()
+})
+
+it('reports contact validation without sending the edited phone or contact', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  const page = shallowMount(Contact, {
+    global: { stubs: { AppPage: { template: '<div><slot /><slot name="footer" /></div>' } } }
+  })
+  try {
+    ports.load()
+    await flushPromises()
+    await page.findAll('input')[0]!.setValue('private-invalid-phone')
+    await page.get('button.primary').trigger('click')
+    await flushPromises()
+    expect(track).toHaveBeenCalledWith(
+      'business_error',
+      expect.objectContaining({ action: 'contact_save', error_kind: 'validation' })
+    )
+    expect(JSON.stringify(track.mock.calls)).not.toContain('private-invalid-phone')
+  } finally {
+    page.unmount()
+    track.mockRestore()
+  }
 })

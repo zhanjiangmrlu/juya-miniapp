@@ -2,6 +2,7 @@
 import { onHide, onLaunch, onShow } from '@dcloudio/uni-app'
 import { watch } from 'vue'
 
+import { analytics } from '@/services/analytics'
 import { resetLearningAudioSession } from '@/services/audio-controller'
 import { hasBackgroundAudioSession } from '@/services/audio-navigation'
 import { preparePageShareCovers } from '@/services/page-share'
@@ -17,6 +18,7 @@ onLaunch((options) => {
   void preparePageShareCovers()
 })
 onShow((options: RuntimeOptions = {}) => {
+  analytics.foreground({ scene: options.scene })
   syncRuntimeMode(options)
   void preparePageShareCovers()
 })
@@ -28,6 +30,7 @@ watch(
   { flush: 'sync' }
 )
 onHide(() => {
+  analytics.background()
   if (!hasBackgroundAudioSession()) resetLearningAudioSession()
 })
 </script>

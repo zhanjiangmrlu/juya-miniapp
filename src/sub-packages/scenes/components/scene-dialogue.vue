@@ -10,7 +10,7 @@ import type { SceneDialogueProps } from '@/shared/types/learning-components'
 defineProps<SceneDialogueProps>()
 const translated = ref(false)
 const emit = defineEmits<{
-  layout: []
+  layout: [expanded: boolean]
   lookup: [token: import('@/shared/types/dictionary').DictionaryToken]
 }>()
 const { measureReading } = useReadingAnchors()
@@ -24,7 +24,7 @@ defineExpose({ measureReading, translated, restoreTranslation })
 /** 展开全文译文后通知详情重新测量正文布局 */
 const toggleTranslation = () => {
   translated.value = !translated.value
-  emit('layout')
+  emit('layout', translated.value)
 }
 </script>
 <template>

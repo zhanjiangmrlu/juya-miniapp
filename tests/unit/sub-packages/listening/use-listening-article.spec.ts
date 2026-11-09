@@ -110,6 +110,7 @@ vi.mock('@/services/audio-port', () => ({
     return audio
   }
 }))
+import { analytics } from '@/services/analytics'
 import { ApiError } from '@/services/errors'
 import { loginReturn } from '@/services/login-return'
 import { Routes } from '@/shared/constants/navigation'
@@ -890,4 +891,87 @@ it('captures the selected pending native rate for read-only login display restor
   loginReturn.begin(Routes.ARTICLE + '?id=a1')
   loginReturn.succeed()
   expect(loginReturn.take(Routes.ARTICLE, 'a1')?.playbackRate).toBe(1.75)
+})
+
+it('records identified audio actions but never content exposure or restored-progress actions', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  try {
+    const model = await open()
+    expect(track.mock.calls.some(([event]) => String(event) === 'content_view')).toBe(false)
+    expect(track.mock.calls.filter(([event]) => event.startsWith('audio_'))).toEqual([])
+    await model.toggle()
+    await model.toggle()
+    ports.run.mockResolvedValueOnce({ state: 'ready', url: '/word-ticket' })
+    await model.pronounceVocabulary('word1')
+    const audio = track.mock.calls.filter(([event]) => event.startsWith('audio_'))
+    expect(audio.map(([event]) => event)).toEqual(['audio_play', 'audio_pause', 'audio_play'])
+    expect(audio[0]?.[1]).toMatchObject({
+      content_type: 'listening',
+      content_id: 'a1',
+      version_id: 'v1',
+      audio_kind: 'full'
+    })
+    expect(audio[2]?.[1]).toMatchObject({ content_id: 'a1', word_id: 'vocabulary:word1' })
+  } finally {
+    track.mockRestore()
+  }
+})
+
+it('records manual translation and the current dictionary result without raw words', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  try {
+    const model = await open()
+    expect(track.mock.calls.filter(([event]) => event === 'translation_toggle')).toHaveLength(0)
+    model.toggleTranslation()
+    ports.request.mockImplementation(async (path: string) =>
+      path.includes('/dictionary?')
+        ? { word: 'private-word', definitions: [] }
+        : structuredClone(detail)
+    )
+    await model.lookup({ text: 'private-word', start: 0, end: 4 } as never)
+    expect(track.mock.calls.filter(([event]) => event === 'translation_toggle')).toEqual([
+      ['translation_toggle', expect.objectContaining({ content_id: 'a1', expanded: 0 })]
+    ])
+    expect(track.mock.calls.filter(([event]) => event === 'dictionary_success')).toHaveLength(1)
+    expect(JSON.stringify(track.mock.calls)).not.toContain('private-word')
+  } finally {
+    track.mockRestore()
+  }
+})
+
+it('records a denied manual lookup once and never records background permission checks as actions', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  try {
+    const model = await open()
+    ports.request.mockResolvedValue({
+      ...structuredClone(detail),
+      access: { ...detail.access, can_lookup: false }
+    })
+    await model.lookup({ text: 'private-word', start: 0, end: 4 } as never)
+    expect(track.mock.calls.filter(([event]) => event === 'business_error')).toEqual([
+      [
+        'business_error',
+        expect.objectContaining({ action: 'dictionary_lookup', error_kind: 'forbidden' })
+      ]
+    ])
+  } finally {
+    track.mockRestore()
+  }
+})
+
+it('records failed manual content retries but keeps foreground refresh failures silent', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  try {
+    ports.request.mockRejectedValue(new ApiError('network', 'private'))
+    const model = await open()
+    expect(track.mock.calls.filter(([event]) => event === 'business_error')).toHaveLength(1)
+    await model.retryLoad()
+    expect(track.mock.calls.filter(([event]) => event === 'business_error')).toHaveLength(2)
+    ports.hide?.()
+    ports.show?.()
+    await flushPromises()
+    expect(track.mock.calls.filter(([event]) => event === 'business_error')).toHaveLength(2)
+  } finally {
+    track.mockRestore()
+  }
 })

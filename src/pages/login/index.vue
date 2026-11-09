@@ -5,12 +5,19 @@ import { ref } from 'vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vue'
 import { usePageShareEntry } from '@/composables/use-page-share-entry'
+import { analytics } from '@/services/analytics'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { session } from '@/services/api'
 import { loginReturn } from '@/services/login-return'
 import { openTarget, safeTarget } from '@/services/navigation'
 import { pageShare } from '@/services/page-share'
 import { LOGIN_BOTANICAL_IMAGE_URL } from '@/shared/constants/brand'
 import { Routes } from '@/shared/constants/navigation'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsAction } from '@/shared/enums/analytics'
+// #endif
 import { useAccountStore } from '@/stores/account-store'
 
 import type { ConsentChangeEvent } from '@/shared/types/ui'
@@ -46,6 +53,9 @@ const login = async () => {
     else openTarget(target)
   } catch (reason) {
     if (!alive) return
+    // #ifdef JUYA_ANALYTICS
+    businessAnalytics.error(AnalyticsAction.LOGIN, reason)
+    // #endif
     error.value = target.includes('target=')
       ? '登录未成功，分享目标已保留，请重试。'
       : reason instanceof Error
@@ -55,11 +65,12 @@ const login = async () => {
     busy.value = false
   }
 }
-/** 只保存用户当前的明确勾选
+/** 将用户当前的明确协议勾选同步到本构建环境的统计授权
  * @param event 平台勾选结果
  */
 const consent = (event: ConsentChangeEvent) => {
   agreed.value = event.detail.value.includes('agree')
+  analytics.setConsent(agreed.value)
 }
 onLoad((query) => {
   if (pageShareEntry.value) return
@@ -75,6 +86,10 @@ onLoad((query) => {
 
 /** 取消主动登录后返回原位，单页入口回游客首页 */
 const browse = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('guest_browse', Routes.HOME)
+  // #endif
+
   settled = true
   loginReturn.resumeGuest()
   if (getCurrentPages().length > 1) uni.navigateBack()
@@ -144,6 +159,11 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
             隐私说明
           </button>
         </view>
+        <!-- #ifdef JUYA_ANALYTICS -->
+        <text v-if="analytics.available" class="login-statistics-note"
+          >勾选同时同意使用统计，取消勾选可关闭统计</text
+        >
+        <!-- #endif -->
         <button class="primary" :disabled="busy" :loading="busy" @click="login">
           {{ busy ? '登录中…' : '同意并登录' }}
         </button>
@@ -262,6 +282,15 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
       color: #586c5b;
       opacity: 1;
     }
+  }
+
+  .login-statistics-note {
+    display: block;
+    margin: -11.54rpx 0 23.08rpx;
+    color: #586c5b;
+    font-size: 20rpx;
+    line-height: 1.6;
+    text-align: center;
   }
 
   .login-error {

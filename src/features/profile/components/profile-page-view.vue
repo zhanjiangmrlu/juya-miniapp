@@ -10,6 +10,9 @@ import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vu
 import AppState from '@/components/app-state/app-state.vue'
 import ProfileLogoutDialog from '@/features/profile/components/profile-logout-dialog.vue'
 import { maskPhone } from '@/features/profile/contact-model'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
 import { Routes } from '@/shared/constants/navigation'
@@ -83,13 +86,33 @@ const authorizationLabel = computed(() => {
         : '暂未获取'
 })
 /** 编辑本人主动设置的头像昵称 */
-const editProfile = () => uni.navigateTo({ url: Routes.IDENTITY })
+const editProfile = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('profile_editProfile', Routes.IDENTITY)
+  // #endif
+  uni.navigateTo({ url: Routes.IDENTITY })
+}
 /** 补充或修改选填的联系方式 */
-const editContact = () => uni.navigateTo({ url: Routes.CONTACT })
+const editContact = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('profile_editContact', Routes.CONTACT)
+  // #endif
+  uni.navigateTo({ url: Routes.CONTACT })
+}
 /** 打开本人场景与听读收藏 */
-const favorites = () => uni.navigateTo({ url: Routes.FAVORITES })
+const favorites = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('profile_favorites', Routes.FAVORITES)
+  // #endif
+  uni.navigateTo({ url: Routes.FAVORITES })
+}
 /** 打开本人反馈列表，读取入口不清除未读 */
-const feedback = () => uni.navigateTo({ url: Routes.FEEDBACK })
+const feedback = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('profile_feedback', Routes.FEEDBACK)
+  // #endif
+  uni.navigateTo({ url: Routes.FEEDBACK })
+}
 /** 打开新的退出确认，清除上次取消前的错误 */
 const openLogout = () => {
   logoutError.value = ''

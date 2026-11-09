@@ -61,6 +61,7 @@ vi.mock('@/services/audio-controller', () => ({
   })
 }))
 
+import { analytics } from '@/services/analytics'
 import { clearClientThumbnails } from '@/services/client-thumbnail'
 import { ApiError } from '@/services/errors'
 import { loginReturn } from '@/services/login-return'
@@ -417,4 +418,93 @@ it('keeps the status without reserving a note button for a scene without a publi
   expect(page.find('.note-entry').exists()).toBe(false)
   expect(page.get('.scene-state-line').classes()).not.toContain('has-note')
   page.unmount()
+})
+
+it('does not emit a content exposure when entering a scene', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  const page = openDetail()
+  try {
+    ports.show?.()
+    await flushPromises()
+    expect(page.text()).toContain('晨间慢慢活动身体')
+    expect(track.mock.calls.some(([event]) => String(event) === 'content_view')).toBe(false)
+  } finally {
+    page.unmount()
+    track.mockRestore()
+  }
+})
+
+it('records manual scene translation changes with content context', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  const page = openDetail()
+  try {
+    ports.show?.()
+    await flushPromises()
+    page.findComponent({ name: 'SceneDialogue' }).vm.$emit('layout', true)
+    expect(track).toHaveBeenCalledWith(
+      'translation_toggle',
+      expect.objectContaining({ content_type: 'scene', content_id: 'scene-1', expanded: 1 })
+    )
+  } finally {
+    page.unmount()
+    track.mockRestore()
+  }
+})
+
+it('records a scene lookup attempt even when its permission request fails', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  let failAccess = false
+  ports.request.mockImplementation(async (path: string) => {
+    const access = { can_learn: true, can_lookup: true, version: 'access-1' }
+    if (path.endsWith('/access')) {
+      if (failAccess) throw new ApiError('network', 'private-error')
+      return { summary: { ...scene, id: 'scene-1', available: true }, access }
+    }
+    return { ...scene, access }
+  })
+  const page = openDetail()
+  try {
+    ports.show?.()
+    await flushPromises()
+    failAccess = true
+    page
+      .findComponent({ name: 'SceneDialogue' })
+      .vm.$emit('lookup', { text: 'private-word', word: true, line_id: 'line-1', start: 0, end: 4 })
+    await flushPromises()
+    expect(track.mock.calls.filter(([event]) => event === 'dictionary_lookup')).toHaveLength(1)
+    expect(track.mock.calls.filter(([event]) => event === 'business_error')).toEqual([
+      [
+        'business_error',
+        expect.objectContaining({ action: 'dictionary_lookup', error_kind: 'network' })
+      ]
+    ])
+    expect(JSON.stringify(track.mock.calls)).not.toContain('private')
+  } finally {
+    page.unmount()
+    track.mockRestore()
+  }
+})
+
+it('records a failed manual scene retry without recording automatic show refreshes', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  ports.request.mockRejectedValue(new ApiError('network', 'private'))
+  const page = openDetail()
+  try {
+    ports.show?.()
+    await flushPromises()
+    expect(track.mock.calls.filter(([event]) => event === 'business_error')).toHaveLength(1)
+    page
+      .findAllComponents({ name: 'AppState' })
+      .find((state) => state.props('error'))!
+      .vm.$emit('retry')
+    await flushPromises()
+    expect(track.mock.calls.filter(([event]) => event === 'business_error')).toHaveLength(2)
+    ports.hide?.()
+    ports.show?.()
+    await flushPromises()
+    expect(track.mock.calls.filter(([event]) => event === 'business_error')).toHaveLength(2)
+  } finally {
+    page.unmount()
+    track.mockRestore()
+  }
 })

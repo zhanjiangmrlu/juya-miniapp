@@ -13,12 +13,18 @@ import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useUnsavedGuard } from '@/composables/use-unsaved-guard'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
 import { openScene } from '@/services/navigation'
 import { pageShare } from '@/services/page-share'
 import { FEEDBACK_CATEGORIES, FEEDBACK_STATUS_LABELS } from '@/shared/constants/feedback'
 import { Routes } from '@/shared/constants/navigation'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsEvent } from '@/shared/enums/analytics'
+// #endif
 import { FeedbackSource, FeedbackStatus } from '@/shared/enums/feedback'
 import { LeaveChoice } from '@/shared/enums/profile'
 import { useAccountStore } from '@/stores/account-store'
@@ -108,8 +114,16 @@ const submit = async () => {
 }
 /** 仅当前仍有效的来源打开发布详情，不展示反馈时旧正文 */
 const source = () => {
-  if (feedback.value?.source_available && feedback.value.card_id)
+  if (feedback.value?.source_available && feedback.value.card_id) {
+    // #ifdef JUYA_ANALYTICS
+    businessAnalytics.track(AnalyticsEvent.CONTENT_CLICK, {
+      content_type: 'scene',
+      content_id: feedback.value.card_id,
+      entry_source: 'feedback_source'
+    })
+    // #endif
     void openScene(feedback.value.card_id)
+  }
 }
 /** 未提交可放弃，未知补充离开保留本人恢复快照
  * @param choice 用户继续或放弃的明确选择

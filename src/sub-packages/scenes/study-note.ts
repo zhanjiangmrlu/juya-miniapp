@@ -131,6 +131,13 @@ export const createStudyNote = (ports: StudyNotePorts) => {
       )
         throw new Error('学习笔记已更新或移除，请重新获取当前笔记')
       stage = '打开'
+      // #ifdef JUYA_ANALYTICS
+      try {
+        ports.onReady?.()
+      } catch {
+        /* 观察回调不能阻止文档打开 */
+      }
+      // #endif
       native = true
       await ports.open(downloaded.path)
       // success/complete 仅说明平台接受打开，保持锁直到确实经历原生 onHide/onShow
@@ -144,6 +151,16 @@ export const createStudyNote = (ports: StudyNotePorts) => {
         return
       }
       if (active()) {
+        // #ifdef JUYA_ANALYTICS
+        try {
+          ports.onError?.(
+            reason,
+            stage === '下载' ? 'download' : stage === '打开' ? 'open' : 'validation'
+          )
+        } catch {
+          /* 观察回调不改变错误处理 */
+        }
+        // #endif
         error.value = `学习笔记${stage}失败：${reason instanceof Error ? reason.message : '请重试'}`
         ports.invalid(reason)
       }

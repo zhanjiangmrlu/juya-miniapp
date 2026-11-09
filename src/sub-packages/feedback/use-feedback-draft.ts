@@ -1,11 +1,17 @@
 import { computed, ref } from 'vue'
 
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { ApiError, isUnconfirmedFailure } from '@/services/errors'
 import {
   FEEDBACK_CATEGORIES,
   FEEDBACK_IMAGE_LIMIT,
   FEEDBACK_TEXT_LIMIT
 } from '@/shared/constants/feedback'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsAction } from '@/shared/enums/analytics'
+// #endif
 import { FeedbackCategory, FeedbackSource, FeedbackUploadStatus } from '@/shared/enums/feedback'
 
 import type {
@@ -29,6 +35,22 @@ export const createFeedbackDraft = (ports: FeedbackDraftPorts) => {
     refill = ref(false),
     locked = ref(false),
     source = ref(ports.source || { source: FeedbackSource.PROFILE })
+  // #ifdef JUYA_ANALYTICS
+  const analyticsAction = ports.feedbackId
+    ? AnalyticsAction.FEEDBACK_REPLY
+    : AnalyticsAction.FEEDBACK_SUBMIT
+  /** 反馈来源只保留固定入口与公开内容编号 */
+  const analyticsContext = () => ({
+    entry_source: source.value.source,
+    ...(source.value.source === FeedbackSource.SCENE
+      ? {
+          content_type: 'scene' as const,
+          content_id: source.value.card_id,
+          version_id: source.value.version_id
+        }
+      : {})
+  })
+  // #endif
   let generation = 0,
     frozenBody: unknown = null
   const active = computed(() => !locked.value),
@@ -88,8 +110,10 @@ export const createFeedbackDraft = (ports: FeedbackDraftPorts) => {
     }
     return value
   }
-  /** 查询持久原操作，默认只读，不自动重发私有说明 */
-  const recover = async () => {
+  /** 查询持久原操作，默认只读，不自动重发私有说明
+   * @param manual 本次查询是否由用户明确提交触发
+   */
+  const recover = async (manual = false) => {
     if (!valid() || busy.value) return null
     busy.value = true
     error.value = ''
@@ -99,6 +123,9 @@ export const createFeedbackDraft = (ports: FeedbackDraftPorts) => {
       return valid() && run === generation ? accept(value) : null
     } catch (reason) {
       if (valid() && run === generation) {
+        // #ifdef JUYA_ANALYTICS
+        if (manual) businessAnalytics.error(analyticsAction, reason, analyticsContext())
+        // #endif
         const missing = reason instanceof ApiError && reason.code === 'operation_unknown'
         retryOriginal.value = missing && Boolean(frozenBody)
         refill.value = missing && !frozenBody
@@ -170,6 +197,15 @@ export const createFeedbackDraft = (ports: FeedbackDraftPorts) => {
       }
     } catch (reason) {
       if (run === generation) {
+        // #ifdef JUYA_ANALYTICS
+        if (valid())
+          businessAnalytics.error(
+            AnalyticsAction.FEEDBACK_UPLOAD,
+            reason,
+            analyticsContext(),
+            'upload'
+          )
+        // #endif
         item.status = FeedbackUploadStatus.ERROR
         item.error = reason instanceof Error ? reason.message : '截图上传失败，请重试'
       }
@@ -222,20 +258,44 @@ export const createFeedbackDraft = (ports: FeedbackDraftPorts) => {
     if (!valid() || busy.value || uploading.value) return null
     if (ports.operations.pending(ports.action) && !retryOriginal.value && !refill.value) {
       unknown.value = true
-      return recover()
+      return recover(true)
     }
     if (!unknown.value || refill.value) {
       error.value = ''
       if (!ports.feedbackId && !FEEDBACK_CATEGORIES.some((item) => item.value === category.value)) {
         error.value = '请选择问题分类'
+        // #ifdef JUYA_ANALYTICS
+        businessAnalytics.error(
+          analyticsAction,
+          new ApiError('invalid', '', 422),
+          analyticsContext(),
+          'validation'
+        )
+        // #endif
         return null
       }
       if (count.value < 1 || count.value > FEEDBACK_TEXT_LIMIT) {
         error.value = '请输入1—500字有效说明'
+        // #ifdef JUYA_ANALYTICS
+        businessAnalytics.error(
+          analyticsAction,
+          new ApiError('invalid', '', 422),
+          analyticsContext(),
+          'validation'
+        )
+        // #endif
         return null
       }
       if (images.value.some((item) => !item.image)) {
         error.value = '请重试上传失败的截图，或移除后提交'
+        // #ifdef JUYA_ANALYTICS
+        businessAnalytics.error(
+          analyticsAction,
+          new ApiError('invalid', '', 422),
+          analyticsContext(),
+          'validation'
+        )
+        // #endif
         return null
       }
       frozenBody = {
@@ -254,6 +314,14 @@ export const createFeedbackDraft = (ports: FeedbackDraftPorts) => {
     }
     if (!frozenBody) {
       error.value = '请先查询上次提交结果'
+      // #ifdef JUYA_ANALYTICS
+      businessAnalytics.error(
+        analyticsAction,
+        new ApiError('invalid', '', 422),
+        analyticsContext(),
+        'validation'
+      )
+      // #endif
       return null
     }
     busy.value = true
@@ -275,6 +343,9 @@ export const createFeedbackDraft = (ports: FeedbackDraftPorts) => {
       return valid() && run === generation ? accept(value) : null
     } catch (reason) {
       if (run === generation && valid()) {
+        // #ifdef JUYA_ANALYTICS
+        businessAnalytics.error(analyticsAction, reason, analyticsContext())
+        // #endif
         unknown.value = ports.operations.pending(ports.action)
         if (unknown.value && reason instanceof ApiError && !isUnconfirmedFailure(reason))
           frozenBody = null
