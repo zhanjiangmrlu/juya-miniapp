@@ -458,8 +458,8 @@ export interface paths {
     options?: never
     head?: never
     /**
-     * 修改本人联系方式
-     * @description 校验联系方式版本后更新本人提交的手机号或微信联系方式，并记录对应同意版本。
+     * 联系方式收集已停用
+     * @description 保留旧路径兼容历史客户端；身份有效时统一返回410 contact_collection_disabled，不再保存或重放联系资料。
      */
     patch: operations['contact_api_mini_v1_me_contact_patch']
     trace?: never
@@ -1907,29 +1907,6 @@ export interface components {
        * @description 场景、听读完成数量、收藏数量及打卡情况等统计。
        */
       statistics: components['schemas']['Statistics']
-    }
-    /** 修改本人联系方式请求 */
-    ContactChange: {
-      /**
-       * 联系方式版本
-       * @description 原样提交最近读取的 contact_version，用于联系方式的并发修改校验。
-       */
-      version: number
-      /**
-       * 联系电话
-       * @description 用户自愿提交的联系电话；未提供时为空。
-       */
-      phone?: string | null
-      /**
-       * 微信联系方式
-       * @description 用户自愿提交的微信联系信息；未提供时为空。
-       */
-      wechat_contact?: string | null
-      /**
-       * 隐私协议版本
-       * @description 用户本次明确同意的隐私协议版本标识。
-       */
-      consent_version: string
     }
     /** 提交反馈请求 */
     CreateFeedback: {
@@ -4061,35 +4038,10 @@ export interface components {
        */
       avatar_id: string | null
       /**
-       * 联系电话
-       * @description 用户自愿提交的联系电话；未提供时为空。
-       */
-      phone: string | null
-      /**
-       * 微信联系方式
-       * @description 用户自愿提交的微信联系信息；未提供时为空。
-       */
-      wechat_contact: string | null
-      /**
-       * 电话来源
-       * @description user_entered_unverified 表示用户自行填写且未经验证；未记录时为空。
-       */
-      phone_source: string | null
-      /**
-       * 微信联系方式来源
-       * @description user_entered_unverified 表示用户自行填写且未经验证；未记录时为空。
-       */
-      wechat_source: string | null
-      /**
        * 个人资料版本
        * @description 昵称和头像的当前版本；修改个人资料时用于并发校验。
        */
       profile_version: number
-      /**
-       * 联系方式版本
-       * @description 用户联系方式的当前版本；修改联系方式时用于并发校验。
-       */
-      contact_version: number
       /**
        * 注册时间
        * @description 用户首次成功注册的时间。
@@ -6832,12 +6784,7 @@ export interface operations {
       path?: never
       cookie?: never
     }
-    /** @description 请求数据，字段说明和必填约束见下方数据结构。 */
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ContactChange']
-      }
-    }
+    requestBody?: never
     responses: {
       /** @description 请求成功 */
       200: {
@@ -6845,7 +6792,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['UserProfile']
+          'application/json': unknown
         }
       }
       /** @description 请求不符合业务规则 */
