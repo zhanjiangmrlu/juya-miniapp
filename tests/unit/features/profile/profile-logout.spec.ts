@@ -17,7 +17,7 @@ vi.mock('@dcloudio/uni-app', () => ({
 }))
 vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({
-    profile: { nickname: '学习者', phone: null, wechat_contact: null },
+    profile: { nickname: '学习者' },
     avatarURL: '',
     logout
   })
@@ -98,5 +98,15 @@ it('opens a fresh confirmation after cancellation and lets retry succeed', async
   await flushPromises()
   expect(logout).toHaveBeenCalledTimes(2)
   expect(wrapper.find('.logout-dialog').exists()).toBe(false)
+  wrapper.unmount()
+})
+
+it('keeps favorites, identity and learning authorization while removing contact display and editing', () => {
+  const wrapper = page()
+  expect(wrapper.text()).not.toContain('联系方式')
+  expect(wrapper.text()).not.toContain('未填写')
+  expect(wrapper.text()).toContain('我的收藏')
+  expect(wrapper.text()).toContain('编辑个人资料')
+  expect(wrapper.text()).toContain('学习授权')
   wrapper.unmount()
 })

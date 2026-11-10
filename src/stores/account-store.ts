@@ -70,7 +70,7 @@ export const useAccountStore = defineStore('learner-account', () => {
     restoring = job
     return job
   }
-  /** 页面显示前验证本人身份，空联系方式不影响访问
+  /** 页面显示前验证本人身份，游客继续保留只读访问
    * @param returnTarget 会话失效后的安全返回路径
    */
   const ensure = async (returnTarget: string) => {

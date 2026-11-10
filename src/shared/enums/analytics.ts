@@ -30,7 +30,6 @@ export const AnalyticsEvent = {
   FEEDBACK_SUBMIT: 'feedback_submit',
   FEEDBACK_REPLY: 'feedback_reply',
   PROFILE_SAVE: 'profile_save',
-  CONTACT_SAVE: 'contact_save',
   LOGOUT: 'logout',
   BUSINESS_ERROR: 'business_error'
   // #endif
@@ -51,7 +50,6 @@ export const AnalyticsAction = {
   FEEDBACK_REPLY: 'feedback_reply',
   FEEDBACK_UPLOAD: 'feedback_upload',
   PROFILE_SAVE: 'profile_save',
-  CONTACT_SAVE: 'contact_save',
   AVATAR_UPLOAD: 'avatar_upload',
   LOGOUT: 'logout'
 } as const

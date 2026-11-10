@@ -16,7 +16,7 @@ defineEmits<{ close: [] }>()
         :class="{ 'with-analytics': analytics.available }"
         @touchmove.stop
         ><text class="paragraph"
-          >微信身份用于识别同一账号，保存学习记录和收藏。手机号、微信号在账号资料页自愿填写，不填写也可学习。头像昵称由你主动设置，不会自动读取。</text
+          >游客可直接浏览免费内容，无需创建业务账号。主动登录后，微信身份用于识别同一账号，保存学习记录、收藏和打卡。头像、昵称由你主动设置，不会自动读取。本小程序不收集手机号和微信号。正式信息处理规则以小程序公布的隐私保护指引为准。</text
         >
         <!-- #ifdef JUYA_ANALYTICS -->
         <view v-if="analytics.available" class="analytics-section">

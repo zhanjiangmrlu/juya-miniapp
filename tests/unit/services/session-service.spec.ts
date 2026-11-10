@@ -35,11 +35,8 @@ const setup = () => {
 const user = {
   id: 'stable-user',
   nickname: '学习者',
-  phone: null,
-  wechat_contact: null,
   avatar_id: null,
-  profile_version: 1,
-  contact_version: 1
+  profile_version: 1
 }
 
 describe('voluntary WeChat identity', () => {

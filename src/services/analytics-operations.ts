@@ -45,8 +45,6 @@ export const operationAnalytics = (
   // #ifdef JUYA_ANALYTICS
   if (record.method === 'PATCH' && record.path === '/api/mini/v1/me/profile')
     return { event: AnalyticsEvent.PROFILE_SAVE, properties: {} }
-  if (record.method === 'PATCH' && record.path === '/api/mini/v1/me/contact')
-    return { event: AnalyticsEvent.CONTACT_SAVE, properties: {} }
   if (record.method === 'POST' && record.path === '/api/mini/v1/feedback')
     return { event: AnalyticsEvent.FEEDBACK_SUBMIT, properties: {} }
   if (record.method === 'POST' && /^\/api\/mini\/v1\/feedback\/[\w-]+\/messages$/.test(record.path))

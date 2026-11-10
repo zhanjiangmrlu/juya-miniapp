@@ -10,6 +10,22 @@ import { ApiError, isUnconfirmedFailure } from './errors'
 export const createOperationService = (ports: OperationPorts) => {
   const fingerprints = new Map<string, string>(),
     receiptMisses = new Map<string, string>()
+  /** 识别已退役的联系方式写入，兼容历史动作名及路径
+   * @param action 本地保存的页面动作名称
+   * @param path 本地保存的本人接口路径
+   */
+  const retiredContact = (action: string, path = '') =>
+    action === 'contact-save' ||
+    action === 'contact' ||
+    /^\/api\/mini\/v1\/me\/contact(?:[/?#]|$)/.test(path)
+  /** 拒绝重新提交已退役联系方式，不读取或保存正文
+   * @param action 本次请求的页面动作名称
+   * @param path 本次请求的本人接口路径
+   */
+  const assertActive = (action: string, path = '') => {
+    if (retiredContact(action, path))
+      throw new ApiError('contact_collection_retired', '联系方式填写已取消，请返回账号页')
+  }
   /** 通知非阻塞观察者，统计失败不改变业务成功结果
    * @param record 当前身份已确认的原业务操作
    */
@@ -26,11 +42,21 @@ export const createOperationService = (ports: OperationPorts) => {
     if (!userId) throw new ApiError('unauthenticated', '请先登录')
     const key = OPERATIONS_STORAGE_PREFIX + userId
     const stored = ports.storage.get(key)
+    const previous = Array.isArray(stored) ? (stored as OperationRecord[]) : []
+    const records = previous.filter((row) => !retiredContact(row.action, row.path))
+    if (records.length !== previous.length) {
+      ports.storage.set(key, records)
+      for (const row of previous) {
+        if (!retiredContact(row.action, row.path)) continue
+        fingerprints.delete(`${userId}:${row.action}`)
+        receiptMisses.delete(`${userId}:${row.action}`)
+      }
+    }
     return {
       userId,
       identity: ports.session.identity?.() || userId,
       key,
-      records: Array.isArray(stored) ? (stored as OperationRecord[]) : []
+      records
     }
   }
   /** 确认返回仍属于发起操作的会话代次，同账号重登也不复用旧响应
@@ -136,8 +162,9 @@ export const createOperationService = (ports: OperationPorts) => {
     body?: unknown,
     options: { persistBody?: boolean } = {}
   ): Promise<T> => {
-    const state = context(),
-      scope = `${state.userId}:${action}`,
+    const state = context()
+    assertActive(action, path)
+    const scope = `${state.userId}:${action}`,
       fingerprint = JSON.stringify({ path, method, body })
     let record = state.records.find((row) => row.action === action)
     // 本次未发出不代表先前未知事务未提交，旧记录被平台模式阻止时必须保留原键
@@ -185,8 +212,9 @@ export const createOperationService = (ports: OperationPorts) => {
    * @param body 用户明确重新填写并确认的正文
    */
   const rebind = async <T>(action: string, body: unknown): Promise<T> => {
-    const state = context(),
-      scope = `${state.userId}:${action}`,
+    const state = context()
+    assertActive(action)
+    const scope = `${state.userId}:${action}`,
       record = state.records.find((row) => row.action === action)
     if (!record || receiptMisses.get(scope) !== record.key)
       throw new ApiError('operation_pending', '请先查询原提交结果，再确认重新填写')
@@ -205,5 +233,6 @@ export const createOperationService = (ports: OperationPorts) => {
     fingerprints.clear()
     receiptMisses.clear()
   }
+  if (ports.session.userId()) context()
   return { run, recover, rebind, pending, clearMemory }
 }

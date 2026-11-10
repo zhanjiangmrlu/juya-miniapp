@@ -56,13 +56,8 @@ it.each([
     expect(javascript.includes('fixture-umeng-test')).toBe(enabled && mode === 'test')
     expect(javascript.includes('fixture-umeng-prod')).toBe(enabled && mode === 'production')
     expect(javascript.includes('content_view')).toBe(false)
-    for (const event of [
-      'entry_click',
-      'business_error',
-      'dictionary_success',
-      'study_note_ready',
-      'contact_save'
-    ])
+    expect(javascript.includes('contact_save')).toBe(false)
+    for (const event of ['entry_click', 'business_error', 'dictionary_success', 'study_note_ready'])
       expect(javascript.includes(event)).toBe(enabled)
     const audioController = readFileSync(
       path.join(directory, 'services/audio-controller.js'),

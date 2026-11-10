@@ -238,7 +238,6 @@ it.each([
   'sub-packages/records/index',
   'sub-packages/account/profile',
   'sub-packages/account/identity-edit',
-  'sub-packages/account/contact-edit',
   'sub-packages/feedback/index',
   'sub-packages/feedback/create',
   'sub-packages/feedback/detail',
@@ -288,4 +287,39 @@ it('excludes the remote home background and resolves package dependencies withou
       }
     }
   }
+})
+
+it('keeps the retired contact route as a native redirect without exposing share or login hooks', () => {
+  const opened: string[] = []
+  let load: (() => void) | undefined
+  let options: { setup: () => unknown; __runtimeHooks?: number } | undefined
+  const vendor = {
+    defineComponent: (value: unknown) => value,
+    onLoad: (callback: () => void) => {
+      load = callback
+    },
+    index: {
+      switchTab: ({ url }: { url: string }) => {
+        opened.push(url)
+      }
+    }
+  }
+  runInNewContext(readFileSync(path.join(output, 'sub-packages/account/contact-edit.js'), 'utf8'), {
+    require: (specifier: string) => {
+      if (specifier.endsWith('/common/vendor.js')) return vendor
+      if (specifier.endsWith('/shared/constants/navigation.js'))
+        return { Routes: { PROFILE: '/pages/profile/index' } }
+      throw new Error(`Unexpected retired contact dependency: ${specifier}`)
+    },
+    wx: {
+      createPage: (value: typeof options) => {
+        options = value
+      }
+    },
+    exports: {}
+  })
+  options?.setup()
+  load?.()
+  expect(opened).toEqual(['/pages/profile/index'])
+  expect(options?.__runtimeHooks || 0).toBe(0)
 })

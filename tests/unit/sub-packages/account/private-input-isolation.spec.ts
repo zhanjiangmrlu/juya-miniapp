@@ -31,19 +31,14 @@ vi.mock('@/stores/account-store', () => ({
     restore: async () => ({
       id: 'A',
       nickname: 'Private learner',
-      phone: '13800000000',
-      wechat_contact: 'isolated-contact',
       avatar_id: null,
-      profile_version: 1,
-      contact_version: 1
+      profile_version: 1
     }),
     acceptProfile: vi.fn(),
     refreshAvatar: async () => undefined,
     avatarURL: ''
   })
 }))
-import { analytics } from '@/services/analytics'
-import Contact from '@/sub-packages/account/contact-edit.vue'
 import Identity from '@/sub-packages/account/identity-edit.vue'
 beforeEach(() => {
   ports.request.mockReset().mockResolvedValue({ avatar_limit_bytes: 1024 })
@@ -54,7 +49,7 @@ beforeEach(() => {
     getFileInfo: vi.fn()
   })
 })
-it.each([Contact, Identity])(
+it.each([Identity])(
   'clears visible private editing inputs immediately when identity expires',
   async (component) => {
     const page = shallowMount(component, {
@@ -88,26 +83,4 @@ it('discards a late avatar chooser callback after the editor identity has ended'
   expect(uni.getFileInfo).not.toHaveBeenCalled()
   expect(ports.request.mock.calls.some(([path]) => path === '/api/mini/v1/me/avatar')).toBe(false)
   page.unmount()
-})
-
-it('reports contact validation without sending the edited phone or contact', async () => {
-  const track = vi.spyOn(analytics, 'track')
-  const page = shallowMount(Contact, {
-    global: { stubs: { AppPage: { template: '<div><slot /><slot name="footer" /></div>' } } }
-  })
-  try {
-    ports.load()
-    await flushPromises()
-    await page.findAll('input')[0]!.setValue('private-invalid-phone')
-    await page.get('button.primary').trigger('click')
-    await flushPromises()
-    expect(track).toHaveBeenCalledWith(
-      'business_error',
-      expect.objectContaining({ action: 'contact_save', error_kind: 'validation' })
-    )
-    expect(JSON.stringify(track.mock.calls)).not.toContain('private-invalid-phone')
-  } finally {
-    page.unmount()
-    track.mockRestore()
-  }
 })

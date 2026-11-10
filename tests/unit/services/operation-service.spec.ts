@@ -2,6 +2,7 @@ import { expect, it, vi } from 'vitest'
 
 import { ApiError } from '@/services/errors'
 import { createOperationService } from '@/services/operation-service'
+import { OPERATIONS_STORAGE_PREFIX } from '@/shared/constants/http'
 
 const setup = () => {
   const records = new Map<string, unknown>(),
@@ -54,22 +55,53 @@ it('retries a completion after midnight with the original key and does not infer
   expect(await operations.run(...args)).toEqual({ date: '2026-10-17', first_completion: true })
   expect(request.mock.calls[0]?.[1].key).toBe(request.mock.calls[1]?.[1].key)
 })
-it('persists result-query metadata without copying contact fields into storage', async () => {
+it.each([
+  ['contact-save', '/api/mini/v1/me/contact'],
+  ['contact', '/api/mini/v1/me/contact'],
+  ['legacy-contact', '/api/mini/v1/me/contact'],
+  ['contact-save', '/api/mini/v1/me/profile']
+])('rejects retired contact write %s before sending or persisting input', async (action, path) => {
   const { request, operations, records } = setup()
-  request.mockRejectedValueOnce(new ApiError('network_unknown', '响应未知'))
   await expect(
-    operations.run('contact', '/api/mini/v1/me/contact', 'PATCH', {
-      phone: '13800138000',
-      wechat_contact: 'Learner_private',
-      version: 1
-    })
-  ).rejects.toBeInstanceOf(ApiError)
-  const serialized = JSON.stringify(Array.from(records.values()))
-  expect(serialized).not.toContain('13800138000')
-  expect(serialized).not.toContain('Learner_private')
-  request.mockResolvedValueOnce({ status: 'succeeded', result: { contact_version: 2 } })
-  expect(await operations.recover('contact')).toEqual({ contact_version: 2 })
-  expect(request.mock.calls[1]?.[0]).toMatch(/\/operations\/write-key-1$/)
+    operations.run(action, path, 'PATCH', { phone: 'retired-private' })
+  ).rejects.toMatchObject({ code: 'contact_collection_retired' })
+  expect(request).not.toHaveBeenCalled()
+  expect(JSON.stringify(Array.from(records.values()))).not.toContain('retired-private')
+})
+it('removes only retired contact receipts and preserves learning recovery and other owners', async () => {
+  const { request, operations, records } = setup()
+  const contact = {
+    action: 'contact-save',
+    path: '/api/mini/v1/me/contact',
+    method: 'PATCH',
+    key: 'old-contact',
+    frozenRequest: '{"body":{"phone":"retired-private"}}'
+  }
+  const learning = {
+    action: 'complete:a',
+    path: '/api/mini/v1/cards/a/complete',
+    method: 'POST',
+    key: 'learning-key',
+    frozenRequest: '{"body":{"version_id":"v1"}}'
+  }
+  records.set(OPERATIONS_STORAGE_PREFIX + 'user-1', [
+    contact,
+    { ...contact, action: 'legacy-contact' },
+    learning
+  ])
+  records.set(OPERATIONS_STORAGE_PREFIX + 'user-2', [learning])
+  expect(operations.pending('contact-save')).toBe(false)
+  expect(records.get(OPERATIONS_STORAGE_PREFIX + 'user-1')).toEqual([learning])
+  expect(records.get(OPERATIONS_STORAGE_PREFIX + 'user-2')).toEqual([learning])
+  expect(await operations.recover('contact-save')).toBeNull()
+  expect(await operations.recover('legacy-contact')).toBeNull()
+  await expect(operations.rebind('contact-save', { phone: 'new-private' })).rejects.toMatchObject({
+    code: 'contact_collection_retired'
+  })
+  expect(request).not.toHaveBeenCalled()
+  request.mockResolvedValueOnce({ status: 'succeeded', result: { date: '2026-11-10' } })
+  expect(await operations.recover('complete:a')).toEqual({ date: '2026-11-10' })
+  expect(request).toHaveBeenCalledExactlyOnceWith('/api/mini/v1/operations/learning-key')
 })
 it('keeps separate concurrent card operations and rejects editing an unresolved request', async () => {
   const { request, operations } = setup()
@@ -114,18 +146,18 @@ it('never applies an old account response or clears another account pending oper
     },
     key: () => `key-${++key}`
   })
-  const previous = operations.run('contact', '/api/mini/v1/me/contact', 'PATCH', {
-    phone: '13800138000'
+  const previous = operations.run('profile', '/api/mini/v1/me/profile', 'PATCH', {
+    nickname: 'first'
   })
   owner = 'user-2'
   await expect(
-    operations.run('contact', '/api/mini/v1/me/contact', 'PATCH', { phone: '13900139000' })
+    operations.run('profile', '/api/mini/v1/me/profile', 'PATCH', { nickname: 'second' })
   ).rejects.toBeInstanceOf(ApiError)
-  finish({ contact_version: 2 })
+  finish({ profile_version: 2 })
   await expect(previous).rejects.toMatchObject({ code: 'session_changed' })
-  expect(operations.pending('contact')).toBe(true)
+  expect(operations.pending('profile')).toBe(true)
   owner = 'user-1'
-  expect(operations.pending('contact')).toBe(true)
+  expect(operations.pending('profile')).toBe(true)
 })
 
 it('keeps the original write key when a gateway returns a server error after an unknown commit', async () => {
@@ -160,29 +192,6 @@ it('settles the original frozen completion after a result miss and a newer publi
   request.mockResolvedValueOnce({ date: '2026-10-18' })
   await operations.run('complete:a', '/api/mini/v1/cards/a/complete', 'POST', body)
   expect(request.mock.calls[3]?.[1].key).toBe('write-key-2')
-})
-
-it('replays only the previous contact input when result lookup misses and keeps it out of storage', async () => {
-  const { request, operations, records } = setup()
-  request.mockRejectedValueOnce(new ApiError('network_unknown', '响应未知'))
-  await expect(
-    operations.run('contact-save', '/api/mini/v1/me/contact', 'PATCH', {
-      phone: '13800138000',
-      version: 1
-    })
-  ).rejects.toBeInstanceOf(ApiError)
-  request
-    .mockRejectedValueOnce(new ApiError('operation_unknown', '尚无结果', 404))
-    .mockResolvedValueOnce({ contact_version: 2, phone: '13800138000' })
-  expect(await operations.recover('contact-save')).toEqual({
-    contact_version: 2,
-    phone: '13800138000'
-  })
-  expect(request.mock.calls[2]?.[1]).toMatchObject({
-    body: { phone: '13800138000', version: 1 },
-    key: 'write-key-1'
-  })
-  expect(JSON.stringify(Array.from(records.values()))).not.toContain('13800138000')
 })
 
 it('retains an in-flight write receipt key when another request expires its session before the write response arrives', async () => {

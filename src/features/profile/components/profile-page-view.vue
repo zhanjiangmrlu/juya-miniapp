@@ -9,7 +9,6 @@ import AppPage from '@/components/app-page/app-page.vue'
 import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import ProfileLogoutDialog from '@/features/profile/components/profile-logout-dialog.vue'
-import { maskPhone } from '@/features/profile/contact-model'
 // #ifdef JUYA_ANALYTICS
 import { businessAnalytics } from '@/services/analytics-business'
 // #endif
@@ -44,7 +43,7 @@ const account = useAccountStore(),
   logoutBusy = ref(false),
   logoutConfirm = ref(false),
   logoutError = ref('')
-/** 只读页面读取真实资料，不将失败显示为没有联系方式 */
+/** 只读页面读取本人资料、学习授权和收藏数量 */
 const load = async () => {
   if (busy.value) return
   busy.value = true
@@ -91,13 +90,6 @@ const editProfile = () => {
   businessAnalytics.entry('profile_editProfile', Routes.IDENTITY)
   // #endif
   uni.navigateTo({ url: Routes.IDENTITY })
-}
-/** 补充或修改选填的联系方式 */
-const editContact = () => {
-  // #ifdef JUYA_ANALYTICS
-  businessAnalytics.entry('profile_editContact', Routes.CONTACT)
-  // #endif
-  uni.navigateTo({ url: Routes.CONTACT })
 }
 /** 打开本人场景与听读收藏 */
 const favorites = () => {
@@ -218,24 +210,6 @@ onShow(() => {
           {{ authorizationError }}
         </button>
       </view>
-      <button class="profile-link" @click="editContact">
-        <text>联系方式</text
-        ><view class="profile-link-value"
-          ><text class="contact-value">{{
-            [
-              account.profile.phone ? maskPhone(account.profile.phone) : '',
-              account.profile.wechat_contact || ''
-            ]
-              .filter(Boolean)
-              .join(' · ') || '未填写'
-          }}</text
-          ><image
-            class="chevron"
-            src="/static/design/profile-chevron.svg"
-            mode="aspectFit"
-            aria-hidden="true"
-        /></view>
-      </button>
       <button class="profile-link" @click="feedback">
         <view class="profile-link-label"
           ><text>我的反馈</text
@@ -348,11 +322,6 @@ onShow(() => {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-}
-
-.contact-value {
-  overflow-wrap: anywhere;
-  text-align: right;
 }
 
 .authorization-section {

@@ -37,7 +37,6 @@ it.each([
 )
 it.each([
   ['/api/mini/v1/me/profile', 'PATCH', 'profile_save'],
-  ['/api/mini/v1/me/contact', 'PATCH', 'contact_save'],
   ['/api/mini/v1/feedback', 'POST', 'feedback_submit'],
   ['/api/mini/v1/feedback/private-feedback/messages', 'POST', 'feedback_reply']
 ])('records only the confirmed operation kind for %s', (path, method, event) => {
@@ -102,4 +101,15 @@ it('notifies confirmed operations for a recovery once and isolates observer erro
   expect(await operations.recover('complete:c1')).toEqual({ completed: true })
   expect(await operations.recover('complete:c1')).toBeNull()
   expect(events).toEqual(['fixture-operation'])
+})
+
+it('does not map retired contact receipts to analytics', () => {
+  expect(
+    operationAnalytics({
+      path: '/api/mini/v1/me/contact',
+      method: 'PATCH',
+      action: 'contact-save',
+      key: 'retired-key'
+    })
+  ).toBeNull()
 })

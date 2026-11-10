@@ -40,6 +40,9 @@ it.each([undefined, true, false])(
         }
       }
     })
+    expect(wrapper.text()).toContain('游客可直接浏览免费内容，无需创建业务账号')
+    expect(wrapper.text()).toContain('本小程序不收集手机号和微信号')
+    expect(wrapper.text()).not.toContain('自愿填写')
     expect(wrapper.text()).toContain('友盟')
     expect(wrapper.find('switch').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('允许使用统计')
