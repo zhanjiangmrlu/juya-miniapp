@@ -1,6 +1,7 @@
 import { CONSENT_VERSION, SESSION_STORAGE_KEY } from '@/shared/constants/account'
 
 import type { AccountProfile, LoginResult, StoredSession } from '@/shared/types/account'
+import type { PrivacyLoginOptions } from '@/shared/types/privacy'
 import type { HttpRequest, SessionPorts } from '@/shared/types/runtime'
 
 import { ApiError, isUnconfirmedFailure } from './errors'
@@ -21,7 +22,7 @@ export const createSessionService = (ports: SessionPorts) => {
       : null
   }
   let current = read(),
-    pendingLogin: { code: string; key: string } | null = null
+    pendingLogin: { code: string; key: string; options: PrivacyLoginOptions } | null = null
   let loginGeneration = 0
   /** 清理凭证及尚未完成的登录操作 */
   const clear = () => {
@@ -97,8 +98,12 @@ export const createSessionService = (ports: SessionPorts) => {
   }
   /** 仅在用户明确同意后兑换微信临时code，未知响应复用原操作
    * @param agreed 用户主动勾选的同意状态
+   * @param options 实际展示的协议与独立统计选择，未知结果期间冻结
    */
-  const login = async (agreed: boolean): Promise<LoginResult> => {
+  const login = async (
+    agreed: boolean,
+    options: PrivacyLoginOptions = {}
+  ): Promise<LoginResult> => {
     runtimeMode.assertPrivate()
     if (!agreed) throw new ApiError('consent_required', '请先阅读并同意隐私及用途说明')
     const generation = loginGeneration
@@ -112,7 +117,11 @@ export const createSessionService = (ports: SessionPorts) => {
       if (!code) throw new ApiError('wechat_unavailable', '未取得微信登录凭证，请重试')
       if (generation !== loginGeneration)
         throw new ApiError('session_changed', '登录已取消，请重新发起')
-      pendingLogin = { code, key: ports.key() }
+      pendingLogin = {
+        code,
+        key: ports.key(),
+        options: JSON.parse(JSON.stringify(options)) as PrivacyLoginOptions
+      }
     }
     try {
       const result = await send<LoginResult>(
@@ -120,7 +129,12 @@ export const createSessionService = (ports: SessionPorts) => {
           path: '/api/mini/v1/auth/wechat',
           method: 'POST',
           headers: { 'Idempotency-Key': pendingLogin.key },
-          body: { code: pendingLogin.code, consent: true, consent_version: CONSENT_VERSION }
+          body: {
+            code: pendingLogin.code,
+            consent: true,
+            consent_version: CONSENT_VERSION,
+            ...pendingLogin.options
+          }
         },
         false
       )

@@ -95,6 +95,8 @@ export const createAudioController = (
       record(AnalyticsEvent.AUDIO_PAUSE, 'full', 'system')
   }
   // #endif
+  let fullPlayPending: AudioActionOrigin | null = null,
+    wordPlayPending = false
   let alive = true,
     fullSource = '',
     fullGeneration = 0,
@@ -331,6 +333,12 @@ export const createAudioController = (
       return
     }
     pendingRate = null
+    // #ifdef JUYA_ANALYTICS
+    if (fullPlayPending !== null && !confirmingRate) {
+      record(AnalyticsEvent.AUDIO_PLAY, 'full', fullPlayPending)
+      fullPlayPending = null
+    }
+    // #endif
     state.status = AudioStatus.PLAYING
     if (!confirmingRate) restoreRate()
     if (pendingSeek > 0) {
@@ -412,6 +420,12 @@ export const createAudioController = (
   })
   word.onPlay(() => {
     if (!alive || !wordSourceGeneration || wordSourceGeneration !== wordGeneration) return
+    // #ifdef JUYA_ANALYTICS
+    if (wordPlayPending) {
+      record(AnalyticsEvent.AUDIO_PLAY, 'word', 'control', state.wordId || undefined)
+      wordPlayPending = false
+    }
+    // #endif
     recordWordAudio('native', wordStarted, 'ready')
     state.wordStatus = AudioStatus.PLAYING
     state.wordError = ''
@@ -461,7 +475,7 @@ export const createAudioController = (
       return
     }
     // #ifdef JUYA_ANALYTICS
-    record(AnalyticsEvent.AUDIO_PLAY, 'full', origin)
+    fullPlayPending = origin
     // #endif
     if (state.wordId) wordCancelled()
     cancelWordRecovery()
@@ -517,7 +531,7 @@ export const createAudioController = (
   ) => {
     if (!alive) return
     // #ifdef JUYA_ANALYTICS
-    record(AnalyticsEvent.AUDIO_PLAY, 'word', 'control', id)
+    wordPlayPending = true
     // #endif
     fullGeneration++
     const cancelFull = fullIntent || fullStarting || ratePausing

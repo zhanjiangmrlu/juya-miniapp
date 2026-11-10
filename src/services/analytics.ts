@@ -1,40 +1,33 @@
-import { createAnalyticsNative } from '@/services/analytics-native'
-import { analyticsPageProperties } from '@/services/analytics-page'
-import { createAnalyticsService } from '@/services/analytics-service'
-import { runtimeMode } from '@/services/runtime-mode'
+import { createAnalyticsEvents } from '@/services/analytics-events'
 
-const configuration =
-  typeof __JUYA_ANALYTICS_CONFIG__ === 'undefined'
-    ? { enabled: false, appKey: '', environment: 'disabled' as const }
-    : __JUYA_ANALYTICS_CONFIG__
-export const analytics = createAnalyticsService({
-  config: configuration,
-  storage: {
-    get: (key) => (typeof uni === 'undefined' ? undefined : uni.getStorageSync(key)),
-    set: (key, value) => {
-      uni.setStorageSync(key, value)
-    },
-    remove: (key) => {
-      uni.removeStorageSync(key)
-    }
-  },
-  onConsentChanged: (agreed) => {
-    if (agreed) analyticsNative.resume()
-    else analyticsNative.stop()
-  },
-  isPermitted: () => !runtimeMode.update(),
-  pageProperties: () =>
-    analyticsPageProperties(
-      typeof getCurrentPages === 'undefined' ? undefined : getCurrentPages().at(-1)
-    ),
-  currentPage: () =>
-    typeof getCurrentPages === 'undefined' ? '' : getCurrentPages().at(-1)?.route || ''
-})
+import type { AnalyticsProperties } from '@/shared/types/analytics'
 
-export const analyticsNative = createAnalyticsNative({
-  storageNamespace:
-    configuration.environment === 'production' ? 'juya-umeng-prod:' : 'juya-umeng-test:',
-  native: () =>
-    ((globalThis as typeof globalThis & { wx?: unknown }).wx || {}) as Record<string, unknown>,
-  hasConsent: () => analytics.hasConsent()
+// 本阶段实际传输硬关闭，隔离验收直接向工厂注入可信身份与接收器
+const events = createAnalyticsEvents({
+  context: () => ({ owner: null, revision: 0, enabled: false }),
+  key: () => '',
+  send: async () => undefined
 })
+/** 兼容现有业务通知端口，未授权事件在入队前丢弃
+ * @param event 成功事件名称
+ * @param properties 非敏感内容引用
+ * @param operationKey 已确认业务回执标识
+ */
+const track = (event: string, properties: AnalyticsProperties = {}, operationKey?: string) => {
+  void events.track(event, { ...properties }, operationKey)
+}
+/** 本阶段不初始化或修改第三方统计状态
+ * @param _args 兼容旧调用端口的参数，当前阶段不处理
+ */
+const disabled = (..._args: unknown[]) => undefined
+export const analytics = {
+  available: false,
+  attach: disabled,
+  track,
+  setConsent: disabled,
+  foreground: disabled,
+  background: events.clear,
+  setAuthenticated: disabled,
+  choice: () => false,
+  hasConsent: () => false
+}

@@ -1008,7 +1008,7 @@ const load = async () => {
       !noteBodyRefresh &&
       analyticsStartedId !== id
     ) {
-      analytics.track(AnalyticsEvent.LEARNING_START, { content_type: 'scene', content_id: id })
+      analytics.track(AnalyticsEvent.CONTENT_OPEN, { content_type: 'scene', content_id: id })
       analyticsStartedId = id
     }
     if (value.access) void checkAccess()

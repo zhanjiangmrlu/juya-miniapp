@@ -63,6 +63,10 @@ export const createLoginReturn = () => {
     ready = false
     return value
   }
-  return { register, begin, succeed, cancel, resumeGuest, pending, target, take }
+  /** 查看协议时冻结当前阅读，不包含待执行动作 */
+  const pauseForReading = () => {
+    if (source) begin(source.page)
+  }
+  return { pauseForReading, register, begin, succeed, cancel, resumeGuest, pending, target, take }
 }
 export const loginReturn = createLoginReturn()

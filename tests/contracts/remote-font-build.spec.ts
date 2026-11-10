@@ -52,23 +52,23 @@ it.each([
       .filter((file) => file.endsWith('.js'))
       .map((file) => readFileSync(path.join(directory, file), 'utf8'))
       .join('\n')
-    expect(javascript.includes('um_uuid')).toBe(enabled)
-    expect(javascript.includes('fixture-umeng-test')).toBe(enabled && mode === 'test')
-    expect(javascript.includes('fixture-umeng-prod')).toBe(enabled && mode === 'production')
+    expect(javascript.includes('um_uuid')).toBe(false)
+    expect(javascript.includes('fixture-umeng-test')).toBe(false)
+    expect(javascript.includes('fixture-umeng-prod')).toBe(false)
     expect(javascript.includes('content_view')).toBe(false)
     expect(javascript.includes('contact_save')).toBe(false)
     for (const event of ['entry_click', 'business_error', 'dictionary_success', 'study_note_ready'])
-      expect(javascript.includes(event)).toBe(enabled)
+      expect(javascript.includes(event)).toBe(false)
     const audioController = readFileSync(
       path.join(directory, 'services/audio-controller.js'),
       'utf8'
     )
-    expect(audioController.includes('audio_kind')).toBe(enabled)
+    expect(audioController.includes('audio_kind')).toBe(false)
     const policy = readFileSync(
       path.join(directory, 'components/app-privacy-sheet/app-privacy-sheet.wxml'),
       'utf8'
     )
-    expect(policy.includes('使用统计')).toBe(enabled)
+    expect(policy.includes('使用统计')).toBe(true)
     expect(policy.includes('<switch')).toBe(false)
     if (!enabled) {
       const compiled: {
@@ -82,7 +82,7 @@ it.each([
       expect(compiled.analytics?.hasConsent()).toBe(false)
     }
     const { measureMainPackage } = require(path.join(root, 'scripts/verify-mp-package-budget.mjs'))
-    expect(measureMainPackage(directory).sourceBytes).toBeLessThan((enabled ? 512 : 450) * 1024)
+    expect(measureMainPackage(directory).sourceBytes).toBeLessThan(480 * 1024)
   },
   60000
 )

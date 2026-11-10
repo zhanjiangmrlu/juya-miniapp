@@ -1,0 +1,23 @@
+// @vitest-environment happy-dom
+import { mount } from '@vue/test-utils'
+import { expect, it } from 'vitest'
+
+import Dialog from '@/components/app-consent-dialog/app-consent-dialog.vue'
+it('offers independent login choices and allows browsing without consent', async () => {
+  const w = mount(Dialog, { props: { first: true, confirmed: false, busy: false, error: '' } })
+  await w.get('.primary').trigger('click')
+  expect(w.emitted('login')?.[0]).toEqual([true])
+  await w.get('.secondary').trigger('click')
+  expect(w.emitted('login')?.[1]).toEqual([false])
+  await w.get('.browse').trigger('click')
+  expect(w.emitted('close')).toHaveLength(1)
+  expect(w.text()).toContain('用户协议与隐私保护')
+})
+it('blocks duplicate login while pending and keeps failure retry in place', async () => {
+  const w = mount(Dialog, { props: { first: false, confirmed: true, busy: true, error: '' } })
+  expect(w.get('.primary').attributes('disabled')).toBeDefined()
+  expect(w.text()).toContain('登录中')
+  await w.setProps({ busy: false, error: '登录暂未成功，请重试' })
+  expect(w.text()).toContain('登录暂未成功')
+  expect(w.get('.secondary').text()).toBe('仅登录，不开启统计')
+})

@@ -4,6 +4,126 @@
  */
 
 export interface paths {
+  '/api/mini/v1/privacy/policies': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * 读取当前公开协议
+     * @description 匿名读取完整发布的正式协议；材料不全时返回legacy，不虚构正式正文。
+     */
+    get: operations['policies_api_mini_v1_privacy_policies_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/mini/v1/privacy/policies/{kind}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * 读取公开协议正文
+     * @description 匿名读取指定种类及版本的已发布协议，版本不存在时返回不可用。
+     */
+    get: operations['policy_api_mini_v1_privacy_policies__kind__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/mini/v1/me/privacy': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * 读取本人协议与统计许可
+     * @description 按当前可信业务身份返回协议确认及独立统计许可，许可不代表实际采集已运行。
+     */
+    get: operations['state_api_mini_v1_me_privacy_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/mini/v1/me/agreements': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * 确认本人当前协议
+     * @description 版本校验后保存明确确认及来源，确认标识和幂等键防止重复记录。
+     */
+    post: operations['confirm_api_mini_v1_me_agreements_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/mini/v1/me/analytics-preference': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /**
+     * 修改本人可选统计许可
+     * @description 独立于必要登录，按许可修订号和持久幂等键保存；关闭不要求当前披露版本。
+     */
+    put: operations['update_api_mini_v1_me_analytics_preference_put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/mini/v1/analytics/events': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * 接收已获许可的分析事件
+     * @description 实际运行固定关闭接收；隔离接收器校验账号许可、五类事件及持久去重，不修改任何学习成绩。
+     */
+    post: operations['receive_api_mini_v1_analytics_events_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/mini/v1/learning-access': {
     parameters: {
       query?: never
@@ -1448,6 +1568,179 @@ export interface paths {
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    /** 本人已确认协议 */
+    AcceptedAgreement: {
+      /**
+       * 数据版本
+       * @description 当前数据快照或对象版本，写入时按原值提交用于一致性校验。
+       */
+      version: string
+      /**
+       * 服务端接受时间
+       * @description 服务端保存明确确认的时间。
+       */
+      accepted_at: string
+      /**
+       * 来源信息
+       * @description 当前对象的正文出处、反馈入口、学习队列或词典结果来源。
+       */
+      source: string | null
+    }
+    /** 明确协议确认 */
+    AgreementConfirmation: {
+      /**
+       * 协议确认标识
+       * @description 本次明确确认的稳定编号，重试保持不变并安全关联可信账号。
+       */
+      confirmation_id: string
+      /**
+       * 用户协议版本
+       * @description 用户实际阅读并确认的已发布用户协议版本。
+       */
+      terms_version: string
+      /**
+       * 隐私指引版本
+       * @description 用户实际阅读并确认的已发布隐私保护指引版本。
+       */
+      privacy_version: string
+      /**
+       * 客户端确认时间
+       * Format: date-time
+       * @description 用户主动确认的客户端时间，不替代服务端接受时间。
+       */
+      client_confirmed_at: string
+      /**
+       * 来源信息
+       * @description 当前对象的正文出处、反馈入口、学习队列或词典结果来源。
+       */
+      source: string
+    }
+    /** 本人协议确认状态 */
+    AgreementState: {
+      /**
+       * 当前版本已确认
+       * @description 本人已确认当前发布的用户协议及隐私指引。
+       */
+      current: boolean
+      /**
+       * 已确认记录
+       * @description 按协议种类列出本人确认记录。
+       */
+      accepted: {
+        [key: string]: components['schemas']['AcceptedAgreement']
+      }
+    }
+    /** 独立统计选择 */
+    AnalyticsChoice: {
+      /**
+       * 学习权限策略已启用
+       * @description 服务端统一学习权限策略的启用状态。
+       */
+      enabled: boolean
+      /**
+       * 统计披露版本
+       * @description 用户实际展示并明确允许的可选统计范围版本。
+       */
+      scope_version: string
+    }
+    /** 获准统计事件 */
+    AnalyticsEventInput: {
+      /**
+       * 唯一事件标识
+       * @description 同一事件的重试去重标识，重试保持不变。
+       */
+      event_id: string
+      /**
+       * 统计事件类型
+       * @description 仅允许页面进入、内容打开、实际播放成功、收藏变更和完成成功。
+       * @enum {string}
+       */
+      event: 'page_enter' | 'content_open' | 'audio_play' | 'favorite_change' | 'learning_complete'
+      /**
+       * 事件发生时间
+       * Format: date-time
+       * @description 事件实际发生时间，必须处于当前许可有效时间范围。
+       */
+      occurred_at: string
+      /**
+       * 统计许可修订号
+       * @description 事件产生时的当前账号许可代次；撤回或换号后不得继承。
+       */
+      consent_revision: number
+      /**
+       * 必要事件引用
+       * @description 仅接受页面、内容及结果等白名单引用，不接受用户输入或身份凭据。
+       */
+      properties?: {
+        [key: string]: string | number
+      }
+      /**
+       * 业务成功回执键
+       * @description 收藏或完成事件对应的本人已成功业务操作，仅校验不执行业务。
+       */
+      operation_key?: string | null
+    }
+    /** 事件接收收据 */
+    AnalyticsEventReceiptView: {
+      /**
+       * 已读事件标识
+       * @description 用户本次已查看到的反馈事件 ID，用于推进已读位置。
+       */
+      event_id: string
+      /**
+       * 已接收
+       * @description 已在有效许可范围内持久接收；不表示友盟真实接收。
+       * @constant
+       */
+      accepted: true
+    }
+    /** 统计许可变更请求 */
+    AnalyticsPreferenceInput: {
+      /**
+       * 学习权限策略已启用
+       * @description 服务端统一学习权限策略的启用状态。
+       */
+      enabled: boolean
+      /**
+       * 统计披露版本
+       * @description 用户实际展示并明确允许的可选统计范围版本。
+       */
+      scope_version: string
+      /**
+       * 预期许可修订号
+       * @description 基于本人最新许可状态提交，并发变更须重新核对。
+       */
+      expected_revision: number
+    }
+    /** 本人可选统计许可 */
+    AnalyticsPreferenceView: {
+      /**
+       * 学习权限策略已启用
+       * @description 服务端统一学习权限策略的启用状态。
+       */
+      enabled: boolean
+      /**
+       * 统计披露版本
+       * @description 用户实际展示并明确允许的可选统计范围版本。
+       */
+      scope_version: string
+      /**
+       * 修订号
+       * @description 当前对象的乐观锁版本；修改时提交最近读取的值，防止覆盖并发更新。
+       */
+      revision: number
+      /**
+       * 最后更新时间
+       * @description 该资源、记录或状态最近一次更新的时间。
+       */
+      updated_at: string | null
+      /**
+       * 实际采集运行中
+       * @description 本期真实分析传输固定关闭，此字段始终false。
+       * @constant
+       */
+      collecting: false
+    }
     /** 学习端听读文章详情 */
     ArticleDetail: {
       /**
@@ -3242,6 +3535,62 @@ export interface components {
        */
       favorited_at?: string | null
     }
+    /** 公开协议目录 */
+    PolicyCatalog: {
+      /**
+       * 处理模式
+       * @description 当前对象的导入或预览模式，具体取值以所在模型为准。
+       * @enum {string}
+       */
+      mode: 'legacy' | 'published'
+      /**
+       * 服务端当前时间
+       * @description 计算本次权限和有效期时使用的服务端时间。
+       */
+      server_now: string
+      /**
+       * 已发布文档
+       * @description 完整发布的文档列表；未配置时为空。
+       */
+      documents: components['schemas']['PolicyDocument'][]
+    }
+    /** 已发布正式协议正文 */
+    PolicyDocument: {
+      /**
+       * 文件类型
+       * @description 上传或处理的文件类别，例如 image、audio、study_note（PDF）、zip、docx。
+       * @enum {string}
+       */
+      kind: 'terms' | 'privacy' | 'analytics'
+      /**
+       * 数据版本
+       * @description 当前数据快照或对象版本，写入时按原值提交用于一致性校验。
+       */
+      version: string
+      /**
+       * 正文标题
+       * @description 向用户展示的正式文档标题。
+       */
+      title: string
+      /**
+       * 场景内容
+       * @description 场景的名称、配图、音频、对话、词汇和语块资料。
+       */
+      content: string
+    }
+    /** 本人隐私状态 */
+    PrivacyState: {
+      /**
+       * 本人协议状态
+       * @description 独立于会话的正式协议确认记录。
+       */
+      agreements: components['schemas']['AgreementState']
+      /**
+       * 独立统计许可
+       * @description 账号统计选择及实际采集运行状态。
+       */
+      analytics: components['schemas']['AnalyticsPreferenceView']
+    }
     /** 修改本人昵称和头像请求 */
     ProfileChange: {
       /**
@@ -4196,6 +4545,16 @@ export interface components {
        * @description 用户本次明确同意的隐私协议版本标识。
        */
       consent_version: string
+      /**
+       * 当前协议确认
+       * @description 明确展示并确认的用户协议和隐私指引记录；不以登录成功代替明确确认。
+       */
+      agreement_confirmation?: components['schemas']['AgreementConfirmation'] | null
+      /**
+       * 独立统计选择
+       * @description 本次明确选择及实际展示的统计披露版本；拒绝不影响必要登录。
+       */
+      analytics_choice?: components['schemas']['AnalyticsChoice'] | null
     }
     /** 微信登录结果 */
     WechatLoginResponse: {
@@ -4258,6 +4617,687 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  policies_api_mini_v1_privacy_policies_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description 请求成功 */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PolicyCatalog']
+        }
+      }
+      /** @description 请求不符合业务规则 */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 尚未登录，或登录凭证已失效 */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 当前身份无权执行该操作 */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源不存在，或当前身份不可访问 */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 状态、版本或幂等请求发生冲突，请按错误码处理 */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源或功能已不可用 */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求参数校验失败，或业务内容不符合要求 */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求过于频繁，请稍后重试 */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务器暂未完成请求，请按错误信息处理 */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务暂不可用，请稍后重试 */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
+  policy_api_mini_v1_privacy_policies__kind__get: {
+    parameters: {
+      query?: {
+        /** @description 当前数据快照或对象版本，写入时按原值提交用于一致性校验。 */
+        version?: string | null
+      }
+      header?: never
+      path: {
+        /** @description 上传或处理的文件类别，例如 image、audio、study_note（PDF）、zip、docx。 */
+        kind: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description 请求成功 */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PolicyDocument']
+        }
+      }
+      /** @description 请求不符合业务规则 */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 尚未登录，或登录凭证已失效 */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 当前身份无权执行该操作 */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源不存在，或当前身份不可访问 */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 状态、版本或幂等请求发生冲突，请按错误码处理 */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源或功能已不可用 */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求参数校验失败，或业务内容不符合要求 */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求过于频繁，请稍后重试 */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务器暂未完成请求，请按错误信息处理 */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务暂不可用，请稍后重试 */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
+  state_api_mini_v1_me_privacy_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description 请求成功 */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PrivacyState']
+        }
+      }
+      /** @description 请求不符合业务规则 */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 尚未登录，或登录凭证已失效 */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 当前身份无权执行该操作 */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源不存在，或当前身份不可访问 */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 状态、版本或幂等请求发生冲突，请按错误码处理 */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源或功能已不可用 */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求参数校验失败，或业务内容不符合要求 */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求过于频繁，请稍后重试 */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务器暂未完成请求，请按错误信息处理 */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务暂不可用，请稍后重试 */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
+  confirm_api_mini_v1_me_agreements_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** @description 请求数据，字段说明和必填约束见下方数据结构。 */
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AgreementConfirmation']
+      }
+    }
+    responses: {
+      /** @description 请求成功 */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AgreementState']
+        }
+      }
+      /** @description 请求不符合业务规则 */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 尚未登录，或登录凭证已失效 */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 当前身份无权执行该操作 */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源不存在，或当前身份不可访问 */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 状态、版本或幂等请求发生冲突，请按错误码处理 */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源或功能已不可用 */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求参数校验失败，或业务内容不符合要求 */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求过于频繁，请稍后重试 */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务器暂未完成请求，请按错误信息处理 */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务暂不可用，请稍后重试 */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
+  update_api_mini_v1_me_analytics_preference_put: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** @description 请求数据，字段说明和必填约束见下方数据结构。 */
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AnalyticsPreferenceInput']
+      }
+    }
+    responses: {
+      /** @description 请求成功 */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnalyticsPreferenceView']
+        }
+      }
+      /** @description 请求不符合业务规则 */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 尚未登录，或登录凭证已失效 */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 当前身份无权执行该操作 */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源不存在，或当前身份不可访问 */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 状态、版本或幂等请求发生冲突，请按错误码处理 */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源或功能已不可用 */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求参数校验失败，或业务内容不符合要求 */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求过于频繁，请稍后重试 */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务器暂未完成请求，请按错误信息处理 */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务暂不可用，请稍后重试 */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
+  receive_api_mini_v1_analytics_events_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** @description 请求数据，字段说明和必填约束见下方数据结构。 */
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AnalyticsEventInput']
+      }
+    }
+    responses: {
+      /** @description 请求成功 */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnalyticsEventReceiptView']
+        }
+      }
+      /** @description 请求不符合业务规则 */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 尚未登录，或登录凭证已失效 */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 当前身份无权执行该操作 */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源不存在，或当前身份不可访问 */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 状态、版本或幂等请求发生冲突，请按错误码处理 */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源或功能已不可用 */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求参数校验失败，或业务内容不符合要求 */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求过于频繁，请稍后重试 */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务器暂未完成请求，请按错误信息处理 */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务暂不可用，请稍后重试 */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
   current_api_mini_v1_learning_access_get: {
     parameters: {
       query?: never

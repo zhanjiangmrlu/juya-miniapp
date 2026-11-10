@@ -39,6 +39,7 @@ export interface AudioPort {
   onTimeUpdate: (callback: () => void) => void
 }
 export interface FullAudioOptions {
+  pause?: () => void
   title: string
   resume: (active: () => boolean) => Promise<void>
   leave: () => void

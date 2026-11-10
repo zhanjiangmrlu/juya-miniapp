@@ -5,6 +5,7 @@ import { watch } from 'vue'
 import { analytics } from '@/services/analytics'
 import { resetLearningAudioSession } from '@/services/audio-controller'
 import { hasBackgroundAudioSession } from '@/services/audio-navigation'
+import { prepareConsentLaunch } from '@/services/consent-coordinator'
 import { preparePageShareCovers } from '@/services/page-share'
 import { loadRemoteFonts } from '@/services/remote-fonts'
 import { runtimeMode, syncRuntimeMode } from '@/services/runtime-mode'
@@ -14,6 +15,7 @@ import type { RuntimeOptions } from '@/shared/types/share'
 useAccountStore()
 onLaunch((options) => {
   syncRuntimeMode(options)
+  if (!runtimeMode.browseOnly.value) prepareConsentLaunch()
   loadRemoteFonts()
   void preparePageShareCovers()
 })

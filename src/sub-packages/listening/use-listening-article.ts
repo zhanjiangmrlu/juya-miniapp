@@ -522,7 +522,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       stop()
       article.value = value
       if (session.userId() && !restoringSnapshot && analyticsStartedId !== value.id) {
-        analytics.track(AnalyticsEvent.LEARNING_START, {
+        analytics.track(AnalyticsEvent.CONTENT_OPEN, {
           content_type: 'listening',
           content_id: value.id
         })

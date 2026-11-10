@@ -11,6 +11,7 @@ export const AnalyticsEvent = {
   LOGIN_PROMPT: 'login_prompt',
   LOGIN_SUCCESS: 'login_success',
   LEARNING_START: 'learning_start',
+  CONTENT_OPEN: 'content_open',
   LEARNING_COMPLETE: 'learning_complete',
   FAVORITE_CHANGE: 'favorite_change',
   SHARE_TRIGGER: 'share_trigger',

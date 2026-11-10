@@ -13,6 +13,7 @@ import { promptLogin } from '@/services/login-prompt'
 import { loginReturn } from '@/services/login-return'
 import { clearMediaAddresses } from '@/services/media-service'
 import { resourceURL } from '@/services/platform'
+import { privacy } from '@/services/privacy'
 import { runtimeMode } from '@/services/runtime-mode'
 import { Routes } from '@/shared/constants/navigation'
 import {
@@ -24,6 +25,7 @@ import {
 
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { AccountProfile } from '@/shared/types/account'
+import type { PrivacyLoginOptions } from '@/shared/types/privacy'
 
 export const useAccountStore = defineStore('learner-account', () => {
   const profile = ref<AccountProfile | null>(null),
@@ -34,6 +36,7 @@ export const useAccountStore = defineStore('learner-account', () => {
   /** 清除个人界面和含输入正文的内存，保留服务器成绩 */
   const clear = () => {
     generation++
+    privacy.reset()
     restoring = null
     clearFeedbackDrafts()
     resetLearningAudioSession()
@@ -57,10 +60,11 @@ export const useAccountStore = defineStore('learner-account', () => {
         if (reason instanceof ApiError && reason.status === 401) return null
         throw reason
       })
-      .then((value) => {
+      .then(async (value) => {
         if (version === generation) {
           profile.value = value
           analytics.setAuthenticated(!!value)
+          if (value && privacy.published()) await privacy.restore(value.id).catch(() => undefined)
         }
         return value
       })
@@ -89,10 +93,11 @@ export const useAccountStore = defineStore('learner-account', () => {
   }
   /** 主动提交用户同意的微信身份登录
    * @param agreed 用户当前明确同意状态
+   * @param options 当前展示的协议和独立统计选择
    */
-  const login = async (agreed: boolean) => {
+  const login = async (agreed: boolean, options?: PrivacyLoginOptions) => {
     const version = ++generation
-    const result = await session.login(agreed)
+    const result = await session.login(agreed, options)
     if (version !== generation) throw new ApiError('session_changed', '登录身份已变化')
     clearMediaAddresses()
     resetLearningAudioSession()

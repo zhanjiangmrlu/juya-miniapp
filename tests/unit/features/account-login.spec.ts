@@ -182,14 +182,14 @@ it('does not navigate or continue an old login after native back unloads the log
   wrapper.unmount()
 })
 
-it('links an explicit privacy check and uncheck to persisted analytics consent without starting login', async () => {
+it('does not grant analytics permission when accepting the necessary login agreement', async () => {
   const wrapper = page()
   expect(analytics.choice()).toBe(false)
   await wrapper.get('.privacy-link').trigger('click')
   await wrapper.get('.close-privacy').trigger('click')
   expect(analytics.choice()).toBe(false)
   await wrapper.get('.checkbox-group').trigger('change', { detail: { value: ['agree'] } })
-  expect(analytics.choice()).toBe(true)
+  expect(analytics.choice()).toBe(false)
   expect(login).not.toHaveBeenCalled()
   await wrapper.get('.checkbox-group').trigger('change', { detail: { value: [] } })
   expect(analytics.choice()).toBe(false)

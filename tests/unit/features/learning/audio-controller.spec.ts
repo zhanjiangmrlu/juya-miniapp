@@ -582,7 +582,7 @@ it('observes final playback failures and retains playback if the observer throws
   await controller.playWord('word-1', () => {
     throw new Error('not available')
   })
-  expect(events).toEqual(['audio_play', 'audio_error', 'audio_play', 'audio_error'])
+  expect(events).toEqual(['audio_play', 'audio_error', 'audio_error'])
   expect(controller.state.wordStatus).toBe('error')
   controller.dispose()
 })
@@ -613,4 +613,33 @@ it('observes a foreground system pause once while internal rate transitions rema
   full.callbacks.stop?.()
   expect(events.filter(([event]) => event === 'audio_pause')).toHaveLength(2)
   controller.dispose()
+})
+it('counts play only after native confirmation and never counts a failed click', async () => {
+  const full = new AudioBoundary(),
+    word = new AudioBoundary(),
+    events: string[] = []
+  full.play = () => {
+    full.playing = true
+  }
+  const c = createAudioController(
+    full,
+    word,
+    undefined,
+    { rate: 1 },
+    undefined,
+    undefined,
+    undefined,
+    (e) => events.push(e)
+  )
+  await c.toggleFull(() => '/full')
+  expect(events).not.toContain('audio_play')
+  full.callbacks.play?.()
+  expect(events.filter((e) => e === 'audio_play')).toHaveLength(1)
+  full.callbacks.play?.()
+  expect(events.filter((e) => e === 'audio_play')).toHaveLength(1)
+  await c.playWord('w', () => {
+    throw new Error('unavailable')
+  })
+  expect(events.filter((e) => e === 'audio_play')).toHaveLength(1)
+  c.dispose()
 })
