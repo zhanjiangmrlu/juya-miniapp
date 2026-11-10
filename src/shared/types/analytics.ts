@@ -4,7 +4,7 @@ import type {
   AnalyticsEvent,
   AnalyticsStage
 } from '../enums/analytics'
-import type { StoragePort } from './runtime'
+import type { CanonicalAnalyticsEvent } from './privacy'
 export interface AnalyticsConfig {
   enabled: boolean
   appKey: string
@@ -44,6 +44,7 @@ export type AudioActionOrigin = 'control' | 'system' | 'restore'
 export type AnalyticsMethod = (...args: unknown[]) => unknown
 export interface AnalyticsSDK {
   [key: string]: unknown
+  setUserid?: AnalyticsMethod
   init: AnalyticsMethod
   resume: AnalyticsMethod
   pause: AnalyticsMethod
@@ -56,14 +57,35 @@ export interface AnalyticsSDK {
     once: (event: string | number, callback: () => void) => void
   }
 }
+export interface AnalyticsRuntimeContext {
+  owner: string | null
+  revision: number
+  enabled: boolean
+  scopeVersion: string
+  policiesReady: boolean
+}
+export interface AnalyticsConfigurePorts {
+  context: () => AnalyticsRuntimeContext
+  authorize: (event: CanonicalAnalyticsEvent) => Promise<void>
+  currentPage: () => string
+}
+export interface AnalyticsSDKScope {
+  wx: Record<string, unknown>
+  App: (value: unknown) => unknown
+  Page: (value: unknown) => unknown
+  Component: (value: unknown) => unknown
+  setTimeout: (callback: () => void, delay?: number) => number
+  clearTimeout: (id: number) => void
+  setInterval: (callback: () => void, delay?: number) => number
+  clearInterval: (id: number) => void
+}
+export type AnalyticsSDKFactory = (scope: AnalyticsSDKScope) => AnalyticsSDK
 export interface AnalyticsPorts {
   config: AnalyticsConfig
-  storage: StoragePort
-  currentPage: () => string
-  pageProperties?: () => AnalyticsProperties
+  createSDK?: AnalyticsSDKFactory
+  native?: () => Record<string, unknown>
+  key?: () => string
   now?: () => number
-  isPermitted?: () => boolean
-  onConsentChanged?: (agreed: boolean) => void
 }
 
 export interface AnalyticsPageVisit {
@@ -85,5 +107,5 @@ export interface PendingAnalyticsEvent {
 export interface AnalyticsNativePorts {
   native: () => Record<string, unknown>
   hasConsent: () => boolean
-  storageNamespace?: string
+  owner: string
 }

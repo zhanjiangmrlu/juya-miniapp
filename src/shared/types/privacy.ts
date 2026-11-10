@@ -6,9 +6,13 @@ export interface PolicyDocument {
   content: string
 }
 export interface PolicyBundle {
+  analytics_available?: boolean
   mode: 'legacy' | 'published'
   server_now: string
   documents: PolicyDocument[]
+}
+export interface PrivacyAnalyticsAccount {
+  profile: { id: string } | null
 }
 export interface AgreementConfirmation {
   confirmation_id: string
@@ -24,7 +28,7 @@ export interface PrivacyState {
     scope_version: string
     revision: number
     updated_at: string | null
-    collecting: boolean
+    collecting: boolean | null
   }
 }
 export interface PrivacyPorts {

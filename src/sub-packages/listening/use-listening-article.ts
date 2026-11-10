@@ -34,6 +34,7 @@ import {
 } from '@/shared/enums/analytics'
 import { AudioStatus } from '@/shared/enums/audio'
 import { LearningAccessReason } from '@/shared/enums/learning-access'
+import { ConsentAction } from '@/shared/enums/privacy'
 import { useAccountStore } from '@/stores/account-store'
 import {
   readingAnchor,
@@ -651,7 +652,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       attemptRun = generation,
       attemptProperties = analyticsContext()
     // #endif
-    if (!(await account.ensure(target.value))) {
+    if (!(await account.ensure(target.value, ConsentAction.FAVORITE_LISTENING))) {
       // #ifdef JUYA_ANALYTICS
       if (alive && visible && attemptOwner === session.identity() && attemptRun === generation)
         businessAnalytics.error(
@@ -707,7 +708,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       attemptRun = generation,
       attemptProperties = analyticsContext()
     // #endif
-    if (!(await account.ensure(target.value))) {
+    if (!(await account.ensure(target.value, ConsentAction.COMPLETE_LISTENING))) {
       // #ifdef JUYA_ANALYTICS
       if (alive && visible && attemptOwner === session.identity() && attemptRun === generation)
         businessAnalytics.error(

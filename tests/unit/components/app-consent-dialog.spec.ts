@@ -21,3 +21,11 @@ it('blocks duplicate login while pending and keeps failure retry in place', asyn
   expect(w.text()).toContain('登录暂未成功')
   expect(w.get('.secondary').text()).toBe('仅登录，不开启统计')
 })
+
+it('explains the exact favorite action and asks for another click after login', () => {
+  const w = mount(Dialog, {
+    props: { first: false, confirmed: false, busy: false, error: '', action: 'favorite_listening' }
+  })
+  expect(w.get('.title').text()).toBe('登录后可收藏这篇听读')
+  expect(w.get('.foot').text()).toBe('登录成功后，请再次点击收藏')
+})

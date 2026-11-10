@@ -52,8 +52,7 @@ export default defineConfig(({ mode, command }) => {
             if (!analytics.enabled) return 'export default null'
             const require = createRequire(import.meta.url)
             const source = readFileSync(require.resolve('umtrack-wx'), 'utf8')
-            const runtime = path.join(inputRoot, 'services/analytics.ts')
-            return `import { analyticsNative } from ${JSON.stringify(runtime)};const module={exports:{}};const wx=analyticsNative.wx;${source};export default module.exports;`
+            return `export default (scope)=>{let {wx,App,Page,Component,setTimeout,clearTimeout,setInterval,clearInterval}=scope;const console={log:()=>{},warn:()=>{},info:()=>{},error:()=>{},debug:()=>{},table:()=>{}};const module={exports:{}};${source};return module.exports;}`
           }
           if (
             !analytics.enabled &&

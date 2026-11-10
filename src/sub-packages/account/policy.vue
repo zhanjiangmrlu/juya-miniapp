@@ -20,10 +20,6 @@ onLoad(async (query) => {
 onUnload(() => {
   finishPolicy()
 })
-/** 友盟正式原文以外部浏览器链接打开，不伪装已配置全文 */
-const copyPolicy = () => {
-  uni.setClipboardData({ data: ANALYTICS_POLICY_URL })
-}
 </script>
 <template>
   <AppPage :title="document?.title || '协议说明'" back
@@ -34,9 +30,10 @@ const copyPolicy = () => {
       ><text v-else>{{
         error || '正式全文尚未配置，当前不取得此项同意。你可以返回继续浏览。'
       }}</text
-      ><button v-if="kind === 'analytics'" @click="copyPolicy">
-        复制友盟隐私政策链接，在浏览器查看
-      </button></view
+      ><view v-if="kind === 'analytics'" class="official-policy">
+        <text class="official-label">友盟官方隐私政策</text>
+        <text class="official-url" selectable>{{ ANALYTICS_POLICY_URL }}</text>
+      </view></view
     ></AppPage
   >
 </template>
@@ -57,11 +54,16 @@ const copyPolicy = () => {
     white-space: pre-wrap;
   }
 
-  button {
-    min-height: 44px;
+  .official-policy {
     margin-top: 30rpx;
     font-size: 25rpx;
     color: #41664d;
+
+    .official-label,
+    .official-url {
+      display: block;
+      overflow-wrap: anywhere;
+    }
   }
 }
 </style>

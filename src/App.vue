@@ -7,12 +7,13 @@ import { resetLearningAudioSession } from '@/services/audio-controller'
 import { hasBackgroundAudioSession } from '@/services/audio-navigation'
 import { prepareConsentLaunch } from '@/services/consent-coordinator'
 import { preparePageShareCovers } from '@/services/page-share'
+import { configurePrivacyAnalytics } from '@/services/privacy-analytics'
 import { loadRemoteFonts } from '@/services/remote-fonts'
 import { runtimeMode, syncRuntimeMode } from '@/services/runtime-mode'
 import { useAccountStore } from '@/stores/account-store'
 
 import type { RuntimeOptions } from '@/shared/types/share'
-useAccountStore()
+configurePrivacyAnalytics(useAccountStore())
 onLaunch((options) => {
   syncRuntimeMode(options)
   if (!runtimeMode.browseOnly.value) prepareConsentLaunch()

@@ -1,39 +1,113 @@
-import { expect, it, vi } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 
 import { createAnalyticsNative } from '@/services/analytics-native'
 
-it('isolates SDK storage keys between environments without changing business storage', () => {
-  const saved = new Map<string, unknown>()
+import type { AnalyticsMethod } from '@/shared/types/analytics'
+
+afterEach(() => {
+  vi.clearAllTimers()
+  vi.useRealTimers()
+})
+
+it('keeps SDK identifiers only in fresh per-generation memory without reading business storage', () => {
   const native = {
-    setStorage: ({ key, data }: { key: string; data: unknown }) => saved.set(key, data),
-    getStorage: ({ key, success }: { key: string; success: (value: unknown) => void }) =>
-      success(saved.get(key)),
-    removeStorage: ({ key }: { key: string }) => saved.delete(key),
-    setStorageSync: (key: string, value: unknown) => saved.set(key, value),
-    getStorageSync: (key: string) => saved.get(key),
-    removeStorageSync: (key: string) => saved.delete(key)
+    getStorage: () => {
+      throw new Error('private business storage accessed')
+    }
   }
-  const test = createAnalyticsNative({
-    native: () => native,
+  const a = createAnalyticsNative({ native: () => native, owner: 'a', hasConsent: () => true })
+  const b = createAnalyticsNative({ native: () => native, owner: 'b', hasConsent: () => true })
+  ;(a.wx.setStorageSync as AnalyticsMethod)('um_uuid', 'first-uuid')
+  expect((a.wx.getStorageSync as AnalyticsMethod)('um_uuid')).toBe('first-uuid')
+  expect((b.wx.getStorageSync as AnalyticsMethod)('um_uuid')).toBeUndefined()
+  expect(a.wx.login).toBeUndefined()
+  expect(a.wx.getUserInfo).toBeUndefined()
+  expect(a.wx.getClipboardData).toBeUndefined()
+  a.stop()
+  expect((a.wx.getStorageSync as AnalyticsMethod)('um_uuid')).toBeUndefined()
+})
+it('cancels owned timers and permanently discards late native callbacks after stop', () => {
+  vi.useFakeTimers()
+  let callback!: (value: unknown) => void
+  const completed: unknown[] = []
+  const native = {
+    getSystemInfo: ({ success }: { success: typeof callback }) => {
+      callback = success
+    }
+  }
+  const a = createAnalyticsNative({ native: () => native, owner: 'a', hasConsent: () => true })
+  ;(a.wx.getSystemInfo as AnalyticsMethod)({ success: (value: unknown) => completed.push(value) })
+  a.scope.setTimeout(() => completed.push('timer'), 100)
+  a.scope.setInterval(() => completed.push('interval'), 100)
+  a.stop()
+  callback('old-profile')
+  vi.advanceTimersByTime(1000)
+  expect(completed).toEqual([])
+  expect(vi.getTimerCount()).toBe(0)
+})
+it('refuses foreign destinations, identity leakage and cross-account SDK payloads', () => {
+  const sent: unknown[] = []
+  const a = createAnalyticsNative({
+    native: () => ({ request: (input: unknown) => sent.push(input) }),
+    owner: 'a',
+    hasConsent: () => true
+  })
+  const request = a.wx.request as AnalyticsMethod
+  request({ url: 'https://ucc.umeng.com/v1/mini/fetch', data: {} })
+  request({
+    url: 'https://umini.shujupie.com/wxm_logs',
+    data: { h: { itr: { puid: 'b', ud: 'uuid' } } }
+  })
+  request({
+    url: 'https://umini.shujupie.com/wxm_logs',
+    data: { h: { itr: { puid: 'a', od: 'private-openid' } } }
+  })
+  request({
+    url: 'https://umini.shujupie.com/wxm_logs',
+    data: { h: { itr: { puid: 'a', und: 'private-unionid' } } }
+  })
+  expect(sent).toEqual([])
+})
+
+it('aborts outstanding requests and releases completed tasks before disposal', () => {
+  const callbacks: Record<string, AnalyticsMethod>[] = [],
+    aborted: number[] = []
+  const a = createAnalyticsNative({
+    owner: 'a',
     hasConsent: () => true,
-    storageNamespace: 'test:'
-  }).wx as typeof native
-  const prod = createAnalyticsNative({
-    native: () => native,
-    hasConsent: () => true,
-    storageNamespace: 'prod:'
-  }).wx as typeof native
-  const input = { key: 'um_uuid', data: 'test-visitor' }
-  test.setStorage(input)
-  native.setStorage({ key: 'um_uuid', data: 'business' })
-  const success = vi.fn()
-  prod.getStorage({ key: 'um_uuid', success })
-  expect(success).toHaveBeenCalledWith(undefined)
-  prod.setStorageSync('um_uuid', 'production-visitor')
-  expect(test.getStorageSync('um_uuid')).toBe('test-visitor')
-  expect(prod.getStorageSync('um_uuid')).toBe('production-visitor')
-  prod.removeStorage({ key: 'um_uuid' })
-  expect(test.getStorageSync('um_uuid')).toBe('test-visitor')
-  expect(native.getStorageSync('um_uuid')).toBe('business')
-  expect(input.key).toBe('um_uuid')
+    native: () => ({
+      request: (input: Record<string, AnalyticsMethod>) => {
+        const index = callbacks.length
+        callbacks.push(input)
+        return { abort: () => aborted.push(index) }
+      }
+    })
+  })
+  const request = a.wx.request as AnalyticsMethod
+  request({
+    url: 'https://umini.shujupie.com/wxm_logs',
+    data: { h: { itr: { puid: 'a', ud: 'uuid' } } }
+  })
+  request({ url: 'https://umini.shujupie.com/uminiprogram_logs/ckdh' })
+  callbacks[0]?.complete?.({})
+  a.stop()
+  expect(aborted).toEqual([1])
+})
+
+it('preserves the official SDK response protocol without rewriting imprint or health data', () => {
+  const received: unknown[] = []
+  const response = { statusCode: 200, data: { code: 200, imprint: 'fixture-imprint' } }
+  const native = {
+    request: ({ success, complete }: { success: AnalyticsMethod; complete: AnalyticsMethod }) => {
+      success(response)
+      complete(response)
+      return { abort: () => undefined }
+    }
+  }
+  const a = createAnalyticsNative({ native: () => native, owner: 'a', hasConsent: () => true })
+  ;(a.wx.request as AnalyticsMethod)({
+    url: 'https://umini.shujupie.com/uminiprogram_logs/ckdh',
+    success: (value: unknown) => received.push(value)
+  })
+  expect(received).toEqual([response])
 })

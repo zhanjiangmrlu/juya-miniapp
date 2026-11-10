@@ -232,5 +232,18 @@ export const createSessionService = (ports: SessionPorts) => {
   }
   /** 返回当前稳定账号编号，用于隔离待确认操作 */
   const userId = () => current?.user_id || null
-  return { restore, login, request, contentRequest, identity, invalidate, logout, clear, userId }
+  /** 提供已核实业务会话的有效期，统计不得延续已过期的缓存身份 */
+  const expiresAt = () => current?.expires_at || ''
+  return {
+    restore,
+    login,
+    request,
+    contentRequest,
+    identity,
+    invalidate,
+    logout,
+    clear,
+    userId,
+    expiresAt
+  }
 }

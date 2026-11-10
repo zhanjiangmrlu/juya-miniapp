@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 
+import { session } from '@/services/api'
 import { pauseBackgroundAudio } from '@/services/audio-navigation'
 import { loginReturn } from '@/services/login-return'
 import { privacy } from '@/services/privacy'
@@ -24,7 +25,6 @@ export const considerHomeConsent = async (
 ) => {
   await launch
   if (privacy.published()) {
-    const { session } = await import('@/services/api')
     const user = session.userId()
     if (user) {
       try {

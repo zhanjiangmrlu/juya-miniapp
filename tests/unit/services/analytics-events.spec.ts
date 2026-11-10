@@ -80,3 +80,23 @@ it('keeps new-permission queue entries when an old request finishes after clear'
   await e.flush()
   expect(ids).toEqual(['e1', 'e2'])
 })
+
+it('rejects input-like identifiers and unsafe enum values while preserving only safe route paths', async () => {
+  const sent: unknown[] = []
+  const events = createAnalyticsEvents({
+    context: () => ({ owner: 'u', revision: 1, enabled: true }),
+    key: () => 'e1',
+    send: async (event) => {
+      sent.push(event)
+    }
+  })
+  await events.track('content_open', {
+    page_path: 'pages/home/index?token=private-token',
+    content_id: 'free text entered by user',
+    content_type: 'private input',
+    audio_kind: 'private input',
+    favorite: 10,
+    version_id: 'https://private.invalid/token'
+  })
+  expect(sent).toEqual([expect.objectContaining({ properties: { page_path: 'pages/home/index' } })])
+})

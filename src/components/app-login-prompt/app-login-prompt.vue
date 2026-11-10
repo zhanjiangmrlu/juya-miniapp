@@ -2,11 +2,13 @@
 import { ref, watch } from 'vue'
 
 import AppConsentDialog from '@/components/app-consent-dialog/app-consent-dialog.vue'
+import { session } from '@/services/api'
 import { automaticConsent, openPolicy, readingPolicy } from '@/services/consent-coordinator'
-import { dismissLoginPrompt, loginPromptTarget } from '@/services/login-prompt'
+import { dismissLoginPrompt, loginPromptAction, loginPromptTarget } from '@/services/login-prompt'
 import { loginReturn } from '@/services/login-return'
 import { openLogin, safeTarget } from '@/services/navigation'
 import { privacy } from '@/services/privacy'
+import { useAccountStore } from '@/stores/account-store'
 const busy = ref(false),
   error = ref('')
 let attempt = 0,
@@ -44,8 +46,6 @@ const choose = async (enabled: boolean) => {
     const confirmation =
       privacy.confirmation() ||
       privacy.confirm(automaticConsent.value ? 'first_launch' : 'account_action')
-    const { session } = await import('@/services/api')
-    const { useAccountStore } = await import('@/stores/account-store')
     if (run !== attempt) return
     invalidate = () => session.invalidate()
     const account = useAccountStore()
@@ -97,6 +97,7 @@ watch(loginPromptTarget, (target) => {
     v-if="loginPromptTarget && privacy.published() && !readingPolicy"
     :first="automaticConsent"
     :confirmed="privacy.confirmed()"
+    :action="loginPromptAction"
     :busy="busy"
     :error="error"
     @login="choose"

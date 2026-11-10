@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
+import { analytics } from '@/services/analytics'
 import { session } from '@/services/api'
 import { openPolicy } from '@/services/consent-coordinator'
 import { promptLogin } from '@/services/login-prompt'
@@ -8,15 +9,20 @@ import { privacy } from '@/services/privacy'
 import { Routes } from '@/shared/constants/navigation'
 const emit = defineEmits<{ close: [] }>()
 const error = ref(''),
-  busy = ref(false)
-const enabled = computed(() => privacy.state.value?.analytics.enabled === true)
+  busy = ref(false),
+  restored = ref(false)
+const enabled = computed(
+  () =>
+    privacy.currentOwner() === session.userId() && privacy.state.value?.analytics.enabled === true
+)
 onMounted(async () => {
   try {
     await privacy.loadPolicies()
     const user = session.userId()
     if (user) await privacy.restore(user)
+    restored.value = true
   } catch {
-    error.value = '统计状态暂未同步，保持关闭'
+    // 初始化未完成时保持开关关闭，不将内部状态显示为用户操作错误
   }
 })
 /** 独立开关先核对账号，拒绝统计不影响必要业务 */
@@ -41,8 +47,8 @@ const toggle = async () => {
 <template>
   <view class="veil" role="dialog" aria-modal="true" aria-label="隐私说明" @touchmove.stop.prevent
     ><view class="sheet">
-      <button class="close" aria-label="关闭隐私说明" @click="$emit('close')">
-        <image src="/static/design/consent-close.svg" mode="aspectFit" />
+      <button class="privacy-button close" aria-label="关闭隐私说明" @click="$emit('close')">
+        <image class="close-icon" src="/static/design/consent-close.svg" mode="aspectFit" />
       </button>
       <scroll-view scroll-y class="privacy-text" @touchmove.stop>
         <text class="dialog-title">隐私说明</text>
@@ -51,22 +57,29 @@ const toggle = async () => {
         >
         <text class="paragraph muted">{{ '头像昵称由你主动设置。\n不收集手机号和微信号。' }}</text>
         <view class="policy-list"
-          ><button @click="openPolicy('terms')">用户协议<text>›</text></button
-          ><button @click="openPolicy('privacy')">隐私保护指引<text>›</text></button></view
+          ><button class="privacy-button policy-entry" @click="openPolicy('terms')">
+            用户协议<text>›</text></button
+          ><button class="privacy-button policy-entry" @click="openPolicy('privacy')">
+            隐私保护指引<text>›</text>
+          </button></view
         >
         <view class="statistics"
           ><view
             ><text class="section-title">友盟使用统计</text
             ><text class="status">{{
-              enabled ? '已允许 · 当前未运行' : '可选 · 当前未开启'
+              enabled
+                ? analytics.running
+                  ? '可选 · 当前已开启'
+                  : '已允许 · 当前未运行'
+                : '可选 · 当前未开启'
             }}</text></view
           ><button
-            class="statistics-switch"
+            class="privacy-button statistics-switch"
             :class="{ enabled }"
             role="switch"
             :aria-checked="enabled"
             aria-label="友盟使用统计"
-            :disabled="busy || (!privacy.published() && !enabled)"
+            :disabled="busy || (!enabled && (!restored || !privacy.published()))"
             @click="toggle"
           >
             <view class="track"><view class="knob" /></view></button
@@ -75,10 +88,11 @@ const toggle = async () => {
           >开启后，仅在登录状态下通过友盟记录页面访问、内容打开、播放、收藏和完成情况，用于改进产品。</text
         >
         <text class="paragraph muted">关闭即停止后续统计，不影响收藏、学习记录和打卡。</text>
-        <text v-if="!privacy.published()" class="status">正式配置未就绪，真实统计保持关闭</text>
         <text v-if="error" class="error" role="alert">{{ error }}</text>
-        <button class="policy-link" @click="openPolicy('analytics')">查看友盟隐私政策</button>
-        <button class="primary" @click="$emit('close')">我知道了</button>
+        <button class="privacy-button policy-link" @click="openPolicy('analytics')">
+          查看友盟隐私政策
+        </button>
+        <button class="privacy-button primary" @click="$emit('close')">我知道了</button>
       </scroll-view>
     </view></view
   >
@@ -110,7 +124,7 @@ const toggle = async () => {
     max-height: calc(100vh - 180rpx);
   }
 
-  button {
+  .privacy-button {
     padding: 0;
     margin: 0;
     min-height: 44px;
@@ -134,7 +148,7 @@ const toggle = async () => {
     align-items: center;
     justify-content: center;
 
-    image {
+    .close-icon {
       width: 38.462rpx;
       height: 38.462rpx;
     }
@@ -169,7 +183,7 @@ const toggle = async () => {
     margin: 24rpx 0;
     border-top: 1px solid #dfe5d8;
 
-    button {
+    .policy-entry {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -231,6 +245,9 @@ const toggle = async () => {
   }
 
   .policy-link {
+    display: flex;
+    justify-content: flex-start;
+    width: 100%;
     text-align: left;
     font-size: 23.077rpx;
     text-decoration: underline;

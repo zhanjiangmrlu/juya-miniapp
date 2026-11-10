@@ -1,12 +1,17 @@
 import type { AnalyticsConfig } from '../shared/types/analytics'
 
-/** CHG-0040 能力交付阶段所有实际构建关闭真实传输，私有旧配置不能绕过
- * @param _mode 当前构建模式
- * @param _platform 当前编译平台
- * @param _env 构建环境变量，当前阶段不读取统计密钥
+/** 仅显式配置的微信测试构建装载真实 SDK，生产默认不装载
+ * @param mode 当前构建模式
+ * @param platform 当前编译平台
+ * @param env 现有私有环境配置，不读取或输出生产统计密钥
  */
 export const resolveAnalyticsConfig = (
-  _mode: string,
-  _platform: string,
-  _env: Record<string, string | undefined>
-): AnalyticsConfig => ({ enabled: false, appKey: '', environment: 'disabled' })
+  mode: string,
+  platform: string,
+  env: Record<string, string | undefined>
+): AnalyticsConfig => {
+  const appKey = env.VITE_UMENG_TEST_APP_KEY?.trim() || ''
+  if (mode === 'test' && platform === 'mp-weixin' && env.VITE_UMENG_ENABLED === 'true' && appKey)
+    return { enabled: true, appKey, environment: 'test' }
+  return { enabled: false, appKey: '', environment: 'disabled' }
+}

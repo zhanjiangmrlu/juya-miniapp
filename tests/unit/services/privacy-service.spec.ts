@@ -109,7 +109,13 @@ it('does not overwrite a completed withdrawal with an older same-account restore
         return new Promise((r) => {
           finish = (value) => r(value as T)
         }) as Promise<T>
-      return { agreements: { current: true }, analytics: a } as T
+      return {
+        agreements: {
+          current: true,
+          accepted: { terms: { version: 't1' }, privacy: { version: 'p1' } }
+        },
+        analytics: a
+      } as T
     }
   })
   await service.loadPolicies()
@@ -157,4 +163,111 @@ it('replays the original preference key and revision after a lost success respon
   await service.choose(false)
   expect(calls[0]).toEqual(calls[1])
   expect(service.isBlocked()).toBe(false)
+})
+
+it('uses the known account confirmation instead of another local agreement record', async () => {
+  const { service } = setup()
+  await service.loadPolicies()
+  service.confirm('first_launch')
+  await service.restore('different-account')
+  expect(service.confirmed()).toBe(false)
+  expect(service.shouldNotify()).toBe(true)
+})
+
+it('requires confirmation again when a necessary policy changes after account restoration', async () => {
+  const { service } = setup()
+  await service.loadPolicies()
+  await service.restore('known-account')
+  service.state.value = {
+    agreements: {
+      current: true,
+      accepted: { terms: { version: 't1' }, privacy: { version: 'p1' } }
+    },
+    analytics: {
+      enabled: true,
+      scope_version: 'a1',
+      revision: 1,
+      updated_at: null,
+      collecting: null
+    }
+  }
+  expect(service.confirmed()).toBe(true)
+  service.policies.value = {
+    ...published,
+    documents: published.documents.map((document) =>
+      document.kind === 'privacy' ? { ...document, version: 'p2' } : document
+    )
+  }
+  expect(service.confirmed()).toBe(false)
+})
+
+it('ignores an enabled snapshot read during a withdrawal that completes first', async () => {
+  let finishRead!: (value: unknown) => void,
+    finishWrite!: (value: unknown) => void,
+    reads = 0
+  const saved = new Map<string, unknown>()
+  const enabled = {
+    enabled: true,
+    scope_version: 'a1',
+    revision: 1,
+    updated_at: null,
+    collecting: null
+  }
+  const snapshot = { agreements: { current: true }, analytics: enabled }
+  const service = createPrivacyService({
+    storage: {
+      get: (key) => saved.get(key),
+      set: (key, value) => {
+        saved.set(key, value)
+      },
+      remove: (key) => {
+        saved.delete(key)
+      }
+    },
+    key: () => 'withdrawal-key',
+    policies: async () => published,
+    request: async <T>(path: string) => {
+      if (path.endsWith('analytics-preference'))
+        return new Promise<T>((resolve) => {
+          finishWrite = (value) => resolve(value as T)
+        })
+      if (reads++)
+        return new Promise<T>((resolve) => {
+          finishRead = (value) => resolve(value as T)
+        })
+      return snapshot as T
+    }
+  })
+  await service.loadPolicies()
+  await service.restore('u')
+  const withdrawal = service.choose(false)
+  const staleRead = service.restore('u')
+  finishWrite({ ...enabled, enabled: false, revision: 2, collecting: false })
+  await withdrawal
+  expect(service.isBlocked()).toBe(false)
+  finishRead(snapshot)
+  await staleRead
+  expect(service.state.value?.analytics).toMatchObject({ enabled: false, revision: 2 })
+})
+
+it('does not let an older catalog reopen a capability closed by a newer catalog', async () => {
+  const { service } = setup()
+  let finishOld!: (value: PolicyBundle) => void,
+    calls = 0
+  const guarded = createPrivacyService({
+    storage: { get: () => undefined, set: () => undefined, remove: () => undefined },
+    key: () => 'key',
+    request: async <T>() => service.state.value as T,
+    policies: async () => {
+      if (calls++) return { ...published, analytics_available: false }
+      return new Promise<PolicyBundle>((resolve) => {
+        finishOld = resolve
+      })
+    }
+  })
+  const old = guarded.loadPolicies()
+  await guarded.loadPolicies()
+  finishOld({ ...published, analytics_available: true })
+  await expect(old).rejects.toThrow('协议状态已更新')
+  expect(guarded.policies.value.analytics_available).toBe(false)
 })

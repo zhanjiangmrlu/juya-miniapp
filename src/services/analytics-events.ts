@@ -27,11 +27,19 @@ export const createAnalyticsEvents = (ports: AnalyticsEventPorts) => {
     const safe: Record<string, string | number> = {}
     for (const key of CONSENT_EVENT_PROPERTIES) {
       const value = properties[key]
-      if (
-        (typeof value === 'string' && value.length <= 128) ||
-        (typeof value === 'number' && Number.isFinite(value))
+      if (key === 'page_path' && typeof value === 'string') {
+        const route = value.split(/[?#]/)[0]?.replace(/^\/+/, '') || ''
+        if (/^(?:pages|sub-packages)\/[A-Za-z0-9_/-]{1,120}$/.test(route)) safe[key] = route
+      } else if (
+        (key === 'content_id' || key === 'version_id') &&
+        typeof value === 'string' &&
+        /^[A-Za-z0-9_-]{1,128}$/.test(value)
       )
-        safe[key] = value as string | number
+        safe[key] = value
+      else if (key === 'content_type' && (value === 'scene' || value === 'listening'))
+        safe[key] = value
+      else if (key === 'audio_kind' && (value === 'full' || value === 'word')) safe[key] = value
+      else if (key === 'favorite' && (value === 0 || value === 1)) safe[key] = value
     }
     if (queue.length >= 25) return
     queue.push({

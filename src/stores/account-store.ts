@@ -22,6 +22,7 @@ import {
   // #endif
   AnalyticsEvent
 } from '@/shared/enums/analytics'
+import { ConsentAction } from '@/shared/enums/privacy'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { AccountProfile } from '@/shared/types/account'
@@ -76,13 +77,14 @@ export const useAccountStore = defineStore('learner-account', () => {
   }
   /** 页面显示前验证本人身份，游客继续保留只读访问
    * @param returnTarget 会话失效后的安全返回路径
+   * @param action 本次主动触发的账号操作
    */
-  const ensure = async (returnTarget: string) => {
+  const ensure = async (returnTarget: string, action: ConsentAction = ConsentAction.ACCOUNT) => {
     if (runtimeMode.update()) return false
     try {
       const value = profile.value || (await restore())
       if (!value) {
-        promptLogin(returnTarget)
+        promptLogin(returnTarget, action)
         return false
       }
       return true

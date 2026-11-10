@@ -1,255 +1,168 @@
-import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { runInNewContext } from 'node:vm'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
-import { expect, it } from 'vitest'
+import { analyticsFixture } from './analytics-sdk-fixture'
 
-import { createAnalyticsNative } from '@/services/analytics-native'
-import { createAnalyticsService } from '@/services/analytics-service'
+beforeEach(() => vi.useFakeTimers())
+afterEach(() => {
+  vi.clearAllTimers()
+  vi.useRealTimers()
+})
 
-import type { AnalyticsSDK } from '@/shared/types/analytics'
+it.each([
+  { owner: null, enabled: true, policiesReady: true },
+  { owner: 'business-a', enabled: false, policiesReady: true },
+  { owner: 'business-a', enabled: true, policiesReady: false }
+])('keeps the real SDK absent when a trusted prerequisite is missing: %o', async (context) => {
+  const f = analyticsFixture()
+  f.update({ ...context, revision: 1 })
+  f.service.foreground()
+  await f.service.track('content_open', { content_id: 'before-consent' })
+  vi.advanceTimersByTime(60000)
+  expect(f.instances()).toBe(0)
+  expect(f.calls).toEqual([])
+  expect(f.authorized).toEqual([])
+  expect(f.service.running).toBe(false)
+})
 
-const require = createRequire(import.meta.url)
-/** 用隔离微信端口运行真实已锁定的友盟包，网络请求只留在内存
- * @param delayed 是否延迟原生存储回调
- * @param environment 本次SDK和授权所用的独立环境
- */
-const loadSDK = (delayed = false, environment: 'test' | 'production' = 'test') => {
-  const callbacks: (() => void)[] = [],
-    timers: (() => void)[] = []
-  const nativeCalls: string[] = [],
-    requests: unknown[] = [],
-    saved = new Map<string, unknown>()
-  let app: Record<string, (...args: unknown[]) => void> = {},
-    page: Record<string, (...args: unknown[]) => void> = {},
-    component: { methods?: typeof page } = {}
-  const wx = {
-    getStorage: ({
-      key,
-      success,
-      fail
-    }: {
-      key: string
-      success: (result: unknown) => void
-      fail: (result: unknown) => void
-    }) => {
-      nativeCalls.push('getStorage')
-      const done = () =>
-        saved.has(key) ? success({ data: saved.get(key) }) : fail({ errMsg: 'not found' })
-      if (delayed) callbacks.push(done)
-      else done()
-    },
-    setStorage: ({ key, data, success }: { key: string; data: unknown; success?: () => void }) => {
-      nativeCalls.push('setStorage')
-      saved.set(key, data)
-      success?.()
-    },
-    removeStorage: ({ key, success }: { key: string; success?: () => void }) => {
-      saved.delete(key)
-      success?.()
-    },
-    removeStorageSync: (key: string) => {
-      saved.delete(key)
-    },
-    getSystemInfo: ({ success }: { success: (result: unknown) => void }) => {
-      nativeCalls.push('getSystemInfo')
-      success({
-        model: 'fixture',
-        brand: 'fixture',
-        pixelRatio: 3,
-        screenWidth: 390,
-        screenHeight: 844,
-        system: 'iOS 18',
-        SDKVersion: '3.0.0',
-        version: '8.0.0',
-        platform: 'ios',
-        language: 'zh_CN'
+it('authorizes exactly five manual event types before real SDK delivery and excludes private input', async () => {
+  const f = analyticsFixture()
+  f.service.foreground({ scene: 1001, query: { token: 'fixture-login-token' } })
+  f.update({ owner: 'business-a', enabled: true, policiesReady: true, revision: 2 })
+  for (const event of [
+    'page_enter',
+    'content_open',
+    'audio_play',
+    'favorite_change',
+    'learning_complete'
+  ]) {
+    await f.service.track(event, {
+      page_path: 'pages/home/index?token=fixture-login-token',
+      content_id: 'card-1',
+      token: 'fixture-login-token',
+      openid: 'fixture-openid',
+      phone: 'fixture-phone'
+    } as never)
+    vi.advanceTimersByTime(16000)
+  }
+  await f.service.track('dictionary_lookup', { content_id: 'forbidden' })
+  f.service.background()
+  expect(f.service.running).toBe(true)
+  expect(f.authorized.map((event) => event.event)).toEqual([
+    'page_enter',
+    'content_open',
+    'audio_play',
+    'favorite_change',
+    'learning_complete'
+  ])
+  expect(
+    f.authorized.every((event) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(event.event_id)
+    )
+  ).toBe(true)
+  expect(f.events().map((event) => event.id)).toEqual([
+    'page_enter',
+    'content_open',
+    'audio_play',
+    'favorite_change',
+    'learning_complete'
+  ])
+  const payload = JSON.stringify(f.requests)
+  expect(payload).toContain('business-a')
+  expect(payload).toContain('fixture-model')
+  for (const forbidden of [
+    'fixture-login-token',
+    'fixture-openid',
+    'fixture-phone',
+    'forbidden',
+    '"od":',
+    '"und":'
+  ])
+    expect(payload).not.toContain(forbidden)
+  expect(f.authorized[0]?.properties.page_path).toBe('pages/home/index')
+  expect(f.events()[0]).toMatchObject({
+    event_id: f.authorized[0]?.event_id,
+    consent_revision: 2,
+    occurred_at: f.authorized[0]?.occurred_at
+  })
+})
+
+it('drops an event whose server authorization completes after withdrawal', async () => {
+  let finish!: () => void
+  const f = analyticsFixture({
+    authorize: () =>
+      new Promise<void>((resolve) => {
+        finish = resolve
       })
-    },
-    getNetworkType: ({ success }: { success: (result: unknown) => void }) => {
-      nativeCalls.push('getNetworkType')
-      success({ networkType: 'wifi' })
-    },
-    getAccountInfoSync: () => ({
-      miniProgram: { appId: 'fixture-app', envVersion: 'develop', version: 'fixture' }
-    }),
-    getLaunchOptionsSync: () => ({
-      scene: 1001,
-      query: { token: 'private-launch-token' },
-      path: 'pages/home/index?token=private-launch-token'
-    }),
-    request: (input: unknown) => {
-      nativeCalls.push('request')
-      requests.push(input)
-    },
-    onNetworkStatusChange: () => {},
-    login: () => {
-      throw new Error('Statistics must not invoke WeChat login')
-    },
-    getUserInfo: () => {
-      throw new Error('Statistics must not read user profile')
-    }
-  }
-  const scope = createAnalyticsNative({
-    storageNamespace: `${environment}:`,
-    native: () => wx as unknown as Record<string, unknown>,
-    hasConsent: () => service?.hasConsent() === true
   })
-  const context = {
-    wx: scope.wx,
-    App: (value: typeof app) => {
-      app = value
-    },
-    Page: (value: typeof page) => {
-      page = value
-    },
-    Component: (value: typeof component) => {
-      component = value
-    },
-    module: { exports: {} },
-    console: { log: () => {}, warn: () => {}, info: () => {}, error: () => {}, debug: () => {} },
-    setTimeout: (callback: () => void) => {
-      timers.push(callback)
-      return timers.length
-    },
-    clearTimeout: () => {},
-    setInterval: () => 1,
-    clearInterval: () => {}
-  }
-  runInNewContext(readFileSync(require.resolve('umtrack-wx'), 'utf8'), context, { timeout: 2000 })
-  const service = createAnalyticsService({
-    config: { enabled: true, appKey: `fixture-${environment}-key`, environment },
-    storage: {
-      get: (key) => saved.get(key),
-      set: (key, value) => {
-        saved.set(key, value)
-      },
-      remove: (key) => {
-        saved.delete(key)
-      }
-    },
-    currentPage: () => 'pages/home/index',
-    onConsentChanged: (agreed) => {
-      if (agreed) scope.resume()
-      else scope.stop()
+  f.service.foreground()
+  f.update({ owner: 'business-a', enabled: true, policiesReady: true, revision: 1 })
+  const pending = f.service.track('learning_complete', { content_id: 'stale-event' })
+  f.update({ enabled: false, revision: 2 })
+  const count = f.calls.length
+  finish()
+  await pending
+  vi.advanceTimersByTime(60000)
+  expect(f.calls).toHaveLength(count)
+  expect(f.events()).toEqual([])
+  expect(f.service.running).toBe(false)
+  expect(f.requests.every((request) => request.abort)).toBe(true)
+})
+
+it('discards delayed initialization and creates a new empty SDK after reconsent or account switch', async () => {
+  const f = analyticsFixture({ delayed: true, offline: true })
+  f.service.foreground()
+  f.update({ owner: 'business-a', enabled: true, policiesReady: true, revision: 1 })
+  const staleCallbacks = f.callbacks.splice(0)
+  f.update({ enabled: false, revision: 2 })
+  const count = f.calls.length
+  staleCallbacks.forEach((callback) => callback())
+  vi.advanceTimersByTime(60000)
+  expect(f.calls).toHaveLength(count)
+  f.update({ owner: 'business-b', enabled: true, revision: 3 })
+  f.callbacks.splice(0).forEach((callback) => callback())
+  await f.service.track('content_open', { content_id: 'new-account-only' })
+  f.service.background()
+  const newRequests = f.requests.slice(0)
+  expect(f.instances()).toBe(2)
+  expect(JSON.stringify(newRequests)).toContain('business-b')
+  expect(JSON.stringify(newRequests)).not.toContain('business-a')
+})
+
+it('never replays the previous account offline queue or reuses its UUID', async () => {
+  const f = analyticsFixture({ offline: true })
+  f.service.foreground()
+  f.update({ owner: 'business-a', enabled: true, policiesReady: true, revision: 1 })
+  await f.service.track('content_open', { content_id: 'old-account-content' })
+  f.service.background()
+  const before = f.requests.length
+  const oldUuid = (f.requests[0]?.data.h as { itr?: { ud?: string } })?.itr?.ud
+  f.update({ owner: 'business-b', revision: 2 })
+  f.service.foreground()
+  await f.service.track('content_open', { content_id: 'new-account-content' })
+  f.service.background()
+  const next = f.requests.slice(before)
+  expect(JSON.stringify(next)).toContain('business-b')
+  expect(JSON.stringify(next)).not.toContain('business-a')
+  expect(JSON.stringify(next)).not.toContain('old-account-content')
+  expect((next[0]?.data.h as { itr?: { ud?: string } })?.itr?.ud).not.toBe(oldUuid)
+  expect(f.instances()).toBe(2)
+})
+
+it('blocks backend-rejected events and keeps production uninitialized', async () => {
+  const f = analyticsFixture({
+    authorize: async () => {
+      throw new Error('permission denied')
     }
   })
-  service.attach(context.module.exports as AnalyticsSDK)
-  return {
-    context,
-    service,
-    nativeCalls,
-    requests,
-    storageKeys: () => [...saved.keys()],
-    app: () => app,
-    page: () => page,
-    component: () => component.methods || {},
-    callbacks,
-    timers
-  }
-}
-
-it.each(['page', 'component'])(
-  'records registered %s entries through real SDK hooks and ignores duplicate unloads',
-  (kind) => {
-    const { context, service, page, component } = loadSDK()
-    service.foreground()
-    service.setConsent(true)
-    const events: unknown[][] = []
-    const sdk = context.module.exports as AnalyticsSDK
-    sdk.trackPageEnd('pages/home/index')
-    sdk.trackEvent = (...args) => events.push(args)
-    const routes = JSON.parse(
-      readFileSync(new URL('../../../src/pages.json', import.meta.url), 'utf8')
-    ) as {
-      pages: { path: string }[]
-      subPackages: { root: string; pages: { path: string }[] }[]
-    }
-    if (kind === 'page') context.Page({})
-    else context.Component({ methods: {} })
-    const hooks = kind === 'page' ? page : component
-    const paths = [
-      ...routes.pages.map(({ path }) => path),
-      ...routes.subPackages.flatMap(({ root, pages }) => pages.map(({ path }) => `${root}/${path}`))
-    ]
-    for (const route of paths) {
-      const instance = { route }
-      hooks().onShow?.call(instance)
-      hooks().onHide?.call(instance)
-      hooks().onUnload?.call(instance)
-    }
-    expect(
-      events
-        .filter(([id]) => id === 'page_enter')
-        .map(([, properties]) => (properties as { page_path: string }).page_path)
-    ).toEqual(paths)
-    expect(events.filter(([id]) => id === 'page_stay')).toHaveLength(paths.length)
-  }
-)
-
-it('keeps the real SDK silent until explicit consent and preserves native share parameters', () => {
-  const { context, service, nativeCalls, requests, app, page } = loadSDK()
-  context.App({})
-  context.Page({ onShareAppMessage: () => ({ path: '/pages/home/index', title: 'fixture' }) })
-  app().onLaunch?.({})
-  app().onShow?.({ query: { token: 'before-consent' } })
-  page().onShow?.call({ route: 'pages/before/index' })
-  service.foreground({ scene: 1001 })
-  service.track('learning_start', { content_id: 'before-consent' })
-  expect(nativeCalls).toEqual([])
-  service.setConsent(true)
-  service.track('learning_complete', { content_type: 'scene', content_id: 'fixture-card' })
-  app().onHide?.()
-  expect(nativeCalls).toContain('getSystemInfo')
-  expect(requests.length).toBeGreaterThan(0)
-  expect(JSON.stringify(requests)).not.toContain('before-consent')
-  expect(page().onShareAppMessage?.()).toEqual({ path: '/pages/home/index', title: 'fixture' })
-})
-
-it('stops the real SDK asynchronous initialization and timers after withdrawal', () => {
-  const { service, nativeCalls, callbacks, timers } = loadSDK(true)
-  service.foreground()
-  service.setConsent(true)
-  service.setConsent(false)
-  const before = [...nativeCalls]
-  for (let count = 0; count < 20 && callbacks.length; count++) callbacks.shift()?.()
-  for (const timer of timers.splice(0)) timer()
-  expect(nativeCalls).toEqual(before)
-})
-
-it('can finish initialization after consent is enabled again without replaying unconsented activity', () => {
-  const { service, nativeCalls, callbacks, context } = loadSDK(true)
-  service.foreground()
-  service.setConsent(true)
-  service.setConsent(false)
-  for (let count = 0; count < 20 && callbacks.length; count++) callbacks.shift()?.()
-  service.track('learning_start', { content_id: 'while-disabled' })
-  service.setConsent(true)
-  for (let count = 0; count < 40 && callbacks.length; count++) callbacks.shift()?.()
-  service.track('learning_complete', { content_id: 'after-consent' })
-  ;(context.module.exports as AnalyticsSDK).pause()
-  expect(nativeCalls).toContain('getSystemInfo')
-  expect(nativeCalls).toContain('request')
-})
-
-it('exposes only the numeric entry scene through the SDK native scope', () => {
-  const { service, context } = loadSDK()
-  service.foreground()
-  service.setConsent(true)
-  expect((context.wx.getLaunchOptionsSync as () => unknown)()).toEqual({ scene: 1001 })
-})
-
-it('uses the production key and isolated persisted state through the real SDK', () => {
-  const { service, requests, storageKeys, app, context } = loadSDK(false, 'production')
-  context.App({})
-  service.foreground()
-  service.setConsent(true)
-  service.track('learning_complete', { content_id: 'fixture-content' })
-  app().onHide?.()
-  expect(requests.length).toBeGreaterThan(0)
-  expect(JSON.stringify(requests)).toContain('fixture-production-key')
-  expect(JSON.stringify(requests)).not.toContain('fixture-test-key')
-  expect(storageKeys().some((key) => key.startsWith('production:'))).toBe(true)
-  expect(storageKeys()).toContain('juya-analytics-prod-consent-v1')
-  expect(storageKeys()).not.toContain('um_uuid')
+  f.service.foreground()
+  f.update({ owner: 'business-a', enabled: true, policiesReady: true, revision: 1 })
+  await f.service.track('audio_play', { content_id: 'server-rejected' })
+  f.service.background()
+  expect(f.events()).toEqual([])
+  expect(f.service.running).toBe(false)
+  const production = analyticsFixture({ production: true })
+  production.service.foreground()
+  production.update({ owner: 'business-a', enabled: true, policiesReady: true, revision: 1 })
+  expect(production.instances()).toBe(0)
+  expect(production.calls).toEqual([])
 })

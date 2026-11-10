@@ -1,5 +1,14 @@
 <script setup lang="ts">
-defineProps<{ first: boolean; confirmed: boolean; busy: boolean; error: string }>()
+import { CONSENT_ACTION_COPY } from '@/shared/constants/privacy'
+import { ConsentAction } from '@/shared/enums/privacy'
+
+defineProps<{
+  first: boolean
+  confirmed: boolean
+  busy: boolean
+  error: string
+  action?: ConsentAction
+}>()
 defineEmits<{ login: [enabled: boolean]; close: []; policy: [kind: string] }>()
 </script>
 <template>
@@ -10,19 +19,35 @@ defineEmits<{ login: [enabled: boolean]; close: []; policy: [kind: string] }>()
     aria-label="用户协议与隐私保护"
     @touchmove.stop.prevent
   >
-    <view class="consent-card">
-      <button class="close" aria-label="关闭，继续游客体验" @click="$emit('close')">
-        <image src="/static/design/consent-close.svg" mode="aspectFit" />
+    <view
+      class="consent-card"
+      :class="{ 'is-first': first, 'has-error': !!error, 'is-first-error': first && !!error }"
+    >
+      <button class="consent-button close" aria-label="关闭，继续游客体验" @click="$emit('close')">
+        <image class="close-icon" src="/static/design/consent-close.svg" mode="aspectFit" />
       </button>
       <scroll-view scroll-y class="consent-scroll" @touchmove.stop>
-        <text class="title">{{ first ? '用户协议与隐私保护' : '登录后保存到你的账号' }}</text>
+        <text class="title">{{
+          first ? '用户协议与隐私保护' : CONSENT_ACTION_COPY[action || ConsentAction.ACCOUNT].title
+        }}</text>
         <text class="lead">{{
           first ? '欢迎来到句芽英语。' : '留住喜欢的内容，继续自己的学习。'
         }}</text>
         <view class="policies"
           >请阅读
-          <button :disabled="busy" @click="$emit('policy', 'terms')">《用户协议》</button> 和
-          <button :disabled="busy" @click="$emit('policy', 'privacy')">
+          <button
+            class="consent-button policy-entry"
+            :disabled="busy"
+            @click="$emit('policy', 'terms')"
+          >
+            《用户协议》
+          </button>
+          和
+          <button
+            class="consent-button policy-entry"
+            :disabled="busy"
+            @click="$emit('policy', 'privacy')"
+          >
             《隐私保护指引》
           </button></view
         >
@@ -36,20 +61,26 @@ defineEmits<{ login: [enabled: boolean]; close: []; policy: [kind: string] }>()
           ><text class="section-title">友盟使用统计（可选）</text
           ><text class="muted"
             >用于统计页面访问、内容打开、播放、收藏和完成情况，帮助改进产品。可选择不开启，之后也可在隐私说明中关闭。</text
-          ><button class="policy-link" :disabled="busy" @click="$emit('policy', 'analytics')">
+          ><button
+            class="consent-button policy-link"
+            :disabled="busy"
+            @click="$emit('policy', 'analytics')"
+          >
             查看友盟隐私政策
           </button></view
         >
         <text v-if="error" class="error" role="alert">{{ error }}</text>
-        <button class="primary" :disabled="busy" @click="$emit('login', true)">
+        <button class="consent-button primary" :disabled="busy" @click="$emit('login', true)">
           {{ busy ? '登录中…' : confirmed ? '登录并开启统计' : '同意并登录，开启统计' }}
         </button>
-        <button class="secondary" :disabled="busy" @click="$emit('login', false)">
+        <button class="consent-button secondary" :disabled="busy" @click="$emit('login', false)">
           {{ confirmed ? '仅登录，不开启统计' : '仅同意协议并登录' }}
         </button>
-        <button class="browse" @click="$emit('close')">暂不登录，先体验</button>
+        <button class="consent-button browse" @click="$emit('close')">暂不登录，先体验</button>
         <text class="foot">{{
-          first ? '不开启统计，也可正常登录和学习' : '登录成功后，请再次进行原操作'
+          first
+            ? '不开启统计，也可正常登录和学习'
+            : CONSENT_ACTION_COPY[action || ConsentAction.ACCOUNT].foot
         }}</text>
       </scroll-view>
     </view>
@@ -77,8 +108,20 @@ defineEmits<{ login: [enabled: boolean]; close: []; policy: [kind: string] }>()
   }
 
   .consent-scroll {
-    height: min(1180rpx, calc(100vh - 180rpx));
+    height: 1074rpx;
     max-height: calc(100vh - 180rpx);
+  }
+
+  .is-first .consent-scroll {
+    height: 1180rpx;
+  }
+
+  .has-error .consent-scroll {
+    height: 1172rpx;
+  }
+
+  .is-first-error .consent-scroll {
+    height: 1278rpx;
   }
 
   .title,
@@ -119,7 +162,7 @@ defineEmits<{ login: [enabled: boolean]; close: []; policy: [kind: string] }>()
     white-space: pre-line;
   }
 
-  button {
+  .consent-button {
     margin: 0;
     padding: 0;
     border: 0;
@@ -143,7 +186,7 @@ defineEmits<{ login: [enabled: boolean]; close: []; policy: [kind: string] }>()
     justify-content: center;
     width: 44px;
 
-    image {
+    .close-icon {
       width: 38.462rpx;
       height: 38.462rpx;
     }
@@ -156,7 +199,7 @@ defineEmits<{ login: [enabled: boolean]; close: []; policy: [kind: string] }>()
     margin-top: 12rpx;
     font-size: 25rpx;
 
-    button {
+    .policy-entry {
       font-size: inherit;
       text-decoration: underline;
     }
@@ -177,6 +220,8 @@ defineEmits<{ login: [enabled: boolean]; close: []; policy: [kind: string] }>()
 
   .policy-link {
     text-align: left;
+    display: flex;
+    justify-content: flex-start;
     font-size: 23.077rpx;
     text-decoration: underline;
   }

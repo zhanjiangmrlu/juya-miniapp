@@ -65,6 +65,7 @@ import {
 import { AudioStatus } from '@/shared/enums/audio'
 import { QueueSource } from '@/shared/enums/learning'
 import { LearningAccessReason } from '@/shared/enums/learning-access'
+import { ConsentAction } from '@/shared/enums/privacy'
 import { ShareTarget } from '@/shared/enums/share'
 import { useAccountStore } from '@/stores/account-store'
 import { createAccessMonitor } from '@/sub-packages/scenes/access-monitor'
@@ -1173,7 +1174,12 @@ const toggleFavorite = async () => {
     run = generation,
     owner = session.identity()
   // #endif
-  if (!(await account.ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`))) {
+  if (
+    !(await account.ensure(
+      `${Routes.SCENE}?id=${encodeURIComponent(id)}`,
+      ConsentAction.FAVORITE_SCENE
+    ))
+  ) {
     // #ifdef JUYA_ANALYTICS
     if (alive && visible && run === generation && owner === session.identity())
       businessAnalytics.error(
@@ -1257,7 +1263,12 @@ const complete = async () => {
     run = generation,
     owner = session.identity()
   // #endif
-  if (!(await account.ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`))) {
+  if (
+    !(await account.ensure(
+      `${Routes.SCENE}?id=${encodeURIComponent(id)}`,
+      ConsentAction.COMPLETE_SCENE
+    ))
+  ) {
     // #ifdef JUYA_ANALYTICS
     if (alive && visible && run === generation && owner === session.identity())
       businessAnalytics.error(

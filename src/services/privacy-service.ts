@@ -16,7 +16,8 @@ export const createPrivacyService = (ports: PrivacyPorts) => {
   const policies = ref<PolicyBundle>({ mode: 'legacy', server_now: '', documents: [] }),
     state = ref<PrivacyState | null>(null)
   let owner = '',
-    generation = 0
+    generation = 0,
+    policyGeneration = 0
   const prefix = PRIVACY_STORAGE_PREFIX + (ports.namespace || 'test') + ':'
   const now = ports.now || Date.now
   /** 读取当前显示文档的版本，不生成占位版本
@@ -41,8 +42,16 @@ export const createPrivacyService = (ports: PrivacyPorts) => {
       ? value
       : undefined
   }
-  /** 返回当前两份协议是否明确确认 */
-  const confirmed = () => !!confirmation() || state.value?.agreements.current === true
+  /** 已识别账号后以该账号及当前版本为准，不继承另一人的设备确认 */
+  const confirmed = () => {
+    if (!owner) return !!confirmation()
+    const accepted = state.value?.agreements.accepted as
+      Record<string, { version?: string }> | undefined
+    return (
+      state.value?.agreements.current === true &&
+      ['terms', 'privacy'].every((kind) => accepted?.[kind]?.version === version(kind))
+    )
+  }
   /** 判断启动时待展示告知，不在普通页面操作中调用 */
   const shouldNotify = () =>
     published() && !confirmed() && ports.storage.get(prefix + 'shown') !== day()
@@ -65,7 +74,10 @@ export const createPrivacyService = (ports: PrivacyPorts) => {
   }
   /** 匿名加载真实政策，失败不伪造发布状态 */
   const loadPolicies = async () => {
-    policies.value = await ports.policies()
+    const run = ++policyGeneration,
+      result = await ports.policies()
+    if (run !== policyGeneration) throw new Error('协议状态已更新，请重试')
+    policies.value = result
     return policies.value
   }
   /** 判断当前账号是否存在尚未同步的关闭记录 */
@@ -82,6 +94,7 @@ export const createPrivacyService = (ports: PrivacyPorts) => {
     const run = generation
     const result = await ports.request<PrivacyState>('/api/mini/v1/me/privacy')
     if (run !== generation) return
+    if (state.value && result.analytics.revision < state.value.analytics.revision) return
     state.value = isBlocked()
       ? { ...result, analytics: { ...result.analytics, enabled: false, collecting: false } }
       : result
@@ -137,6 +150,7 @@ export const createPrivacyService = (ports: PrivacyPorts) => {
       throw reason
     }
     if (run !== generation || owner !== user) return
+    generation++
     state.value = { ...state.value!, analytics: result }
     ports.storage.remove(pendingKey)
     if (!enabled) ports.storage.remove(key)
@@ -146,6 +160,8 @@ export const createPrivacyService = (ports: PrivacyPorts) => {
    * @param userId 本次可信登录返回的稳定账号
    */
   const block = (userId: string) => ports.storage.set(prefix + 'off:' + userId, true)
+  /** 返回已经恢复隐私许可的账号，供统计校验与会话严格匹配 */
+  const currentOwner = () => owner
   /** 身份失效时清内存，保留当前账号未同步撤回记录 */
   const reset = () => {
     generation++
@@ -166,6 +182,7 @@ export const createPrivacyService = (ports: PrivacyPorts) => {
     restore,
     choose,
     isBlocked,
+    currentOwner,
     block,
     reset
   }

@@ -115,7 +115,7 @@ export interface paths {
     put?: never
     /**
      * 接收已获许可的分析事件
-     * @description 实际运行固定关闭接收；隔离接收器校验账号许可、五类事件及持久去重，不修改任何学习成绩。
+     * @description 验证账号许可、五类事件及持久去重，不修改学习成绩。测试客户端SDK模式仅授权本次事件，不代表第三方已收妥；未显式配置时关闭。
      */
     post: operations['receive_api_mini_v1_analytics_events_post']
     delete?: never
@@ -1735,11 +1735,10 @@ export interface components {
        */
       updated_at: string | null
       /**
-       * 实际采集运行中
-       * @description 本期真实分析传输固定关闭，此字段始终false。
-       * @constant
+       * 客户端采集运行状态
+       * @description 无许可或通道关闭为false；已获许可的客户端SDK运行状态服务端无法推断，返回null，由本机真实SDK状态展示。
        */
-      collecting: false
+      collecting: boolean | null
     }
     /** 学习端听读文章详情 */
     ArticleDetail: {
@@ -3537,6 +3536,12 @@ export interface components {
     }
     /** 公开协议目录 */
     PolicyCatalog: {
+      /**
+       * 测试统计授权是否可用
+       * @description 仅完整披露且显式启用测试客户端SDK授权时为true；不代表当前设备已开始采集。
+       * @default false
+       */
+      analytics_available: boolean
       /**
        * 处理模式
        * @description 当前对象的导入或预览模式，具体取值以所在模型为准。

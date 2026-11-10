@@ -1,3 +1,5 @@
+import { session } from '@/services/api'
+import { sendRequest } from '@/services/platform'
 import { createPrivacyService } from '@/services/privacy-service'
 
 import type { PolicyBundle } from '@/shared/types/privacy'
@@ -17,12 +19,13 @@ export const privacy = createPrivacyService({
     remove: (name) => uni.removeStorageSync(name)
   },
   key,
-  request: async (path, options) => {
-    const { session } = await import('@/services/api')
-    return session.request(path, options)
-  },
+  /** 使用现有业务会话同步本人许可，静态引用兼容微信编译
+   * @param path 本人隐私接口路径
+   * @param options 请求方法、正文及幂等标识
+   */
+  request: (path, options) => session.request(path, options),
+  /** 匿名读取已发布协议，不携带业务会话凭证 */
   policies: async () => {
-    const { sendRequest } = await import('@/services/platform')
     const response = await sendRequest({
       path: '/api/mini/v1/privacy/policies',
       method: 'GET',
