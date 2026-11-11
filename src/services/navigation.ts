@@ -1,5 +1,11 @@
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { Routes } from '@/shared/constants/navigation'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsAction } from '@/shared/enums/analytics'
 
+// #endif
 import type { QueueSource } from '@/shared/enums/learning'
 
 import { session } from './api'
@@ -20,6 +26,13 @@ export const safeTarget = (target: string) => {
   )
     return Routes.HOME
   const query = (target.split('?')[1] || '').split('#')[0]
+  if (path === Routes.SETTINGS) {
+    const parts = query.split('&')
+    const safe = []
+    if (parts.includes('privacy=1')) safe.push('privacy=1')
+    if (parts.includes('source=profile')) safe.push('source=profile')
+    return safe.length ? `${path}?${safe.join('&')}` : path
+  }
   if (path === Routes.LISTENING) {
     try {
       const category = decodeURIComponent(
@@ -143,12 +156,27 @@ export const backTo = (fallback: string = Routes.HOME) => {
  */
 export const openScene = async (id: string, source?: QueueSource, day?: string) => {
   if (!source) {
-    uni.navigateTo({ url: `${Routes.SCENE}?id=${encodeURIComponent(id)}` })
+    uni.navigateTo({
+      url: `${Routes.SCENE}?id=${encodeURIComponent(id)}`,
+      // #ifdef JUYA_ANALYTICS
+      fail: (reason: unknown) =>
+        businessAnalytics.error(AnalyticsAction.CONTENT_OPEN, reason, {
+          content_type: 'scene',
+          content_id: id
+        })
+      // #endif
+    })
     return
   }
   try {
     await openSourceScene(source, id, day)
   } catch (reason) {
+    // #ifdef JUYA_ANALYTICS
+    businessAnalytics.error(AnalyticsAction.CONTENT_OPEN, reason, {
+      content_type: 'scene',
+      content_id: id
+    })
+    // #endif
     uni.showToast({
       title: reason instanceof Error ? reason.message : '来源列表暂未获取，请重试',
       icon: 'none'

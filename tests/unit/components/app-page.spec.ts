@@ -2,6 +2,7 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, expect, it, vi } from 'vitest'
 
+vi.hoisted(() => vi.stubGlobal('uni', { getStorageSync: () => undefined }))
 const hooks = vi.hoisted(() => ({
   show: undefined as undefined | (() => void),
   hide: undefined as undefined | (() => void)

@@ -27,13 +27,14 @@ const playbackHint = computed(() =>
         ? '播放完毕 · 点击重新播放'
         : '点击继续播放'
 )
+/** 优先展示显式同步提示，普通播放器只描述播放状态 */
 const status = computed(
   () =>
     props.syncStatus ||
     (props.state.status === AudioStatus.PLAYING
-      ? '正在播放 · 跟随音频阅读'
+      ? '正在播放全文音频'
       : props.state.status === AudioStatus.PAUSED
-        ? '已暂停 · 高亮与尾迹保持当前位置'
+        ? '已暂停 · 点击继续播放'
         : props.state.status === AudioStatus.ENDED
           ? '播放已结束 · 可继续阅读或重新播放'
           : '点击播放，按自己的节奏听读')

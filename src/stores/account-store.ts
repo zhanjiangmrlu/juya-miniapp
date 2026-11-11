@@ -2,6 +2,10 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { resetLearningAudioSession } from '@/features/learning/learning-audio-session'
+import { analytics } from '@/services/analytics'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, operations, session } from '@/services/api'
 import { ApiError } from '@/services/errors'
 import { clearFeedbackDrafts } from '@/services/feedback-service'
@@ -9,11 +13,20 @@ import { promptLogin } from '@/services/login-prompt'
 import { loginReturn } from '@/services/login-return'
 import { clearMediaAddresses } from '@/services/media-service'
 import { resourceURL } from '@/services/platform'
+import { privacy } from '@/services/privacy'
 import { runtimeMode } from '@/services/runtime-mode'
 import { Routes } from '@/shared/constants/navigation'
+import {
+  // #ifdef JUYA_ANALYTICS
+  AnalyticsAction,
+  // #endif
+  AnalyticsEvent
+} from '@/shared/enums/analytics'
+import { ConsentAction } from '@/shared/enums/privacy'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
 import type { AccountProfile } from '@/shared/types/account'
+import type { PrivacyLoginOptions } from '@/shared/types/privacy'
 
 export const useAccountStore = defineStore('learner-account', () => {
   const profile = ref<AccountProfile | null>(null),
@@ -24,11 +37,13 @@ export const useAccountStore = defineStore('learner-account', () => {
   /** 清除个人界面和含输入正文的内存，保留服务器成绩 */
   const clear = () => {
     generation++
+    privacy.reset()
     restoring = null
     clearFeedbackDrafts()
     resetLearningAudioSession()
     clearMediaAddresses()
     profile.value = null
+    analytics.setAuthenticated(false)
     statistics.value = null
     avatarURL.value = ''
     operations.clearMemory()
@@ -46,8 +61,12 @@ export const useAccountStore = defineStore('learner-account', () => {
         if (reason instanceof ApiError && reason.status === 401) return null
         throw reason
       })
-      .then((value) => {
-        if (version === generation) profile.value = value
+      .then(async (value) => {
+        if (version === generation) {
+          profile.value = value
+          analytics.setAuthenticated(!!value)
+          if (value && privacy.published()) await privacy.restore(value.id).catch(() => undefined)
+        }
         return value
       })
       .finally(() => {
@@ -56,15 +75,16 @@ export const useAccountStore = defineStore('learner-account', () => {
     restoring = job
     return job
   }
-  /** 页面显示前验证本人身份，空联系方式不影响访问
+  /** 页面显示前验证本人身份，游客继续保留只读访问
    * @param returnTarget 会话失效后的安全返回路径
+   * @param action 本次主动触发的账号操作
    */
-  const ensure = async (returnTarget: string) => {
+  const ensure = async (returnTarget: string, action: ConsentAction = ConsentAction.ACCOUNT) => {
     if (runtimeMode.update()) return false
     try {
       const value = profile.value || (await restore())
       if (!value) {
-        promptLogin(returnTarget)
+        promptLogin(returnTarget, action)
         return false
       }
       return true
@@ -75,14 +95,17 @@ export const useAccountStore = defineStore('learner-account', () => {
   }
   /** 主动提交用户同意的微信身份登录
    * @param agreed 用户当前明确同意状态
+   * @param options 当前展示的协议和独立统计选择
    */
-  const login = async (agreed: boolean) => {
+  const login = async (agreed: boolean, options?: PrivacyLoginOptions) => {
     const version = ++generation
-    const result = await session.login(agreed)
+    const result = await session.login(agreed, options)
     if (version !== generation) throw new ApiError('session_changed', '登录身份已变化')
     clearMediaAddresses()
     resetLearningAudioSession()
     profile.value = result.user
+    analytics.setAuthenticated(true)
+    analytics.track(AnalyticsEvent.LOGIN_SUCCESS)
     return result.user
   }
   /** 读取服务器北京时间下的最新学习统计 */
@@ -108,7 +131,17 @@ export const useAccountStore = defineStore('learner-account', () => {
   }
   /** 主动确认退出后撤销服务器会话，再清理个人界面 */
   const logout = async () => {
-    await session.logout()
+    try {
+      await session.logout()
+    } catch (reason) {
+      // #ifdef JUYA_ANALYTICS
+      businessAnalytics.error(AnalyticsAction.LOGOUT, reason)
+      // #endif
+      throw reason
+    }
+    // #ifdef JUYA_ANALYTICS
+    businessAnalytics.track(AnalyticsEvent.LOGOUT)
+    // #endif
     clearFeedbackDrafts()
     clear()
     loginReturn.cancel()

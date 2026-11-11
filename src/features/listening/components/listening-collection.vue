@@ -6,9 +6,15 @@ import AppState from '@/components/app-state/app-state.vue'
 import { useSceneList } from '@/composables/use-scene-list'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import { writeListening } from '@/features/listening/listening-service'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { session } from '@/services/api'
 import { LISTENING_API } from '@/shared/constants/listening'
 import { Routes } from '@/shared/constants/navigation'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsAction } from '@/shared/enums/analytics'
+// #endif
 import { ListeningCollectionMode, ListeningTimestampKind } from '@/shared/enums/listening'
 import { useAccountStore } from '@/stores/account-store'
 
@@ -16,6 +22,12 @@ import type { ListeningSummary } from '@/shared/types/listening'
 import type { ListeningCollectionProps } from '@/shared/types/listening-components'
 
 import ListeningArticleCard from './listening-article-card.vue'
+// #ifdef JUYA_ANALYTICS
+let analyticsAlive = true
+onUnmounted(() => {
+  analyticsAlive = false
+})
+// #endif
 const props = defineProps<ListeningCollectionProps>(),
   account = useAccountStore()
 const list = useSceneList<ListeningSummary>({
@@ -33,10 +45,21 @@ const explore = () => uni.navigateTo({ url: Routes.LISTENING })
  * @param article 用户选择取消的安全摘要
  */
 const remove = async (article: ListeningSummary) => {
+  // #ifdef JUYA_ANALYTICS
+  const owner = session.userId()
+  // #endif
+
   try {
     await writeListening(`listening-unfavorite:${article.id}`, `/favorites/${article.id}`, 'DELETE')
     await list.refresh()
   } catch (reason) {
+    // #ifdef JUYA_ANALYTICS
+    if (analyticsAlive && owner === session.userId())
+      businessAnalytics.error(AnalyticsAction.FAVORITE_CHANGE, reason, {
+        content_type: 'listening',
+        content_id: article.id
+      })
+    // #endif
     uni.showToast({
       title: reason instanceof Error ? reason.message : '取消失败，请重试',
       icon: 'none'

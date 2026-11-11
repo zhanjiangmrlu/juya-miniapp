@@ -85,8 +85,9 @@ it('packages only small generic share fallbacks while preserving the existing sh
 
 /** 执行真实微信CommonJS产物，只替换原生界面及业务网络边界
  * @param overrides 当前用例提供的微信原生能力
+ * @param realSession 是否执行真实编译会话模块
  */
-const nativeRuntime = (overrides: Record<string, unknown> = {}) => {
+const nativeRuntime = (overrides: Record<string, unknown> = {}, realSession = false) => {
   const opened: string[] = [],
     toasts: string[] = [],
     requests: { path: string; options: unknown }[] = [],
@@ -110,7 +111,7 @@ const nativeRuntime = (overrides: Record<string, unknown> = {}) => {
     modules.set(filename, module)
     if (filename === path.join(output, 'common/vendor.js')) {
       module.exports = { index: native, readonly, ref }
-    } else if (filename === path.join(output, 'services/api.js')) {
+    } else if (!realSession && filename === path.join(output, 'services/api.js')) {
       const session = {
         userId: () => 'receiver',
         request: async (requestPath: string, options: { body: { source: string } }) => {
@@ -150,6 +151,109 @@ const nativeRuntime = (overrides: Record<string, unknown> = {}) => {
   }
   return { load, opened, toasts, requests }
 }
+
+/** 为真实编译的隐私与会话模块提供原生网络边界，不替换业务模块 */
+const nativePrivacyRuntime = () => {
+  const saved = new Map<string, unknown>([
+    ['juya-rebuild-mini-session-v1', { access_token: 'mini_fixture', user_id: 'learner-1' }]
+  ])
+  const calls: { path: string; method: string; authenticated: boolean }[] = []
+  const state = {
+    agreements: {
+      current: true,
+      accepted: {
+        terms: { version: 'v1', accepted_at: '2026-11-10T00:00:00Z', source: 'account_action' },
+        privacy: { version: 'v1', accepted_at: '2026-11-10T00:00:00Z', source: 'account_action' }
+      }
+    },
+    analytics: {
+      enabled: false,
+      collecting: false,
+      revision: 0,
+      scope_version: '',
+      updated_at: null
+    }
+  }
+  const runtime = nativeRuntime(
+    {
+      getStorageSync: (key: string) => saved.get(key) ?? '',
+      setStorageSync: (key: string, value: unknown) => saved.set(key, value),
+      removeStorageSync: (key: string) => saved.delete(key),
+      request: (request: {
+        url: string
+        method: string
+        header: Record<string, string>
+        success: (result: { statusCode: number; data: unknown }) => void
+      }) => {
+        const pathname = new URL(request.url).pathname
+        calls.push({
+          path: pathname,
+          method: request.method,
+          authenticated: !!request.header.Authorization
+        })
+        if (pathname === '/api/mini/v1/privacy/policies') {
+          request.success({
+            statusCode: 200,
+            data: {
+              mode: 'published',
+              server_now: '2026-11-10T00:00:00Z',
+              documents: ['terms', 'privacy', 'analytics'].map((kind) => ({
+                kind,
+                version: 'v1',
+                title: kind,
+                content: '隔离测试正文'
+              }))
+            }
+          })
+        } else if (pathname === '/api/mini/v1/me/privacy') {
+          request.success({ statusCode: 200, data: state })
+        } else if (pathname === '/api/mini/v1/me/analytics-preference') {
+          request.success({
+            statusCode: 200,
+            data: { ...state.analytics, enabled: true, revision: 1, scope_version: 'v1' }
+          })
+        } else throw new Error('Unexpected privacy request')
+      }
+    },
+    true
+  )
+  return { ...runtime, calls }
+}
+
+it('loads policies and synchronizes an account preference through executable WeChat modules', async () => {
+  const runtime = nativePrivacyRuntime()
+  const privacy = runtime.load(path.join(output, 'services/privacy.js')).privacy as {
+    loadPolicies: () => Promise<unknown>
+    restore: (user: string) => Promise<void>
+    choose: (enabled: boolean) => Promise<void>
+    state: { value: { analytics: { enabled: boolean; collecting: boolean } } }
+  }
+  await privacy.loadPolicies()
+  await privacy.restore('learner-1')
+  await privacy.choose(true)
+  expect(privacy.state.value.analytics).toMatchObject({ enabled: true, collecting: false })
+  expect(runtime.calls).toEqual([
+    { path: '/api/mini/v1/privacy/policies', method: 'GET', authenticated: false },
+    { path: '/api/mini/v1/me/privacy', method: 'GET', authenticated: true },
+    { path: '/api/mini/v1/me/analytics-preference', method: 'PUT', authenticated: true }
+  ])
+})
+
+it('checks the restored account before deciding whether to show native first agreements', async () => {
+  const runtime = nativePrivacyRuntime()
+  const coordinator = runtime.load(path.join(output, 'services/consent-coordinator.js')) as {
+    prepareConsentLaunch: () => void
+    considerHomeConsent: (show: (target: string) => void) => Promise<void>
+  }
+  const shown: string[] = []
+  coordinator.prepareConsentLaunch()
+  await coordinator.considerHomeConsent((target) => shown.push(target))
+  expect(shown).toEqual([])
+  expect(runtime.calls).toEqual([
+    { path: '/api/mini/v1/privacy/policies', method: 'GET', authenticated: false },
+    { path: '/api/mini/v1/me/privacy', method: 'GET', authenticated: true }
+  ])
+})
 
 it('plays each word in silent mode without autoplay when native word contexts are recreated', () => {
   let obeyMuteSwitch = true
@@ -238,7 +342,6 @@ it.each([
   'sub-packages/records/index',
   'sub-packages/account/profile',
   'sub-packages/account/identity-edit',
-  'sub-packages/account/contact-edit',
   'sub-packages/feedback/index',
   'sub-packages/feedback/create',
   'sub-packages/feedback/detail',
@@ -289,3 +392,236 @@ it('excludes the remote home background and resolves package dependencies withou
     }
   }
 })
+
+it('keeps the retired contact route as a native redirect without exposing share or login hooks', () => {
+  const opened: string[] = []
+  let load: (() => void) | undefined
+  let options: { setup: () => unknown; __runtimeHooks?: number } | undefined
+  const vendor = {
+    defineComponent: (value: unknown) => value,
+    onLoad: (callback: () => void) => {
+      load = callback
+    },
+    index: {
+      switchTab: ({ url }: { url: string }) => {
+        opened.push(url)
+      }
+    }
+  }
+  runInNewContext(readFileSync(path.join(output, 'sub-packages/account/contact-edit.js'), 'utf8'), {
+    require: (specifier: string) => {
+      if (specifier.endsWith('/common/vendor.js')) return vendor
+      if (specifier.endsWith('/shared/constants/navigation.js'))
+        return { Routes: { PROFILE: '/pages/profile/index' } }
+      throw new Error(`Unexpected retired contact dependency: ${specifier}`)
+    },
+    wx: {
+      createPage: (value: typeof options) => {
+        options = value
+      }
+    },
+    exports: {}
+  })
+  options?.setup()
+  load?.()
+  expect(opened).toEqual(['/pages/profile/index'])
+  expect(options?.__runtimeHooks || 0).toBe(0)
+})
+
+/** 执行当前编译的登录弹窗，替换微信身份与账号端口，保留实际事件处理函数
+ * @param statistics 本次明确选择是否允许统计
+ */
+const runNativeConsentLogin = async (statistics: boolean, action = 'account') => {
+  const calls: { login: unknown[]; choices: boolean[]; succeeded: number } = {
+    login: [],
+    choices: [],
+    succeeded: 0
+  }
+  let owner: string | null = null
+  let component!: {
+    setup: (
+      props: object
+    ) => (
+      context: object,
+      cache: object
+    ) => { b: (value: boolean) => Promise<void>; e: { error: string } }
+  }
+  const vendor = {
+    ref,
+    watch: () => undefined,
+    defineComponent: (value: unknown) => value,
+    _export_sfc: (value: unknown) => value,
+    unref: (value: unknown) =>
+      value && typeof value === 'object' && 'value' in value ? value.value : value,
+    e: (...values: object[]) => Object.assign({}, ...values),
+    o: (value: unknown) => value,
+    p: (value: unknown) => value
+  }
+  const confirmation = {
+    confirmation_id: 'native-confirmation',
+    terms_version: 'v1',
+    privacy_version: 'v1',
+    client_confirmed_at: '2026-11-10T00:00:00Z',
+    source: 'account_action'
+  }
+  const session = { userId: () => owner, invalidate: () => undefined }
+  const dependencies: Record<string, unknown> = {
+    'vendor.js': vendor,
+    'api.js': { session },
+    'account-store.js': {
+      useAccountStore: () => ({
+        login: async (...args: unknown[]) => {
+          calls.login.push(args)
+          owner = 'learner-1'
+        }
+      })
+    },
+    'consent-coordinator.js': {
+      automaticConsent: ref(false),
+      readingPolicy: ref(false),
+      openPolicy: () => undefined
+    },
+    'login-prompt.js': {
+      loginPromptTarget: ref('/sub-packages/listening/article?id=article-1'),
+      loginPromptAction: ref(action),
+      dismissLoginPrompt: () => undefined
+    },
+    'login-return.js': {
+      loginReturn: {
+        begin: () => undefined,
+        resumeGuest: () => undefined,
+        succeed: () => {
+          calls.succeeded++
+        }
+      }
+    },
+    'navigation.js': { safeTarget: (value: string) => value, openLogin: () => undefined },
+    'privacy.js': {
+      ConsentAction: { STATISTICS: 'statistics', ACCOUNT: 'account' },
+      privacy: {
+        published: () => true,
+        confirmed: () => false,
+        confirmation: () => confirmation,
+        version: () => 'v1',
+        block: () => undefined,
+        restore: async () => undefined,
+        state: ref({ analytics: { enabled: false } }),
+        choose: async (enabled: boolean) => {
+          calls.choices.push(enabled)
+        }
+      }
+    }
+  }
+  runInNewContext(
+    readFileSync(path.join(output, 'components/app-login-prompt/app-login-prompt.js'), 'utf8'),
+    {
+      require: (specifier: string) => {
+        const dependency = dependencies[path.basename(specifier)]
+        if (!dependency) throw new Error(`Unexpected consent dependency: ${specifier}`)
+        return dependency
+      },
+      wx: {
+        createComponent: (value: typeof component) => {
+          component = value
+        }
+      },
+      console
+    }
+  )
+  const render = component.setup({})
+  await render({}, {}).b(statistics)
+  return { calls, error: render({}, {}).e.error, confirmation }
+}
+
+it.each([true, false])(
+  'executes native agreement login with independent statistics=%s',
+  async (enabled) => {
+    const result = await runNativeConsentLogin(enabled)
+    expect(result.error).toBe('')
+    expect(result.calls.login).toEqual([
+      [
+        true,
+        {
+          agreement_confirmation: result.confirmation,
+          analytics_choice: { enabled, scope_version: 'v1' }
+        }
+      ]
+    ])
+    expect(result.calls.choices).toEqual([enabled])
+    expect(result.calls.succeeded).toBe(1)
+  }
+)
+
+it('native settings login does not replay the earlier statistics toggle', async () => {
+  const result = await runNativeConsentLogin(true, 'statistics')
+  expect(result.calls.choices).toEqual([false])
+  expect(result.calls.login).toEqual([
+    [
+      true,
+      {
+        agreement_confirmation: result.confirmation,
+        analytics_choice: { enabled: false, scope_version: 'v1' }
+      }
+    ]
+  ])
+})
+
+it.each([false, true])(
+  'evaluates native home agreements after restoring session=%s',
+  async (loggedIn) => {
+    let page!: { setup: (props: object) => unknown }
+    let show!: () => void
+    let evaluated = 0
+    const vendor = {
+      ref,
+      defineComponent: (value: unknown) => value,
+      _export_sfc: (value: unknown) => value,
+      onShow: (callback: () => void) => {
+        show = callback
+      },
+      onHide: () => undefined,
+      onUnload: () => undefined,
+      onShareAppMessage: () => undefined,
+      onShareTimeline: () => undefined,
+      index: { hideTabBar: () => undefined }
+    }
+    const dependencies: Record<string, unknown> = {
+      'vendor.js': vendor,
+      'assets.js': {},
+      'listening-service.js': { getListeningHome: async () => ({}) },
+      'api.js': { onSessionExpired: () => () => undefined },
+      'consent-coordinator.js': {
+        considerHomeConsent: async () => {
+          evaluated++
+        }
+      },
+      'privacy.js': { privacy: { published: () => true, restore: async () => undefined } },
+      'login-prompt.js': { promptLogin: () => undefined },
+      'login-return.js': { loginReturn: { register: () => undefined, take: () => null } },
+      'navigation.js': { Routes: { HOME: '/pages/home/index' } },
+      'page-share.js': {},
+      'brand.js': {},
+      'home.js': {},
+      'account-store.js': {
+        useAccountStore: () => ({ restore: async () => (loggedIn ? { id: 'learner-1' } : null) })
+      }
+    }
+    runInNewContext(readFileSync(path.join(output, 'pages/home/index.js'), 'utf8'), {
+      require: (specifier: string) => {
+        const key = path.basename(specifier)
+        if (!(key in dependencies)) throw new Error(`Unexpected home dependency: ${specifier}`)
+        return dependencies[key]
+      },
+      wx: {
+        createPage: (value: typeof page) => {
+          page = value
+        }
+      },
+      console
+    })
+    page.setup({})
+    show()
+    await new Promise<void>((resolve) => setImmediate(resolve))
+    expect(evaluated).toBe(1)
+  }
+)

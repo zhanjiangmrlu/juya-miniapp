@@ -19,6 +19,9 @@ import { useSceneList } from '@/composables/use-scene-list'
 import LearningStatistics from '@/features/learning/components/learning-statistics.vue'
 import SceneCard from '@/features/learning/components/scene-card.vue'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, session } from '@/services/api'
 import { dateText } from '@/services/display'
 import { listPageSize } from '@/services/list-page-size'
@@ -26,6 +29,9 @@ import { pageShare } from '@/services/page-share'
 import { storage } from '@/services/platform'
 import { RECORDS_TAB_STORAGE_KEY } from '@/shared/constants/learning'
 import { Routes } from '@/shared/constants/navigation'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsEvent } from '@/shared/enums/analytics'
+// #endif
 import { RecordsTab } from '@/shared/enums/learning'
 import { useAccountStore } from '@/stores/account-store'
 
@@ -124,6 +130,9 @@ const loadStats = async () => {
  */
 const switchTab = async (value: RecordsTab) => {
   if (tab.value === value) return
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.track(AnalyticsEvent.TAB_CHANGE, { tab_id: value })
+  // #endif
   positions[tab.value] = currentScroll
   tab.value = value
   storage.set(RECORDS_TAB_STORAGE_KEY, value)
@@ -161,6 +170,9 @@ const expand = async (date: string) => {
     return
   }
   if (expanded.value !== date) day.value = null
+  // #ifdef JUYA_ANALYTICS
+  if (expanded.value !== date) businessAnalytics.track(AnalyticsEvent.CHECKIN_EXPAND)
+  // #endif
   expanded.value = date
   await loadDay(date)
 }

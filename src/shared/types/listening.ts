@@ -20,6 +20,11 @@ export interface ListeningToken {
   word: boolean
 }
 
+export interface ListeningTextRun {
+  text: string
+  style: string
+}
+
 export interface ListeningParagraph {
   tokens: ListeningToken[]
   separator: string

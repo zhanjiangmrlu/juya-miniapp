@@ -2,8 +2,18 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, expect, it, vi } from 'vitest'
 
+const analyticsStorage = vi.hoisted(() => new Map<string, unknown>())
 vi.hoisted(() => {
-  vi.stubGlobal('uni', { getStorageSync: () => undefined, removeStorageSync: vi.fn() })
+  vi.stubGlobal('__JUYA_ANALYTICS_CONFIG__', {
+    enabled: true,
+    appKey: 'fixture-test',
+    environment: 'test'
+  })
+  vi.stubGlobal('uni', {
+    getStorageSync: (key: string) => analyticsStorage.get(key),
+    setStorageSync: (key: string, value: unknown) => analyticsStorage.set(key, value),
+    removeStorageSync: vi.fn()
+  })
   vi.stubGlobal('getCurrentPages', () => [])
 })
 
@@ -30,6 +40,7 @@ vi.mock('@/services/navigation', async (importOriginal) => ({
   openTarget
 }))
 import LoginPage from '@/pages/login/index.vue'
+import { analytics } from '@/services/analytics'
 
 /** 挂载真实登录操作，布局及说明弹窗独立隔离 */
 const page = () =>
@@ -46,6 +57,7 @@ const page = () =>
     }
   })
 beforeEach(() => {
+  analytics.setConsent(false)
   vi.clearAllMocks()
   login.mockResolvedValue(undefined)
 })
@@ -167,5 +179,21 @@ it('does not navigate or continue an old login after native back unloads the log
   finish()
   await flushPromises()
   expect(openTarget).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('does not grant analytics permission when accepting the necessary login agreement', async () => {
+  const wrapper = page()
+  expect(analytics.choice()).toBe(false)
+  await wrapper.get('.privacy-link').trigger('click')
+  await wrapper.get('.close-privacy').trigger('click')
+  expect(analytics.choice()).toBe(false)
+  await wrapper.get('.checkbox-group').trigger('change', { detail: { value: ['agree'] } })
+  expect(analytics.choice()).toBe(false)
+  expect(login).not.toHaveBeenCalled()
+  await wrapper.get('.checkbox-group').trigger('change', { detail: { value: [] } })
+  expect(analytics.choice()).toBe(false)
+  await wrapper.get('button.primary').trigger('click')
+  expect(login).not.toHaveBeenCalled()
   wrapper.unmount()
 })

@@ -6,12 +6,14 @@ import AppAvatar from '@/components/app-avatar/app-avatar.vue'
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
 import AppGuestState from '@/components/app-guest-state/app-guest-state.vue'
 import AppPage from '@/components/app-page/app-page.vue'
-import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import ProfileLogoutDialog from '@/features/profile/components/profile-logout-dialog.vue'
-import { maskPhone } from '@/features/profile/contact-model'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { Routes } from '@/shared/constants/navigation'
 import { PAGE_SHARE_ENTRY_KEY } from '@/shared/constants/share'
 import { LearningAuthorizationStatus } from '@/shared/enums/learning-access'
@@ -27,6 +29,7 @@ const authorization = ref<components['schemas']['CurrentAccess'] | null>(null),
   statisticsError = ref('')
 /** 读取本人学习授权，失败不显示为未授权 */
 const loadAuthorization = async () => {
+  if (!LEARNING_FEATURES.authorization) return
   try {
     authorization.value = await session.request('/api/mini/v1/learning-access')
     authorizationError.value = ''
@@ -37,11 +40,10 @@ const loadAuthorization = async () => {
 const account = useAccountStore(),
   busy = ref(false),
   error = ref(''),
-  privacy = ref(false),
   logoutBusy = ref(false),
   logoutConfirm = ref(false),
   logoutError = ref('')
-/** 只读页面读取真实资料，不将失败显示为没有联系方式 */
+/** 只读页面读取本人资料、学习授权和收藏数量 */
 const load = async () => {
   if (busy.value) return
   busy.value = true
@@ -50,7 +52,10 @@ const load = async () => {
     await account.restore()
     if (session.userId()) {
       await account.refreshAvatar()
-      await Promise.all([loadAuthorization(), loadStatistics()])
+      await Promise.all([
+        ...(LEARNING_FEATURES.authorization ? [loadAuthorization()] : []),
+        loadStatistics()
+      ])
     }
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : '资料暂未获取'
@@ -82,14 +87,29 @@ const authorizationLabel = computed(() => {
         ? '未授权'
         : '暂未获取'
 })
+/** 公开设置入口保留账号来源页面栈和位置 */
+const openSettings = () => uni.navigateTo({ url: `${Routes.SETTINGS}?source=profile` })
 /** 编辑本人主动设置的头像昵称 */
-const editProfile = () => uni.navigateTo({ url: Routes.IDENTITY })
-/** 补充或修改选填的联系方式 */
-const editContact = () => uni.navigateTo({ url: Routes.CONTACT })
+const editProfile = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('profile_editProfile', Routes.IDENTITY)
+  // #endif
+  uni.navigateTo({ url: Routes.IDENTITY })
+}
 /** 打开本人场景与听读收藏 */
-const favorites = () => uni.navigateTo({ url: Routes.FAVORITES })
+const favorites = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('profile_favorites', Routes.FAVORITES)
+  // #endif
+  uni.navigateTo({ url: Routes.FAVORITES })
+}
 /** 打开本人反馈列表，读取入口不清除未读 */
-const feedback = () => uni.navigateTo({ url: Routes.FEEDBACK })
+const feedback = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('profile_feedback', Routes.FEEDBACK)
+  // #endif
+  uni.navigateTo({ url: Routes.FEEDBACK })
+}
 /** 打开新的退出确认，清除上次取消前的错误 */
 const openLogout = () => {
   logoutError.value = ''
@@ -173,7 +193,7 @@ onShow(() => {
             aria-hidden="true"
         /></view>
       </button>
-      <view class="authorization-section"
+      <view v-if="LEARNING_FEATURES.authorization" class="authorization-section"
         ><view class="between"
           ><text class="authorization-title">学习授权</text
           ><text
@@ -195,24 +215,6 @@ onShow(() => {
           {{ authorizationError }}
         </button>
       </view>
-      <button class="profile-link" @click="editContact">
-        <text>联系方式</text
-        ><view class="profile-link-value"
-          ><text class="contact-value">{{
-            [
-              account.profile.phone ? maskPhone(account.profile.phone) : '',
-              account.profile.wechat_contact || ''
-            ]
-              .filter(Boolean)
-              .join(' · ') || '未填写'
-          }}</text
-          ><image
-            class="chevron"
-            src="/static/design/profile-chevron.svg"
-            mode="aspectFit"
-            aria-hidden="true"
-        /></view>
-      </button>
       <button class="profile-link" @click="feedback">
         <view class="profile-link-label"
           ><text>我的反馈</text
@@ -227,12 +229,8 @@ onShow(() => {
           aria-hidden="true"
         />
       </button>
-      <button
-        class="profile-link privacy-link"
-        hover-class="privacy-pressed"
-        @click="privacy = true"
-      >
-        <text>隐私说明</text
+      <button class="profile-link privacy-link" hover-class="privacy-pressed" @click="openSettings">
+        <text>设置</text
         ><image
           class="chevron"
           src="/static/design/profile-chevron.svg"
@@ -253,10 +251,7 @@ onShow(() => {
       @cancel="logoutConfirm = false"
       @confirm="logout"
     />
-    <AppPrivacySheet v-if="privacy" @close="privacy = false" /><AppBottomTabs
-      v-if="primary"
-      active="profile"
-    />
+    <AppBottomTabs v-if="primary" active="profile" />
   </AppPage>
 </template>
 <style scoped lang="scss">
@@ -325,11 +320,6 @@ onShow(() => {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-}
-
-.contact-value {
-  overflow-wrap: anywhere;
-  text-align: right;
 }
 
 .authorization-section {

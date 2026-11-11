@@ -1,6 +1,13 @@
 // @vitest-environment happy-dom
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+// 显式启用保留的旧功能，继续验证未来恢复时的原有行为
+const learningFeatures = vi.hoisted(() => ({
+  authorization: true,
+  dictionary: true,
+  listeningSync: true
+}))
+vi.mock('@/shared/constants/learning-features', () => ({ LEARNING_FEATURES: learningFeatures }))
 
 import type { AudioPort, FullAudioOptions } from '@/shared/types/audio'
 const ports = vi.hoisted(() => ({
@@ -145,6 +152,7 @@ const meaning = {
   provider: 'context'
 }
 beforeEach(() => {
+  Object.assign(learningFeatures, { authorization: true, dictionary: true, listeningSync: true })
   ports.background = false
   ports.options = undefined
   scene.content.image_id = ''
@@ -161,6 +169,21 @@ beforeEach(() => {
   )
   vi.stubGlobal('uni', { pageScrollTo: ({ complete }: { complete?: () => void }) => complete?.() })
 })
+it('never preloads or requests internal dictionaries while native word selection is enabled', async () => {
+  Object.assign(learningFeatures, { authorization: false, dictionary: false, listeningSync: false })
+  const page = await open()
+  const english = page.get('.english')
+  await english.get('text').trigger('click')
+  await flushPromises()
+  expect(page.find('.dictionary-token').exists()).toBe(false)
+  expect(page.find('.lookup-hint').exists()).toBe(false)
+  expect(ports.request.mock.calls.some(([path]) => String(path).includes('/dictionary'))).toBe(
+    false
+  )
+  expect(page.text()).not.toContain('授权')
+  page.unmount()
+})
+
 it('keeps scene background audio during hide and stops it when its page departs', async () => {
   ports.background = true
   const page = await open()

@@ -51,7 +51,7 @@ const preview = async (image: FeedbackImage) => {
           <image
             :src="resourceURL(image.url)"
             mode="aspectFill"
-            @error="imageError = '截图授权可能已过期，点击重新获取'"
+            @error="imageError = '截图暂时无法显示，点击重新获取'"
           /></button
       ></view>
     </view>

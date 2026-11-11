@@ -9,6 +9,7 @@ export const Routes = {
   SCENE: '/sub-packages/scenes/detail',
   RECORDS: '/pages/records/index',
   PROFILE: '/pages/profile/index',
+  SETTINGS: '/sub-packages/account/settings',
   IDENTITY: '/sub-packages/account/identity-edit',
   CONTACT: '/sub-packages/account/contact-edit',
   FEEDBACK: '/sub-packages/feedback/index',

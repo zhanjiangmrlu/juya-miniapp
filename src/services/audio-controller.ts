@@ -7,8 +7,12 @@ import { nativeDiagnosticInstance, recordNativeDiagnostic } from '@/services/nat
 import { recordWordAudio } from '@/services/word-audio-diagnostics'
 import { DEFAULT_PLAYBACK_RATE, PLAYBACK_RATES } from '@/shared/constants/audio'
 import { WORD_AUDIO_RECOVERY_DELAYS } from '@/shared/constants/media'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsEvent } from '@/shared/enums/analytics'
+// #endif
 import { AudioStatus } from '@/shared/enums/audio'
 
+import type { AudioActionOrigin, AudioAnalyticsObserver } from '@/shared/types/analytics'
 import type {
   AudioPort,
   AudioState,
@@ -30,6 +34,7 @@ export const resetLearningAudioSession = () => {
  * @param wordFailed 原生播放失败时清除对应词汇的预加载资源
  * @param fullFailed 完整音频播放失败时清除缓存并重新签发地址
  * @param wordCancelled 切换音轨时释放列表与弹窗共用的前台准备通道
+ * @param analyticsObserver 当前统计构建的安全操作观察端口，不接收音源地址
  */
 export const createAudioController = (
   full: AudioPort,
@@ -38,7 +43,8 @@ export const createAudioController = (
   speedSession: LearningAudioSession = learningAudioSession,
   wordFailed: (id: string) => void = () => {},
   fullFailed: () => void = () => {},
-  wordCancelled: () => void = () => {}
+  wordCancelled: () => void = () => {},
+  analyticsObserver?: AudioAnalyticsObserver
 ) => {
   const state: AudioState = {
     rate: speedSession.rate,
@@ -51,6 +57,46 @@ export const createAudioController = (
     wordStatus: AudioStatus.IDLE,
     wordError: ''
   }
+  // #ifdef JUYA_ANALYTICS
+  /** 观察音频操作而不影响原有播放，恢复进度不算主动点击
+   * @param event 当前点击或最终播放结果
+   * @param kind 完整音频或单词音轨
+   * @param origin 主动控制、系统续播、原生结果或静默恢复
+   * @param wordId 单词稳定编号或正文位置引用
+   * @param value 用户本次选择的位置或倍率
+   */
+  const record = (
+    event: AnalyticsEvent,
+    kind: 'full' | 'word' = 'full',
+    origin: AudioActionOrigin | 'native' = 'native',
+    wordId?: string,
+    value?: number
+  ) => {
+    if (origin === 'restore') return
+    try {
+      analyticsObserver?.(event, {
+        audio_kind: kind,
+        trigger: origin,
+        ...(kind === 'word'
+          ? { word_id: wordId }
+          : {
+              position_s: event === AnalyticsEvent.AUDIO_SEEK ? value : state.position,
+              audio_duration_s: state.duration,
+              playback_rate: event === AnalyticsEvent.AUDIO_RATE_CHANGE ? value : state.rate
+            })
+      })
+    } catch {
+      /* 观察端口失败不能改变播放和权限流程 */
+    }
+  }
+  /** 记录前台系统面板暂停，主动暂停与切速、词音轨互斥不重复计入 */
+  const recordSystemPause = () => {
+    if (state.status === AudioStatus.PLAYING && fullIntent && !ratePausing && !fullStarting)
+      record(AnalyticsEvent.AUDIO_PAUSE, 'full', 'system')
+  }
+  // #endif
+  let fullPlayPending: AudioActionOrigin | null = null,
+    wordPlayPending = false
   let alive = true,
     fullSource = '',
     fullGeneration = 0,
@@ -209,10 +255,14 @@ export const createAudioController = (
   }
   /** 播放中排队切速，暂停时直接设置且不主动播放
    * @param rate 用户最后选择的完整音频倍率
+   * @param origin 主动选择或恢复已有档位
    */
-  const setRate = (rate: number) => {
+  const setRate = (rate: number, origin: AudioActionOrigin = 'control') => {
     if (!alive) return false
     if (!PLAYBACK_RATES.includes(rate as PlaybackRate)) return confirmRate(rate)
+    // #ifdef JUYA_ANALYTICS
+    record(AnalyticsEvent.AUDIO_RATE_CHANGE, 'full', origin, undefined, rate)
+    // #endif
     if (
       pendingRate !== null ||
       ratePausing ||
@@ -283,6 +333,12 @@ export const createAudioController = (
       return
     }
     pendingRate = null
+    // #ifdef JUYA_ANALYTICS
+    if (fullPlayPending !== null && !confirmingRate) {
+      record(AnalyticsEvent.AUDIO_PLAY, 'full', fullPlayPending)
+      fullPlayPending = null
+    }
+    // #endif
     state.status = AudioStatus.PLAYING
     if (!confirmingRate) restoreRate()
     if (pendingSeek > 0) {
@@ -293,6 +349,9 @@ export const createAudioController = (
   })
   full.onPause(() => {
     if (!alive) return
+    // #ifdef JUYA_ANALYTICS
+    recordSystemPause()
+    // #endif
     if (full.background) fullStarting = false
     state.status = AudioStatus.PAUSED
     ratePausing = false
@@ -310,6 +369,9 @@ export const createAudioController = (
   })
   full.onStop?.(() => {
     if (!alive) return
+    // #ifdef JUYA_ANALYTICS
+    recordSystemPause()
+    // #endif
     fullGeneration++
     fullIntent = false
     fullStarting = false
@@ -330,6 +392,9 @@ export const createAudioController = (
     rateRebinding = false
     delete state.pendingRate
     state.position = state.duration
+    // #ifdef JUYA_ANALYTICS
+    record(AnalyticsEvent.AUDIO_ENDED)
+    // #endif
     notify()
   })
   full.onTimeUpdate(() => {
@@ -347,11 +412,20 @@ export const createAudioController = (
     rateRebinding = false
     delete state.pendingRate
     state.error = '音频暂不可用，点击重试'
+    // #ifdef JUYA_ANALYTICS
+    record(AnalyticsEvent.AUDIO_ERROR)
+    // #endif
     fullFailed()
     notify()
   })
   word.onPlay(() => {
     if (!alive || !wordSourceGeneration || wordSourceGeneration !== wordGeneration) return
+    // #ifdef JUYA_ANALYTICS
+    if (wordPlayPending) {
+      record(AnalyticsEvent.AUDIO_PLAY, 'word', 'control', state.wordId || undefined)
+      wordPlayPending = false
+    }
+    // #endif
     recordWordAudio('native', wordStarted, 'ready')
     state.wordStatus = AudioStatus.PLAYING
     state.wordError = ''
@@ -359,6 +433,9 @@ export const createAudioController = (
   })
   word.onEnded(() => {
     if (!alive || !wordSourceGeneration || wordSourceGeneration !== wordGeneration) return
+    // #ifdef JUYA_ANALYTICS
+    record(AnalyticsEvent.AUDIO_ENDED, 'word', 'native', state.wordId || undefined)
+    // #endif
     cancelWordRecovery()
     wordSourceGeneration = 0
     state.wordStatus = AudioStatus.IDLE
@@ -382,14 +459,24 @@ export const createAudioController = (
   }
   /** 主动播放或暂停完整音频，同一音源续播与重播不重复设置地址
    * @param load 获取当前受控完整音频地址
+   * @param origin 页面点击或系统媒体续播
    */
-  const toggleFull = async (load: () => string | Promise<string>) => {
+  const toggleFull = async (
+    load: () => string | Promise<string>,
+    origin: AudioActionOrigin = 'control'
+  ) => {
     if (!alive || state.status === AudioStatus.LOADING) return
     if (fullIntent) {
+      // #ifdef JUYA_ANALYTICS
+      record(AnalyticsEvent.AUDIO_PAUSE, 'full', origin)
+      // #endif
       fullIntent = false
       full.pause()
       return
     }
+    // #ifdef JUYA_ANALYTICS
+    fullPlayPending = origin
+    // #endif
     if (state.wordId) wordCancelled()
     cancelWordRecovery()
     wordGeneration++
@@ -425,6 +512,9 @@ export const createAudioController = (
         state.status = AudioStatus.ERROR
         fullIntent = false
         state.error = '音频暂不可用，点击重试'
+        // #ifdef JUYA_ANALYTICS
+        record(AnalyticsEvent.AUDIO_ERROR)
+        // #endif
         notify()
       }
     }
@@ -440,6 +530,9 @@ export const createAudioController = (
     authorize?: () => Promise<boolean>
   ) => {
     if (!alive) return
+    // #ifdef JUYA_ANALYTICS
+    wordPlayPending = true
+    // #endif
     fullGeneration++
     const cancelFull = fullIntent || fullStarting || ratePausing
     fullIntent = false
@@ -486,6 +579,9 @@ export const createAudioController = (
         cancelWordRecovery()
         state.wordStatus = AudioStatus.ERROR
         state.wordError = '发音暂不可用，点击重试'
+        // #ifdef JUYA_ANALYTICS
+        record(AnalyticsEvent.AUDIO_ERROR, 'word', 'native', id)
+        // #endif
         notify()
         return
       }
@@ -566,10 +662,14 @@ export const createAudioController = (
   }
   /** 拖动只改变位置，保留播放或暂停状态
    * @param seconds 用户选择的秒数
+   * @param origin 主动拖动或恢复页面快照
    */
-  const seekFull = (seconds: number) => {
+  const seekFull = (seconds: number, origin: AudioActionOrigin = 'control') => {
     if (!alive || !Number.isFinite(seconds)) return
     state.position = Math.max(0, Math.min(seconds, state.duration || full.duration || 0))
+    // #ifdef JUYA_ANALYTICS
+    record(AnalyticsEvent.AUDIO_SEEK, 'full', origin, undefined, state.position)
+    // #endif
     if (ratePausing || fullStarting) pendingSeek = state.position
     full.seek(state.position)
     notify()

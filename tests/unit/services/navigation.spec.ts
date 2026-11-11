@@ -105,3 +105,12 @@ it('keeps a failed native login navigation at its source and makes its guest sna
   expect(loginReturn.take('/pages/home/index')?.scroll).toBe(77)
   unregister()
 })
+
+it('preserves only approved settings queries for in-place privacy login return', () => {
+  expect(safeTarget('/sub-packages/account/settings?privacy=1&source=profile&secret=hidden')).toBe(
+    '/sub-packages/account/settings?privacy=1&source=profile'
+  )
+  expect(safeTarget('/sub-packages/account/settings?privacy=0&source=outside')).toBe(
+    '/sub-packages/account/settings'
+  )
+})

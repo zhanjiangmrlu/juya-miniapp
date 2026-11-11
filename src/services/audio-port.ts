@@ -114,7 +114,7 @@ export const createAudioPort = (isolateSources = false, options?: FullAudioOptio
   // #ifdef MP-WEIXIN
   if (options) {
     const port = createBackgroundAudioPort(uni.getBackgroundAudioManager(), options!)
-    const release = registerBackgroundAudioNavigation(options!),
+    const release = registerBackgroundAudioNavigation({ ...options!, pause: () => port.pause() }),
       destroy = port.destroy
     port.destroy = () => {
       release()

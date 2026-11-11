@@ -1,0 +1,13 @@
+{
+  "version": "1.5.0-test.20261111.000321",
+  "environment": "test",
+  "status": "success",
+  "source": "86cc59d1ede4ae557973b17ecf046791195f0679",
+  "officialReceipt": true,
+  "uploadInfoSha256": "64378363f0e8b53a8bc5b39afb395c0824f2392108ad84c3d901cdd14341c8a7",
+  "testApi": true,
+  "realSdkFactory": true,
+  "latestFixes": true,
+  "experienceVersionChanged": false,
+  "output": "/Users/lubi/Desktop/juya/github-repos/juya-miniapp/dist/test-release/5850b4ae-5390-40df-9faa-b277a159ccae/mp-weixin"
+}

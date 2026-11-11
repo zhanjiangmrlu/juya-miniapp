@@ -17,7 +17,9 @@ const scene = (version = 'note-v1') => ({
   }
 })
 /** 建立真实状态机和可控平台边界 */
-const setup = () => {
+const setup = (
+  observe: { onReady?: () => void; onError?: (reason: unknown, stage: string) => void } = {}
+) => {
   let owner: string | null = 'owner'
   const request = vi
       .fn()
@@ -42,7 +44,8 @@ const setup = () => {
     accept,
     download,
     open,
-    invalid: vi.fn()
+    invalid: vi.fn(),
+    ...observe
   })
   return {
     note,
@@ -247,4 +250,43 @@ it.each([
   note.hide()
   note.show()
   expect(fileB.release).toHaveBeenCalledOnce()
+})
+
+it('notifies ready only after final validation and before native opening without changing success', async () => {
+  const order: string[] = []
+  const { note, open } = setup({
+    onReady: () => {
+      order.push('ready')
+      throw new Error('statistics')
+    }
+  })
+  open.mockImplementation(async () => {
+    order.push('open')
+  })
+  await note.open()
+  expect(order).toEqual(['ready', 'open'])
+  expect(note.error.value).toBe('')
+  note.cancel()
+})
+
+it('reports a current download failure but never reports an abandoned task', async () => {
+  const failed = vi.fn()
+  const { note, download } = setup({ onError: failed })
+  download.mockRejectedValueOnce(new Error('failed'))
+  await note.open()
+  expect(failed).toHaveBeenCalledWith(expect.any(Error), 'download')
+  failed.mockClear()
+  let reject!: (reason: unknown) => void
+  download.mockImplementationOnce(
+    () =>
+      new Promise((_, fail) => {
+        reject = fail
+      })
+  )
+  const pending = note.open()
+  await vi.waitFor(() => expect(download).toHaveBeenCalledTimes(2))
+  note.cancel()
+  reject(new Error('cancelled'))
+  await pending
+  expect(failed).not.toHaveBeenCalled()
 })

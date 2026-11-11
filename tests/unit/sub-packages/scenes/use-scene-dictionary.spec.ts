@@ -1,5 +1,6 @@
 import { expect, it, vi } from 'vitest'
 
+import { analytics } from '@/services/analytics'
 import { useSceneDictionary } from '@/sub-packages/scenes/use-scene-dictionary'
 
 const token = {
@@ -127,4 +128,35 @@ it('never exposes an old account or publication response and ignores pure punctu
   await pending
   expect(dictionary.result.value).toBe(null)
   expect(dictionary.selection.value).toBe(null)
+})
+
+it('records only current dictionary results and compact source positions without word text', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  const { dictionary, request } = setup()
+  let finish!: (value: ReturnType<typeof result>) => void
+  request
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    )
+    .mockResolvedValueOnce(result('private-second-word'))
+  try {
+    const first = dictionary.open(token)
+    await dictionary.open({ ...token, text: 'private-second-word', start: 9, end: 15 })
+    finish(result('private-first-word'))
+    await first
+    expect(track.mock.calls.filter(([event]) => event === 'dictionary_lookup')).toHaveLength(2)
+    expect(track.mock.calls.filter(([event]) => event === 'dictionary_success')).toEqual([
+      [
+        'dictionary_success',
+        expect.objectContaining({ content_id: 'card', version_id: 'v1', word_id: 'line-1:9:15' })
+      ]
+    ])
+    expect(JSON.stringify(track.mock.calls)).not.toContain('private-')
+  } finally {
+    dictionary.close()
+    track.mockRestore()
+  }
 })

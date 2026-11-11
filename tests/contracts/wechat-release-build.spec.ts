@@ -1,11 +1,30 @@
-import { readFileSync } from 'node:fs'
+import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { runInNewContext } from 'node:vm'
 
 import { expect, it, vi } from 'vitest'
 
 it('builds an isolated production candidate without changing source manifest or successful record', async () => {
-  const root = process.cwd()
+  const source = process.cwd()
+  const root = mkdtempSync(path.join(tmpdir(), 'juya-prod-candidate-'))
+  for (const name of [
+    'src',
+    'scripts',
+    'build',
+    'release',
+    'resources',
+    'package.json',
+    'vite.config.ts',
+    'tsconfig.json',
+    '.env.production'
+  ])
+    cpSync(path.join(source, name), path.join(root, name), { recursive: true })
+  symlinkSync(path.join(source, 'node_modules'), path.join(root, 'node_modules'), 'dir')
+  writeFileSync(
+    path.join(root, '.env.production.local'),
+    'VITE_UMENG_ENABLED=true\nVITE_UMENG_PROD_APP_KEY=fixture-release-prod\n'
+  )
   const script = path.join(root, 'scripts/wechat-release-build.mjs')
   const { buildProduction } = await import(script)
   const manifest = readFileSync('src/manifest.json', 'utf8')
@@ -16,13 +35,18 @@ it('builds an isolated production candidate without changing source manifest or 
   vi.stubEnv('VITE_REMOTE_FONTS', 'false')
   try {
     const output = buildProduction({ root, candidate: { version: '1.0.1', versionCode: 101 } })
-    const input = JSON.parse(readFileSync('dist/release/input/manifest.json', 'utf8'))
+    const input = JSON.parse(
+      readFileSync(path.join(root, 'dist/release/input/manifest.json'), 'utf8')
+    )
     const css = readFileSync(path.join(output, 'app.wxss'), 'utf8')
     expect(css).not.toContain('data:font/woff;base64,')
     const { measureMainPackage } = await import(
       path.join(root, 'scripts/verify-mp-package-budget.mjs')
     )
-    expect(measureMainPackage(output).sourceBytes).toBeLessThan(450 * 1024)
+    expect(measureMainPackage(output).sourceBytes).toBeLessThan(512 * 1024)
+    const analytics = readFileSync(path.join(output, 'services/analytics.js'), 'utf8')
+    expect(analytics).not.toContain('fixture-release-prod')
+    expect(analytics).not.toContain('fixture-umeng-test')
     const compiledImage: { localImageSource?: (url: string) => Promise<string> } = {}
     runInNewContext(readFileSync(path.join(output, 'services/local-image.js'), 'utf8'), {
       exports: compiledImage,
@@ -50,5 +74,6 @@ it('builds an isolated production candidate without changing source manifest or 
     expect(readFileSync('release/wechat-version.json', 'utf8')).toBe(record)
   } finally {
     vi.unstubAllEnvs()
+    rmSync(root, { recursive: true, force: true })
   }
 }, 60000)

@@ -2,15 +2,24 @@
 import { onLoad, onShareAppMessage, onShareTimeline, onUnload } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 
+import AppConsentDialog from '@/components/app-consent-dialog/app-consent-dialog.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vue'
 import { usePageShareEntry } from '@/composables/use-page-share-entry'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { session } from '@/services/api'
+import { openPolicy, readingPolicy } from '@/services/consent-coordinator'
 import { loginReturn } from '@/services/login-return'
 import { openTarget, safeTarget } from '@/services/navigation'
 import { pageShare } from '@/services/page-share'
+import { privacy as policyState } from '@/services/privacy'
 import { LOGIN_BOTANICAL_IMAGE_URL } from '@/shared/constants/brand'
 import { Routes } from '@/shared/constants/navigation'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsAction } from '@/shared/enums/analytics'
+// #endif
 import { useAccountStore } from '@/stores/account-store'
 
 import type { ConsentChangeEvent } from '@/shared/types/ui'
@@ -25,17 +34,33 @@ const account = useAccountStore(),
 let target: string = Routes.HOME,
   alive = true,
   settled = false
-/** 用户主动同意后登录，失败不改变页面身份 */
-const login = async () => {
+/** 用户主动同意后登录，失败不改变页面身份
+ * @param statistics 当前明确选择是否允许统计
+ */
+const login = async (statistics = false) => {
   if (busy.value) return
-  if (!agreed.value) {
+  if (!agreed.value && !policyState.published()) {
     error.value = '请先阅读并同意隐私说明'
     return
   }
   busy.value = true
   error.value = ''
   try {
-    await account.login(agreed.value)
+    if (policyState.published()) {
+      const confirmation = policyState.confirmation() || policyState.confirm('login_page')
+      await account.login(true, {
+        agreement_confirmation: confirmation,
+        analytics_choice: { enabled: statistics, scope_version: policyState.version('analytics') }
+      })
+      if (!statistics) policyState.block(session.userId()!)
+      try {
+        await policyState.restore(session.userId()!)
+        if (!statistics || policyState.state.value?.analytics.enabled !== statistics)
+          await policyState.choose(statistics)
+      } catch {
+        /* 统计故障不撤销必要登录 */
+      }
+    } else await account.login(agreed.value)
     if (!alive) return
     settled = true
     loginReturn.succeed()
@@ -46,6 +71,9 @@ const login = async () => {
     else openTarget(target)
   } catch (reason) {
     if (!alive) return
+    // #ifdef JUYA_ANALYTICS
+    businessAnalytics.error(AnalyticsAction.LOGIN, reason)
+    // #endif
     error.value = target.includes('target=')
       ? '登录未成功，分享目标已保留，请重试。'
       : reason instanceof Error
@@ -55,13 +83,14 @@ const login = async () => {
     busy.value = false
   }
 }
-/** 只保存用户当前的明确勾选
+/** 保存用户当前的必要协议勾选，不修改统计许可
  * @param event 平台勾选结果
  */
 const consent = (event: ConsentChangeEvent) => {
   agreed.value = event.detail.value.includes('agree')
 }
 onLoad((query) => {
+  void policyState.loadPolicies().catch(() => undefined)
   if (pageShareEntry.value) return
   if (query?.return) {
     try {
@@ -75,6 +104,12 @@ onLoad((query) => {
 
 /** 取消主动登录后返回原位，单页入口回游客首页 */
 const browse = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('guest_browse', Routes.HOME)
+  // #endif
+
+  alive = false
+  session.invalidate()
   settled = true
   loginReturn.resumeGuest()
   if (getCurrentPages().length > 1) uni.navigateBack()
@@ -140,11 +175,17 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
               <text>我已阅读并同意</text>
             </label>
           </checkbox-group>
-          <button class="privacy-link" hover-class="privacy-pressed" @click="privacy = true">
+          <button
+            class="privacy-link"
+            :disabled="busy"
+            hover-class="privacy-pressed"
+            @click="privacy = true"
+          >
             隐私说明
           </button>
         </view>
-        <button class="primary" :disabled="busy" :loading="busy" @click="login">
+
+        <button class="primary" :disabled="busy" :loading="busy" @click="login(false)">
           {{ busy ? '登录中…' : '同意并登录' }}
         </button>
       </view>
@@ -153,6 +194,16 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
       </button>
       <text class="login-bottom">{{ '学习、收藏与打卡保存在同一账号' }}</text>
     </view>
+    <AppConsentDialog
+      v-if="policyState.published() && !readingPolicy"
+      :first="false"
+      :confirmed="policyState.confirmed()"
+      :busy="busy"
+      :error="error"
+      @login="login"
+      @close="browse"
+      @policy="openPolicy"
+    />
     <AppPrivacySheet v-if="privacy" @close="privacy = false" />
   </AppPage>
 </template>
@@ -262,6 +313,15 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
       color: #586c5b;
       opacity: 1;
     }
+  }
+
+  .login-statistics-note {
+    display: block;
+    margin: -11.54rpx 0 23.08rpx;
+    color: #586c5b;
+    font-size: 20rpx;
+    line-height: 1.6;
+    text-align: center;
   }
 
   .login-error {

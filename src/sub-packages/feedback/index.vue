@@ -14,6 +14,9 @@ import AppState from '@/components/app-state/app-state.vue'
 import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useSceneList } from '@/composables/use-scene-list'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
 import { pageShare } from '@/services/page-share'
@@ -35,7 +38,12 @@ const list = useSceneList<FeedbackDetail>({
   ensure: () => account.ensure(Routes.FEEDBACK)
 })
 /** 通用反馈入口保留当前列表实例与滚动位置 */
-const create = () => uni.navigateTo({ url: Routes.FEEDBACK_CREATE })
+const create = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('feedback_create', Routes.FEEDBACK_CREATE)
+  // #endif
+  uni.navigateTo({ url: Routes.FEEDBACK_CREATE })
+}
 /** 打开同一反馈时间线，列表读取不标已读
  * @param id 本人反馈编号
  */

@@ -12,12 +12,18 @@ import SceneCard from '@/features/learning/components/scene-card.vue'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import ListeningArticleCard from '@/features/listening/components/listening-article-card.vue'
 import ListeningCollection from '@/features/listening/components/listening-collection.vue'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, session } from '@/services/api'
 import { dateText } from '@/services/display'
 import { pageShare } from '@/services/page-share'
 import { RECORDS_TAB_STORAGE_KEY } from '@/shared/constants/learning'
 import { LISTENING_API } from '@/shared/constants/listening'
 import { Routes } from '@/shared/constants/navigation'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsEvent } from '@/shared/enums/analytics'
+// #endif
 import { RecordsTab } from '@/shared/enums/learning'
 import { ListeningTimestampKind } from '@/shared/enums/listening'
 import { PageBackgroundKind } from '@/shared/enums/ui'
@@ -101,6 +107,9 @@ const expand = async (date: string) => {
     expanded.value = ''
     return
   }
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.track(AnalyticsEvent.CHECKIN_EXPAND)
+  // #endif
   expanded.value = date
   day.value = null
   dayError.value = ''
@@ -121,7 +130,10 @@ const expand = async (date: string) => {
  * @param value 目标标签
  */
 const select = (value: RecordsTab) => {
-  if (!session.userId()) return
+  if (!session.userId() || tab.value === value) return
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.track(AnalyticsEvent.TAB_CHANGE, { tab_id: value })
+  // #endif
   tab.value = value
   if (value === RecordsTab.LISTENING) listeningVisited.value = true
   uni.setStorageSync(RECORDS_TAB_STORAGE_KEY, value)

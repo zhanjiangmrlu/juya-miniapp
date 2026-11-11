@@ -5,10 +5,7 @@ const profile = (id: string) => ({
   id,
   nickname: id,
   avatar_id: null,
-  phone: null,
-  wechat_contact: null,
-  profile_version: 1,
-  contact_version: 1
+  profile_version: 1
 })
 beforeEach(() => {
   vi.resetModules()

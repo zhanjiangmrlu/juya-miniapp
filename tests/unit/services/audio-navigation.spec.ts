@@ -69,3 +69,19 @@ it('keeps scene audio through its image preview and back while stopping a later 
   expect(leave).toHaveBeenCalledOnce()
   release()
 })
+it('pauses protocol reading without leaving or discarding the audio session', async () => {
+  vi.stubGlobal('uni', {})
+  const pause = vi.fn(),
+    leave = vi.fn()
+  const release = registerBackgroundAudioNavigation({
+    title: '',
+    resume: async () => {},
+    leave,
+    pause
+  })
+  const { pauseBackgroundAudio } = await import('@/services/audio-navigation')
+  pauseBackgroundAudio()
+  expect(pause).toHaveBeenCalledOnce()
+  expect(leave).not.toHaveBeenCalled()
+  release()
+})

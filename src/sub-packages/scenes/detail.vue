@@ -18,6 +18,13 @@ import SceneAudioPlayer from '@/features/learning/components/scene-audio-player.
 import SceneDictionary from '@/features/learning/components/scene-dictionary.vue'
 import ShareSheet from '@/features/share/components/share-sheet.vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
+import { analytics } from '@/services/analytics'
+// #ifdef JUYA_ANALYTICS
+import { createAudioAnalytics } from '@/services/analytics-audio'
+// #endif
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, operations, session } from '@/services/api'
 import { createAudioController } from '@/services/audio-controller'
 import { createAudioPort } from '@/services/audio-port'
@@ -48,10 +55,18 @@ import {
 } from '@/services/source-queue'
 import { prepareAudioCacheFile, prepareWordAudioFile } from '@/services/word-audio-file'
 import { DICTIONARY_PREFETCH_SCROLL_DELAY_MS } from '@/shared/constants/dictionary'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { Routes } from '@/shared/constants/navigation'
+import {
+  // #ifdef JUYA_ANALYTICS
+  AnalyticsAction,
+  // #endif
+  AnalyticsEvent
+} from '@/shared/enums/analytics'
 import { AudioStatus } from '@/shared/enums/audio'
 import { QueueSource } from '@/shared/enums/learning'
 import { LearningAccessReason } from '@/shared/enums/learning-access'
+import { ConsentAction } from '@/shared/enums/privacy'
 import { ShareTarget } from '@/shared/enums/share'
 import { useAccountStore } from '@/stores/account-store'
 import { createAccessMonitor } from '@/sub-packages/scenes/access-monitor'
@@ -119,8 +134,15 @@ const browseOnly = runtimeMode.browseOnly,
   share = useNativeShare(),
   homeSummary = ref(false)
 // 原生分享属于编译期可选生命周期，必须直接在页面声明
-onShareAppMessage(() => ({ ...publicShare.friends() }))
-onShareTimeline(() => ({ ...publicShare.timeline() }))
+onShareAppMessage(() => {
+  analytics.track(AnalyticsEvent.SHARE_TRIGGER, { channel: 'friends', content_type: 'scene' })
+  return { ...publicShare.friends() }
+})
+onShareTimeline(() => {
+  analytics.track(AnalyticsEvent.SHARE_TRIGGER, { channel: 'timeline', content_type: 'scene' })
+  return { ...publicShare.timeline() }
+})
+let analyticsStartedId = ''
 let noteBodyRefresh = false,
   noteIntent = false,
   noteRecovery = false,
@@ -166,6 +188,17 @@ let id = '',
   originalSrc = '',
   imageRequest: Promise<string> | null = null,
   releaseImage: (() => void) | null = null
+// #ifdef JUYA_ANALYTICS
+let lastAccessError: unknown,
+  initialContentAttempt = true
+/** 当前卡片的有限统计维度，不读取正文 */
+const analyticsContext = () => ({
+  content_type: 'scene' as const,
+  content_id: id,
+  version_id: card.value?.version_id,
+  page_path: 'sub-packages/scenes/detail'
+})
+// #endif
 /** 暂停全部场景发音并撤销迟到点击，保留当前播放器和真实阅读状态 */
 const pauseForNote = () => {
   audioClickGeneration++
@@ -201,13 +234,23 @@ const note = createStudyNote({
   },
   download: downloadStudyNote,
   open: openStudyNoteDocument,
+  // #ifdef JUYA_ANALYTICS
+  onReady: () => businessAnalytics.track(AnalyticsEvent.STUDY_NOTE_READY, analyticsContext()),
+  onError: (reason, stage) =>
+    businessAnalytics.error(AnalyticsAction.STUDY_NOTE_OPEN, reason, analyticsContext(), stage),
+  // #endif
   invalid: (reason) => {
     if (reason instanceof ApiError && reason.status !== 409) void invalid(reason)
   }
 })
 /** 主动打开当前笔记，平台错误在标题区原位展示 */
 const openNote = () => {
-  if (!runtimeMode.update() && visible) void note.open()
+  if (runtimeMode.update() || !visible || !card.value || note.busy.value || note.locked.value)
+    return
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.track(AnalyticsEvent.STUDY_NOTE_OPEN, analyticsContext())
+  // #endif
+  void note.open()
 }
 const reading = useReadingPosition({
   scene: card,
@@ -232,6 +275,7 @@ const stopListeningForUserScroll = () => {
 }
 const dictionary = useSceneDictionary({
   context: () =>
+    LEARNING_FEATURES.dictionary &&
     !browseOnly.value &&
     !note.locked.value &&
     card.value &&
@@ -292,6 +336,10 @@ const completionLabel = computed(() => {
 })
 /** 反馈作为新的原生页面入栈，返回时保留当前译文和阅读实例 */
 const feedback = () => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry('scene_feedback', Routes.FEEDBACK_CREATE)
+  // #endif
+
   if (!session.userId()) {
     promptLogin(`${Routes.SCENE}?id=${encodeURIComponent(id)}`)
     return
@@ -367,14 +415,25 @@ const scheduleDictionaryPrefetch = () => {
     void prefetchDictionary()
   }, DICTIONARY_PREFETCH_SCROLL_DELAY_MS)
 }
-/** 正文展开后同步阅读锚点与可见词元优先级 */
-const refreshDialogue = () => {
+/** 正文展开后同步阅读锚点与可见词元优先级
+ * @param expanded 用户主动选择的译文状态，布局恢复时省略
+ */
+const refreshDialogue = (expanded?: boolean) => {
+  // #ifdef JUYA_ANALYTICS
+  if (typeof expanded === 'boolean')
+    businessAnalytics.track(AnalyticsEvent.TRANSLATION_TOGGLE, {
+      ...analyticsContext(),
+      expanded: Number(expanded)
+    })
+  // #endif
+
   void reading.refresh()
   void prefetchDictionary()
 }
 /** 正文音频由页面持有，弹窗开关不延长缓存或释放已下载文件 */
 const createDictionaryAudio = () => {
   if (
+    !LEARNING_FEATURES.dictionary ||
     dictionaryAudio ||
     note.locked.value ||
     !visible ||
@@ -457,7 +516,7 @@ const createAudio = () => {
         )
           return
         const prepared = fullAudio
-        if (prepared) await player.toggleFull(() => prepared.load())
+        if (prepared) await player.toggleFull(() => prepared.load(), 'system')
       },
       leave: stopAudio,
       keepOnNavigate: (url) =>
@@ -480,7 +539,14 @@ const createAudio = () => {
     () => {
       wordAudio?.cancelSelection?.()
       dictionary.cancelSpeech()
-    }
+    },
+    // #ifdef JUYA_ANALYTICS
+    createAudioAnalytics({
+      content_type: 'scene',
+      content_id: id,
+      version_id: current.version_id
+    })
+    // #endif
   )
   audio = player
   /** 确认两个准备任务仍属于当前页面、会话和发布版本 */
@@ -636,15 +702,47 @@ const accessMonitor = createAccessMonitor(
   },
   applyAccess,
   (reason) => {
+    // #ifdef JUYA_ANALYTICS
+    lastAccessError = reason
+    // #endif
     accessError.value = '权限暂未获取，请重试'
     stopAudio()
     if (reason instanceof ApiError && [403, 404, 409, 410].includes(reason.status))
       void invalid(reason)
   }
 )
-/** 当前受控操作执行前重新核对权限 */
-const checkAccess = async () => {
+/** 当前受控操作执行前重新核对权限
+ * @param action 明确用户操作的统计动作，后台核对和音频流程省略
+ */
+const checkAccess = async (
+  // #ifdef JUYA_ANALYTICS
+  action?: AnalyticsAction
+  // #endif
+) => {
+  // #ifdef JUYA_ANALYTICS
+  const run = generation,
+    owner = session.identity(),
+    properties = analyticsContext()
+  lastAccessError = undefined
+  // #endif
   const allowed = await accessMonitor.refresh()
+  // #ifdef JUYA_ANALYTICS
+  if (
+    action &&
+    (!allowed || stale.value || accessError.value) &&
+    alive &&
+    visible &&
+    owner === session.identity() &&
+    (run === generation ||
+      (summary.value?.id === properties.content_id &&
+        summary.value?.version_id === properties.version_id))
+  )
+    businessAnalytics.error(
+      action,
+      lastAccessError || new ApiError('forbidden', '', 403),
+      properties
+    )
+  // #endif
   return allowed && !stale.value && !accessError.value
 }
 /** 点击弹窗喇叭立即显示准备状态，由播放控制器并行核对当前权限 */
@@ -670,15 +768,45 @@ const setRate = async (value: number) => {
  * @param token 用户点击的完整英文词元
  */
 const lookup = async (token: DictionaryToken) => {
+  if (!LEARNING_FEATURES.dictionary) return
   if (note.locked.value || !visible) return
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.track(AnalyticsEvent.DICTIONARY_LOOKUP, {
+    ...analyticsContext(),
+    word_id: `${token.line_id}:${token.lookup?.start ?? token.start}:${token.lookup?.end ?? token.end}`
+  })
+  // #endif
   if (card.value?.access) {
-    if (!(await checkAccess())) return
+    if (
+      !(await checkAccess(
+        // #ifdef JUYA_ANALYTICS
+        AnalyticsAction.DICTIONARY_LOOKUP
+        // #endif
+      ))
+    )
+      return
     if (!card.value?.access?.can_lookup) {
+      // #ifdef JUYA_ANALYTICS
+      businessAnalytics.error(
+        AnalyticsAction.DICTIONARY_LOOKUP,
+        new ApiError('forbidden', '', 403),
+        analyticsContext()
+      )
+      // #endif
       uni.showModal({ title: '学习授权提示', content: '点词查询需学习授权', showCancel: false })
       return
     }
   }
-  if (!note.locked.value && visible) await dictionary.open(token)
+  // #ifdef JUYA_ANALYTICS
+  if (!session.userId() && alive && visible && !note.locked.value) {
+    businessAnalytics.error(
+      AnalyticsAction.DICTIONARY_LOOKUP,
+      new ApiError('unauthenticated', '', 401),
+      analyticsContext()
+    )
+  }
+  // #endif
+  if (!note.locked.value && visible) await dictionary.open(token, false)
 }
 /** 会话变化时释放私人文档和两路音频 */
 const releasePrivateMedia = () => {
@@ -858,6 +986,10 @@ const load = async () => {
   actionError.value = ''
   stale.value = false
   const run = ++generation
+  // #ifdef JUYA_ANALYTICS
+  const reportFailure = initialContentAttempt
+  initialContentAttempt = false
+  // #endif
   try {
     await account.restore()
     const prepared = !requiresIdentityCheck && takePreparedScene(queueId.value, id)
@@ -873,6 +1005,17 @@ const load = async () => {
     requiresIdentityCheck = false
     accessError.value = ''
     card.value = value
+    if (
+      visible &&
+      session.userId() &&
+      !restoringSnapshot &&
+      !noteRecovery &&
+      !noteBodyRefresh &&
+      analyticsStartedId !== id
+    ) {
+      analytics.track(AnalyticsEvent.CONTENT_OPEN, { content_type: 'scene', content_id: id })
+      analyticsStartedId = id
+    }
     if (value.access) void checkAccess()
     reviewOnEntry.value = value.state?.completed || false
     if (value.state?.today_completed) message.value = '今日已完成学习'
@@ -896,12 +1039,16 @@ const load = async () => {
       if (sameVersion) dialogueView.value?.restoreTranslation?.(snapshot.translation)
       await reading.restore(value, sameVersion ? snapshot.scroll : undefined)
       if (!sameVersion || !alive || run !== generation || card.value !== restoredCard) return
-      audio?.setRate(snapshot.playbackRate)
-      audio?.seekFull(snapshot.audioPosition)
+      audio?.setRate(snapshot.playbackRate, 'restore')
+      audio?.seekFull(snapshot.audioPosition, 'restore')
     })
     if (visible) void publicShare.prepare(id, value.version_id)
   } catch (reason) {
     if (!alive || run !== generation) return
+    // #ifdef JUYA_ANALYTICS
+    if (reportFailure && visible)
+      businessAnalytics.error(AnalyticsAction.CONTENT_OPEN, reason, analyticsContext())
+    // #endif
     if (restoringSnapshot && reason instanceof ApiError && [404, 410].includes(reason.status)) {
       restoringSnapshot = null
       returnSource()
@@ -978,7 +1125,21 @@ const playWord = (wordId: string) => {
 }
 /** 原图作为全屏覆盖页进入原生栈，系统返回只关闭覆盖层 */
 const previewImage = async () => {
-  if (card.value?.access && !(await checkAccess())) return
+  // #ifdef JUYA_ANALYTICS
+  const properties = analyticsContext(),
+    run = generation,
+    owner = session.identity()
+  if (card.value?.content.image_id) businessAnalytics.track(AnalyticsEvent.IMAGE_OPEN, properties)
+  // #endif
+  if (
+    card.value?.access &&
+    !(await checkAccess(
+      // #ifdef JUYA_ANALYTICS
+      AnalyticsAction.IMAGE_OPEN
+      // #endif
+    ))
+  )
+    return
   if (runtimeMode.update()) return
   if (!card.value?.content.image_id || stale.value) return
   imageOpen = true
@@ -1000,7 +1161,11 @@ const previewImage = async () => {
   })
   uni.navigateTo({
     url: `/sub-packages/scenes/image-preview?id=${encodeURIComponent(id)}`,
-    fail: () => {
+    fail: (reason: unknown) => {
+      // #ifdef JUYA_ANALYTICS
+      if (alive && visible && run === generation && owner === session.identity())
+        businessAnalytics.error(AnalyticsAction.IMAGE_OPEN, reason, properties)
+      // #endif
       imageOpen = false
       releaseImage?.()
     }
@@ -1008,8 +1173,37 @@ const previewImage = async () => {
 }
 /** 收藏或取消只改变整卡关联，未知响应保留原状态 */
 const toggleFavorite = async () => {
-  if (!(await account.ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`))) return
-  if (!favorite.value && card.value?.access && !(await checkAccess())) return
+  // #ifdef JUYA_ANALYTICS
+  const properties = analyticsContext(),
+    run = generation,
+    owner = session.identity()
+  // #endif
+  if (
+    !(await account.ensure(
+      `${Routes.SCENE}?id=${encodeURIComponent(id)}`,
+      ConsentAction.FAVORITE_SCENE
+    ))
+  ) {
+    // #ifdef JUYA_ANALYTICS
+    if (alive && visible && run === generation && owner === session.identity())
+      businessAnalytics.error(
+        AnalyticsAction.FAVORITE_CHANGE,
+        new ApiError('unauthenticated', '', 401),
+        properties
+      )
+    // #endif
+    return
+  }
+  if (
+    !favorite.value &&
+    card.value?.access &&
+    !(await checkAccess(
+      // #ifdef JUYA_ANALYTICS
+      AnalyticsAction.FAVORITE_CHANGE
+      // #endif
+    ))
+  )
+    return
   if (runtimeMode.update()) return
   if (favoriteBusy.value || stale.value) return
   favoriteBusy.value = true
@@ -1029,6 +1223,10 @@ const toggleFavorite = async () => {
       await refreshState()
     }
   } catch (reason) {
+    // #ifdef JUYA_ANALYTICS
+    if (alive && visible && run === generation && owner === session.identity())
+      businessAnalytics.error(AnalyticsAction.FAVORITE_CHANGE, reason, properties)
+    // #endif
     await invalid(reason)
     actionError.value = reason instanceof Error ? reason.message : '收藏暂未成功，请重试'
   } finally {
@@ -1064,9 +1262,37 @@ const probeQueueEnd = async () => {
 }
 /** 主动确认完成或复习，服务器成功后再读取可信统计 */
 const complete = async () => {
-  if (!(await account.ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`))) return
+  // #ifdef JUYA_ANALYTICS
+  const properties = analyticsContext(),
+    run = generation,
+    owner = session.identity()
+  // #endif
+  if (
+    !(await account.ensure(
+      `${Routes.SCENE}?id=${encodeURIComponent(id)}`,
+      ConsentAction.COMPLETE_SCENE
+    ))
+  ) {
+    // #ifdef JUYA_ANALYTICS
+    if (alive && visible && run === generation && owner === session.identity())
+      businessAnalytics.error(
+        AnalyticsAction.LEARNING_COMPLETE,
+        new ApiError('unauthenticated', '', 401),
+        properties
+      )
+    // #endif
+    return
+  }
   if (runtimeMode.update()) return
-  if (card.value?.access && !(await checkAccess())) return
+  if (
+    card.value?.access &&
+    !(await checkAccess(
+      // #ifdef JUYA_ANALYTICS
+      AnalyticsAction.LEARNING_COMPLETE
+      // #endif
+    ))
+  )
+    return
   if (accessError.value) return
   if (checkPendingCompletion()) return
   if (
@@ -1098,12 +1324,24 @@ const complete = async () => {
       actionError.value = '学习记录已保存，当前状态暂未更新，请刷新确认'
     } else await probeQueueEnd()
   } catch (reason) {
+    // #ifdef JUYA_ANALYTICS
+    if (alive && visible && run === generation && owner === session.identity())
+      businessAnalytics.error(AnalyticsAction.LEARNING_COMPLETE, reason, properties)
+    // #endif
     await invalid(reason)
     awaitingState.value = Boolean(session.userId()) && operations.pending(`complete:${id}`)
     actionError.value = reason instanceof Error ? reason.message : '完成结果暂未确认，请查询或重试'
   } finally {
     completeBusy.value = false
   }
+}
+/** 用户明确重试正文，自动刷新不走此入口 */
+const retryLoad = () => {
+  if (busy.value) return
+  // #ifdef JUYA_ANALYTICS
+  initialContentAttempt = true
+  // #endif
+  return load()
 }
 /** 查询本人待确认操作，成功后刷新当前状态，不能自行补记日期 */
 const recover = async () => {
@@ -1131,6 +1369,12 @@ const advance = async () => {
     learn()
     return
   }
+  // #ifdef JUYA_ANALYTICS
+  const properties = analyticsContext(),
+    run = generation,
+    owner = session.identity()
+  businessAnalytics.track(AnalyticsEvent.CONTENT_NEXT, properties)
+  // #endif
   nextBusy.value = true
   nextError.value = ''
   try {
@@ -1194,6 +1438,10 @@ const advance = async () => {
       throw reason
     }
   } catch (reason) {
+    // #ifdef JUYA_ANALYTICS
+    if (alive && visible && run === generation && owner === session.identity())
+      businessAnalytics.error(AnalyticsAction.CONTENT_NEXT, reason, properties)
+    // #endif
     nextError.value = reason instanceof Error ? reason.message : '下一张暂未获取，请重试'
   } finally {
     nextBusy.value = false
@@ -1367,11 +1615,15 @@ onUnload(() => {
 <template>
   <AppPage
     :title="
-      summary?.access?.reason === LearningAccessReason.REQUIRED
-        ? '学习授权提示'
-        : summary
-          ? '场景卡暂不可用'
-          : '场景学习'
+      summary?.access?.reason === LearningAccessReason.NOT_OPEN ||
+      (!LEARNING_FEATURES.authorization &&
+        summary?.access?.reason === LearningAccessReason.REQUIRED)
+        ? '暂未开放'
+        : summary?.access?.reason === LearningAccessReason.REQUIRED
+          ? '学习授权提示'
+          : summary
+            ? '场景卡暂不可用'
+            : '场景学习'
     "
     :back="!browseOnly"
     :custom-back="Boolean(queueSource)"
@@ -1391,7 +1643,7 @@ onUnload(() => {
       "
       :busy="!homeSummary && publicShare.busy.value"
       :error="homeSummary ? '' : publicShare.error.value || error"
-      @retry="load"
+      @retry="retryLoad"
     />
     <view
       v-else
@@ -1399,13 +1651,13 @@ onUnload(() => {
       @touchmove="reading.startUserScroll"
       @wheel="reading.startUserScroll"
       @keydown="reading.startUserScroll"
-      ><AppState :busy="busy && !card" :error="error" @retry="load" /><view
+      ><AppState :busy="busy && !card" :error="error" @retry="retryLoad" /><view
         v-if="accessError"
         class="notice error"
-        >{{ accessError }}<button @click="checkAccess">重试权限</button></view
+        >{{ accessError }}<button @click="checkAccess()">重试权限</button></view
       ><template v-if="stale"
         ><view class="notice">内容已更新，请重新获取后继续学习</view
-        ><button class="primary" @click="load">刷新内容</button></template
+        ><button class="primary" @click="retryLoad">刷新内容</button></template
       ><SceneUnavailable
         v-else-if="summary"
         :summary="summary"
@@ -1441,11 +1693,18 @@ onUnload(() => {
               card.content.title_en
             }}</text></view
           ><view
-            v-if="card.access || card.study_note?.state === 'ready'"
+            v-if="
+              (card.access && (LEARNING_FEATURES.authorization || card.access.is_free)) ||
+              card.study_note?.state === 'ready'
+            "
             class="scene-state-line"
             :class="{ 'has-note': card.study_note?.state === 'ready' }"
-            ><text v-if="card.access">{{
-              card.access.can_lookup ? '授权有效' : card.access.is_free ? '免费开放' : '授权有效'
+            ><text v-if="card.access && (LEARNING_FEATURES.authorization || card.access.is_free)">{{
+              LEARNING_FEATURES.authorization && card.access.can_lookup
+                ? '授权有效'
+                : card.access.is_free
+                  ? '免费开放'
+                  : '授权有效'
             }}</text
             ><button
               v-if="card.study_note?.state === 'ready'"
@@ -1501,7 +1760,9 @@ onUnload(() => {
             @toggle="playFull"
             @seek="seekFull"
             @rate="setRate" /></view
-        ><view v-if="card.access && !card.access.can_lookup" class="lookup-hint"
+        ><view
+          v-if="LEARNING_FEATURES.dictionary && card.access && !card.access.can_lookup"
+          class="lookup-hint"
           >正文点词查询需学习授权</view
         ><SceneDialogue
           ref="dialogueView"

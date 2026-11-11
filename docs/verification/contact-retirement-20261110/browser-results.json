@@ -1,0 +1,100 @@
+{
+  "kind": "isolated-browser-fixtures",
+  "results": [
+    {
+      "state": "guest",
+      "redirect": "/pages/profile/index",
+      "requests": []
+    },
+    {
+      "state": "active",
+      "redirect": "/pages/profile/index",
+      "requests": [
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/learning-access",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me/statistics",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/learning-access",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me/statistics",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "state": "none",
+      "redirect": "/pages/profile/index",
+      "requests": [
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/learning-access",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me/statistics",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/learning-access",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me/statistics",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "state": "expired",
+      "redirect": "/pages/profile/index",
+      "requests": [
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        }
+      ]
+    }
+  ]
+}

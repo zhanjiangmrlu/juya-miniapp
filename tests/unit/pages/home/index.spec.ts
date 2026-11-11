@@ -2,6 +2,8 @@
 import { shallowMount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 
+import { analytics } from '@/services/analytics'
+
 vi.mock('@/services/navigation', () => ({ backTo: vi.fn() }))
 vi.mock('@/services/api', () => ({
   onSessionExpired: () => () => undefined,
@@ -53,4 +55,31 @@ it('uses the environment static host for its hashed home decoration', () => {
     /^https:\/\/juya-test\.oss-cn-shenzhen\.aliyuncs\.com\/miniapp\/static\/listening\/home-watercolor-[a-f0-9]{12}@3x\.jpg$/
   )
   page.unmount()
+})
+
+it('records the chosen home entry once with a route-only destination', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  vi.stubGlobal('uni', { navigateTo: vi.fn() })
+  const page = shallowMount(Home, {
+    global: {
+      stubs: {
+        AppPage: { template: '<view><slot /></view>' },
+        'scroll-view': { template: '<view><slot /></view>' }
+      }
+    }
+  })
+  try {
+    await page.get('.scene-module').trigger('click')
+    expect(track).toHaveBeenCalledWith(
+      'entry_click',
+      expect.objectContaining({
+        entry_source: 'home_learning',
+        target_page: 'pages/learning/index'
+      })
+    )
+  } finally {
+    page.unmount()
+    track.mockRestore()
+    vi.unstubAllGlobals()
+  }
 })

@@ -2,6 +2,8 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
+import { analytics } from '@/services/analytics'
+
 const ports = vi.hoisted(() => ({
   owner: 'owner-1',
   expired: undefined as undefined | (() => void),
@@ -312,4 +314,20 @@ it('does not replay an all-category snapshot after identity invalidates during r
   home.resolve({ categories: [{ id: 'c1' }], continue_learning: null })
   await loading
   expect(model.scrollTop.value).toBe(0)
+})
+
+it('records only an actual user category change, not initial loading or restoration', async () => {
+  const track = vi.spyOn(analytics, 'track')
+  try {
+    model = useListeningCatalog()
+    await model.load()
+    expect(track.mock.calls.filter(([event]) => event === 'category_select')).toEqual([])
+    await model.select('c2')
+    await model.select('c2')
+    expect(track.mock.calls.filter(([event]) => event === 'category_select')).toEqual([
+      ['category_select', expect.objectContaining({ category_id: 'c2', content_type: 'listening' })]
+    ])
+  } finally {
+    track.mockRestore()
+  }
 })

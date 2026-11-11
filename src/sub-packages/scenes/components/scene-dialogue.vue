@@ -3,6 +3,7 @@ import { ref } from 'vue'
 
 import { useReadingAnchors } from '@/composables/use-reading-anchors'
 import { SCENE_HIGHLIGHT_COLORS } from '@/shared/constants/learning'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import SceneSectionHeading from '@/sub-packages/scenes/components/scene-section-heading.vue'
 import { dictionaryGroups, dictionaryTokens } from '@/sub-packages/scenes/scene-model'
 
@@ -10,7 +11,7 @@ import type { SceneDialogueProps } from '@/shared/types/learning-components'
 defineProps<SceneDialogueProps>()
 const translated = ref(false)
 const emit = defineEmits<{
-  layout: []
+  layout: [expanded: boolean]
   lookup: [token: import('@/shared/types/dictionary').DictionaryToken]
 }>()
 const { measureReading } = useReadingAnchors()
@@ -24,7 +25,7 @@ defineExpose({ measureReading, translated, restoreTranslation })
 /** 展开全文译文后通知详情重新测量正文布局 */
 const toggleTranslation = () => {
   translated.value = !translated.value
-  emit('layout')
+  emit('layout', translated.value)
 }
 </script>
 <template>
@@ -38,7 +39,25 @@ const toggleTranslation = () => {
       :class="{ 'long-speaker': line.speaker.length > 2, alternate: lineIndex % 2 === 1 }"
     >
       <text class="speaker">{{ line.speaker }}</text>
-      <view class="english"
+      <view v-if="!LEARNING_FEATURES.dictionary" class="english">
+        <text selectable :user-select="true"
+          ><text
+            v-for="(group, groupIndex) in dictionaryGroups(dictionaryTokens(line, vocabulary))"
+            :key="groupIndex"
+            :class="{ highlight: group.highlight }"
+            :style="
+              group.highlight
+                ? {
+                    backgroundColor:
+                      SCENE_HIGHLIGHT_COLORS[group.colorIndex % SCENE_HIGHLIGHT_COLORS.length]
+                  }
+                : undefined
+            "
+            >{{ group.tokens.map((part) => part.text).join('') }}</text
+          ></text
+        >
+      </view>
+      <view v-else class="english"
         ><text
           v-for="(group, groupIndex) in dictionaryGroups(dictionaryTokens(line, vocabulary))"
           :key="groupIndex"

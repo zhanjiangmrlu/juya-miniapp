@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-
-import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vue'
 import { openLogin } from '@/services/navigation'
 import { Routes } from '@/shared/constants/navigation'
 
@@ -12,7 +9,8 @@ defineProps<{
   icon: string
   showPrivacy?: boolean
 }>()
-const privacy = ref(false)
+/** 游客无需登录打开公开设置 */
+const openSettings = () => uni.navigateTo({ url: `${Routes.SETTINGS}?source=profile` })
 /** 游客说明页主动返回免费内容入口 */
 const browse = () => uni.switchTab({ url: Routes.HOME })
 </script>
@@ -25,10 +23,7 @@ const browse = () => uni.switchTab({ url: Routes.HOME })
     <text class="description">{{ description }}</text>
     <button class="primary" @click="openLogin(target)">登录</button>
     <button class="secondary" @click="browse">继续浏览免费内容</button>
-    <button v-if="showPrivacy" class="text-button privacy-link" @click="privacy = true">
-      隐私说明
-    </button>
-    <AppPrivacySheet v-if="privacy" @close="privacy = false" />
+    <button v-if="showPrivacy" class="text-button privacy-link" @click="openSettings">设置</button>
   </view>
 </template>
 <style scoped lang="scss">

@@ -30,4 +30,6 @@ export interface StudyNotePorts {
   refreshBody?: () => Promise<void>
   download: (url: string, identity: string, task: StudyNoteTask) => Promise<StudyNoteFile>
   open: (path: string) => Promise<void>
+  onReady?: () => void
+  onError?: (reason: unknown, stage: 'validation' | 'download' | 'open') => void
 }

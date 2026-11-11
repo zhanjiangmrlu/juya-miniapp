@@ -98,6 +98,18 @@
           "style": {
             "navigationStyle": "custom"
           }
+        },
+        {
+          "path": "policy",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "settings",
+          "style": {
+            "navigationStyle": "custom"
+          }
         }
       ]
     },

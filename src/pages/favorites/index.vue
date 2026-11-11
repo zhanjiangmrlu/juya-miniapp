@@ -19,9 +19,15 @@ import { useSceneList } from '@/composables/use-scene-list'
 import SceneCard from '@/features/learning/components/scene-card.vue'
 import SceneListFooter from '@/features/learning/components/scene-list-footer.vue'
 import ListeningCollection from '@/features/listening/components/listening-collection.vue'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, session } from '@/services/api'
 import { pageShare } from '@/services/page-share'
 import { Routes } from '@/shared/constants/navigation'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsEvent } from '@/shared/enums/analytics'
+// #endif
 import { ContentType } from '@/shared/enums/listening'
 import { useAccountStore } from '@/stores/account-store'
 
@@ -29,6 +35,16 @@ import type { components } from '@/shared/contracts/generated/mini-api'
 
 const pageShareEntry = usePageShareEntry()
 const kind = ref<ContentType>(ContentType.SCENE)
+/** 切换收藏类型只记录主动改变
+ * @param value 用户选择的场景或听读收藏
+ */
+const selectKind = (value: ContentType) => {
+  if (kind.value === value) return
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.track(AnalyticsEvent.TAB_CHANGE, { tab_id: value })
+  // #endif
+  kind.value = value
+}
 const account = useAccountStore()
 const {
   items: cards,
@@ -100,13 +116,13 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
       ><button
         class="tab-button"
         :class="{ active: kind === ContentType.SCENE }"
-        @click="kind = ContentType.SCENE"
+        @click="selectKind(ContentType.SCENE)"
       >
         场景</button
       ><button
         class="tab-button"
         :class="{ active: kind === ContentType.LISTENING }"
-        @click="kind = ContentType.LISTENING"
+        @click="selectKind(ContentType.LISTENING)"
       >
         听读
       </button></view

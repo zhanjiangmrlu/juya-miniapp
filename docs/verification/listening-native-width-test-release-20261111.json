@@ -1,0 +1,59 @@
+{
+  "version": "1.5.0-test.20261111.195719",
+  "environment": "test",
+  "status": "success",
+  "source": "c8efb29ae6a80d3c6c535983e9fc00820d8a2b93",
+  "package": "dist/test-release/12fd562b-8f31-4931-92f7-d0df237390be",
+  "pages": 20,
+  "tabs": 3,
+  "test_api_present": true,
+  "production_api_present": false,
+  "sdk_network_present": false,
+  "update_manager_present": true,
+  "native_indent_removed": true,
+  "paragraph_block_bounds_present": true,
+  "overflow_clipping_removed": true,
+  "official_receipt_sha256": "af3a8ba8b51b537f4995e3bd74fa76403281330a5f22ad29740368353534ff1a",
+  "experience_version_switched": false,
+  "tests": {
+    "files": 140,
+    "passed": 844
+  },
+  "check_passed": true,
+  "native_layout": {
+    "width": 390,
+    "nodeCount": 555,
+    "viewport": [
+      {
+        "id": "",
+        "dataset": {},
+        "scrollLeft": 0,
+        "scrollTop": 0,
+        "scrollWidth": 390,
+        "scrollHeight": 1765
+      }
+    ],
+    "overflow": []
+  },
+  "test_runtime": {
+    "admin": {
+      "status": "ready",
+      "service": "admin",
+      "environment": "test"
+    },
+    "mini": {
+      "status": "ready",
+      "service": "mini",
+      "environment": "test"
+    },
+    "runtime": {
+      "healthy_services": 7,
+      "source": "81f877673d42aa616d8f0e3f29f331f5333834f0",
+      "protected_containers_unchanged": true,
+      "new_api_deployment": false
+    }
+  },
+  "physical_phone_gestures_verified": false,
+  "new_analytics_events": false,
+  "sample_txt_updated": false
+}

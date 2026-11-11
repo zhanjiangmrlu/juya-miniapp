@@ -12,6 +12,9 @@ import { computed, nextTick, ref, watch } from 'vue'
 import AppLoading from '@/components/app-loading/app-loading.vue'
 import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import ShareSummary from '@/features/share/components/share-summary.vue'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { session } from '@/services/api'
 import { ApiError } from '@/services/errors'
 import { mediaAddress } from '@/services/media-service'
@@ -21,6 +24,7 @@ import { pageShare } from '@/services/page-share'
 import { resourceURL, sendPublicRequest } from '@/services/platform'
 import { runtimeMode } from '@/services/runtime-mode'
 import { shareTargetURL } from '@/services/share-service'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { IMAGE_MAX_SCALE, IMAGE_MIN_SCALE } from '@/shared/constants/media'
 import { Routes } from '@/shared/constants/navigation'
 import {
@@ -28,6 +32,9 @@ import {
   PAGE_SHARE_TIMELINE,
   SHARE_ID_PATTERN
 } from '@/shared/constants/share'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsAction } from '@/shared/enums/analytics'
+// #endif
 import { ShareTarget } from '@/shared/enums/share'
 import { createAccessMonitor } from '@/sub-packages/scenes/access-monitor'
 import {
@@ -58,6 +65,56 @@ const browseOnly = runtimeMode.browseOnly,
 let context: ImagePreviewContext | null = null,
   alive = true,
   targetId = ''
+// #ifdef JUYA_ANALYTICS
+let analyticsVisible = true,
+  analyticsView = 0
+/** 捕获当前用户查看的原图范围，不读取原图地址 */
+const observeImage = () => {
+  try {
+    return {
+      owner: session.identity(),
+      view: analyticsView,
+      generation: imageGeneration.value,
+      context,
+      failed: false,
+      properties: {
+        content_type: 'scene' as const,
+        content_id: context?.cardId,
+        version_id: context?.versionId
+      }
+    }
+  } catch {
+    return undefined
+  }
+}
+let imageObservation: ReturnType<typeof observeImage> | undefined
+/** 一个有效图片代次只记录一次失败，离页和换号后的回调直接丢弃
+ * @param reason 当前下载或绘制失败
+ * @param run 失败图片的原请求代次
+ * @param stage 下载或原生绘制阶段
+ */
+const recordImageError = (reason: unknown, run: number, stage: 'download' | 'open') => {
+  try {
+    const attempt = imageObservation
+    if (
+      !attempt ||
+      attempt.failed ||
+      !alive ||
+      !analyticsVisible ||
+      run !== imageGeneration.value ||
+      attempt.generation !== run ||
+      attempt.view !== analyticsView ||
+      attempt.context !== context ||
+      attempt.owner !== session.identity()
+    )
+      return
+    attempt.failed = true
+    businessAnalytics.error(AnalyticsAction.IMAGE_OPEN, reason, attempt.properties, stage)
+  } catch {
+    /* 观察端口不可用时保留原图业务结果 */
+  }
+}
+// #endif
 const accessMonitor = createAccessMonitor(
   async () => {
     const owner = session.identity(),
@@ -86,7 +143,13 @@ const accessMonitor = createAccessMonitor(
     if (!value.access.can_learn && context) {
       imageGeneration.value++
       src.value = ''
-      context.onInvalid(new ApiError('learning_authorization_required', '此场景需学习授权', 403))
+      context.onInvalid(
+        new ApiError(
+          LEARNING_FEATURES.authorization ? 'learning_authorization_required' : 'content_not_open',
+          LEARNING_FEATURES.authorization ? '此场景需学习授权' : '暂未开放',
+          403
+        )
+      )
       close()
     }
   },
@@ -122,6 +185,9 @@ const load = async (reuse = false) => {
   if (runtimeMode.update()) return
   if (!context || busy.value) return
   const run = ++imageGeneration.value
+  // #ifdef JUYA_ANALYTICS
+  imageObservation = observeImage()
+  // #endif
   busy.value = true
   error.value = ''
   src.value = ''
@@ -136,6 +202,9 @@ const load = async (reuse = false) => {
     if (alive && run === imageGeneration.value && !runtimeMode.update()) src.value = value
   } catch (reason) {
     if (!alive || run !== imageGeneration.value || runtimeMode.update()) return
+    // #ifdef JUYA_ANALYTICS
+    recordImageError(reason, run, 'download')
+    // #endif
     imageLoading.value = false
     if (reason instanceof ApiError && [401, 403, 404, 409, 410].includes(reason.status)) {
       context.onInvalid(reason)
@@ -150,6 +219,9 @@ const load = async (reuse = false) => {
  */
 const imageFailed = async (run: number) => {
   if (!alive || run !== imageGeneration.value || runtimeMode.update()) return
+  // #ifdef JUYA_ANALYTICS
+  recordImageError(new ApiError('image_render_failed', ''), run, 'open')
+  // #endif
   imageLoading.value = false
   error.value = '大图暂未加载，点击重试'
   const active = context
@@ -208,14 +280,26 @@ onLoad((query) => {
     error.value = '请从场景详情打开图片'
     return
   }
+  // #ifdef JUYA_ANALYTICS
+  imageObservation = observeImage()
+  // #endif
   if (context.loadSource) void load(true)
   else if (context.initialSrc) {
     src.value = context.initialSrc
     imageLoading.value = true
   } else void load()
 })
-onHide(() => setShareMenu(false))
+onHide(() => {
+  // #ifdef JUYA_ANALYTICS
+  analyticsVisible = false
+  analyticsView++
+  // #endif
+  setShareMenu(false)
+})
 onShow(() => {
+  // #ifdef JUYA_ANALYTICS
+  analyticsVisible = true
+  // #endif
   if (pageShareEntry.value) return
   setShareMenu(true)
   if (runtimeMode.update()) restrict()

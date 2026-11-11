@@ -1,6 +1,13 @@
 // @vitest-environment happy-dom
 import { mount } from '@vue/test-utils'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
+// 显式启用保留的旧功能，继续验证未来恢复时的原有行为
+const learningFeatures = vi.hoisted(() => ({
+  authorization: true,
+  dictionary: true,
+  listeningSync: true
+}))
+vi.mock('@/shared/constants/learning-features', () => ({ LEARNING_FEATURES: learningFeatures }))
 
 import ListeningBody from '@/sub-packages/listening/components/listening-body.vue'
 

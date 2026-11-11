@@ -31,18 +31,14 @@ vi.mock('@/stores/account-store', () => ({
     restore: async () => ({
       id: 'A',
       nickname: 'Private learner',
-      phone: '13800000000',
-      wechat_contact: 'isolated-contact',
       avatar_id: null,
-      profile_version: 1,
-      contact_version: 1
+      profile_version: 1
     }),
     acceptProfile: vi.fn(),
     refreshAvatar: async () => undefined,
     avatarURL: ''
   })
 }))
-import Contact from '@/sub-packages/account/contact-edit.vue'
 import Identity from '@/sub-packages/account/identity-edit.vue'
 beforeEach(() => {
   ports.request.mockReset().mockResolvedValue({ avatar_limit_bytes: 1024 })
@@ -53,7 +49,7 @@ beforeEach(() => {
     getFileInfo: vi.fn()
   })
 })
-it.each([Contact, Identity])(
+it.each([Identity])(
   'clears visible private editing inputs immediately when identity expires',
   async (component) => {
     const page = shallowMount(component, {

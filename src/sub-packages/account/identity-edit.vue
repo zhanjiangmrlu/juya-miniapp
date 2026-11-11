@@ -11,12 +11,18 @@ import AppUnsavedDialog from '@/components/app-unsaved-dialog/app-unsaved-dialog
 import { usePageShareEntry } from '@/composables/use-page-share-entry'
 import { useUnsavedGuard } from '@/composables/use-unsaved-guard'
 import { rebaseIdentity } from '@/features/profile/identity-model'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, operations, session } from '@/services/api'
 import { ApiError, isUnconfirmedFailure } from '@/services/errors'
 import { waitForMedia } from '@/services/media-processing'
 import { pageShare } from '@/services/page-share'
 import { operationKey } from '@/services/platform'
 import { Routes } from '@/shared/constants/navigation'
+// #ifdef JUYA_ANALYTICS
+import { AnalyticsAction } from '@/shared/enums/analytics'
+// #endif
 import { MediaState } from '@/shared/enums/media'
 import { PageBackgroundKind } from '@/shared/enums/ui'
 import { useAccountStore } from '@/stores/account-store'
@@ -133,7 +139,12 @@ const upload = async () => {
     if (value.state !== MediaState.READY) throw new Error('头像仍在处理，可稍后继续查询')
     avatarId.value = value.id
   } catch (reason) {
-    if (alive) uploadError.value = reason instanceof Error ? reason.message : '头像上传失败，请重试'
+    if (alive) {
+      // #ifdef JUYA_ANALYTICS
+      businessAnalytics.error(AnalyticsAction.AVATAR_UPLOAD, reason, {}, 'upload')
+      // #endif
+      uploadError.value = reason instanceof Error ? reason.message : '头像上传失败，请重试'
+    }
   } finally {
     if (alive) uploading.value = false
   }
@@ -166,6 +177,14 @@ const chooseImage = () =>
 const save = async () => {
   if (!base.value || busy.value) return false
   if (uploadError.value || (selectedPath.value && avatarId.value === base.value.avatar_id)) {
+    // #ifdef JUYA_ANALYTICS
+    businessAnalytics.error(
+      AnalyticsAction.PROFILE_SAVE,
+      new ApiError('invalid', '', 422),
+      {},
+      'validation'
+    )
+    // #endif
     error.value = '请先完成头像上传，再保存资料'
     return false
   }
@@ -190,6 +209,9 @@ const save = async () => {
     return true
   } catch (reason) {
     if (alive) {
+      // #ifdef JUYA_ANALYTICS
+      businessAnalytics.error(AnalyticsAction.PROFILE_SAVE, reason)
+      // #endif
       error.value = reason instanceof Error ? reason.message : '保存暂未成功'
       unknown.value = isUnconfirmedFailure(reason)
       conflict.value = reason instanceof ApiError && reason.code === 'profile_changed'
@@ -256,7 +278,12 @@ const recover = async () => {
       }
     } else error.value = '尚未查询到结果，可重试原操作'
   } catch (reason) {
-    if (alive) error.value = reason instanceof Error ? reason.message : '结果暂未确认'
+    if (alive) {
+      // #ifdef JUYA_ANALYTICS
+      businessAnalytics.error(AnalyticsAction.PROFILE_SAVE, reason)
+      // #endif
+      error.value = reason instanceof Error ? reason.message : '结果暂未确认'
+    }
   } finally {
     if (alive) saving.value = false
   }

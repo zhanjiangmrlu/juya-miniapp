@@ -31,3 +31,8 @@ export const registerBackgroundAudioNavigation = (options: FullAudioOptions) => 
     if (current === options) current = null
   }
 }
+
+/** 进入协议阅读前暂停现有音轨，保留位置等待用户主动续播 */
+export const pauseBackgroundAudio = () => {
+  current?.pause?.()
+}

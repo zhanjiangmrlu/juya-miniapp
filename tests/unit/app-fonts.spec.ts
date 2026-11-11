@@ -129,7 +129,7 @@ it.each([
 })
 
 it('uses the existing system font stack when the native font API is unavailable', async () => {
-  vi.stubGlobal('uni', {})
+  vi.stubGlobal('uni', { getStorageSync: () => undefined })
   const { wrapper, result } = await boot()
   expect(result).toBeUndefined()
   expect(ports.syncMode).toHaveBeenCalledOnce()

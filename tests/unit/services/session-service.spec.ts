@@ -35,11 +35,8 @@ const setup = () => {
 const user = {
   id: 'stable-user',
   nickname: '学习者',
-  phone: null,
-  wechat_contact: null,
   avatar_id: null,
-  profile_version: 1,
-  contact_version: 1
+  profile_version: 1
 }
 
 describe('voluntary WeChat identity', () => {
@@ -222,4 +219,29 @@ it('does not let the content channel call personal endpoints', async () => {
     code: 'content_path_invalid'
   })
   expect(f.send).not.toHaveBeenCalled()
+})
+it('freezes published login agreement and statistics choice until an unknown result is confirmed', async () => {
+  const f = setup()
+  const confirmation = {
+    confirmation_id: 'fixture-confirm',
+    terms_version: 't1',
+    privacy_version: 'p1',
+    client_confirmed_at: '2026-11-10T00:00:00Z',
+    source: 'account_action'
+  }
+  f.send
+    .mockRejectedValueOnce(new Error('offline'))
+    .mockResolvedValueOnce({ status: 200, data: { access_token: 'mini_ok', expires_at: '', user } })
+  await expect(
+    f.service.login(true, {
+      agreement_confirmation: confirmation,
+      analytics_choice: { enabled: true, scope_version: 'a1' }
+    })
+  ).rejects.toThrow()
+  await f.service.login(true, {
+    agreement_confirmation: { ...confirmation, confirmation_id: 'different' },
+    analytics_choice: { enabled: false, scope_version: 'a1' }
+  })
+  expect(f.send.mock.calls[1][0].body).toEqual(f.send.mock.calls[0][0].body)
+  expect(f.send.mock.calls[0][0].body.agreement_confirmation).toEqual(confirmation)
 })

@@ -4,6 +4,8 @@ import { computed, ref, watch } from 'vue'
 
 import AppLoginPrompt from '@/components/app-login-prompt/app-login-prompt.vue'
 import ShareSummary from '@/features/share/components/share-summary.vue'
+import { analytics } from '@/services/analytics'
+import { readingPolicy } from '@/services/consent-coordinator'
 import { dismissLoginPrompt } from '@/services/login-prompt'
 import { setShareMenu } from '@/services/native-share'
 import { backTo } from '@/services/navigation'
@@ -82,6 +84,10 @@ const emit = defineEmits<{ back: [] }>()
 const browseOnly = runtimeMode.browseOnly
 let visible = false
 onShow(() => {
+  if (!visible && !browseOnly.value)
+    analytics.track('page_enter', {
+      page_path: typeof getCurrentPages === 'undefined' ? '' : getCurrentPages().at(-1)?.route || ''
+    })
   visible = true
   // 同步原生窗口的上下回弹区和安全区，避免真机露出默认白底
   // #ifdef MP-WEIXIN
@@ -94,7 +100,7 @@ onShow(() => {
   setShareMenu(props.shareable ? props.shareChannels || true : false)
 })
 onHide(() => {
-  dismissLoginPrompt()
+  if (!readingPolicy.value) dismissLoginPrompt()
   visible = false
   setShareMenu(false)
 })

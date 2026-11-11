@@ -6,10 +6,16 @@ import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
 import AppPage from '@/components/app-page/app-page.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import { getListeningHome } from '@/features/listening/listening-service'
+// #ifdef JUYA_ANALYTICS
+import { businessAnalytics } from '@/services/analytics-business'
+// #endif
 import { onSessionExpired, session } from '@/services/api'
+import { considerHomeConsent } from '@/services/consent-coordinator'
+import { promptLogin } from '@/services/login-prompt'
 import { loginReturn } from '@/services/login-return'
 import { openLogin } from '@/services/navigation'
 import { pageShare } from '@/services/page-share'
+import { privacy } from '@/services/privacy'
 import { HOME_BACKGROUND_IMAGE_URL } from '@/shared/constants/brand'
 import { LISTENING_SERIES } from '@/shared/constants/home'
 import { Routes } from '@/shared/constants/navigation'
@@ -53,9 +59,21 @@ const pullRefresh = async () => {
 /** 打开选定的真实学习模块
  * @param path 场景或主题听读的已注册页面
  */
-const open = (path: string) => uni.navigateTo({ url: path })
+const open = (path: string) => {
+  // #ifdef JUYA_ANALYTICS
+  businessAnalytics.entry(path === Routes.LEARNING ? 'home_learning' : 'home_listening', path)
+  // #endif
+  uni.navigateTo({ url: path })
+}
 onShow(() => {
   visible = true
+  void account
+    .restore()
+    .then(async (value) => {
+      if (value && privacy.published()) await privacy.restore(value.id)
+      if (visible) await considerHomeConsent(promptLogin, () => visible)
+    })
+    .catch(() => undefined)
   loginReturn.register(
     Routes.HOME,
     () => ({
