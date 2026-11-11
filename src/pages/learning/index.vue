@@ -329,7 +329,8 @@ onUnload(() => {
           >
             登录<image src="/static/design/profile-chevron.svg" mode="aspectFit" /></button></view
         ><text v-else class="learner-status"
-          >{{ account.profile?.nickname || '学习者' }} · {{ authorizationLabel }} ·
+          >{{ account.profile?.nickname || '学习者'
+          }}{{ LEARNING_FEATURES.authorization ? ` · ${authorizationLabel}` : '' }} ·
           {{
             account.statistics
               ? account.statistics.checked_in_today

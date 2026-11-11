@@ -214,7 +214,11 @@ onBeforeUnmount(() => {
           LEARNING_FEATURES.authorization ? '需学习授权' : '暂未开放'
         }}</text>
         <text v-else-if="source === QueueSource.LEARNING_NOTES" class="scene-hint">{{
-          card.access?.is_free ? '免费开放' : '授权可学'
+          card.access?.is_free
+            ? '免费开放'
+            : LEARNING_FEATURES.authorization
+              ? '授权可学'
+              : '暂未开放'
         }}</text>
         <text v-else-if="history && completed" class="scene-hint">已学过</text>
         <text v-else-if="card.access?.is_free" class="scene-hint">免费开放</text>

@@ -123,6 +123,7 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
 </script>
 <template>
   <AppPage
+    class="listening-article-page"
     :background-kind="PageBackgroundKind.READING"
     :solid-header="solidHeader"
     title="主题听读"
@@ -359,7 +360,25 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
     />
   </AppPage>
 </template>
+<style lang="scss">
+/* #ifdef MP-WEIXIN */
+
+// 限定当前听读页的原生横向滚动，纵向仍由页面自然滚动
+page {
+  overflow-x: hidden;
+}
+
+/* #endif */
+</style>
 <style scoped lang="scss">
+.listening-article-page {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
 .guest-locked {
   margin-top: 53.846rpx;
   text-align: center;

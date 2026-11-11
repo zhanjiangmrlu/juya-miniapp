@@ -77,6 +77,7 @@ const paragraph = (start: number) =>
 
   .word-heading {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 19.231rpx;
     min-height: 44px;
@@ -84,9 +85,12 @@ const paragraph = (start: number) =>
 
   .word-english,
   .word-phonetic {
+    min-width: 0;
+    max-width: 100%;
     font-family: var(--app-latin-font, 'DM Sans', sans-serif);
     font-size: 20px;
     line-height: 30px;
+    overflow-wrap: break-word;
     overflow-wrap: anywhere;
   }
 

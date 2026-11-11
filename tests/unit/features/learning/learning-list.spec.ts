@@ -53,9 +53,31 @@ beforeEach(() => {
 })
 /** 载入给定发布范围的空待学列表
  * @param published 当前已发布卡片数量
+ * @param status 服务端返回的原授权状态，用于验证暂停期间不会展示
  */
-const open = async (published: number) => {
-  ports.request.mockResolvedValue({ items: [], total: 0, published_total: published })
+const open = async (published: number, status?: string) => {
+  ports.request.mockResolvedValue({
+    items: [],
+    total: 0,
+    published_total: published,
+    ...(status
+      ? {
+          learning_access: {
+            enabled: true,
+            free_count: 0,
+            actual_free_count: 0,
+            revision: 1,
+            authorization: {
+              status,
+              revision: 1,
+              starts_on: null,
+              expires_on: null,
+              expires_at: null
+            }
+          }
+        }
+      : {})
+  })
   const page = shallowMount(LearningPage, {
     global: {
       stubs: {
@@ -72,6 +94,23 @@ const open = async (published: number) => {
   await flushPromises()
   return page
 }
+it.each(['none', 'active', 'expired'])(
+  'hides all grant states in both scene tabs while retaining the learner and check-in status (%s)',
+  async (status) => {
+    const page = await open(2, status)
+    try {
+      expect(page.get('.learner-status').text()).toBe('学习者 · 今日待打卡')
+      expect(page.text()).not.toMatch(/授权|权限准备中/)
+      const tabs = page.findAll('[role="tab"]')
+      await tabs[1]!.trigger('click')
+      await flushPromises()
+      expect(page.get('.learner-status').text()).toBe('学习者 · 今日待打卡')
+      expect(page.text()).not.toMatch(/授权|权限准备中/)
+    } finally {
+      page.unmount()
+    }
+  }
+)
 it('distinguishes all learned from no published cards and exposes the full learning-record row', async () => {
   const learned = await open(2)
   expect(learned.findComponent({ name: 'AppState' }).exists()).toBe(true)

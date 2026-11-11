@@ -203,7 +203,7 @@ it('keeps a locked card visible without requesting protected detail to generate 
 })
 
 it.each([false, true])(
-  'shows current authorization and one separate review marker for an authorized note, completed=%s',
+  'hides retained authorization labels and keeps one separate review marker for a note, completed=%s',
   async (completed) => {
     const page = mount(SceneCard, {
       props: {
@@ -231,7 +231,8 @@ it.each([false, true])(
         }
       }
     })
-    expect(page.text()).toContain('授权可学')
+    expect(page.text()).not.toContain('授权可学')
+    expect(page.text()).toContain('暂未开放')
     expect(page.text()).not.toContain('已学过 · 点击复习')
     expect(page.findAll('.learned-note')).toHaveLength(completed ? 1 : 0)
     page.unmount()
