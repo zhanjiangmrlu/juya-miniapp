@@ -6,6 +6,7 @@ import AppPage from '@/components/app-page/app-page.vue'
 import { finishPolicy } from '@/services/consent-coordinator'
 import { privacy } from '@/services/privacy'
 import { ANALYTICS_POLICY_URL } from '@/shared/constants/analytics'
+import { ANALYTICS_POLICY_PAGE_TITLE } from '@/shared/constants/privacy'
 const kind = ref('terms'),
   error = ref('')
 const document = computed(() => privacy.policies.value.documents.find((d) => d.kind === kind.value))
@@ -22,7 +23,9 @@ onUnload(() => {
 })
 </script>
 <template>
-  <AppPage :title="document?.title || '协议说明'" back
+  <AppPage
+    :title="kind === 'analytics' ? ANALYTICS_POLICY_PAGE_TITLE : document?.title || '协议说明'"
+    back
     ><view class="policy-body"
       ><template v-if="document"
         ><text class="version">版本 {{ document.version }}</text

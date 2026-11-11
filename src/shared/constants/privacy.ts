@@ -1,6 +1,7 @@
 import { ConsentAction } from '@/shared/enums/privacy'
 
 export const PRIVACY_STORAGE_PREFIX = 'juya-privacy-v2:'
+export const ANALYTICS_POLICY_PAGE_TITLE = '统计与第三方说明'
 export const PRIVACY_SOURCE = {
   FIRST: 'first_launch',
   ACTION: 'account_action',
