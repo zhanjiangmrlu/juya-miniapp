@@ -1,3 +1,9 @@
+# CHG-0040 统计说明标题精简（2026-11-11）
+
+用户要求精简截图中的导航标题，已改为“统计与第三方说明”，正文及法律文档版本保持。源码c733935已推test；定向lint/style/typecheck与34项真实微信产物回归通过。标准流程上传新测试开发版 **1.5.0-test.20261111.091521**，官方成功回执与编译标题已核对，体验版由用户手动切换。见[上传回执](docs/verification/chg-0040-policy-title-20261111.json)。
+
+---
+
 # CHG-0040 微信空缓存统计开关修复（2026-11-11）
 
 用户真机报错 d.body.enabled，已用刚上传包复现：微信 getStorageSync 未命中为字符串空值，旧 pending?.body.enabled 仅防护顶层null/undefined，读取空值的body后抛异常，尚未发出偏好PUT。旧Map测试返回undefined漏掉该差异。本轮修复为 pending?.body?.enabled，单元与真实微信模块测试均改用微信空值语义；修复前4项失败、修复后136文件/819测试及完整check通过，保留有效待同步请求原key重试行为。
