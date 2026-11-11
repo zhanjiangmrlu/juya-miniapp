@@ -77,17 +77,17 @@ defineEmits<{ login: [enabled: boolean]; close: []; policy: [kind: string] }>()
               : action === ConsentAction.STATISTICS
                 ? '登录后再选择统计'
                 : confirmed
-                  ? '登录并开启统计'
-                  : '同意并登录，开启统计'
+                  ? '登录并允许统计'
+                  : '同意并登录，允许统计'
           }}
         </button>
         <button class="consent-button secondary" :disabled="busy" @click="$emit('login', false)">
-          {{ confirmed ? '仅登录，不开启统计' : '仅同意协议并登录' }}
+          {{ confirmed ? '仅登录，不允许统计' : '仅同意协议并登录' }}
         </button>
         <button class="consent-button browse" @click="$emit('close')">暂不登录，先体验</button>
         <text class="foot">{{
           first
-            ? '不开启统计，也可正常登录和学习'
+            ? '不允许统计，也可正常登录和学习'
             : CONSENT_ACTION_COPY[action || ConsentAction.ACCOUNT].foot
         }}</text>
       </scroll-view>

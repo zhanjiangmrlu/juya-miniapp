@@ -19,7 +19,7 @@ it('blocks duplicate login while pending and keeps failure retry in place', asyn
   expect(w.text()).toContain('登录中')
   await w.setProps({ busy: false, error: '登录暂未成功，请重试' })
   expect(w.text()).toContain('登录暂未成功')
-  expect(w.get('.secondary').text()).toBe('仅登录，不开启统计')
+  expect(w.get('.secondary').text()).toBe('仅登录，不允许统计')
 })
 
 it('explains the exact favorite action and asks for another click after login', () => {
@@ -37,3 +37,26 @@ it('settings statistics login does not promise to turn collection on', async () 
   expect(w.get('.primary').text()).toBe('登录后再选择统计')
   expect(w.text()).toContain('真实统计未运行')
 })
+
+it.each([
+  { first: true, confirmed: false, action: 'account' as const, primary: '同意并登录，允许统计' },
+  { first: false, confirmed: true, action: 'account' as const, primary: '登录并允许统计' },
+  {
+    first: false,
+    confirmed: false,
+    action: 'favorite_listening' as const,
+    primary: '同意并登录，允许统计'
+  }
+])(
+  'describes permission without promising a running SDK: %o',
+  async ({ first, confirmed, action, primary }) => {
+    const view = mount(Dialog, { props: { first, confirmed, action, busy: false, error: '' } })
+    expect(view.get('.primary').text()).toBe(primary)
+    expect(view.text()).toContain('本版真实统计未运行')
+    expect(view.findAll('button').some((button) => button.text().includes('开启统计'))).toBe(false)
+    await view.get('.primary').trigger('click')
+    await view.get('.secondary').trigger('click')
+    expect(view.emitted('login')).toEqual([[true], [false]])
+    view.unmount()
+  }
+)
