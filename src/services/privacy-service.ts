@@ -124,7 +124,7 @@ export const createPrivacyService = (ports: PrivacyPorts) => {
     }
     const pending = ports.storage.get(pendingKey) as Pending | undefined
     const options: Pending =
-      pending?.body.enabled === enabled
+      pending?.body?.enabled === enabled
         ? pending
         : {
             method: 'PUT',

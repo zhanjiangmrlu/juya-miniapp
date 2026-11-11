@@ -17,7 +17,7 @@ const setup = () => {
   let failed = false
   const service = createPrivacyService({
     storage: {
-      get: (k) => saved.get(k),
+      get: (k) => saved.get(k) ?? '',
       set: (k, v) => {
         saved.set(k, v)
       },
@@ -50,6 +50,17 @@ const setup = () => {
     }
   }
 }
+it.each([true, false])(
+  'saves a first statistics choice %s with the native empty-string cache',
+  async (enabled) => {
+    const { service } = setup()
+    await service.loadPolicies()
+    await service.restore('first-choice-account')
+    await service.choose(enabled)
+    expect(service.state.value?.analytics).toMatchObject({ enabled, revision: 2 })
+    expect(service.isBlocked()).toBe(false)
+  }
+)
 it('records automatic display only once per Beijing day, never treats dismiss as agreement', async () => {
   const { service } = setup()
   await service.loadPolicies()

@@ -176,7 +176,7 @@ const nativePrivacyRuntime = () => {
   }
   const runtime = nativeRuntime(
     {
-      getStorageSync: (key: string) => saved.get(key),
+      getStorageSync: (key: string) => saved.get(key) ?? '',
       setStorageSync: (key: string, value: unknown) => saved.set(key, value),
       removeStorageSync: (key: string) => saved.delete(key),
       request: (request: {
