@@ -2,13 +2,13 @@ import { expect, it } from 'vitest'
 
 import { resolveAnalyticsConfig } from '@/services/analytics-config'
 
-it('enables only explicitly configured WeChat test builds', () => {
+it('keeps WeChat test builds closed even when legacy switches and keys are configured', () => {
   expect(
     resolveAnalyticsConfig('test', 'mp-weixin', {
       VITE_UMENG_ENABLED: 'true',
       VITE_UMENG_TEST_APP_KEY: 'fixture-test'
     })
-  ).toEqual({ enabled: true, appKey: 'fixture-test', environment: 'test' })
+  ).toEqual({ enabled: false, appKey: '', environment: 'disabled' })
 })
 it.each(['production', 'development', 'local-share-h5'])(
   'keeps %s disabled despite private keys',

@@ -26,6 +26,13 @@ export const safeTarget = (target: string) => {
   )
     return Routes.HOME
   const query = (target.split('?')[1] || '').split('#')[0]
+  if (path === Routes.SETTINGS) {
+    const parts = query.split('&')
+    const safe = []
+    if (parts.includes('privacy=1')) safe.push('privacy=1')
+    if (parts.includes('source=profile')) safe.push('source=profile')
+    return safe.length ? `${path}?${safe.join('&')}` : path
+  }
   if (path === Routes.LISTENING) {
     try {
       const category = decodeURIComponent(

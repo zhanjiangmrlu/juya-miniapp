@@ -60,7 +60,7 @@ defineEmits<{ login: [enabled: boolean]; close: []; policy: [kind: string] }>()
         <view class="analysis"
           ><text class="section-title">友盟使用统计（可选）</text
           ><text class="muted"
-            >用于统计页面访问、内容打开、播放、收藏和完成情况，帮助改进产品。可选择不开启，之后也可在隐私说明中关闭。</text
+            >许可范围仅含页面访问、内容打开、播放成功、收藏变更和学习完成五类事件与必要引用。本版真实统计未运行，不装载友盟SDK；允许许可不代表已开启。可在设置的隐私说明中撤回。</text
           ><button
             class="consent-button policy-link"
             :disabled="busy"
@@ -71,7 +71,15 @@ defineEmits<{ login: [enabled: boolean]; close: []; policy: [kind: string] }>()
         >
         <text v-if="error" class="error" role="alert">{{ error }}</text>
         <button class="consent-button primary" :disabled="busy" @click="$emit('login', true)">
-          {{ busy ? '登录中…' : confirmed ? '登录并开启统计' : '同意并登录，开启统计' }}
+          {{
+            busy
+              ? '登录中…'
+              : action === ConsentAction.STATISTICS
+                ? '登录后再选择统计'
+                : confirmed
+                  ? '登录并开启统计'
+                  : '同意并登录，开启统计'
+          }}
         </button>
         <button class="consent-button secondary" :disabled="busy" @click="$emit('login', false)">
           {{ confirmed ? '仅登录，不开启统计' : '仅同意协议并登录' }}

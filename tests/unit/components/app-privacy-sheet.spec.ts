@@ -76,3 +76,20 @@ it('allows immediate local withdrawal when existing enabled statistics cannot re
   expect(choose).toHaveBeenCalledWith(false)
   expect(privacy.state.value?.analytics.enabled).toBe(false)
 })
+
+it('guest statistics requests in-place login without closing the original privacy sheet', async () => {
+  const { loginPromptTarget, dismissLoginPrompt } = await import('@/services/login-prompt')
+  vi.spyOn(session, 'userId').mockReturnValue(null)
+  vi.spyOn(privacy, 'published').mockReturnValue(true)
+  const w = mount(Component, {
+    props: { sourceTarget: '/sub-packages/account/settings?privacy=1&source=profile' },
+    global: { stubs: { 'scroll-view': { template: '<div><slot /></div>' } } }
+  })
+  await flushPromises()
+  await w.get('button.statistics-switch').trigger('click')
+  expect(loginPromptTarget.value).toBe('/sub-packages/account/settings?privacy=1&source=profile')
+  expect(w.emitted('close')).toBeUndefined()
+  dismissLoginPrompt()
+  expect(w.find('[aria-label="隐私说明"]').exists()).toBe(true)
+  w.unmount()
+})

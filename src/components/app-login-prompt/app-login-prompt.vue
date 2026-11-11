@@ -8,6 +8,7 @@ import { dismissLoginPrompt, loginPromptAction, loginPromptTarget } from '@/serv
 import { loginReturn } from '@/services/login-return'
 import { openLogin, safeTarget } from '@/services/navigation'
 import { privacy } from '@/services/privacy'
+import { ConsentAction } from '@/shared/enums/privacy'
 import { useAccountStore } from '@/stores/account-store'
 const busy = ref(false),
   error = ref('')
@@ -40,6 +41,7 @@ const choose = async (enabled: boolean) => {
   if (busy.value) return
   busy.value = true
   error.value = ''
+  const allowStatistics = loginPromptAction.value !== ConsentAction.STATISTICS && enabled
   const run = ++attempt,
     target = safeTarget(loginPromptTarget.value)
   try {
@@ -63,15 +65,15 @@ const choose = async (enabled: boolean) => {
       }
       await account.login(true, {
         agreement_confirmation: confirmation,
-        analytics_choice: { enabled, scope_version: privacy.version('analytics') }
+        analytics_choice: { enabled: allowStatistics, scope_version: privacy.version('analytics') }
       })
     }
     if (run !== attempt) return
-    if (!enabled) privacy.block(session.userId()!)
+    if (!allowStatistics) privacy.block(session.userId()!)
     try {
       await privacy.restore(session.userId()!)
-      if (!enabled || privacy.state.value?.analytics.enabled !== enabled)
-        await privacy.choose(enabled)
+      if (!allowStatistics || privacy.state.value?.analytics.enabled !== allowStatistics)
+        await privacy.choose(allowStatistics)
     } catch {
       /* 统计同步失败保留关闭，不撤销已成功的必要登录 */
     }

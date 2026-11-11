@@ -6,12 +6,17 @@ import AppPage from '@/components/app-page/app-page.vue'
 import { finishPolicy } from '@/services/consent-coordinator'
 import { privacy } from '@/services/privacy'
 import { ANALYTICS_POLICY_URL } from '@/shared/constants/analytics'
+import { Routes } from '@/shared/constants/navigation'
 import { ANALYTICS_POLICY_PAGE_TITLE } from '@/shared/constants/privacy'
 const kind = ref('terms'),
   error = ref('')
 const document = computed(() => privacy.policies.value.documents.find((d) => d.kind === kind.value))
 onLoad(async (query) => {
-  kind.value = String(query?.kind || 'terms')
+  if (!query?.kind) {
+    uni.redirectTo({ url: `${Routes.SETTINGS}?privacy=1&source=profile` })
+    return
+  }
+  kind.value = String(query.kind)
   try {
     await privacy.loadPolicies()
   } catch {

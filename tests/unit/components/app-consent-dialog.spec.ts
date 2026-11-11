@@ -29,3 +29,11 @@ it('explains the exact favorite action and asks for another click after login', 
   expect(w.get('.title').text()).toBe('登录后可收藏这篇听读')
   expect(w.get('.foot').text()).toBe('登录成功后，请再次点击收藏')
 })
+
+it('settings statistics login does not promise to turn collection on', async () => {
+  const w = mount(Dialog, {
+    props: { first: false, confirmed: true, busy: false, error: '', action: 'statistics' }
+  })
+  expect(w.get('.primary').text()).toBe('登录后再选择统计')
+  expect(w.text()).toContain('真实统计未运行')
+})

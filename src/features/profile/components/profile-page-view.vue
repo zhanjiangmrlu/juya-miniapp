@@ -6,7 +6,6 @@ import AppAvatar from '@/components/app-avatar/app-avatar.vue'
 import AppBottomTabs from '@/components/app-bottom-tabs/app-bottom-tabs.vue'
 import AppGuestState from '@/components/app-guest-state/app-guest-state.vue'
 import AppPage from '@/components/app-page/app-page.vue'
-import AppPrivacySheet from '@/components/app-privacy-sheet/app-privacy-sheet.vue'
 import AppState from '@/components/app-state/app-state.vue'
 import ProfileLogoutDialog from '@/features/profile/components/profile-logout-dialog.vue'
 // #ifdef JUYA_ANALYTICS
@@ -39,7 +38,6 @@ const loadAuthorization = async () => {
 const account = useAccountStore(),
   busy = ref(false),
   error = ref(''),
-  privacy = ref(false),
   logoutBusy = ref(false),
   logoutConfirm = ref(false),
   logoutError = ref('')
@@ -84,6 +82,8 @@ const authorizationLabel = computed(() => {
         ? '未授权'
         : '暂未获取'
 })
+/** 公开设置入口保留账号来源页面栈和位置 */
+const openSettings = () => uni.navigateTo({ url: `${Routes.SETTINGS}?source=profile` })
 /** 编辑本人主动设置的头像昵称 */
 const editProfile = () => {
   // #ifdef JUYA_ANALYTICS
@@ -224,12 +224,8 @@ onShow(() => {
           aria-hidden="true"
         />
       </button>
-      <button
-        class="profile-link privacy-link"
-        hover-class="privacy-pressed"
-        @click="privacy = true"
-      >
-        <text>隐私说明</text
+      <button class="profile-link privacy-link" hover-class="privacy-pressed" @click="openSettings">
+        <text>设置</text
         ><image
           class="chevron"
           src="/static/design/profile-chevron.svg"
@@ -250,10 +246,7 @@ onShow(() => {
       @cancel="logoutConfirm = false"
       @confirm="logout"
     />
-    <AppPrivacySheet v-if="privacy" @close="privacy = false" /><AppBottomTabs
-      v-if="primary"
-      active="profile"
-    />
+    <AppBottomTabs v-if="primary" active="profile" />
   </AppPage>
 </template>
 <style scoped lang="scss">

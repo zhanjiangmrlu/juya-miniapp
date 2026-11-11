@@ -24,6 +24,10 @@ export const CONSENT_EVENT_PROPERTIES = [
 ] as const
 
 export const CONSENT_ACTION_COPY = {
+  [ConsentAction.STATISTICS]: {
+    title: '登录后可选择统计许可',
+    foot: '登录成功后，请在隐私说明中再次主动选择；当前统计未运行'
+  },
   [ConsentAction.ACCOUNT]: { title: '登录后保存到你的账号', foot: '登录成功后，请再次进行原操作' },
   [ConsentAction.FAVORITE_SCENE]: {
     title: '登录后可收藏这张词汇卡',
@@ -42,3 +46,27 @@ export const CONSENT_ACTION_COPY = {
     foot: '登录成功后，请再次点击完成'
   }
 } as const
+
+// 与API privacy_api.PAGE_PATHS同步，只提供必要页面路径，不携带查询参数
+export const CONSENT_PAGE_PATHS = [
+  'sub-packages/scenes/detail',
+  'sub-packages/account/profile',
+  'pages/home/index',
+  'sub-packages/account/identity-edit',
+  'pages/login/index',
+  'pages/favorites/index',
+  'sub-packages/feedback/detail',
+  'sub-packages/account/policy',
+  'sub-packages/account/settings',
+  'sub-packages/feedback/create',
+  'pages/learning/index',
+  'sub-packages/listening/topic',
+  'sub-packages/records/index',
+  'pages/records/index',
+  'sub-packages/feedback/index',
+  'sub-packages/listening/article',
+  'sub-packages/listening/index',
+  'sub-packages/account/contact-edit',
+  'pages/profile/index',
+  'sub-packages/scenes/image-preview'
+] as const

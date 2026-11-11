@@ -431,7 +431,7 @@ it('keeps the retired contact route as a native redirect without exposing share 
 /** 执行当前编译的登录弹窗，替换微信身份与账号端口，保留实际事件处理函数
  * @param statistics 本次明确选择是否允许统计
  */
-const runNativeConsentLogin = async (statistics: boolean) => {
+const runNativeConsentLogin = async (statistics: boolean, action = 'account') => {
   const calls: { login: unknown[]; choices: boolean[]; succeeded: number } = {
     login: [],
     choices: [],
@@ -483,6 +483,7 @@ const runNativeConsentLogin = async (statistics: boolean) => {
     },
     'login-prompt.js': {
       loginPromptTarget: ref('/sub-packages/listening/article?id=article-1'),
+      loginPromptAction: ref(action),
       dismissLoginPrompt: () => undefined
     },
     'login-return.js': {
@@ -496,6 +497,7 @@ const runNativeConsentLogin = async (statistics: boolean) => {
     },
     'navigation.js': { safeTarget: (value: string) => value, openLogin: () => undefined },
     'privacy.js': {
+      ConsentAction: { STATISTICS: 'statistics', ACCOUNT: 'account' },
       privacy: {
         published: () => true,
         confirmed: () => false,
@@ -549,6 +551,20 @@ it.each([true, false])(
     expect(result.calls.succeeded).toBe(1)
   }
 )
+
+it('native settings login does not replay the earlier statistics toggle', async () => {
+  const result = await runNativeConsentLogin(true, 'statistics')
+  expect(result.calls.choices).toEqual([false])
+  expect(result.calls.login).toEqual([
+    [
+      true,
+      {
+        agreement_confirmation: result.confirmation,
+        analytics_choice: { enabled: false, scope_version: 'v1' }
+      }
+    ]
+  ])
+})
 
 it.each([false, true])(
   'evaluates native home agreements after restoring session=%s',

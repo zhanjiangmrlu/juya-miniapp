@@ -104,6 +104,12 @@
           "style": {
             "navigationStyle": "custom"
           }
+        },
+        {
+          "path": "settings",
+          "style": {
+            "navigationStyle": "custom"
+          }
         }
       ]
     },

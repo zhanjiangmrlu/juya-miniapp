@@ -115,7 +115,7 @@ export interface paths {
     put?: never
     /**
      * 接收已获许可的分析事件
-     * @description 验证账号许可、五类事件及持久去重，不修改学习成绩。测试客户端SDK模式仅授权本次事件，不代表第三方已收妥；未显式配置时关闭。
+     * @description 验证账号许可、五类事件及持久去重，不修改学习成绩。真实统计固定关闭，旧客户端开关不可绕过；仅隔离接收器测试五事件契约。
      */
     post: operations['receive_api_mini_v1_analytics_events_post']
     delete?: never
@@ -2877,8 +2877,8 @@ export interface components {
        */
       is_free: boolean
       /**
-       * 权限受限原因
-       * @description learning_authorization_required 为需要授权，content_unavailable 为内容不可用。
+       * 处理原因码
+       * @description 跳过或失败的稳定原因代码，完整解释见message。
        */
       reason: string | null
       /**

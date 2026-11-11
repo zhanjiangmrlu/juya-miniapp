@@ -3,11 +3,13 @@ import { computed, onMounted, ref } from 'vue'
 
 import { analytics } from '@/services/analytics'
 import { session } from '@/services/api'
-import { openPolicy } from '@/services/consent-coordinator'
-import { promptLogin } from '@/services/login-prompt'
+import { openPolicy, readingPolicy } from '@/services/consent-coordinator'
+import { loginPromptTarget, promptLogin } from '@/services/login-prompt'
 import { privacy } from '@/services/privacy'
 import { Routes } from '@/shared/constants/navigation'
-const emit = defineEmits<{ close: [] }>()
+import { ConsentAction } from '@/shared/enums/privacy'
+defineEmits<{ close: [] }>()
+const props = defineProps<{ sourceTarget?: string }>()
 const error = ref(''),
   busy = ref(false),
   restored = ref(false)
@@ -29,8 +31,7 @@ onMounted(async () => {
 const toggle = async () => {
   if (busy.value) return
   if (!session.userId()) {
-    emit('close')
-    promptLogin(Routes.PROFILE)
+    promptLogin(props.sourceTarget || `${Routes.SETTINGS}?privacy=1`, ConsentAction.STATISTICS)
     return
   }
   busy.value = true
@@ -45,7 +46,13 @@ const toggle = async () => {
 }
 </script>
 <template>
-  <view class="veil" role="dialog" aria-modal="true" aria-label="隐私说明" @touchmove.stop.prevent
+  <view
+    v-show="!loginPromptTarget && !readingPolicy"
+    class="veil"
+    role="dialog"
+    aria-modal="true"
+    aria-label="隐私说明"
+    @touchmove.stop.prevent
     ><view class="sheet">
       <button class="privacy-button close" aria-label="关闭隐私说明" @click="$emit('close')">
         <image class="close-icon" src="/static/design/consent-close.svg" mode="aspectFit" />
@@ -85,7 +92,7 @@ const toggle = async () => {
             <view class="track"><view class="knob" /></view></button
         ></view>
         <text class="paragraph muted"
-          >开启后，仅在登录状态下通过友盟记录页面访问、内容打开、播放、收藏和完成情况，用于改进产品。</text
+          >本版真实统计未运行，不装载友盟SDK。许可仅限页面访问、内容打开、播放成功、收藏变更和完成成功五类事件与必要引用，不采集设备型号或自动会话。</text
         >
         <text class="paragraph muted">关闭即停止后续统计，不影响收藏、学习记录和打卡。</text>
         <text v-if="error" class="error" role="alert">{{ error }}</text>

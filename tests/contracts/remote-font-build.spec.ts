@@ -52,12 +52,14 @@ it.each([
       .filter((file) => file.endsWith('.js'))
       .map((file) => readFileSync(path.join(directory, file), 'utf8'))
       .join('\n')
-    const sdkEnabled = mode === 'test' && enabled
+    const sdkEnabled = false // 本轮测试及生产构建均不允许SDK，旧开关不可绕过
     expect(javascript.includes('um_uuid')).toBe(sdkEnabled)
     expect(javascript.includes('fixture-umeng-test')).toBe(sdkEnabled)
     expect(javascript.includes('fixture-umeng-prod')).toBe(false)
     expect(javascript.includes('content_view')).toBe(false)
     expect(javascript.includes('contact_save')).toBe(false)
+    expect(javascript.includes('umini.shujupie.com')).toBe(false)
+    expect(javascript.includes('wxm_logs')).toBe(false)
     if (!sdkEnabled)
       for (const event of [
         'entry_click',

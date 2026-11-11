@@ -1,4 +1,8 @@
-import { CONSENT_EVENT_NAMES, CONSENT_EVENT_PROPERTIES } from '@/shared/constants/privacy'
+import {
+  CONSENT_EVENT_NAMES,
+  CONSENT_EVENT_PROPERTIES,
+  CONSENT_PAGE_PATHS
+} from '@/shared/constants/privacy'
 
 import type {
   AnalyticsContext,
@@ -29,7 +33,8 @@ export const createAnalyticsEvents = (ports: AnalyticsEventPorts) => {
       const value = properties[key]
       if (key === 'page_path' && typeof value === 'string') {
         const route = value.split(/[?#]/)[0]?.replace(/^\/+/, '') || ''
-        if (/^(?:pages|sub-packages)\/[A-Za-z0-9_/-]{1,120}$/.test(route)) safe[key] = route
+        if (CONSENT_PAGE_PATHS.includes(route as (typeof CONSENT_PAGE_PATHS)[number]))
+          safe[key] = route
       } else if (
         (key === 'content_id' || key === 'version_id') &&
         typeof value === 'string' &&

@@ -282,3 +282,28 @@ it('does not let an older catalog reopen a capability closed by a newer catalog'
   await expect(old).rejects.toThrow('协议状态已更新')
   expect(guarded.policies.value.analytics_available).toBe(false)
 })
+
+it('treats WeChat empty-string storage as no confirmation or prior disclosure day', async () => {
+  const values = new Map<string, unknown>()
+  const service = createPrivacyService({
+    storage: {
+      get: (key) => values.get(key) ?? '',
+      set: (key, value) => {
+        values.set(key, value)
+      },
+      remove: (key) => {
+        values.delete(key)
+      }
+    },
+    key: () => 'wechat-confirmation',
+    policies: async () => published,
+    request: async <T>() => ({}) as T,
+    now: () => Date.parse('2026-11-11T00:00:00Z')
+  })
+  await service.loadPolicies()
+  expect(service.confirmation()).toBeUndefined()
+  expect(service.confirmed()).toBe(false)
+  expect(service.shouldNotify()).toBe(true)
+  service.markShown()
+  expect(service.shouldNotify()).toBe(false)
+})
