@@ -22,4 +22,12 @@
 
 **真实 iOS/Android 的左右手势尚需手机复验。** 模拟器viewport接口返回的scrollWidth在修复前后均为398，不能据此宣称真实手机所有横向手势已验；本轮以源码限制、编译结果、浏览器溢出测试和模拟器可见布局为已验证范围。
 
-无新增埋点事件，sample.txt不变。小程序修复包的实际上传版本与回执另行记录；后端API、测试库和生产不需本轮更新。
+无新增埋点事件，sample.txt不变。修复包上传记录见下方；后端API、测试库和生产不需本轮更新。
+
+## 测试包上传
+
+按本轮测试修复范围同步远程test，功能源码 `1413ad49d619b96e48a8afdd5b3a7c21bdfa53ac`；标准 `pnpm release:mp-weixin:test` 已成功上传 **1.5.0-test.20261111.184518**。体验版未切换，由用户手动选择该版本；未提审或正式发布。
+
+实际目录 `dist/test-release/cf472c27-aa80-49ec-a60a-7a4e5eb3c867`，官方CLI成功回执与result.json一致，实际WXSS包含当前页横向限制与article宽度边界；仅测试API、无生产API/统计网络域名，20页/3Tab，OSS新增0/复用13。主包source486832B，转换预算584199B、剩余1512953B。[无密钥回执](listening-layout-authorization-test-release-20261111.json)。
+
+后端沿用已部署81f8776，测试库与API未重新更新。真实手机左右滑动仍需用户切换体验版后复验。

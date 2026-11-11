@@ -1,0 +1,25 @@
+{
+  "version": "1.5.0-test.20261111.184518",
+  "environment": "test",
+  "status": "success",
+  "source": "1413ad49d619b96e48a8afdd5b3a7c21bdfa53ac",
+  "package": "dist/test-release/cf472c27-aa80-49ec-a60a-7a4e5eb3c867",
+  "pages": 20,
+  "tabs": 3,
+  "settings_registered": true,
+  "test_api_present": true,
+  "production_api_present": false,
+  "sdk_network_present": false,
+  "update_manager_present": true,
+  "official_receipt_sha256": "8607cec041c6bd289f0bb6ad019bb042e94020d611aa4d150d6703cf64593f08",
+  "experience_version_switched": false,
+  "native_page_horizontal_scroll_disabled": true,
+  "article_width_containment_present": true,
+  "tests": {
+    "files": 140,
+    "passed": 844
+  },
+  "h5_widths_verified": [320, 390, 430],
+  "physical_phone_gestures_verified": false,
+  "api_updated": false
+}
