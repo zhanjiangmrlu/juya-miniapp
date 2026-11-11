@@ -24,6 +24,7 @@ import { loginReturn } from '@/services/login-return'
 import { backTo } from '@/services/navigation'
 import { operationKey, resourceURL, storage } from '@/services/platform'
 import { prepareAudioCacheFile } from '@/services/word-audio-file'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { LISTENING_API, LISTENING_PROGRESS_DRAFT_PREFIX } from '@/shared/constants/listening'
 import { Routes } from '@/shared/constants/navigation'
 import {
@@ -240,6 +241,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   }
   /** 当前播放段离开可视区域才适度跟随，手动浏览时不抢位置 */
   const scrollFollow = () => {
+    if (!LEARNING_FEATURES.listeningSync) return
     if (!visible || !follow.value || !article.value || audio.value.status !== AudioStatus.PLAYING)
       return
     const word = (article.value.timeline.words || []).find(
@@ -313,9 +315,13 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
         summary.value = checked
         throw new ApiError(
           checked.access.reason || 'listening_locked',
-          checked.access.reason === LearningAccessReason.REQUIRED
-            ? '此篇需学习授权'
-            : '当前文章暂不可学习'
+          checked.access.reason === LearningAccessReason.NOT_OPEN ||
+            (!LEARNING_FEATURES.authorization &&
+              checked.access.reason === LearningAccessReason.REQUIRED)
+            ? '暂未开放'
+            : checked.access.reason === LearningAccessReason.REQUIRED
+              ? '此篇需学习授权'
+              : '当前文章暂不可学习'
         )
       }
       if ((!visible && !full?.background) || !alive) return false
@@ -815,6 +821,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
    * @param token 原文英文词及精确code point范围
    */
   const lookup = async (token: ListeningToken) => {
+    if (!LEARNING_FEATURES.dictionary) return
     const value = article.value
     if (!value?.version_id) return
     // #ifdef JUYA_ANALYTICS

@@ -196,7 +196,7 @@ it('keeps a locked card visible without requesting protected detail to generate 
     }
   })
   await flushPromises()
-  expect(page.text()).toContain('需学习授权')
+  expect(page.text()).toContain('暂未开放')
   expect(ports.request).not.toHaveBeenCalled()
   expect(ports.thumbnail).not.toHaveBeenCalled()
   page.unmount()

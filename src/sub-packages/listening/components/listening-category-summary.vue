@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
+
 import type { ListeningCategorySummaryProps } from '@/shared/types/listening-components'
 const props = defineProps<ListeningCategorySummaryProps>()
 const progress = computed(() =>
@@ -20,7 +22,9 @@ const progress = computed(() =>
           · 已学{{ category.completed_articles }}篇</template
         ></text
       ><text v-if="category.restricted_articles"
-        >{{ category.restricted_articles }}篇需学习授权</text
+        >{{ category.restricted_articles }}篇{{
+          LEARNING_FEATURES.authorization ? '需学习授权' : '暂未开放'
+        }}</text
       ><text v-else>当前篇目可学习</text></view
     >
     <view v-if="category.completed_articles !== null" class="category-progress"

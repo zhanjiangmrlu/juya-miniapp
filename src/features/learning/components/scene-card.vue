@@ -17,6 +17,7 @@ import {
 } from '@/services/native-diagnostics'
 import { openScene } from '@/services/navigation'
 import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 // #ifdef JUYA_ANALYTICS
 import { AnalyticsEvent } from '@/shared/enums/analytics'
 // #endif
@@ -209,7 +210,9 @@ onBeforeUnmount(() => {
             ? '已删除 · 当前不可用'
             : '已下线 · 当前不可用'
         }}</text
-        ><text v-else-if="locked" class="availability">需学习授权</text>
+        ><text v-else-if="locked" class="availability">{{
+          LEARNING_FEATURES.authorization ? '需学习授权' : '暂未开放'
+        }}</text>
         <text v-else-if="source === QueueSource.LEARNING_NOTES" class="scene-hint">{{
           card.access?.is_free ? '免费开放' : '授权可学'
         }}</text>

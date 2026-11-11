@@ -1,6 +1,14 @@
 // @vitest-environment happy-dom
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+// 显式启用保留的旧功能，继续验证未来恢复时的原有行为
+const learningFeatures = vi.hoisted(() => ({
+  authorization: true,
+  dictionary: true,
+  listeningSync: true
+}))
+vi.mock('@/shared/constants/learning-features', () => ({ LEARNING_FEATURES: learningFeatures }))
+
 import { ref } from 'vue'
 
 import type { FullAudioOptions } from '@/shared/types/audio'
@@ -194,6 +202,7 @@ const detail = {
   timeline: { state: 'missing', words: [] }
 }
 beforeEach(() => {
+  Object.assign(learningFeatures, { authorization: true, dictionary: true, listeningSync: true })
   loginReturn.cancel()
   ports.owner = 'owner'
   ports.ensure.mockResolvedValue(true)
@@ -224,6 +233,31 @@ const open = async () => {
   await flushPromises()
   return model
 }
+it('keeps audio time and seeking active without automatic scrolling or internal lookup while paused', async () => {
+  Object.assign(learningFeatures, { authorization: false, dictionary: false, listeningSync: false })
+  const model = await open()
+  model.article.value!.timeline = {
+    state: 'ready',
+    words: [{ start: 0, end: 4, start_ms: 0, end_ms: 10000, sentence_id: '0' }]
+  }
+  const measureReading = vi.fn(async () => [{ anchor: '0', top: 900, height: 40 }])
+  model.bodyRef.value = { measureReading } as never
+  await model.toggle()
+  ports.audio[0]!.currentTime = 5
+  await vi.advanceTimersByTimeAsync(250)
+  expect(model.audio.value.position).toBe(5)
+  expect(uni.pageScrollTo).not.toHaveBeenCalled()
+  expect(measureReading).not.toHaveBeenCalled()
+  ports.request.mockClear()
+  await model.lookup({ text: 'This', start: 0, end: 4, word: true })
+  expect(ports.request).not.toHaveBeenCalled()
+  expect(model.lookupRestricted.value).toBe(false)
+  expect(model.selection.value).toBeNull()
+  model.seek(8)
+  expect(ports.audio[0]!.currentTime).toBe(8)
+  expect(uni.pageScrollTo).not.toHaveBeenCalled()
+})
+
 it('retains a background track on hide and restores its real clock without recreating the player', async () => {
   ports.background = true
   const model = await open(),

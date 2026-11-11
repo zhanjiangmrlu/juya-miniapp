@@ -3,6 +3,7 @@ import { onHide, onLaunch, onShow } from '@dcloudio/uni-app'
 import { watch } from 'vue'
 
 import { analytics } from '@/services/analytics'
+import { appUpdates } from '@/services/app-update'
 import { resetLearningAudioSession } from '@/services/audio-controller'
 import { hasBackgroundAudioSession } from '@/services/audio-navigation'
 import { prepareConsentLaunch } from '@/services/consent-coordinator'
@@ -15,12 +16,14 @@ import { useAccountStore } from '@/stores/account-store'
 import type { RuntimeOptions } from '@/shared/types/share'
 configurePrivacyAnalytics(useAccountStore())
 onLaunch((options) => {
+  appUpdates.launch()
   syncRuntimeMode(options)
   if (!runtimeMode.browseOnly.value) prepareConsentLaunch()
   loadRemoteFonts()
   void preparePageShareCovers()
 })
 onShow((options: RuntimeOptions = {}) => {
+  appUpdates.show()
   analytics.foreground({ scene: options.scene })
   syncRuntimeMode(options)
   void preparePageShareCovers()
@@ -33,6 +36,7 @@ watch(
   { flush: 'sync' }
 )
 onHide(() => {
+  appUpdates.hide()
   analytics.background()
   if (!hasBackgroundAudioSession()) resetLearningAudioSession()
 })

@@ -13,6 +13,7 @@ import { businessAnalytics } from '@/services/analytics-business'
 // #endif
 import { onSessionExpired, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { Routes } from '@/shared/constants/navigation'
 import { PAGE_SHARE_ENTRY_KEY } from '@/shared/constants/share'
 import { LearningAuthorizationStatus } from '@/shared/enums/learning-access'
@@ -28,6 +29,7 @@ const authorization = ref<components['schemas']['CurrentAccess'] | null>(null),
   statisticsError = ref('')
 /** 读取本人学习授权，失败不显示为未授权 */
 const loadAuthorization = async () => {
+  if (!LEARNING_FEATURES.authorization) return
   try {
     authorization.value = await session.request('/api/mini/v1/learning-access')
     authorizationError.value = ''
@@ -50,7 +52,10 @@ const load = async () => {
     await account.restore()
     if (session.userId()) {
       await account.refreshAvatar()
-      await Promise.all([loadAuthorization(), loadStatistics()])
+      await Promise.all([
+        ...(LEARNING_FEATURES.authorization ? [loadAuthorization()] : []),
+        loadStatistics()
+      ])
     }
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : '资料暂未获取'
@@ -188,7 +193,7 @@ onShow(() => {
             aria-hidden="true"
         /></view>
       </button>
-      <view class="authorization-section"
+      <view v-if="LEARNING_FEATURES.authorization" class="authorization-section"
         ><view class="between"
           ><text class="authorization-title">学习授权</text
           ><text

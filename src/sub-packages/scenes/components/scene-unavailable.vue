@@ -4,6 +4,7 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { mediaAddress } from '@/services/media-service'
 import { backTo, openLogin } from '@/services/navigation'
 import { sceneImageId, sceneThumbnailURL } from '@/services/scene-image'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { Routes } from '@/shared/constants/navigation'
 import { LearningAccessReason } from '@/shared/enums/learning-access'
 
@@ -50,14 +51,17 @@ onBeforeUnmount(() => {
     <text class="title">{{ summary.name }}</text>
     <text v-if="summary.title_en" class="english-title">{{ summary.title_en }}</text>
     <text class="description">{{
-      summary.access?.reason === LearningAccessReason.REQUIRED
-        ? '此场景需学习授权，当前可学习免费开放场景。'
-        : summary.unavailable_reason === 'deleted'
-          ? '这张场景卡已被删除。'
-          : '这张场景卡已下线，暂时无法学习。'
+      summary.access?.reason === LearningAccessReason.NOT_OPEN ||
+      (!LEARNING_FEATURES.authorization && summary.access?.reason === LearningAccessReason.REQUIRED)
+        ? '暂未开放，可继续学习免费开放内容。'
+        : summary.access?.reason === LearningAccessReason.REQUIRED
+          ? '此场景需学习授权，当前可学习免费开放场景。'
+          : summary.unavailable_reason === 'deleted'
+            ? '这张场景卡已被删除。'
+            : '这张场景卡已下线，暂时无法学习。'
     }}</text>
     <text v-if="summary.state" class="description">已有学习记录和打卡数据会保留。</text
-    ><template v-else
+    ><template v-else-if="LEARNING_FEATURES.authorization"
       ><text class="description">登录后可查看当前账号的学习授权状态。免费内容可继续体验。</text
       ><button
         class="primary"

@@ -11,6 +11,7 @@ import { listeningSourceSentence } from '@/features/listening/listening-presente
 import { useListeningThumbnail } from '@/features/listening/use-listening-thumbnail'
 import { openLogin } from '@/services/navigation'
 import { pageShare } from '@/services/page-share'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { Routes } from '@/shared/constants/navigation'
 import { PageBackgroundKind } from '@/shared/enums/ui'
 import ListeningBody from '@/sub-packages/listening/components/listening-body.vue'
@@ -85,6 +86,7 @@ const sourceSentence = computed(() =>
     : ''
 )
 const syncStatus = computed(() => {
+  if (!LEARNING_FEATURES.listeningSync) return ''
   const value = article.value
   if (
     !value ||
@@ -144,7 +146,12 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
           ><text v-for="tag in summary.tags" :key="tag" class="article-tag">{{ tag }}</text></view
         ><text class="article-counts">{{ summary.word_count }}词</text></view
       ><view
-        v-if="!summary.state && summary.available && !summary.access.can_learn"
+        v-if="
+          LEARNING_FEATURES.authorization &&
+          !summary.state &&
+          summary.available &&
+          !summary.access.can_learn
+        "
         class="guest-locked"
       >
         <image src="/static/listening/r17-lock.svg" mode="aspectFit" aria-hidden="true" />
@@ -165,7 +172,13 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
         prominent
         icon="/static/listening/r17-lock.svg"
         :icon-size="30"
-        :title="summary.available ? '此篇需学习授权' : '当前内容暂不可用'"
+        :title="
+          summary.available
+            ? LEARNING_FEATURES.authorization
+              ? '此篇需学习授权'
+              : '暂未开放'
+            : '当前内容暂不可用'
+        "
         :description="error || '请返回分类文章查看其他篇目'"
         :error="error"
         centered-error
@@ -249,7 +262,10 @@ onShareTimeline(() => ({ ...pageShare.timeline }))
         :ended="audio.status === 'ended'"
         @lookup="lookup"
         @browse="follow = false"
-      /><view v-if="lookupRestricted" class="lookup-restriction" role="status"
+      /><view
+        v-if="LEARNING_FEATURES.dictionary && lookupRestricted"
+        class="lookup-restriction"
+        role="status"
         >点词查询需学习授权<button
           class="text-button restriction-close"
           aria-label="关闭授权提示"

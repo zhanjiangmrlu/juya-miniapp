@@ -28,6 +28,7 @@ import { loginReturn } from '@/services/login-return'
 import { openLogin } from '@/services/navigation'
 import { runtimeMode } from '@/services/runtime-mode'
 import { homeShare } from '@/services/share-service'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { Routes } from '@/shared/constants/navigation'
 import { AnalyticsEvent } from '@/shared/enums/analytics'
 import { LearningTab, QueueSource } from '@/shared/enums/learning'
@@ -395,6 +396,7 @@ onUnload(() => {
         </view>
         <view
           v-if="
+            LEARNING_FEATURES.authorization &&
             (account.profile || session.userId()) &&
             !notes &&
             accessContext?.enabled &&

@@ -42,7 +42,7 @@ it('retains completion and category metadata alongside a restricted access badge
     }
   })
   expect(page.text()).toContain('生活')
-  expect(page.text()).toContain('需学习授权')
+  expect(page.text()).toContain('暂未开放')
   expect(page.text()).toContain('已学过 · 可以复习')
   page.unmount()
 })

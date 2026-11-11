@@ -19,10 +19,14 @@ vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({
     profile: { nickname: '学习者' },
     avatarURL: '',
+    restore: async () => undefined,
+    refreshAvatar: async () => undefined,
+    refreshStatistics: async () => undefined,
     logout
   })
 }))
 import ProfilePage from '@/features/profile/components/profile-page-view.vue'
+import { session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
 import { PAGE_SHARE_ENTRY_KEY } from '@/shared/constants/share'
 
@@ -42,7 +46,20 @@ beforeEach(() => {
   vi.stubGlobal('uni', { showModal: vi.fn() })
   logout.mockReset().mockResolvedValue(undefined)
 })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
+it('loads the account without requesting learning authorization while the feature is paused', async () => {
+  vi.spyOn(session, 'userId').mockReturnValue('learner')
+  const request = vi.spyOn(session, 'request').mockResolvedValue({})
+  const wrapper = page()
+  hooks.show?.()
+  await flushPromises()
+  expect(wrapper.find('.authorization-section').exists()).toBe(false)
+  expect(request.mock.calls.some(([path]) => path === '/api/mini/v1/learning-access')).toBe(false)
+  wrapper.unmount()
+})
 it('skips profile loading and inbox refresh for a generic share provided by its parent page', () => {
   vi.mocked(feedbackInbox.refresh).mockClear()
   const wrapper = mount(ProfilePage, {
@@ -101,12 +118,12 @@ it('opens a fresh confirmation after cancellation and lets retry succeed', async
   wrapper.unmount()
 })
 
-it('keeps favorites, identity and learning authorization while removing contact display and editing', () => {
+it('keeps favorites and identity while hiding paused learning authorization and retired contact fields', () => {
   const wrapper = page()
   expect(wrapper.text()).not.toContain('联系方式')
   expect(wrapper.text()).not.toContain('未填写')
   expect(wrapper.text()).toContain('我的收藏')
   expect(wrapper.text()).toContain('编辑个人资料')
-  expect(wrapper.text()).toContain('学习授权')
+  expect(wrapper.text()).not.toContain('学习授权')
   wrapper.unmount()
 })

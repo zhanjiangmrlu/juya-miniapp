@@ -1,5 +1,6 @@
 import { runtimeMode } from '@/services/runtime-mode'
 import { SESSION_STORAGE_KEY } from '@/shared/constants/account'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 
 import type { StoredSession } from '@/shared/types/account'
 import type { StudyNoteFile, StudyNoteTask } from '@/shared/types/study-note'
@@ -102,7 +103,9 @@ export const downloadStudyNote = (
                 : result.statusCode === 401
                   ? '登录已失效，请重新登录'
                   : result.statusCode === 403
-                    ? '当前无权获取笔记，请确认学习授权'
+                    ? LEARNING_FEATURES.authorization
+                      ? '当前无权获取笔记，请确认学习授权'
+                      : '暂未开放'
                     : `文件请求未成功（${result.statusCode}），请重试`
             )
           )

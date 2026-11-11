@@ -24,6 +24,7 @@ import { pageShare } from '@/services/page-share'
 import { resourceURL, sendPublicRequest } from '@/services/platform'
 import { runtimeMode } from '@/services/runtime-mode'
 import { shareTargetURL } from '@/services/share-service'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { IMAGE_MAX_SCALE, IMAGE_MIN_SCALE } from '@/shared/constants/media'
 import { Routes } from '@/shared/constants/navigation'
 import {
@@ -142,7 +143,13 @@ const accessMonitor = createAccessMonitor(
     if (!value.access.can_learn && context) {
       imageGeneration.value++
       src.value = ''
-      context.onInvalid(new ApiError('learning_authorization_required', '此场景需学习授权', 403))
+      context.onInvalid(
+        new ApiError(
+          LEARNING_FEATURES.authorization ? 'learning_authorization_required' : 'content_not_open',
+          LEARNING_FEATURES.authorization ? '此场景需学习授权' : '暂未开放',
+          403
+        )
+      )
       close()
     }
   },

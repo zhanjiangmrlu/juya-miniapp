@@ -6,6 +6,7 @@ import {
 } from '@/features/listening/listening-presenter'
 import { openListeningArticle } from '@/features/listening/listening-service'
 import { useListeningThumbnail } from '@/features/listening/use-listening-thumbnail'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 
 import type { ListeningArticleCardProps } from '@/shared/types/listening-components'
 const props = defineProps<ListeningArticleCardProps>()
@@ -46,8 +47,9 @@ const { thumbnail, imageError, retryThumbnail } = useListeningThumbnail(
           ><text v-if="article.category_name"> · {{ article.category_name }}</text></text
         >
         <view class="article-state"
-          ><text v-if="article.available && !article.access.can_learn" class="restricted-badge"
-            >需学习授权</text
+          ><text v-if="article.available && !article.access.can_learn" class="restricted-badge">{{
+            LEARNING_FEATURES.authorization ? '需学习授权' : '暂未开放'
+          }}</text
           ><text>{{
             !article.available
               ? '内容不可用'

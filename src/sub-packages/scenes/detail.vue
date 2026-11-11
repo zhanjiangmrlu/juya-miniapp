@@ -55,6 +55,7 @@ import {
 } from '@/services/source-queue'
 import { prepareAudioCacheFile, prepareWordAudioFile } from '@/services/word-audio-file'
 import { DICTIONARY_PREFETCH_SCROLL_DELAY_MS } from '@/shared/constants/dictionary'
+import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { Routes } from '@/shared/constants/navigation'
 import {
   // #ifdef JUYA_ANALYTICS
@@ -274,6 +275,7 @@ const stopListeningForUserScroll = () => {
 }
 const dictionary = useSceneDictionary({
   context: () =>
+    LEARNING_FEATURES.dictionary &&
     !browseOnly.value &&
     !note.locked.value &&
     card.value &&
@@ -431,6 +433,7 @@ const refreshDialogue = (expanded?: boolean) => {
 /** 正文音频由页面持有，弹窗开关不延长缓存或释放已下载文件 */
 const createDictionaryAudio = () => {
   if (
+    !LEARNING_FEATURES.dictionary ||
     dictionaryAudio ||
     note.locked.value ||
     !visible ||
@@ -765,6 +768,7 @@ const setRate = async (value: number) => {
  * @param token 用户点击的完整英文词元
  */
 const lookup = async (token: DictionaryToken) => {
+  if (!LEARNING_FEATURES.dictionary) return
   if (note.locked.value || !visible) return
   // #ifdef JUYA_ANALYTICS
   businessAnalytics.track(AnalyticsEvent.DICTIONARY_LOOKUP, {
@@ -1611,11 +1615,15 @@ onUnload(() => {
 <template>
   <AppPage
     :title="
-      summary?.access?.reason === LearningAccessReason.REQUIRED
-        ? '学习授权提示'
-        : summary
-          ? '场景卡暂不可用'
-          : '场景学习'
+      summary?.access?.reason === LearningAccessReason.NOT_OPEN ||
+      (!LEARNING_FEATURES.authorization &&
+        summary?.access?.reason === LearningAccessReason.REQUIRED)
+        ? '暂未开放'
+        : summary?.access?.reason === LearningAccessReason.REQUIRED
+          ? '学习授权提示'
+          : summary
+            ? '场景卡暂不可用'
+            : '场景学习'
     "
     :back="!browseOnly"
     :custom-back="Boolean(queueSource)"
@@ -1685,11 +1693,18 @@ onUnload(() => {
               card.content.title_en
             }}</text></view
           ><view
-            v-if="card.access || card.study_note?.state === 'ready'"
+            v-if="
+              (card.access && (LEARNING_FEATURES.authorization || card.access.is_free)) ||
+              card.study_note?.state === 'ready'
+            "
             class="scene-state-line"
             :class="{ 'has-note': card.study_note?.state === 'ready' }"
-            ><text v-if="card.access">{{
-              card.access.can_lookup ? '授权有效' : card.access.is_free ? '免费开放' : '授权有效'
+            ><text v-if="card.access && (LEARNING_FEATURES.authorization || card.access.is_free)">{{
+              LEARNING_FEATURES.authorization && card.access.can_lookup
+                ? '授权有效'
+                : card.access.is_free
+                  ? '免费开放'
+                  : '授权有效'
             }}</text
             ><button
               v-if="card.study_note?.state === 'ready'"
@@ -1745,7 +1760,9 @@ onUnload(() => {
             @toggle="playFull"
             @seek="seekFull"
             @rate="setRate" /></view
-        ><view v-if="card.access && !card.access.can_lookup" class="lookup-hint"
+        ><view
+          v-if="LEARNING_FEATURES.dictionary && card.access && !card.access.can_lookup"
+          class="lookup-hint"
           >正文点词查询需学习授权</view
         ><SceneDialogue
           ref="dialogueView"
