@@ -92,6 +92,7 @@ const color = (position: number) => {
       class="paragraph"
       ><text
         v-if="!LEARNING_FEATURES.dictionary && !LEARNING_FEATURES.listeningSync"
+        class="paragraph-text"
         selectable
         :user-select="true"
       >
@@ -108,7 +109,7 @@ const color = (position: number) => {
             >{{ run.text }}</text
           ></text
         > </text
-      ><text v-else selectable :user-select="true"
+      ><text v-else class="paragraph-text" selectable :user-select="true"
         ><text
           v-for="token in paragraph.tokens"
           :id="token.word ? 'reading-word-' + token.start : undefined"
@@ -139,8 +140,13 @@ const color = (position: number) => {
 
   .paragraph {
     margin-bottom: 30rpx;
-    text-indent: 2em;
     white-space: pre-wrap;
+
+    .paragraph-text {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+    }
   }
 
   .expression {
