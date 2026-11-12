@@ -1,0 +1,33 @@
+{
+  "version": "1.5.0-test.20261112.150813",
+  "source_commit": "b918c30c08d1cfafceb8328a1a2da39095e411e0",
+  "test_api_only": true,
+  "page_count": 20,
+  "tab_count": 3,
+  "analytics_sdk_not_imported": true,
+  "official_success": true,
+  "official_receipt_sha256": "2cba13f10d6d373536d50e09e765e3a95cad73d03792ddf1e06b82b14814fbff",
+  "experience_switched": false,
+  "date": "2026-11-12",
+  "environment": "test",
+  "source_branch": "test",
+  "source_pushed": true,
+  "checks": {
+    "tests": 855,
+    "test_files": 142,
+    "check": "passed",
+    "wechat_build": "passed",
+    "main_package_source_bytes": 487278,
+    "main_package_converted_estimate_bytes": 584734
+  },
+  "assets": {
+    "uploaded": 0,
+    "skipped": 13
+  },
+  "api_source_commit": "c3f70c322352cce6abd5aaf3a8f8fc1fa2c11f4f",
+  "official_command": "pnpm release:mp-weixin:test",
+  "production_changed": false,
+  "new_analytics_events": false,
+  "sample_txt_changed": false,
+  "manual_device_acceptance": "pending"
+}
