@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-12",
+  "environment": "production",
+  "api_source": "5c9cb5ac2697c5ad0e2ef6e6227695178ad511c6",
+  "local_checks": {
+    "mini_tests": 855,
+    "mini_check": true,
+    "admin_tests": 322,
+    "admin_check_and_canonical_build": true,
+    "api_resource_tests": 18
+  },
+  "miniapp": {
+    "version": "1.0.1",
+    "versionCode": 105,
+    "source_commit": "069322f055a88fe97035cbb3aa36dea5c69d6135",
+    "record_commit": "b770a49f6f56dd6a15f011ccf5ca8638e694f7e9",
+    "uploaded_at": "2026-11-12T08:10:47.234Z",
+    "environment": "production",
+    "official_success": true,
+    "receipt_sha256": "b7ad425dd47932c67d736e33c6c15b9b9557b9e22a279bf85bfeae9cf9e916f5",
+    "production_api_only": true,
+    "real_analytics_sdk_imported": false,
+    "pages": 20,
+    "tabs": 3,
+    "main_package_source_bytes": 486161,
+    "main_package_converted_estimate_bytes": 583394,
+    "experience_switched": false,
+    "assets": {
+      "uploaded": 0,
+      "skipped": 13
+    }
+  },
+  "new_analytics_events": false,
+  "sample_txt_changed": false,
+  "wechat_device_acceptance": "pending",
+  "backend_verified": true,
+  "database_migration_executed": false
+}
