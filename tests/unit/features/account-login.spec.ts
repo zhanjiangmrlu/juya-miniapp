@@ -21,6 +21,27 @@ const ports = vi.hoisted(() => ({
   unload: undefined as undefined | (() => void),
   load: null as null | ((query: Record<string, string>) => void)
 }))
+const policyPorts = vi.hoisted(() => ({ failed: false, published: true }))
+vi.mock('@/services/privacy', () => ({
+  privacy: {
+    loadPolicies: async () => {
+      if (policyPorts.failed) throw new Error('政策暂不可用')
+      policyPorts.published = true
+    },
+    published: () => policyPorts.published,
+    confirmed: () => false,
+    confirmation: () => undefined,
+    confirm: () => ({
+      confirmation_id: 'formal-confirmation',
+      terms_version: 't1',
+      privacy_version: 'p1'
+    }),
+    version: () => 'v1',
+    block: vi.fn(),
+    restore: vi.fn(),
+    choose: vi.fn()
+  }
+}))
 const { login, openTarget } = vi.hoisted(() => ({ login: vi.fn(), openTarget: vi.fn() }))
 vi.mock('@dcloudio/uni-app', () => ({
   onShow: vi.fn(),
@@ -57,6 +78,8 @@ const page = () =>
     }
   })
 beforeEach(() => {
+  policyPorts.failed = false
+  policyPorts.published = false
   analytics.setConsent(false)
   vi.clearAllMocks()
   login.mockResolvedValue(undefined)
@@ -81,7 +104,16 @@ it('hides failed decorative artwork without blocking consent or login', async ()
   await wrapper.get('.checkbox-group').trigger('change', { detail: { value: ['agree'] } })
   await wrapper.get('button.primary').trigger('click')
   await flushPromises()
-  expect(login).toHaveBeenCalledExactlyOnceWith(true)
+  expect(login).toHaveBeenCalledExactlyOnceWith(
+    true,
+    expect.objectContaining({
+      agreement_confirmation: expect.objectContaining({
+        terms_version: 't1',
+        privacy_version: 'p1'
+      }),
+      analytics_choice: { enabled: false, scope_version: 'v1' }
+    })
+  )
   expect(openTarget).toHaveBeenCalledOnce()
   wrapper.unmount()
 })
@@ -100,7 +132,16 @@ it('requires explicit consent before any account login and keeps the agreed stat
   await wrapper.get('.close-privacy').trigger('click')
   await wrapper.get('button.primary').trigger('click')
   await flushPromises()
-  expect(login).toHaveBeenCalledExactlyOnceWith(true)
+  expect(login).toHaveBeenCalledExactlyOnceWith(
+    true,
+    expect.objectContaining({
+      agreement_confirmation: expect.objectContaining({
+        terms_version: 't1',
+        privacy_version: 'p1'
+      }),
+      analytics_choice: { enabled: false, scope_version: 'v1' }
+    })
+  )
   expect(openTarget).toHaveBeenCalledOnce()
   wrapper.unmount()
 })
@@ -195,5 +236,18 @@ it('does not grant analytics permission when accepting the necessary login agree
   expect(analytics.choice()).toBe(false)
   await wrapper.get('button.primary').trigger('click')
   expect(login).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('never falls back to legacy agreement when the formal policy cannot load', async () => {
+  policyPorts.failed = true
+  const wrapper = page()
+  ports.load?.({})
+  await wrapper.get('.checkbox-group').trigger('change', { detail: { value: ['agree'] } })
+  await wrapper.get('button.primary').trigger('click')
+  await flushPromises()
+  expect(login).not.toHaveBeenCalled()
+  expect(wrapper.text()).toContain('政策暂不可用')
+  expect(openTarget).not.toHaveBeenCalled()
   wrapper.unmount()
 })

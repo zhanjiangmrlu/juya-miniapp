@@ -24,6 +24,15 @@ export const CONSENT_EVENT_PROPERTIES = [
 ] as const
 
 export const CONSENT_ACTION_COPY = {
+  [ConsentAction.FULL_AUDIO]: { title: '登录后可播放全文音频', foot: '登录成功后，请再次点击播放' },
+  [ConsentAction.PRESET_PRONUNCIATION]: {
+    title: '登录后可播放词汇发音',
+    foot: '登录成功后，请再次点击发音'
+  },
+  [ConsentAction.STUDY_NOTE]: {
+    title: '登录后可查看学习笔记',
+    foot: '登录成功后，请再次点击查看笔记'
+  },
   [ConsentAction.STATISTICS]: {
     title: '登录后可选择统计许可',
     foot: '登录成功后，请在隐私说明中再次主动选择；当前统计未运行'

@@ -54,6 +54,7 @@ import {
   takePreparedScene
 } from '@/services/source-queue'
 import { prepareAudioCacheFile, prepareWordAudioFile } from '@/services/word-audio-file'
+import { PLAYBACK_RATES } from '@/shared/constants/audio'
 import { DICTIONARY_PREFETCH_SCROLL_DELAY_MS } from '@/shared/constants/dictionary'
 import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { Routes } from '@/shared/constants/navigation'
@@ -92,7 +93,7 @@ import {
 } from '@/sub-packages/scenes/word-audio-preparation'
 
 import type { components } from '@/shared/contracts/generated/mini-api'
-import type { AudioState } from '@/shared/types/audio'
+import type { AudioState, PlaybackRate } from '@/shared/types/audio'
 import type {
   DictionarySelection,
   DictionarySpeechCache,
@@ -217,7 +218,10 @@ const note = createStudyNote({
           noteVersion: card.value.study_note?.version_id
         }
       : null,
-  ensure: async () => !runtimeMode.update(),
+  ensure: async () =>
+    !runtimeMode.update() &&
+    (!!session.userId() ||
+      account.ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`, ConsentAction.STUDY_NOTE)),
   request: session.contentRequest,
   refreshBody: async () => {
     noteBodyRefresh = true
@@ -240,6 +244,10 @@ const note = createStudyNote({
     businessAnalytics.error(AnalyticsAction.STUDY_NOTE_OPEN, reason, analyticsContext(), stage),
   // #endif
   invalid: (reason) => {
+    if (reason instanceof ApiError && reason.status === 401) {
+      stopAudio()
+      return
+    }
     if (reason instanceof ApiError && reason.status !== 409) void invalid(reason)
   }
 })
@@ -490,7 +498,15 @@ const resumeBackgroundAudio = () => {
 }
 /** 进入当前场景时创建两路互斥音频，不自动播放 */
 const createAudio = () => {
-  if (runtimeMode.update() || note.locked.value || !visible || !card.value || stale.value) return
+  if (
+    !session.userId() ||
+    runtimeMode.update() ||
+    note.locked.value ||
+    !visible ||
+    !card.value ||
+    stale.value
+  )
+    return
   createDictionaryAudio()
   if (audio) {
     resumeBackgroundAudio()
@@ -568,6 +584,7 @@ const createAudio = () => {
       return
     if (reason instanceof ApiError && reason.status === 401) {
       stopAudio()
+      clearMediaAddresses()
       void account.restore().catch(() => undefined)
     } else void invalid(reason)
   }
@@ -634,6 +651,17 @@ const stopAudio = () => {
   backgroundFull = false
   wordAudio?.dispose()
   wordAudio = null
+  audioState.value = {
+    ...audioState.value,
+    status: [AudioStatus.PLAYING, AudioStatus.LOADING].includes(
+      audioState.value.status as typeof AudioStatus.PLAYING | typeof AudioStatus.LOADING
+    )
+      ? AudioStatus.PAUSED
+      : audioState.value.status,
+    wordId: null,
+    wordStatus: AudioStatus.IDLE,
+    wordError: ''
+  }
 }
 /** 只应用最新的本人权限，当前仍免费时保留完整音轨和译文
  * @param value 当前场景的服务端安全摘要及权限
@@ -705,7 +733,10 @@ const accessMonitor = createAccessMonitor(
     // #ifdef JUYA_ANALYTICS
     lastAccessError = reason
     // #endif
-    accessError.value = '权限暂未获取，请重试'
+    accessError.value =
+      reason instanceof ApiError && reason.status === 401 && card.value?.access?.is_free
+        ? ''
+        : '权限暂未获取，请重试'
     stopAudio()
     if (reason instanceof ApiError && [403, 404, 409, 410].includes(reason.status))
       void invalid(reason)
@@ -754,6 +785,14 @@ const playDictionary = () => {
  * @param value 用户选择的播放位置
  */
 const seekFull = async (value: number) => {
+  if (!session.userId()) {
+    if (Number.isFinite(value))
+      audioState.value = {
+        ...audioState.value,
+        position: Math.max(0, Math.min(value, audioState.value.duration || value))
+      }
+    return
+  }
   if (card.value?.access && !(await checkAccess())) return
   if (!note.locked.value && visible) audio?.seekFull(value)
 }
@@ -761,6 +800,11 @@ const seekFull = async (value: number) => {
  * @param value 用户选择的播放倍速
  */
 const setRate = async (value: number) => {
+  if (!session.userId()) {
+    if (PLAYBACK_RATES.includes(value as PlaybackRate))
+      audioState.value = { ...audioState.value, rate: value as PlaybackRate }
+    return
+  }
   if (card.value?.access && !(await checkAccess())) return
   if (!note.locked.value && visible) audio?.setRate(value)
 }
@@ -815,16 +859,24 @@ const releasePrivateMedia = () => {
   busy.value = false
   accessMonitor.suspend()
   note.cancel()
+  const keepFreeText = card.value?.access?.is_free && card.value.access.can_learn
+  stopAudio()
+  queueId.value = ''
+  queueSource.value = null
+  if (keepFreeText && card.value) {
+    card.value.state = null
+    summary.value = null
+    accessError.value = ''
+    actionError.value = ''
+    return
+  }
   card.value = null
   summary.value = null
   imageGeneration++
   imageSrc.value = ''
   originalSrc = ''
   imageRequest = null
-  queueId.value = ''
-  queueSource.value = null
   reading.dispose()
-  stopAudio()
   if (visible && !session.userId() && !loginReturn.pending())
     void nextTick(() => {
       if (visible && alive && !loginReturn.pending()) void load()
@@ -1005,6 +1057,7 @@ const load = async () => {
     requiresIdentityCheck = false
     accessError.value = ''
     card.value = value
+    audioState.value = { ...audioState.value, duration: value.audio_duration || 0 }
     if (
       visible &&
       session.userId() &&
@@ -1090,6 +1143,14 @@ const refreshState = async () => {
 }
 /** 已准备好的完整音频同步播放，提前点击只等待受控地址 */
 const playFull = async () => {
+  if (!session.userId()) {
+    void account
+      .ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`, ConsentAction.FULL_AUDIO)
+      .catch((reason) => {
+        actionError.value = reason instanceof Error ? reason.message : '登录暂不可用，请重试'
+      })
+    return
+  }
   const run = ++audioClickGeneration,
     current = card.value
   if (note.locked.value || (current?.access && !(await checkAccess()))) return
@@ -1112,6 +1173,14 @@ const playFull = async () => {
  * @param wordId 当前发布版本中的词汇编号
  */
 const playWord = (wordId: string) => {
+  if (!session.userId()) {
+    void account
+      .ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`, ConsentAction.PRESET_PRONUNCIATION)
+      .catch((reason) => {
+        actionError.value = reason instanceof Error ? reason.message : '登录暂不可用，请重试'
+      })
+    return
+  }
   if (runtimeMode.update()) return
   if (note.locked.value || !visible || !card.value || stale.value) return
   createAudio()

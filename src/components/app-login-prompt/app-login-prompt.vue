@@ -3,10 +3,10 @@ import { ref, watch } from 'vue'
 
 import AppConsentDialog from '@/components/app-consent-dialog/app-consent-dialog.vue'
 import { session } from '@/services/api'
-import { automaticConsent, openPolicy, readingPolicy } from '@/services/consent-coordinator'
+import { loadConsentPolicies, openPolicy, readingPolicy } from '@/services/consent-coordinator'
 import { dismissLoginPrompt, loginPromptAction, loginPromptTarget } from '@/services/login-prompt'
 import { loginReturn } from '@/services/login-return'
-import { openLogin, safeTarget } from '@/services/navigation'
+import { safeTarget } from '@/services/navigation'
 import { privacy } from '@/services/privacy'
 import { ConsentAction } from '@/shared/enums/privacy'
 import { useAccountStore } from '@/stores/account-store'
@@ -15,15 +15,32 @@ const busy = ref(false),
 let attempt = 0,
   started = false
 let invalidate: (() => void) | undefined
-/** 保留legacy必要登录入口，不取得统计许可 */
-const login = () => {
-  const target = loginPromptTarget.value
-  dismissLoginPrompt()
-  openLogin(target)
+const policyReady = ref(false),
+  policyBusy = ref(false)
+let policyAttempt = 0
+/** 仅主动提示时核实正式政策，失败保留原位重试与浏览 */
+const loadPolicies = async () => {
+  const run = ++policyAttempt
+  policyReady.value = false
+  policyBusy.value = true
+  error.value = ''
+  try {
+    await loadConsentPolicies()
+    if (run !== policyAttempt || !loginPromptTarget.value) return
+    if (!privacy.published()) throw new Error('正式协议暂不可用，请重试或继续浏览')
+    policyReady.value = true
+  } catch (reason) {
+    if (run === policyAttempt)
+      error.value = reason instanceof Error ? reason.message : '政策暂不可用，请重试'
+  } finally {
+    if (run === policyAttempt) policyBusy.value = false
+  }
 }
 /** 取消在途身份交换并仅恢复来源阅读展示 */
 const cancel = () => {
   attempt++
+  policyAttempt++
+  policyReady.value = false
   busy.value = false
   error.value = ''
   if (started) {
@@ -31,23 +48,24 @@ const cancel = () => {
     loginReturn.resumeGuest(true)
   }
   started = false
-  automaticConsent.value = false
   dismissLoginPrompt()
 }
 /** 确认用户当前选择后复用可信微信登录，成功不提交旧操作
  * @param enabled 当前是否明确选择可选统计许可
  */
 const choose = async (enabled: boolean) => {
-  if (busy.value) return
+  if (busy.value || policyBusy.value || !policyReady.value) return
   busy.value = true
   error.value = ''
   const allowStatistics = loginPromptAction.value !== ConsentAction.STATISTICS && enabled
   const run = ++attempt,
-    target = safeTarget(loginPromptTarget.value)
+    target = safeTarget(loginPromptTarget.value),
+    action = loginPromptAction.value
   try {
-    const confirmation =
-      privacy.confirmation() ||
-      privacy.confirm(automaticConsent.value ? 'first_launch' : 'account_action')
+    await privacy.loadPolicies()
+    if (run !== attempt) return
+    if (!privacy.published()) throw new Error('正式协议暂不可用，请重试或继续浏览')
+    const confirmation = privacy.confirmation() || privacy.confirm(action)
     if (run !== attempt) return
     invalidate = () => session.invalidate()
     const account = useAccountStore()
@@ -80,7 +98,6 @@ const choose = async (enabled: boolean) => {
     if (run !== attempt) return
     loginReturn.succeed()
     started = false
-    automaticConsent.value = false
     dismissLoginPrompt()
     loginReturn.resumeGuest(true)
   } catch (reason) {
@@ -90,14 +107,19 @@ const choose = async (enabled: boolean) => {
     if (run === attempt) busy.value = false
   }
 }
-watch(loginPromptTarget, (target) => {
-  if (!target && started) cancel()
-})
+watch(
+  loginPromptTarget,
+  (target) => {
+    if (!target) cancel()
+    else if (!readingPolicy.value) void loadPolicies()
+  },
+  { immediate: true, flush: 'sync' }
+)
 </script>
 <template>
   <AppConsentDialog
-    v-if="loginPromptTarget && privacy.published() && !readingPolicy"
-    :first="automaticConsent"
+    v-if="loginPromptTarget && policyReady && !readingPolicy"
+    :first="false"
     :confirmed="privacy.confirmed()"
     :action="loginPromptAction"
     :busy="busy"
@@ -114,9 +136,9 @@ watch(loginPromptTarget, (target) => {
     aria-label="登录后保存到你的账号"
     @touchmove.stop.prevent
     ><view class="dialog"
-      ><text class="title">登录后保存到你的账号</text
-      ><text class="copy">收藏、学习记录和打卡需要账号同步。也可以继续浏览免费内容。</text
-      ><button class="primary" @click="login">登录</button
+      ><text class="title">用户协议与隐私保护</text
+      ><text class="copy">{{ policyBusy ? '正在核实正式协议…' : error }}</text
+      ><button class="primary" :disabled="policyBusy" @click="loadPolicies">重试</button
       ><button class="secondary" @click="cancel">继续浏览</button></view
     ></view
   >

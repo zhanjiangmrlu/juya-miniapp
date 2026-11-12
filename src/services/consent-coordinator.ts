@@ -1,47 +1,34 @@
 import { ref } from 'vue'
 
-import { session } from '@/services/api'
 import { pauseBackgroundAudio } from '@/services/audio-navigation'
 import { loginReturn } from '@/services/login-return'
 import { privacy } from '@/services/privacy'
-import { Routes } from '@/shared/constants/navigation'
+
+import type { PolicyBundle } from '@/shared/types/privacy'
 export const automaticConsent = ref(false)
 export const readingPolicy = ref(false)
-let launch: Promise<unknown> | undefined,
-  pending = false
 let ownsReadingSnapshot = false
-/** 仅冷启动加载协议并建立一次首页待告知判断 */
-export const prepareConsentLaunch = () => {
-  pending = true
-  launch = privacy.loadPolicies().catch(() => undefined)
+let consentPolicies: Promise<PolicyBundle> | undefined
+/** 同一次主动提示的多个缓存页面共享正式政策读取，结束后允许下一次重新核实 */
+export const loadConsentPolicies = () => {
+  if (!consentPolicies) {
+    const job = privacy.loadPolicies().finally(() => {
+      if (consentPolicies === job) consentPolicies = undefined
+    })
+    consentPolicies = job
+  }
+  return consentPolicies
 }
-/** 首次到达首页时消费启动判断，普通返回不重复评估
- * @param show 首页承载弹窗的显示回调
- * @param isVisible 当前首页是否仍然可见
+/** 保留旧启动调用兼容入口，启动不再读取政策或安排自动告知 */
+export const prepareConsentLaunch = () => undefined
+/** 保留旧首页调用兼容入口，任何进入路径均不自动提示
+ * @param _show 已停用的首页提示回调
+ * @param _isVisible 已停用的首页可见性判断
  */
 export const considerHomeConsent = async (
-  show: (target: string) => void,
-  isVisible: () => boolean = () => true
-) => {
-  await launch
-  if (privacy.published()) {
-    const user = session.userId()
-    if (user) {
-      try {
-        await privacy.restore(user)
-      } catch {
-        return
-      }
-    }
-  }
-  if (!pending || !isVisible()) return
-  pending = false
-  if (privacy.shouldNotify()) {
-    privacy.markShown()
-    automaticConsent.value = true
-    show(Routes.HOME)
-  }
-}
+  _show: (target: string) => void,
+  _isVisible: () => boolean = () => true
+) => undefined
 /** 原位阅读政策，保留调用页面和弹窗状态
  * @param kind 用户选择的已发布协议种类
  */

@@ -46,7 +46,10 @@ const login = async (statistics = false) => {
   busy.value = true
   error.value = ''
   try {
-    if (policyState.published()) {
+    await policyState.loadPolicies()
+    if (!alive) return
+    if (!policyState.published()) throw new Error('正式协议暂不可用，请重试或继续浏览')
+    {
       const confirmation = policyState.confirmation() || policyState.confirm('login_page')
       await account.login(true, {
         agreement_confirmation: confirmation,
@@ -60,7 +63,7 @@ const login = async (statistics = false) => {
       } catch {
         /* 统计故障不撤销必要登录 */
       }
-    } else await account.login(agreed.value)
+    }
     if (!alive) return
     settled = true
     loginReturn.succeed()
@@ -90,7 +93,14 @@ const consent = (event: ConsentChangeEvent) => {
   agreed.value = event.detail.value.includes('agree')
 }
 onLoad((query) => {
-  void policyState.loadPolicies().catch(() => undefined)
+  void policyState
+    .loadPolicies()
+    .then(() => {
+      if (alive && !policyState.published()) error.value = '正式协议暂不可用，请重试或继续浏览'
+    })
+    .catch((reason) => {
+      if (alive) error.value = reason instanceof Error ? reason.message : '政策暂不可用，请重试'
+    })
   if (pageShareEntry.value) return
   if (query?.return) {
     try {

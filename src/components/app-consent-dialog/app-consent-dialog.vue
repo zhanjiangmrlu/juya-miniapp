@@ -54,7 +54,7 @@ defineEmits<{ login: [enabled: boolean]; close: []; policy: [kind: string] }>()
         <text class="copy">{{
           first
             ? '登录后，我们通过微信身份识别账号，\n为你保存收藏、学习记录和打卡。'
-            : '登录后可同步收藏和学习记录。\n暂不登录，也能继续阅读和播放免费内容。'
+            : '登录后可同步收藏和学习记录。\n暂不登录，也能继续阅读免费图文。\n音频、词汇发音和学习笔记需登录后使用。'
         }}</text>
         <text v-if="first" class="muted">不收集手机号、微信号；\n头像和昵称由你主动设置。</text>
         <view class="analysis"
