@@ -226,3 +226,15 @@ it('does not apply an old stop or pause event to the newly playing owner', () =>
   expect(native.paused).toBe(false)
   second.destroy()
 })
+
+it('stops a late system play after the resource session has released its native owner', () => {
+  const { native } = setup()
+  const resume = vi.fn(async () => {})
+  const port = createBackgroundAudioPort(native, { title: '文章', resume, leave: () => {} })
+  port.src = 'https://media.test/full.mp3'
+  port.play()
+  port.destroy()
+  native.play()
+  expect(native.paused).toBe(true)
+  expect(resume).not.toHaveBeenCalled()
+})

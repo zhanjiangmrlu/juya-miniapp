@@ -239,20 +239,14 @@ it('loads policies and synchronizes an account preference through executable WeC
   ])
 })
 
-it('checks the restored account before deciding whether to show native first agreements', async () => {
-  const runtime = nativePrivacyRuntime()
-  const coordinator = runtime.load(path.join(output, 'services/consent-coordinator.js')) as {
-    prepareConsentLaunch: () => void
-    considerHomeConsent: (show: (target: string) => void) => Promise<void>
+it('omits retired automatic consent from native app and home entry modules', () => {
+  for (const file of ['app.js', 'pages/home/index.js']) {
+    const code = readFileSync(path.join(output, file), 'utf8')
+    expect(code).not.toMatch(
+      /prepareConsentLaunch|considerHomeConsent|automaticConsent|first_launch/
+    )
   }
-  const shown: string[] = []
-  coordinator.prepareConsentLaunch()
-  await coordinator.considerHomeConsent((target) => shown.push(target))
-  expect(shown).toEqual([])
-  expect(runtime.calls).toEqual([
-    { path: '/api/mini/v1/privacy/policies', method: 'GET', authenticated: false },
-    { path: '/api/mini/v1/me/privacy', method: 'GET', authenticated: true }
-  ])
+  expect(readFileSync(path.join(output, 'app.js'), 'utf8')).toContain('appUpdates')
 })
 
 it('plays each word in silent mode without autoplay when native word contexts are recreated', () => {
@@ -448,7 +442,7 @@ const runNativeConsentLogin = async (statistics: boolean, action = 'account') =>
   }
   const vendor = {
     ref,
-    watch: () => undefined,
+    watch: (value: { value: unknown }, callback: (value: unknown) => void) => callback(value.value),
     defineComponent: (value: unknown) => value,
     _export_sfc: (value: unknown) => value,
     unref: (value: unknown) =>
@@ -477,7 +471,7 @@ const runNativeConsentLogin = async (statistics: boolean, action = 'account') =>
       })
     },
     'consent-coordinator.js': {
-      automaticConsent: ref(false),
+      loadConsentPolicies: async () => undefined,
       readingPolicy: ref(false),
       openPolicy: () => undefined
     },
@@ -499,6 +493,7 @@ const runNativeConsentLogin = async (statistics: boolean, action = 'account') =>
     'privacy.js': {
       ConsentAction: { STATISTICS: 'statistics', ACCOUNT: 'account' },
       privacy: {
+        loadPolicies: async () => undefined,
         published: () => true,
         confirmed: () => false,
         confirmation: () => confirmation,
@@ -529,6 +524,7 @@ const runNativeConsentLogin = async (statistics: boolean, action = 'account') =>
     }
   )
   const render = component.setup({})
+  await new Promise<void>((resolve) => setImmediate(resolve))
   await render({}, {}).b(statistics)
   return { calls, error: render({}, {}).e.error, confirmation }
 }
@@ -567,7 +563,7 @@ it('native settings login does not replay the earlier statistics toggle', async 
 })
 
 it.each([false, true])(
-  'evaluates native home agreements after restoring session=%s',
+  'never evaluates automatic agreements on native home session=%s',
   async (loggedIn) => {
     let page!: { setup: (props: object) => unknown }
     let show!: () => void
@@ -622,6 +618,6 @@ it.each([false, true])(
     page.setup({})
     show()
     await new Promise<void>((resolve) => setImmediate(resolve))
-    expect(evaluated).toBe(1)
+    expect(evaluated).toBe(0)
   }
 )

@@ -18,6 +18,7 @@ const ports = vi.hoisted(() => ({
   run: vi.fn(),
   unload: undefined as undefined | (() => void),
   owner: 'learner' as string | null,
+  expired: () => undefined as void,
   ensure: vi.fn(async () => true),
   media: vi.fn(),
   request: vi.fn()
@@ -51,7 +52,10 @@ vi.mock('@/services/api', () => ({
       return false
     }
   },
-  onSessionExpired: () => () => undefined
+  onSessionExpired: (callback: () => void) => {
+    ports.expired = callback
+    return () => undefined
+  }
 }))
 vi.mock('@/services/audio-port', () => ({ createAudioPort: () => ({}) }))
 vi.mock('@/services/media-service', () => ({ mediaAddress: ports.media }))
@@ -515,4 +519,67 @@ it('records a failed manual scene retry without recording automatic show refresh
     page.unmount()
     track.mockRestore()
   }
+})
+
+it('guest scene leaves protected audio unprepared and prompts only on audio, word and PDF clicks', async () => {
+  ports.owner = null
+  ports.ensure.mockResolvedValue(false)
+  ports.request.mockResolvedValue({
+    ...scene,
+    content: {
+      ...scene.content,
+      audio_id: 'audio-1',
+      vocabulary: [{ id: 'word-1', english: 'test' }]
+    },
+    state: null,
+    study_note: { state: 'ready', version_id: 'note-1', media_id: 'pdf-1' }
+  })
+  const page = openDetail()
+  await flushPromises()
+  expect(ports.media.mock.calls.some(([, media]) => media === 'audio-1')).toBe(false)
+  expect(ports.request.mock.calls.some(([path]) => path.includes('pronunciation'))).toBe(false)
+  await page.findComponent({ name: 'SceneAudioPlayer' }).vm.$emit('toggle')
+  await flushPromises()
+  expect(ports.ensure).toHaveBeenCalledWith(expect.any(String), 'full_audio')
+  await page.findComponent({ name: 'SceneVocabulary' }).vm.$emit('play', 'word-1')
+  await flushPromises()
+  expect(ports.ensure).toHaveBeenCalledWith(expect.any(String), 'preset_pronunciation')
+  await page.get('.note-entry').trigger('click')
+  await flushPromises()
+  expect(ports.ensure).toHaveBeenCalledWith(expect.any(String), 'study_note')
+  expect(page.text()).toContain('晨间慢慢活动身体')
+  page.unmount()
+})
+
+it('retains free scene text when the resource session expires and removes personal actions', async () => {
+  ports.request.mockResolvedValue({ ...scene, access: { can_learn: true, is_free: true } })
+  const page = openDetail()
+  await flushPromises()
+  ports.owner = null
+  ports.expired()
+  await page.vm.$nextTick()
+  expect(page.text()).toContain('晨间慢慢活动身体')
+  expect(page.find('.scene-thumbnail').exists()).toBe(true)
+  page.unmount()
+})
+
+it('shows public audio metadata and keeps guest display controls without preparing a protected source', async () => {
+  ports.owner = null
+  ports.request.mockResolvedValue({
+    ...scene,
+    audio_duration: 48,
+    content: { ...scene.content, audio_id: 'audio-1' },
+    state: null
+  })
+  const page = openDetail()
+  await flushPromises()
+  const player = page.findComponent({ name: 'SceneAudioPlayer' })
+  expect(player.props('state')).toMatchObject({ duration: 48, status: 'idle' })
+  player.vm.$emit('rate', 1.5)
+  player.vm.$emit('seek', 12)
+  await flushPromises()
+  expect(player.props('state')).toMatchObject({ rate: 1.5, position: 12 })
+  expect(ports.media.mock.calls.some(([, media]) => media === 'audio-1')).toBe(false)
+  expect(ports.request.mock.calls.some(([path]) => path.includes('pronunciation'))).toBe(false)
+  page.unmount()
 })

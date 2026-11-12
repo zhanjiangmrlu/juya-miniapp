@@ -6,7 +6,6 @@ import { analytics } from '@/services/analytics'
 import { appUpdates } from '@/services/app-update'
 import { resetLearningAudioSession } from '@/services/audio-controller'
 import { hasBackgroundAudioSession } from '@/services/audio-navigation'
-import { prepareConsentLaunch } from '@/services/consent-coordinator'
 import { preparePageShareCovers } from '@/services/page-share'
 import { configurePrivacyAnalytics } from '@/services/privacy-analytics'
 import { loadRemoteFonts } from '@/services/remote-fonts'
@@ -18,7 +17,6 @@ configurePrivacyAnalytics(useAccountStore())
 onLaunch((options) => {
   appUpdates.launch()
   syncRuntimeMode(options)
-  if (!runtimeMode.browseOnly.value) prepareConsentLaunch()
   loadRemoteFonts()
   void preparePageShareCovers()
 })

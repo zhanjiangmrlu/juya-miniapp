@@ -10,12 +10,9 @@ import { getListeningHome } from '@/features/listening/listening-service'
 import { businessAnalytics } from '@/services/analytics-business'
 // #endif
 import { onSessionExpired, session } from '@/services/api'
-import { considerHomeConsent } from '@/services/consent-coordinator'
-import { promptLogin } from '@/services/login-prompt'
 import { loginReturn } from '@/services/login-return'
 import { openLogin } from '@/services/navigation'
 import { pageShare } from '@/services/page-share'
-import { privacy } from '@/services/privacy'
 import { HOME_BACKGROUND_IMAGE_URL } from '@/shared/constants/brand'
 import { LISTENING_SERIES } from '@/shared/constants/home'
 import { Routes } from '@/shared/constants/navigation'
@@ -67,13 +64,6 @@ const open = (path: string) => {
 }
 onShow(() => {
   visible = true
-  void account
-    .restore()
-    .then(async (value) => {
-      if (value && privacy.published()) await privacy.restore(value.id)
-      if (visible) await considerHomeConsent(promptLogin, () => visible)
-    })
-    .catch(() => undefined)
   loginReturn.register(
     Routes.HOME,
     () => ({

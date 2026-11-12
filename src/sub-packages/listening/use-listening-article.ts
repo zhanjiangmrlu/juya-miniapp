@@ -21,8 +21,9 @@ import { createAudioPort } from '@/services/audio-port'
 import { ApiError } from '@/services/errors'
 import { createFullAudioPreparation } from '@/services/full-audio-preparation'
 import { loginReturn } from '@/services/login-return'
+import { clearMediaAddresses } from '@/services/media-service'
 import { backTo } from '@/services/navigation'
-import { operationKey, resourceURL, storage } from '@/services/platform'
+import { resourceURL, storage } from '@/services/platform'
 import { prepareAudioCacheFile } from '@/services/word-audio-file'
 import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { LISTENING_API, LISTENING_PROGRESS_DRAFT_PREFIX } from '@/shared/constants/listening'
@@ -153,8 +154,13 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     full = null
     fullPreparation?.dispose()
     fullPreparation = null
-    if (audio.value.status === AudioStatus.PLAYING || audio.value.status === AudioStatus.LOADING)
-      audio.value = { ...audio.value, status: AudioStatus.PAUSED }
+    audio.value = {
+      ...audio.value,
+      status: AudioStatus.PAUSED,
+      wordId: null,
+      wordStatus: AudioStatus.IDLE,
+      wordError: ''
+    }
   }
   /** 读取失败及失效时关闭私有内容，不回退旧正文
    * @param reason 当前真实服务端错误
@@ -183,7 +189,10 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
         article.value === current &&
         reason instanceof ApiError
       ) {
-        if ([401, 403, 404].includes(reason.status || 0)) deny(reason)
+        if (reason.status === 401) {
+          stop()
+          clearMediaAddresses()
+        } else if ([403, 404].includes(reason.status || 0)) deny(reason)
         else if (reason.status === 409) void authorize()
       }
       throw reason
@@ -432,7 +441,7 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       // #endif
     )
     const currentController = controller
-    if (value.payload.audio_id) {
+    if (session.userId() && value.payload.audio_id) {
       const owner = session.identity()
       fullPreparation = createFullAudioPreparation({
         networkOnly: full.background,
@@ -451,7 +460,10 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
             reason instanceof ApiError &&
             [401, 403, 404].includes(reason.status || 0)
           )
-            deny(reason)
+            if (reason.status === 401) {
+              stop()
+              clearMediaAddresses()
+            } else deny(reason)
         }
       })
       void fullPreparation.prefetch()
@@ -571,6 +583,12 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
   }
   /** 手动播放先验权，隐藏或切换会话后取消迟到的页面点击 */
   const toggle = async () => {
+    if (!session.userId()) {
+      void account.ensure(target.value, ConsentAction.FULL_AUDIO).catch((reason) => {
+        actionError.value = reason instanceof Error ? reason.message : '登录暂不可用，请重试'
+      })
+      return
+    }
     snapshotReadonly = false
     const run = generation,
       player = controller
@@ -923,29 +941,36 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
    * @param wordId 当前发布版本的稳定预置词条身份
    */
   const pronounceVocabulary = async (wordId: string) => {
+    if (!session.userId()) {
+      void account.ensure(target.value, ConsentAction.PRESET_PRONUNCIATION).catch((reason) => {
+        actionError.value = reason instanceof Error ? reason.message : '登录暂不可用，请重试'
+      })
+      return
+    }
     const value = article.value
     if (!value?.version_id || !value.payload.vocabulary?.some((word) => word.id === wordId)) return
     selection.value = null
     if (audio.value.wordId) controller?.stopWord(audio.value.wordId)
     const run = ++wordGeneration
-    const active = () => run === wordGeneration && article.value === value && alive && visible
+    const owner = session.identity()
+    const active = () =>
+      run === wordGeneration &&
+      article.value === value &&
+      alive &&
+      visible &&
+      owner === session.identity()
     await controller?.playWord(
       `vocabulary:${wordId}`,
       async () => {
         const path = `/articles/${encodeURIComponent(value.id)}/words/${encodeURIComponent(wordId)}/pronunciation`
         if (!active()) throw new Error('已取消')
         let result = await guardResource(
-          session.userId()
-            ? writeListening<components['schemas']['SpeechState']>(
-                `listening.word:${value.id}:${wordId}`,
-                path,
-                'POST',
-                { version_id: value.version_id }
-              )
-            : session.contentRequest<components['schemas']['SpeechState']>(
-                `${LISTENING_API}${path}`,
-                { method: 'POST', key: operationKey(), body: { version_id: value.version_id } }
-              ),
+          writeListening<components['schemas']['SpeechState']>(
+            `listening.word:${value.id}:${wordId}`,
+            path,
+            'POST',
+            { version_id: value.version_id }
+          ),
           value
         )
         for (let count = 0; count < 12 && result.state === 'processing'; count++) {
@@ -975,6 +1000,17 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
     restoringSnapshot = null
     progressDirty = false
     busy.value = false
+    stop()
+    clearMediaAddresses()
+    if (article.value?.access.is_free && article.value.access.can_learn) {
+      article.value.state = null
+      article.value.progress = null
+      summary.value = null
+      error.value = ''
+      permissionError.value = ''
+      actionError.value = ''
+      return
+    }
     deny(new ApiError('unauthenticated', '请先同意并登录'))
     summary.value = null
     if (visible && !session.userId() && !loginReturn.pending())

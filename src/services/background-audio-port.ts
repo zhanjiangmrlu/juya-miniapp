@@ -24,7 +24,11 @@ const routerFor = (native: BackgroundAudioNative) => {
   if (existing) return existing
   const router: { owner?: BackgroundAudioEvents } = {}
   managers.set(native, router)
-  native.onPlay(() => router.owner?.play())
+  native.onPlay(() => {
+    // 已退出或失效的会话没有资源所有者，系统迟到续播必须立即停止
+    if (router.owner) router.owner.play()
+    else native.stop()
+  })
   native.onPause(() => router.owner?.pause())
   native.onStop(() => router.owner?.stop())
   native.onEnded(() => router.owner?.ended())

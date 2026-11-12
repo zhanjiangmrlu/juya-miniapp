@@ -15,6 +15,7 @@ import type { FullAudioOptions } from '@/shared/types/audio'
 const ports = vi.hoisted(() => ({
   owner: 'owner' as string | null,
   ensure: vi.fn(async () => true),
+  expired: () => undefined as void,
   background: false,
   options: undefined as FullAudioOptions | undefined,
   load: null as null | ((query: Record<string, string>) => void),
@@ -62,7 +63,10 @@ vi.mock('@/services/api', () => ({
     userId: () => ports.owner
   },
   operations: { pending: () => false, run: ports.run },
-  onSessionExpired: () => () => undefined
+  onSessionExpired: (callback: () => void) => {
+    ports.expired = callback
+    return () => undefined
+  }
 }))
 vi.mock('@/services/platform', () => ({
   resourceURL: (path: string) => path,
@@ -1008,4 +1012,34 @@ it('records failed manual content retries but keeps foreground refresh failures 
   } finally {
     track.mockRestore()
   }
+})
+
+it('guest reads without preparing protected audio and only active resource clicks ask for login', async () => {
+  ports.owner = null
+  ports.ensure.mockResolvedValue(false)
+  ports.request.mockResolvedValue({ ...detail, state: null, progress: null })
+  const model = await open()
+  expect(model.article.value?.id).toBe('a1')
+  expect(ports.request.mock.calls.some(([path]) => path.includes('/media/'))).toBe(false)
+  expect(ports.download).not.toHaveBeenCalled()
+  expect(ports.audio.every((track) => !(track as unknown as { src: string }).src)).toBe(true)
+  await model.toggle()
+  expect(ports.ensure).toHaveBeenCalledWith(expect.any(String), 'full_audio')
+  await model.pronounceVocabulary('word1')
+  expect(ports.ensure).toHaveBeenCalledWith(expect.any(String), 'preset_pronunciation')
+  expect(ports.request.mock.calls.some(([path]) => /media|pronunciation/.test(path))).toBe(false)
+  expect(ports.audio.every((track) => track.play.mock.calls.length === 0)).toBe(true)
+  expect(model.article.value?.id).toBe('a1')
+})
+
+it('keeps free article text and presentation when the resource session expires while clearing personal state', async () => {
+  const model = await open()
+  model.translation.value = true
+  ports.owner = null
+  ports.expired()
+  expect(model.article.value?.payload.body_en).toBe(detail.payload.body_en)
+  expect(model.article.value?.state).toBeNull()
+  expect(model.translation.value).toBe(true)
+  expect(model.error.value).toBe('')
+  expect(model.audio.value.wordId).toBeNull()
 })
