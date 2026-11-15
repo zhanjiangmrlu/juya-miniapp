@@ -27,10 +27,10 @@ onMounted(async () => {
     // 初始化未完成时保持开关关闭，不将内部状态显示为用户操作错误
   }
 })
-/** 独立开关先核对账号，拒绝统计不影响必要业务 */
+/** 开启前核对账号与当前协议，关闭不受协议更新影响 */
 const toggle = async () => {
   if (busy.value) return
-  if (!session.userId()) {
+  if (!session.userId() || (!enabled.value && !privacy.confirmed())) {
     promptLogin(props.sourceTarget || `${Routes.SETTINGS}?privacy=1`, ConsentAction.STATISTICS)
     return
   }
