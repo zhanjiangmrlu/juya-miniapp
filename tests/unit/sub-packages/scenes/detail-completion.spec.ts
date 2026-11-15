@@ -228,6 +228,13 @@ it('keeps an unknown completion blocked until the operation result and current s
   await flushPromises()
   expect(page.get('.safe-footer .primary').attributes('disabled')).toBeDefined()
   expect(ports.next).not.toHaveBeenCalled()
+  expect(ports.run).toHaveBeenCalledWith(
+    'complete:first',
+    '/api/mini/v1/cards/first/complete',
+    'POST',
+    { version_id: 'v1' },
+    { persistBody: true }
+  )
   ports.recover.mockImplementation(async () => {
     today = true
     ports.pending.mockReturnValue(false)

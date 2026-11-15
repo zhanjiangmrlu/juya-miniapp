@@ -65,19 +65,21 @@ export const createOperationService = (ports: OperationPorts) => {
   const current = (state: ReturnType<typeof context>) =>
     ports.session.userId() === state.userId &&
     (ports.session.identity?.() || state.userId) === state.identity
-  /** 成功或确定失败后清理一项待确认记录
-   * @param action 页面行为标识
+  /** 只清理仍属于该原键的记录，同一回执仅首次消费时通知
+   * @param record 已确认成功或确定失败的原操作
    * @param owner 发起操作的账号上下文
    */
-  const forget = (action: string, owner: ReturnType<typeof context>) => {
+  const forget = (record: OperationRecord, owner: ReturnType<typeof context>) => {
     const stored = ports.storage.get(owner.key)
     const records = Array.isArray(stored) ? (stored as OperationRecord[]) : []
-    ports.storage.set(
-      owner.key,
-      records.filter((row) => row.action !== action)
+    const remaining = records.filter(
+      (row) => row.key !== record.key || row.action !== record.action
     )
-    fingerprints.delete(`${owner.userId}:${action}`)
-    receiptMisses.delete(`${owner.userId}:${action}`)
+    if (remaining.length === records.length) return false
+    ports.storage.set(owner.key, remaining)
+    fingerprints.delete(`${owner.userId}:${record.action}`)
+    receiptMisses.delete(`${owner.userId}:${record.action}`)
+    return true
   }
   /** 重填事务的原请求仍未知时，任何后续正文失败都不能清除原键
    * @param owner 原请求所属账号的元数据位置
@@ -94,7 +96,7 @@ export const createOperationService = (ports: OperationPorts) => {
       )
     )
   }
-  /** 先查询回执，未找到时用内存中的原正文和原键重试，不替换为页面新输入
+  /** 先查询回执，未找到时用冻结的原正文和原键重试
    * @param action 本人待确认行为
    * @param options 是否允许在回执未找到时重试原请求，重新登录后仅查询时关闭
    */
@@ -114,17 +116,24 @@ export const createOperationService = (ports: OperationPorts) => {
       )
       result = value.result
     } catch (reason) {
-      if (reason instanceof ApiError && reason.code === 'operation_unknown' && current(state))
-        receiptMisses.set(scope, record.key)
-      const frozen = fingerprints.get(`${state.userId}:${action}`) || record.frozenRequest
-      if (
-        options.retry === false ||
-        !(reason instanceof ApiError) ||
-        reason.code !== 'operation_unknown' ||
-        !frozen
-      )
-        throw reason
+      if (!(reason instanceof ApiError) || reason.code !== 'operation_unknown') throw reason
       if (!current(state)) throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
+      if (!context().records.some((row) => row.action === action && row.key === record.key))
+        return null
+      receiptMisses.set(scope, record.key)
+      if (options.retry === false) throw reason
+      const frozen = record.frozenRequest || fingerprints.get(scope)
+      if (!frozen) {
+        // 旧版没有持久保存完成版本，显式查无回执后只能回到当前列表重新学习
+        if (action.startsWith('complete:') && reason.status === 404) {
+          forget(record, state)
+          throw new ApiError(
+            'completion_version_missing',
+            '上次完成未查到回执且缺少原版本，请重新打开卡片核对学习状态'
+          )
+        }
+        throw reason
+      }
       receiptMisses.delete(scope)
       try {
         result = await ports.session.request<T>(record.path, {
@@ -139,13 +148,12 @@ export const createOperationService = (ports: OperationPorts) => {
           retryError.code !== 'browse_only' &&
           !retainsUnknown(state, record)
         )
-          forget(action, state)
+          forget(record, state)
         throw retryError
       }
     }
     if (!current(state)) throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
-    notifyConfirmed(record)
-    forget(action, state)
+    if (forget(record, state)) notifyConfirmed(record)
     return result
   }
   /** 同一次保存或学习操作始终复用同一键，未知结果前禁止改换正文
@@ -193,8 +201,7 @@ export const createOperationService = (ports: OperationPorts) => {
     try {
       const result = await ports.session.request<T>(path, { method, body, key: record.key })
       if (!current(state)) throw new ApiError('session_changed', '账号已变化，请刷新当前页面')
-      notifyConfirmed(record)
-      forget(action, state)
+      if (forget(record, state)) notifyConfirmed(record)
       return result
     } catch (reason) {
       if (
@@ -203,7 +210,7 @@ export const createOperationService = (ports: OperationPorts) => {
         !(wasPending && reason.code === 'browse_only') &&
         !retainsUnknown(state, record)
       )
-        forget(action, state)
+        forget(record, state)
       throw reason
     }
   }

@@ -40,6 +40,8 @@ import { useAccountStore } from '@/stores/account-store'
 import type { CardBrief } from '@/shared/types/learning'
 const account = useAccountStore(),
   statsError = ref(''),
+  completionNotice = ref(''),
+  recovering = ref(false),
   scrollTop = ref(0),
   refreshing = ref(false)
 const browseOnly = runtimeMode.browseOnly,
@@ -61,8 +63,10 @@ let listOwner = session.identity(),
   loginPosition: { tab: LearningTab; top: number } | null = null,
   completionCheck: { owner: string; job: Promise<boolean> } | null = null
 const activeTab = ref<LearningTab>(LearningTab.ILLUSTRATED)
-/** 返回待学列表前仅查询本人原完成回执，未知结果不能由新列表快照替代 */
-const confirmPendingCompletions = (): Promise<boolean> => {
+/** 共用本人原回执查询，手动恢复最多重试点击时选定的一项
+ * @param retryAction 用户明确要求查询并重试的原完成动作，自动进入列表时省略
+ */
+const confirmPendingCompletions = (retryAction?: string): Promise<boolean> => {
   if (runtimeMode.update()) return Promise.resolve(false)
   if (!session.userId()) return Promise.resolve(true)
   const owner = session.identity()
@@ -75,9 +79,16 @@ const confirmPendingCompletions = (): Promise<boolean> => {
       for (const action of actions) {
         if (owner !== session.identity()) return false
         try {
-          await operations.recover(action, { retry: false })
-        } catch {
+          const retry = action === retryAction
+          if (retry) retryAction = undefined
+          await operations.recover(action, { retry })
+        } catch (reason) {
           if (owner !== session.identity()) return false
+          if (!operations.pending(action)) {
+            completionNotice.value =
+              reason instanceof Error ? reason.message : '请重新打开卡片核对学习状态'
+            continue
+          }
           throw new Error(PENDING_SCENE_COMPLETION_MESSAGE)
         }
       }
@@ -200,6 +211,24 @@ const onListScroll = (event: { detail: { scrollTop: number } }) => {
 }
 /** 保留详情返回前的滚动位置和已读页 */
 const refresh = () => position.preserve(refreshList)
+/** 用户主动恢复时先查原键；结果确定后重读服务端待学列表 */
+const recoverCompletion = async () => {
+  syncOwner()
+  if (!session.userId() || runtimeMode.update() || recovering.value) return
+  const owner = session.identity()
+  recovering.value = true
+  completionNotice.value = ''
+  try {
+    const [action] = operations.pendingActions('complete:')
+    if (await confirmPendingCompletions(action)) {
+      if (visible && owner === session.identity()) await refresh()
+    }
+  } catch {
+    // 网络或回执仍未知，保留原记录与现有恢复入口
+  } finally {
+    if (owner === session.identity()) recovering.value = false
+  }
+}
 /** 主动下拉成功后清除旧阅读位置，新轮次失败仍保留可信内容 */
 const restart = async () => {
   syncOwner()
@@ -221,6 +250,8 @@ const restart = async () => {
 const reset = () => {
   browseGeneration++
   listOwner = session.identity()
+  completionNotice.value = ''
+  recovering.value = false
   if (loginReturn.pending() && !loginPosition)
     loginPosition = { tab: activeTab.value, top: scrollTop.value }
   resetList(Boolean(loginPosition))
@@ -443,10 +474,17 @@ onUnload(() => {
             >{{ total }} 张</text
           >
         </view>
+        <view v-if="completionNotice" class="notice" aria-live="polite">{{
+          completionNotice
+        }}</view>
         <view v-if="completionPending" class="notice error completion-recovery" aria-live="polite">
           <text>{{ PENDING_SCENE_COMPLETION_MESSAGE }}</text>
-          <button class="text-button" :disabled="busy || moreBusy" @click="refresh">
-            查询结果并刷新
+          <button
+            class="text-button"
+            :disabled="busy || moreBusy || recovering"
+            @click="recoverCompletion"
+          >
+            查询并重试原完成操作
           </button>
         </view>
         <view

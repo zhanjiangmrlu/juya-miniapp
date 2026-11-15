@@ -1372,7 +1372,8 @@ const complete = async () => {
       `complete:${id}`,
       `/api/mini/v1/cards/${id}/complete`,
       'POST',
-      { version_id: card.value.version_id }
+      { version_id: card.value.version_id },
+      { persistBody: true }
     )
     awaitingState.value = true
     message.value = '已计入学习记录'
@@ -1415,7 +1416,9 @@ const recover = async () => {
     await account.refreshStatistics()
     await probeQueueEnd()
   } catch (reason) {
-    await invalid(reason)
+    if (reason instanceof ApiError && reason.code === 'completion_version_missing') {
+      await load()
+    } else await invalid(reason)
     actionError.value = reason instanceof Error ? reason.message : '暂未确认结果，可重试原操作'
   }
 }

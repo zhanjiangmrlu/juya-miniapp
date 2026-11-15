@@ -75,6 +75,7 @@ import { operations } from '@/services/api'
 import { ApiError } from '@/services/errors'
 import { loginReturn } from '@/services/login-return'
 import { runtimeMode } from '@/services/runtime-mode'
+import { OPERATIONS_STORAGE_PREFIX } from '@/shared/constants/http'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -542,7 +543,7 @@ it.each(['unknown', 'failure'])(
     expect(page.get('.catalog-count').text()).toBe('2 张')
     expect(page.findAllComponents({ name: 'SceneCard' })).toHaveLength(2)
     expect(page.text()).not.toContain('本类词汇已全部学完')
-    expect(page.get('.completion-recovery').text()).toContain('查询结果并刷新')
+    expect(page.get('.completion-recovery').text()).toContain('查询并重试原完成操作')
     expect(
       ports.request.mock.calls
         .slice(before)
@@ -629,7 +630,7 @@ it('keeps a new account pending completion and list isolated from an old account
   expect(operations.pending('complete:last')).toBe(true)
   expect(page.findAllComponents({ name: 'SceneCard' })).toHaveLength(0)
   expect(page.find('.catalog-count').exists()).toBe(false)
-  expect(page.get('.completion-recovery').text()).toContain('查询结果并刷新')
+  expect(page.get('.completion-recovery').text()).toContain('查询并重试原完成操作')
   page.unmount()
 })
 
@@ -705,3 +706,85 @@ it('rechecks a second completion added while a shared receipt query is still in 
   expect(page.get('.catalog-count').text()).toBe('1 张')
   page.unmount()
 })
+
+it.each(['delivered', 'unsent', 'legacy', 'changed', 'offline', 'switched'])(
+  'recovers a cold completion from storage through the learning page (%s)',
+  async (scenario) => {
+    const action = 'complete:old',
+      key = 'previous-process-key',
+      path = '/api/mini/v1/cards/old/complete',
+      body = { version_id: 'original-v1' },
+      lookup = '/api/mini/v1/operations/' + key,
+      missing = new ApiError('operation_unknown', '查无回执', 404)
+    ports.stored.set(OPERATIONS_STORAGE_PREFIX + ports.owner, [
+      {
+        action,
+        key,
+        path,
+        method: 'POST',
+        ...(scenario === 'legacy'
+          ? {}
+          : { frozenRequest: JSON.stringify({ path, method: 'POST', body }) })
+      }
+    ])
+    if (scenario === 'delivered') {
+      ports.request.mockResolvedValueOnce({
+        status: 'succeeded',
+        result: { first_completion: true }
+      })
+    } else ports.request.mockRejectedValueOnce(missing)
+    const page = await open(1)
+    try {
+      if (scenario === 'delivered') {
+        expect(operations.pending(action)).toBe(false)
+        expect(ports.request.mock.calls.filter(([url]) => url === lookup)).toHaveLength(1)
+        expect(ports.request.mock.calls.filter(([, opts]) => opts?.method === 'POST')).toHaveLength(
+          0
+        )
+        return
+      }
+      expect(page.find('.catalog-count').exists()).toBe(false)
+      ports.request.mockRejectedValueOnce(missing)
+      await page.get('[data-tab="intensive"]').trigger('click')
+      await flushPromises()
+      expect(ports.request.mock.calls.map(([url]) => url)).toEqual([lookup, lookup])
+      ports.request.mockImplementation(async (url: string) => {
+        if (url === lookup) {
+          if (scenario === 'switched') ports.owner = 'second-owner'
+          throw missing
+        }
+        if (url === path) {
+          if (scenario === 'offline') throw new ApiError('network_unknown', '网络中断')
+          if (scenario === 'changed')
+            throw new ApiError('version_changed', '内容已更新，请重新学习', 409)
+          return { first_completion: true }
+        }
+        return {
+          items: [{ id: 'old', version_id: 'new-v2' }],
+          total: 1,
+          type_published_total: 1,
+          content_types_ready: true
+        }
+      })
+      await page.get('.completion-recovery button').trigger('click')
+      await flushPromises()
+      const calls = ports.request.mock.calls.slice(2),
+        shouldReplay = !['legacy', 'switched'].includes(scenario)
+      expect(calls[0]).toEqual([lookup])
+      expect(calls.filter(([, opts]) => opts?.method === 'POST')).toEqual(
+        shouldReplay ? [[path, { method: 'POST', key, body }]] : []
+      )
+      if (scenario === 'switched') {
+        expect(operations.pending(action)).toBe(false)
+        ports.owner = 'owner'
+      }
+      const uncertain = ['offline', 'switched'].includes(scenario)
+      expect(operations.pending(action)).toBe(uncertain)
+      expect(calls.some(([url]) => url.includes('content_type=intensive'))).toBe(!uncertain)
+      if (scenario === 'legacy') expect(page.text()).toContain('原版本')
+      if (scenario === 'changed') expect(page.text()).toContain('内容已更新')
+    } finally {
+      page.unmount()
+    }
+  }
+)
