@@ -3,8 +3,10 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import { beforeEach, expect, it, vi } from 'vitest'
 
 const ports = vi.hoisted(() => ({
-  load: undefined as undefined | ((query: { id: string; queue?: string }) => void),
+  load: undefined as
+    undefined | ((query: { id: string; queue?: string; content_type?: string }) => void),
   request: vi.fn(),
+  ensure: vi.fn(async () => true),
   run: vi.fn(),
   recover: vi.fn(),
   pending: vi.fn(() => false),
@@ -57,7 +59,7 @@ vi.mock('@/services/audio-port', () => ({ createAudioPort: () => ({}) }))
 vi.mock('@/stores/account-store', () => ({
   useAccountStore: () => ({
     restore: async () => null,
-    ensure: async () => true,
+    ensure: ports.ensure,
     refreshStatistics: async () => undefined
   })
 }))
@@ -397,6 +399,82 @@ it('uses atomic note admission and skips an unavailable candidate without enteri
   expect(uni.redirectTo).toHaveBeenCalledWith(
     expect.objectContaining({
       url: '/sub-packages/scenes/detail?id=valid-note&queue=q&source=learning_notes'
+    })
+  )
+  page.unmount()
+})
+
+it('returns an intensive learning source to its own category with no native stack', async () => {
+  const page = open()
+  ports.load?.({ id: 'first', queue: 'q', content_type: 'intensive' })
+  await flushPromises()
+  await page.findComponent({ name: 'AppPage' }).props('customBack')
+  const app = page.findComponent({ name: 'AppPage' })
+  app.vm.$emit('back')
+  await flushPromises()
+  expect(uni.reLaunch).toHaveBeenCalledWith({ url: '/pages/learning/index?tab=intensive' })
+  page.unmount()
+})
+
+it('rechecks a typed next body and skips a reclassified card before navigating', async () => {
+  today = true
+  ports.next.mockResolvedValueOnce('moved').mockResolvedValueOnce('valid')
+  ports.request.mockImplementation(async (path: string) => ({
+    ...scene(path.includes('/moved') ? 'moved' : path.includes('/valid') ? 'valid' : 'first'),
+    content_type: path.includes('/moved') ? 'illustrated' : 'intensive',
+    ...(path.includes('/valid')
+      ? { state: { completed: false, today_completed: false, favorite: false, started: true } }
+      : {})
+  }))
+  const page = open()
+  ports.load?.({ id: 'first', queue: 'q', content_type: 'intensive' })
+  await flushPromises()
+  await page.get('.safe-footer .primary').trigger('click')
+  await flushPromises()
+  expect(ports.skip).toHaveBeenCalledWith('moved')
+  expect(uni.redirectTo).toHaveBeenCalledWith(
+    expect.objectContaining({
+      url: '/sub-packages/scenes/detail?id=valid&queue=q&content_type=intensive'
+    })
+  )
+  page.unmount()
+})
+
+it('includes the category in the explicit login target for a protected completion action', async () => {
+  const page = open()
+  ports.load?.({ id: 'first', queue: 'q', content_type: 'intensive' })
+  await flushPromises()
+  await page.get('.safe-footer .primary').trigger('click')
+  await flushPromises()
+  expect(ports.ensure).toHaveBeenCalledWith(
+    '/sub-packages/scenes/detail?id=first&content_type=intensive',
+    'complete_scene'
+  )
+  page.unmount()
+})
+
+it('skips a typed next card completed concurrently before its body is accepted', async () => {
+  today = true
+  ports.next.mockResolvedValueOnce('completed-elsewhere').mockResolvedValueOnce('valid')
+  ports.request.mockImplementation(async (path: string) => ({
+    ...scene(),
+    content_type: 'intensive',
+    ...(path.includes('/valid')
+      ? {
+          card_id: 'valid',
+          state: { completed: false, today_completed: false, favorite: false, started: true }
+        }
+      : {})
+  }))
+  const page = open()
+  ports.load?.({ id: 'first', queue: 'q', content_type: 'intensive' })
+  await flushPromises()
+  await page.get('.safe-footer .primary').trigger('click')
+  await flushPromises()
+  expect(ports.skip).toHaveBeenCalledWith('completed-elsewhere')
+  expect(uni.redirectTo).toHaveBeenCalledWith(
+    expect.objectContaining({
+      url: '/sub-packages/scenes/detail?id=valid&queue=q&content_type=intensive'
     })
   )
   page.unmount()

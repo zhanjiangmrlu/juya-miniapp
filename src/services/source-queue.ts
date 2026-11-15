@@ -3,6 +3,7 @@ import { ApiError } from '@/services/errors'
 import { createLearningQueue } from '@/services/learning-queue'
 import { QueueSource } from '@/shared/enums/learning'
 
+import type { LearningTab } from '@/shared/enums/learning'
 import type { LearningQueue, PublishedScene } from '@/shared/types/learning'
 
 export const sourceQueue = createLearningQueue(session)
@@ -44,20 +45,33 @@ let starting = false
  * @param source 当前卡片所在列表
  * @param cardId 点击的稳定卡片编号
  * @param day 某日打卡来源日期
+ * @param contentType 待学来源的明确内容类型，复习来源不传
  */
-export const openSourceScene = async (source: QueueSource, cardId: string, day?: string) => {
-  if (!session.userId()) {
+export const openSourceScene = async (
+  source: QueueSource,
+  cardId: string,
+  day?: string,
+  contentType?: LearningTab
+) => {
+  const owner = session.userId(),
+    category = source === QueueSource.LEARNING ? contentType : undefined,
+    context = category
+      ? `&content_type=${category}`
+      : source === QueueSource.LEARNING_NOTES
+        ? '&source=learning_notes'
+        : ''
+  if (!owner) {
     sourceQueue.clear()
     discardPreparedScene()
     uni.navigateTo({
-      url: `/sub-packages/scenes/detail?id=${encodeURIComponent(cardId)}${source === QueueSource.LEARNING_NOTES ? '&source=learning_notes' : ''}`
+      url: `/sub-packages/scenes/detail?id=${encodeURIComponent(cardId)}${context}`
     })
     return
   }
   if (starting) return
   starting = true
   try {
-    const action = `queue:${source}:${cardId}:${day || ''}`
+    const action = `queue:${source}:${cardId}:${day || ''}${category ? `:${category}` : ''}`
     let queue: LearningQueue | null = null
     if (operations.pending(action)) {
       try {
@@ -70,13 +84,17 @@ export const openSourceScene = async (source: QueueSource, cardId: string, day?:
       queue = await operations.run<LearningQueue>(action, '/api/mini/v1/learning-queues', 'POST', {
         source,
         card_id: cardId,
-        ...(day ? { day } : {})
+        ...(day ? { day } : {}),
+        ...(category ? { content_type: category } : {})
       })
+    if (owner !== session.userId()) throw new Error('账号已变化，请重新进入来源列表')
+    if (category && queue.content_type !== category)
+      throw new Error('来源类型已变化，请返回列表重新进入')
     const rollback = sourceQueue.attach(queue, cardId)
     try {
       await new Promise<void>((resolve, reject) =>
         uni.navigateTo({
-          url: `/sub-packages/scenes/detail?id=${encodeURIComponent(cardId)}&queue=${encodeURIComponent(queue.id)}${source === QueueSource.LEARNING_NOTES ? '&source=learning_notes' : ''}`,
+          url: `/sub-packages/scenes/detail?id=${encodeURIComponent(cardId)}&queue=${encodeURIComponent(queue.id)}${context}`,
           success: () => resolve(),
           fail: () => reject(new Error('场景暂未打开，请重试'))
         })

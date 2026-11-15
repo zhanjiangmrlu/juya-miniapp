@@ -114,10 +114,18 @@ const nativeRuntime = (overrides: Record<string, unknown> = {}, realSession = fa
     } else if (!realSession && filename === path.join(output, 'services/api.js')) {
       const session = {
         userId: () => 'receiver',
-        request: async (requestPath: string, options: { body: { source: string } }) => {
+        request: async (
+          requestPath: string,
+          options: { body: { source: string; content_type?: string } }
+        ) => {
           requests.push({ path: requestPath, options })
           if (requestPath !== '/api/mini/v1/learning-queues') throw new Error('Unexpected request')
-          return { id: 'native-queue', source: options.body.source, total: 3 }
+          return {
+            id: 'native-queue',
+            source: options.body.source,
+            total: 3,
+            ...(options.body.content_type ? { content_type: options.body.content_type } : {})
+          }
         }
       }
       const createOperations = load(path.join(output, 'services/operation-service.js'))
@@ -619,5 +627,33 @@ it.each([false, true])(
     show()
     await new Promise<void>((resolve) => setImmediate(resolve))
     expect(evaluated).toBe(0)
+  }
+)
+
+it.each(['illustrated', 'intensive'])(
+  'keeps the %s learning category through executable native navigation',
+  async (contentType) => {
+    const runtime = nativeRuntime()
+    const openScene = runtime.load(path.join(output, 'services/navigation.js')).openScene as (
+      id: string,
+      source: string,
+      day: undefined,
+      contentType: string
+    ) => Promise<void>
+    await openScene('card-1', 'learning', undefined, contentType)
+    expect(runtime.opened).toEqual([
+      `/sub-packages/scenes/detail?id=card-1&queue=native-queue&content_type=${contentType}`
+    ])
+    expect(runtime.toasts).toEqual([])
+    expect(runtime.requests).toEqual([
+      {
+        path: '/api/mini/v1/learning-queues',
+        options: {
+          method: 'POST',
+          key: 'native-operation',
+          body: { source: 'learning', card_id: 'card-1', content_type: contentType }
+        }
+      }
+    ])
   }
 )

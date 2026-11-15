@@ -1982,6 +1982,11 @@ export interface components {
     /** 学习端场景列表摘要 */
     CardBrief: {
       /**
+       * 内容类型
+       * @description 媒体的 MIME 类型，或当前业务内容的类型标记。
+       */
+      content_type?: ('illustrated' | 'intensive') | null
+      /**
        * 含有效学习笔记
        * @description 列表仅依据当前已发布有效PDF筛选，省略不限制；摘要只返回是否含笔记。
        * @default false
@@ -2237,6 +2242,11 @@ export interface components {
     }
     /** 创建本人学习队列请求 */
     CreateLearningQueue: {
+      /**
+       * 内容类型
+       * @description 媒体的 MIME 类型，或当前业务内容的类型标记。
+       */
+      content_type?: ('illustrated' | 'intensive') | null
       /**
        * 学习队列来源
        * @description learning 为待学列表，learning_notes 为含已学项的有效发布笔记列表；favorites 为收藏，records 为学习记录，day 为指定日期打卡记录。
@@ -2842,6 +2852,16 @@ export interface components {
        * @description 单页最多返回的条目数，实际限制以接口校验规则为准。
        */
       limit: number
+      /**
+       * 分类是否就绪
+       * @description 分类是否就绪。
+       */
+      content_types_ready: boolean
+      /**
+       * 当前分类有效发布数
+       * @description 当前分类有效发布数。
+       */
+      type_published_total: number | null
       /**
        * 当前学习授权信息
        * @description 列表读取时用户的统一学习策略和授权快照。
@@ -3740,6 +3760,11 @@ export interface components {
     /** 学习端场景正文详情 */
     PublishedDetail: {
       /**
+       * 内容类型
+       * @description 媒体的 MIME 类型，或当前业务内容的类型标记。
+       */
+      content_type?: ('illustrated' | 'intensive') | null
+      /**
        * 学习笔记
        * @description 场景学习笔记草稿决策或当前发布PDF；请求省略表示保留，明确remove才移除。
        */
@@ -3804,6 +3829,11 @@ export interface components {
        */
       id: string
       /**
+       * 内容类型
+       * @description 媒体的 MIME 类型，或当前业务内容的类型标记。
+       */
+      content_type?: ('illustrated' | 'intensive') | null
+      /**
        * 学习队列来源
        * @description learning 为待学列表，learning_notes 为含已学项的有效发布笔记列表；favorites 为收藏，records 为学习记录，day 为指定日期打卡记录。
        * @enum {string}
@@ -3835,6 +3865,11 @@ export interface components {
     }
     /** 本人学习队列分页 */
     QueuePage: {
+      /**
+       * 内容类型
+       * @description 媒体的 MIME 类型，或当前业务内容的类型标记。
+       */
+      content_type?: ('illustrated' | 'intensive') | null
       /**
        * 队列结束原因
        * @description round_complete 为本轮结束，free_complete 为免费内容已学完。
@@ -4418,6 +4453,17 @@ export interface components {
     /** 场景重点词汇 */
     Vocabulary: {
       /**
+       * 原句定位提示
+       * @description 导入词汇附带的原句文字，用于匹配英文正文中的真实出处。
+       * @default
+       */
+      source_hint: string
+      /**
+       * 来源待核对原因
+       * @description 来源待核对原因。
+       */
+      source_reason?: string | null
+      /**
        * 资源标识
        * @description 当前对象的唯一标识；具体对象类型由所在模型确定。
        */
@@ -4499,6 +4545,11 @@ export interface components {
     }
     /** 听读重点词汇 */
     VocabularyWord: {
+      /**
+       * 来源待核对原因
+       * @description 来源待核对原因。
+       */
+      source_reason?: string | null
       /**
        * 原句定位提示
        * @description 导入词汇附带的原句文字，用于匹配英文正文中的真实出处。
@@ -5872,6 +5923,8 @@ export interface operations {
         scope?: 'uncompleted' | 'published'
         /** @description 列表仅依据当前已发布有效PDF筛选，省略不限制；摘要只返回是否含笔记。 */
         has_study_note?: boolean | null
+        /** @description 媒体的 MIME 类型，或当前业务内容的类型标记。 */
+        content_type?: ('illustrated' | 'intensive') | null
       }
       header?: never
       path?: never

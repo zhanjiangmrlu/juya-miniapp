@@ -52,6 +52,7 @@ it('hides meaning and phonetic independently while keeping English, full source 
         {
           id: 'one',
           english: 'drama',
+          source_hint: '',
           pronunciation_text: '',
           pronunciation_issue: false,
           meaning: '',
@@ -63,6 +64,7 @@ it('hides meaning and phonetic independently while keeping English, full source 
           english: 'club',
           meaning: '社团',
           phonetic: '',
+          source_hint: '',
           pronunciation_text: '',
           pronunciation_issue: false
         },
@@ -71,6 +73,7 @@ it('hides meaning and phonetic independently while keeping English, full source 
           english: 'play',
           meaning: '',
           phonetic: '/pleɪ/',
+          source_hint: '',
           pronunciation_text: '',
           pronunciation_issue: false
         }
@@ -102,6 +105,7 @@ it('shows a word error only in the failed state, never during loading or playbac
             english: 'hello',
             meaning: '',
             phonetic: '',
+            source_hint: '',
             pronunciation_text: '',
             pronunciation_issue: false
           }

@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, expect, it, vi } from 'vitest'
 
 import SceneCard from '@/features/learning/components/scene-card.vue'
+import { openScene } from '@/services/navigation'
 const ports = vi.hoisted(() => ({
   media: vi.fn(async () => '/thumbnail'),
   request: vi.fn(),
@@ -238,3 +239,36 @@ it.each([false, true])(
     page.unmount()
   }
 )
+
+it('passes a restricted intensive summary category without creating a learning queue source', async () => {
+  const page = mount(SceneCard, {
+    props: {
+      source: 'learning',
+      contentType: 'intensive',
+      card: {
+        id: 'locked',
+        name: '受限卡',
+        title_en: '',
+        version_id: 'v1',
+        thumbnail_id: null,
+        vocabulary_count: 0,
+        chunk_count: 0,
+        state: null,
+        published_at: '',
+        has_study_note: true,
+        access: {
+          can_learn: false,
+          can_lookup: false,
+          is_free: false,
+          reason: 'restricted',
+          version: 'v1',
+          server_now: '2026-11-15',
+          expires_at: null
+        }
+      }
+    }
+  })
+  await page.get('.scene-row').trigger('click')
+  expect(openScene).toHaveBeenCalledWith('locked', undefined, undefined, 'intensive')
+  page.unmount()
+})

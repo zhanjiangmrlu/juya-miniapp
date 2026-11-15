@@ -1,5 +1,6 @@
 import { computed, ref, shallowRef } from 'vue'
 
+import { ApiError } from '@/services/errors'
 import { listPageSize } from '@/services/list-page-size'
 
 import type { SceneListPage, SceneListPorts } from '@/shared/types/learning'
@@ -44,13 +45,17 @@ export const useSceneList = <T>(ports: SceneListPorts<T>) => {
         ? page.page * page.limit >= page.total
         : items.value.length >= page.total
   }
-  /** 会话失效或换账号时清除私人列表并重置分页 */
-  const reset = () => {
+  /** 会话失效或换账号时清除私人快照，登录返回可保留纯分页位置
+   * @param preserveRange 主动登录期间是否保留已读页数和固定页长
+   */
+  const reset = (preserveRange = false) => {
     generation++
     refreshing = null
     appending = null
-    pages = 1
-    limit = 0
+    if (!preserveRange) {
+      pages = 1
+      limit = 0
+    }
     owner = ports.userId?.()
     items.value = []
     total.value = null
@@ -71,6 +76,27 @@ export const useSceneList = <T>(ports: SceneListPorts<T>) => {
    * @param run 请求发出时的列表代次
    */
   const current = (run: number) => run === generation && (!ports.userId || owner === ports.userId())
+  /** 分类能力撤回时清除旧快照，不能继续启用已失效的类型列表 */
+  const withdrawCategory = () => {
+    items.value = []
+    total.value = null
+    publishedTotal.value = 0
+    accessContext.value = null
+    freeRemaining.value = null
+    exhausted.value = false
+  }
+  /** 类型集合必须通过同一响应确认就绪，未知元数据不得成为真实空态
+   * @param page 当前类型的服务端列表快照
+   */
+  const validateCategory = (page: SceneListPage<T>) => {
+    if (
+      ports.path.includes('content_type=') &&
+      (page.content_types_ready !== true || page.type_published_total == null)
+    ) {
+      withdrawCategory()
+      throw new Error('词汇分类准备中，请稍后重试')
+    }
+  }
   /** 获取已读范围或新轮次首屏，失败时不提交新的页数和页长
    * @param firstPage 用户主动下拉时仅请求新轮次第一页
    * @param rangePages 服务端缩页后需要重新读取的有效页数
@@ -95,19 +121,23 @@ export const useSceneList = <T>(ports: SceneListPorts<T>) => {
         )
       )
       if (!current(run)) return
+      results.forEach(validateCategory)
       limit = nextLimit
       pages = Math.max(...results.map((page, index) => page.page || index + 1))
       items.value = unique(results.flatMap((page) => page.items))
       total.value = results[0]?.total ?? 0
-      publishedTotal.value = results[0]?.published_total ?? 0
+      publishedTotal.value = results[0]?.type_published_total ?? results[0]?.published_total ?? 0
       accessContext.value = results[0]?.learning_access || null
       freeRemaining.value = results[0]?.free_uncompleted_total ?? null
       moreError.value = ''
       const last = results.at(-1)
       if (last) acceptBoundary(last)
     } catch (reason) {
-      if (current(run))
+      if (current(run)) {
+        if (reason instanceof ApiError && reason.code === 'content_type_bindings_invalid')
+          withdrawCategory()
         error.value = reason instanceof Error ? reason.message : '列表暂未获取，请重试'
+      }
     } finally {
       if (run === generation) {
         if (!current(run)) reset()
@@ -154,6 +184,7 @@ export const useSceneList = <T>(ports: SceneListPorts<T>) => {
         `${ports.path}${ports.path.includes('?') ? '&' : '?'}page=${page}&limit=${limit}`
       )
       if (!current(run)) return
+      validateCategory(result)
       if (result.total > 0 && result.page && result.page < page) {
         // 旧页已被服务端钳回，必须重建当前有效范围，不能把失效条目追加成已结束快照
         moreBusy.value = false
@@ -162,14 +193,22 @@ export const useSceneList = <T>(ports: SceneListPorts<T>) => {
       }
       items.value = result.total === 0 ? [] : unique([...items.value, ...result.items])
       total.value = result.total
-      publishedTotal.value = result.published_total ?? publishedTotal.value
+      publishedTotal.value =
+        result.type_published_total ?? result.published_total ?? publishedTotal.value
       accessContext.value = result.learning_access ?? accessContext.value
       freeRemaining.value = result.free_uncompleted_total ?? freeRemaining.value
       pages = result.total === 0 ? 1 : result.page || page
       acceptBoundary(result)
     } catch (reason) {
-      if (current(run))
-        moreError.value = reason instanceof Error ? reason.message : '加载更多失败，请重试'
+      if (current(run)) {
+        if (reason instanceof ApiError && reason.code === 'content_type_bindings_invalid')
+          withdrawCategory()
+        const message = reason instanceof Error ? reason.message : '加载更多失败，请重试'
+        if (total.value === null) {
+          error.value = message
+          moreError.value = ''
+        } else moreError.value = message
+      }
     } finally {
       if (run === generation) {
         if (!current(run)) reset()

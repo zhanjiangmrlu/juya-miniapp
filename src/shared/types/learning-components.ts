@@ -23,6 +23,7 @@ export interface SceneCardProps {
   featured?: boolean
   compact?: boolean
   source?: import('../enums/learning').QueueSource
+  contentType?: import('../enums/learning').LearningTab
   day?: string
 }
 

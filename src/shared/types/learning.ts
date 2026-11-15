@@ -18,6 +18,8 @@ export interface LearningQueuePorts {
 export interface SceneListPage<T> {
   items: T[]
   total: number
+  content_types_ready?: boolean
+  type_published_total?: number | null
   published_total?: number
   free_uncompleted_total?: number
   learning_access?: components['schemas']['CurrentAccess'] | null

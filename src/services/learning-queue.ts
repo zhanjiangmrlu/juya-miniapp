@@ -1,3 +1,5 @@
+import { QueueSource } from '@/shared/enums/learning'
+
 import type { LearningQueue, LearningQueuePage, LearningQueuePorts } from '@/shared/types/learning'
 
 /** 按固定服务端索引推进本人来源快照，分页失败保留游标
@@ -57,6 +59,8 @@ export const createLearningQueue = (ports: LearningQueuePorts) => {
   const next = async (): Promise<string | null> => {
     if (!queue || !owner || owner !== ports.userId())
       throw new Error('账号已变化，请重新进入来源列表')
+    if (queue.source === QueueSource.LEARNING && !queue.content_type)
+      throw new Error('来源类型已变化，请返回列表重新进入')
     const run = generation,
       expectedOwner = owner,
       id = queue.id
@@ -67,6 +71,8 @@ export const createLearningQueue = (ports: LearningQueuePorts) => {
       )
       if (run !== generation || expectedOwner !== ports.userId())
         throw new Error('账号或来源已变化，请重新进入来源列表')
+      if (queue?.source === QueueSource.LEARNING && page.content_type !== queue.content_type)
+        throw new Error('来源类型已变化，请返回列表重新进入')
       if (page.next_offset !== null && page.next_offset <= cursor)
         throw new Error('来源列表暂未更新，请重试')
       endReason = page.end_reason || 'round_complete'
@@ -114,5 +120,17 @@ export const createLearningQueue = (ports: LearningQueuePorts) => {
   }
   /** 读取原始来源用于完成按钮和结束说明 */
   const source = () => queue?.source || null
-  return { attach, matches, next, skip, commit, clear, source, endReason: () => endReason }
+  /** 读取服务端冻结的待学来源类型，复习来源保持为空 */
+  const contentType = () => queue?.content_type || null
+  return {
+    attach,
+    matches,
+    next,
+    skip,
+    commit,
+    clear,
+    source,
+    contentType,
+    endReason: () => endReason
+  }
 }

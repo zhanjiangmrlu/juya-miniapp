@@ -1,0 +1,3171 @@
+{
+  "kind": "Mock API + real H5 in headless Chrome",
+  "states": 27,
+  "results": [
+    {
+      "width": 320,
+      "state": "learner-illustrated",
+      "geometry": {
+        "width": 320,
+        "scrollWidth": 320,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 320,
+            "height": 692
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 18.046875,
+            "height": 18.046875
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/morning?thumbnail=list",
+            "loaded": true,
+            "width": 50.5,
+            "height": 75.125
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/future?thumbnail=list",
+            "loaded": true,
+            "width": 50.5,
+            "height": 75.125
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me/statistics",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=3",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/morning/media/thumb-morning/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/future/media/thumb-future/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/morning?thumbnail=list",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/future?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 320,
+      "state": "learner-intensive",
+      "geometry": {
+        "width": 320,
+        "scrollWidth": 320,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 320,
+            "height": 692
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 18.046875,
+            "height": 18.046875
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/geography?thumbnail=list",
+            "loaded": true,
+            "width": 50.5,
+            "height": 75.125
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/study-note-label.svg",
+            "loaded": true,
+            "width": 12,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me/statistics",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=intensive&page=1&limit=3",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/geography/media/thumb-geography/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/geography?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 320,
+      "state": "learner-complete",
+      "geometry": {
+        "width": 320,
+        "scrollWidth": 320,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 320,
+            "height": 692
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 18.046875,
+            "height": 18.046875
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/study-note-learned.svg",
+            "loaded": true,
+            "width": 40,
+            "height": 40
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me/statistics",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=intensive&page=1&limit=3",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 320,
+      "state": "guest-illustrated",
+      "geometry": {
+        "width": 320,
+        "scrollWidth": 320,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 320,
+            "height": 692
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 18.046875,
+            "height": 18.046875
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/morning?thumbnail=list",
+            "loaded": true,
+            "width": 50.5,
+            "height": 75.125
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/future?thumbnail=list",
+            "loaded": true,
+            "width": 50.5,
+            "height": 75.125
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=3",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/morning/media/thumb-morning/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/future/media/thumb-future/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/morning?thumbnail=list",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/future?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 320,
+      "state": "guest-intensive",
+      "geometry": {
+        "width": 320,
+        "scrollWidth": 320,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 320,
+            "height": 692
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 18.046875,
+            "height": 18.046875
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/geography?thumbnail=list",
+            "loaded": true,
+            "width": 50.5,
+            "height": 75.125
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/study-note-label.svg",
+            "loaded": true,
+            "width": 12,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=intensive&page=1&limit=3",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/geography/media/thumb-geography/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/geography?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 320,
+      "state": "empty",
+      "geometry": {
+        "width": 320,
+        "scrollWidth": 320,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 320,
+            "height": 692
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 18.046875,
+            "height": 18.046875
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/empty-book.svg",
+            "loaded": true,
+            "width": 40,
+            "height": 40
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=3",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 320,
+      "state": "not-ready",
+      "geometry": {
+        "width": 320,
+        "scrollWidth": 320,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 320,
+            "height": 692
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 18.046875,
+            "height": 18.046875
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=3",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 320,
+      "state": "error",
+      "geometry": {
+        "width": 320,
+        "scrollWidth": 320,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 320,
+            "height": 692
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 18.046875,
+            "height": 18.046875
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=3",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 320,
+      "state": "restricted",
+      "geometry": {
+        "width": 320,
+        "scrollWidth": 320,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 320,
+            "height": 692
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 18.046875,
+            "height": 18.046875
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/morning?thumbnail=list",
+            "loaded": true,
+            "width": 50.5,
+            "height": 75.125
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-lock.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/future?thumbnail=list",
+            "loaded": true,
+            "width": 50.5,
+            "height": 75.125
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-lock.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=3",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/morning/media/thumb-morning/url?purpose=summary&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/future/media/thumb-future/url?purpose=summary&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/morning?thumbnail=list",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/future?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 390,
+      "state": "learner-illustrated",
+      "geometry": {
+        "width": 390,
+        "scrollWidth": 390,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 390,
+            "height": 844
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 22,
+            "height": 22
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/morning?thumbnail=list",
+            "loaded": true,
+            "width": 62,
+            "height": 91.984375
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/future?thumbnail=list",
+            "loaded": true,
+            "width": 62,
+            "height": 91.984375
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me/statistics",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=2",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/morning/media/thumb-morning/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/future/media/thumb-future/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/morning?thumbnail=list",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/future?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 390,
+      "state": "learner-intensive",
+      "geometry": {
+        "width": 390,
+        "scrollWidth": 390,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 390,
+            "height": 844
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 22,
+            "height": 22
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/geography?thumbnail=list",
+            "loaded": true,
+            "width": 62,
+            "height": 91.984375
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/study-note-label.svg",
+            "loaded": true,
+            "width": 12,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me/statistics",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=intensive&page=1&limit=2",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/geography/media/thumb-geography/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/geography?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 390,
+      "state": "learner-complete",
+      "geometry": {
+        "width": 390,
+        "scrollWidth": 390,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 390,
+            "height": 844
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 22,
+            "height": 22
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/study-note-learned.svg",
+            "loaded": true,
+            "width": 40,
+            "height": 40
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me/statistics",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=intensive&page=1&limit=2",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=2",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": ["all complete → other category → illustrated"]
+    },
+    {
+      "width": 390,
+      "state": "guest-illustrated",
+      "geometry": {
+        "width": 390,
+        "scrollWidth": 390,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 390,
+            "height": 844
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 22,
+            "height": 22
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/morning?thumbnail=list",
+            "loaded": true,
+            "width": 62,
+            "height": 91.984375
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/future?thumbnail=list",
+            "loaded": true,
+            "width": 62,
+            "height": 91.984375
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=2",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/morning/media/thumb-morning/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/future/media/thumb-future/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/morning?thumbnail=list",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/future?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 390,
+      "state": "guest-intensive",
+      "geometry": {
+        "width": 390,
+        "scrollWidth": 390,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 390,
+            "height": 844
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 22,
+            "height": 22
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/geography?thumbnail=list",
+            "loaded": true,
+            "width": 62,
+            "height": 91.984375
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/study-note-label.svg",
+            "loaded": true,
+            "width": 12,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=intensive&page=1&limit=2",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/geography/media/thumb-geography/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/geography?thumbnail=list",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/privacy/policies",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=intensive&page=1&limit=2",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/geography/media/thumb-geography/url?purpose=content&version_id=v1",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": [
+        "guest intensive → explicit login → cancel → intensive; no writes or protected audio/PDF requests"
+      ]
+    },
+    {
+      "width": 390,
+      "state": "empty",
+      "geometry": {
+        "width": 390,
+        "scrollWidth": 390,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 390,
+            "height": 844
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 22,
+            "height": 22
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/empty-book.svg",
+            "loaded": true,
+            "width": 40,
+            "height": 40
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=2",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 390,
+      "state": "not-ready",
+      "geometry": {
+        "width": 390,
+        "scrollWidth": 390,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 390,
+            "height": 844
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 22,
+            "height": 22
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=2",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 390,
+      "state": "error",
+      "geometry": {
+        "width": 390,
+        "scrollWidth": 390,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 390,
+            "height": 844
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 22,
+            "height": 22
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=2",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 390,
+      "state": "restricted",
+      "geometry": {
+        "width": 390,
+        "scrollWidth": 390,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "right": 400
+          }
+        ],
+        "fonts": [
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 390,
+            "height": 844
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 22,
+            "height": 22
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/morning?thumbnail=list",
+            "loaded": true,
+            "width": 62,
+            "height": 91.984375
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-lock.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/future?thumbnail=list",
+            "loaded": true,
+            "width": 62,
+            "height": 91.984375
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-lock.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=2",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/morning/media/thumb-morning/url?purpose=summary&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/future/media/thumb-future/url?purpose=summary&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/morning?thumbnail=list",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/future?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 430,
+      "state": "learner-illustrated",
+      "geometry": {
+        "width": 430,
+        "scrollWidth": 430,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 430,
+            "height": 930
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 24.25,
+            "height": 24.25
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/morning?thumbnail=list",
+            "loaded": true,
+            "width": 68.5625,
+            "height": 101.640625
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/future?thumbnail=list",
+            "loaded": true,
+            "width": 68.5625,
+            "height": 101.640625
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me/statistics",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/morning/media/thumb-morning/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/morning?thumbnail=list",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=2&limit=1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/future/media/thumb-future/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/future?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 430,
+      "state": "learner-intensive",
+      "geometry": {
+        "width": 430,
+        "scrollWidth": 430,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 430,
+            "height": 930
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 24.25,
+            "height": 24.25
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/geography?thumbnail=list",
+            "loaded": true,
+            "width": 68.5625,
+            "height": 101.640625
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/study-note-label.svg",
+            "loaded": true,
+            "width": 12,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me/statistics",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=intensive&page=1&limit=1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/geography/media/thumb-geography/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/geography?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 430,
+      "state": "learner-complete",
+      "geometry": {
+        "width": 430,
+        "scrollWidth": 430,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 430,
+            "height": 930
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 24.25,
+            "height": 24.25
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 13,
+            "height": 13
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/study-note-learned.svg",
+            "loaded": true,
+            "width": 40,
+            "height": 40
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/me",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/me/statistics",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/feedback/unread",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=intensive&page=1&limit=1",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 430,
+      "state": "guest-illustrated",
+      "geometry": {
+        "width": 430,
+        "scrollWidth": 430,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [],
+        "fonts": [
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 430,
+            "height": 930
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 24.25,
+            "height": 24.25
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/morning?thumbnail=list",
+            "loaded": true,
+            "width": 68.5625,
+            "height": 101.640625
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/future?thumbnail=list",
+            "loaded": true,
+            "width": 68.5625,
+            "height": 101.640625
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/morning/media/thumb-morning/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/morning?thumbnail=list",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=2&limit=1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/future/media/thumb-future/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/future?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 430,
+      "state": "guest-intensive",
+      "geometry": {
+        "width": 430,
+        "scrollWidth": 430,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 430,
+            "height": 930
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 24.25,
+            "height": 24.25
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/geography?thumbnail=list",
+            "loaded": true,
+            "width": 68.5625,
+            "height": 101.640625
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/study-note-label.svg",
+            "loaded": true,
+            "width": 12,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-chevron.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=intensive&page=1&limit=1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/geography/media/thumb-geography/url?purpose=content&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/geography?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 430,
+      "state": "empty",
+      "geometry": {
+        "width": 430,
+        "scrollWidth": 430,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 430,
+            "height": 930
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 24.25,
+            "height": 24.25
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/empty-book.svg",
+            "loaded": true,
+            "width": 40,
+            "height": 40
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=1",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 430,
+      "state": "not-ready",
+      "geometry": {
+        "width": 430,
+        "scrollWidth": 430,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 430,
+            "height": 930
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 24.25,
+            "height": 24.25
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=1",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 430,
+      "state": "error",
+      "geometry": {
+        "width": 430,
+        "scrollWidth": 430,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 430,
+            "height": 930
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 24.25,
+            "height": 24.25
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=1",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    },
+    {
+      "width": 430,
+      "state": "restricted",
+      "geometry": {
+        "width": 430,
+        "scrollWidth": 430,
+        "tabs": [
+          {
+            "text": "图解词汇",
+            "selected": "true",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "2px",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "精读词汇",
+            "selected": "false",
+            "width": 60,
+            "height": 44,
+            "lineHeight": "auto",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "gap": "32px",
+        "border": "1px",
+        "overflows": [],
+        "fonts": [
+          {
+            "family": "\"DM Sans\"",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "Fraunces",
+            "status": "loaded"
+          },
+          {
+            "family": "\"Juya UI Chinese\"",
+            "status": "loaded"
+          }
+        ],
+        "images": [
+          {
+            "src": "https://miniapp-visual.invalid/backgrounds/scene-window-1816629a6ee2.webp",
+            "loaded": true,
+            "width": 430,
+            "height": 930
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/back.svg",
+            "loaded": true,
+            "width": 24.25,
+            "height": 24.25
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/profile-chevron.svg",
+            "loaded": true,
+            "width": 14,
+            "height": 14
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/morning?thumbnail=list",
+            "loaded": true,
+            "width": 68.5625,
+            "height": 101.640625
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-lock.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          },
+          {
+            "src": "http://127.0.0.1:5186/api/mini/v1/visual-images/future?thumbnail=list",
+            "loaded": true,
+            "width": 68.5625,
+            "height": 101.640625
+          },
+          {
+            "src": "http://127.0.0.1:5186/static/design/scene-row-lock.svg",
+            "loaded": true,
+            "width": 17,
+            "height": 18
+          }
+        ]
+      },
+      "requests": [
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=1&limit=1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/morning/media/thumb-morning/url?purpose=summary&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/morning?thumbnail=list",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards?scope=uncompleted&content_type=illustrated&page=2&limit=1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/cards/future/media/thumb-future/url?purpose=summary&version_id=v1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/mini/v1/visual-images/future?thumbnail=list",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "flows": []
+    }
+  ]
+}

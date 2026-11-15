@@ -58,7 +58,7 @@ it('refuses a queue owned by a previous account and ignores its late response', 
       })
   )
   const queue = createLearningQueue({ request, userId: () => owner })
-  queue.attach({ id: 'q', source: 'learning', total: 1 }, 'current')
+  queue.attach({ id: 'q', source: 'learning', content_type: 'illustrated', total: 1 }, 'current')
   const pending = queue.next()
   owner = 'second'
   finish(row('private-next', true, null))
@@ -104,4 +104,22 @@ it('consumes an invalidated note candidate without changing the visible card or 
   expect(queue.matches('q', 'current')).toBe(true)
   expect(await queue.next()).toBe('valid-note')
   expect(request.mock.calls.slice(1).every(([path]) => path.includes('offset=1'))).toBe(true)
+})
+
+it('rejects a learning queue without its category snapshot before advancing', async () => {
+  const request = vi.fn()
+  const queue = createLearningQueue({ request, userId: () => 'owner' })
+  queue.attach({ id: 'legacy', source: 'learning', total: 2 }, 'current')
+  await expect(queue.next()).rejects.toThrow('来源类型已变化')
+  expect(request).not.toHaveBeenCalled()
+})
+
+it('does not consume a queue page whose category differs from the original source', async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValue({ ...row('foreign', true, null), content_type: 'illustrated' })
+  const queue = createLearningQueue({ request, userId: () => 'owner' })
+  queue.attach({ id: 'q', source: 'learning', content_type: 'intensive', total: 2 }, 'current')
+  await expect(queue.next()).rejects.toThrow('来源类型已变化')
+  expect(queue.matches('q', 'current')).toBe(true)
 })
