@@ -20,6 +20,7 @@ export const analyticsFixture = (
     offline?: boolean
     authorize?: (event: CanonicalAnalyticsEvent) => Promise<void>
     production?: boolean
+    storage?: Map<string, unknown>
   } = {}
 ) => {
   let context: AnalyticsRuntimeContext = {
@@ -35,6 +36,10 @@ export const analyticsFixture = (
   const requests: { url: string; data: Record<string, unknown>; abort: boolean }[] = []
   const callbacks: (() => void)[] = []
   const native = {
+    getStorageInfoSync: () => ({ keys: [...(options.storage?.keys() || [])] }),
+    getStorageSync: (key: string) => options.storage?.get(key),
+    setStorageSync: (key: string, value: unknown) => options.storage?.set(key, value),
+    removeStorageSync: (key: string) => options.storage?.delete(key),
     getStorage: () => {
       throw new Error('SDK must not read business storage')
     },

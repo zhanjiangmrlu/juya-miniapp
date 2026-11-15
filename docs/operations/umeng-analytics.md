@@ -1,3 +1,19 @@
+# 当前恢复方案（2026-11-15）
+
+本轮按用户确认恢复测试版基础统计和五类业务事件，以下旧版硬关闭/32事件记录仅作历史参考。
+
+- 仅微信 `--mode test` 且私有配置 `VITE_UMENG_ENABLED=true`、`VITE_UMENG_TEST_APP_KEY` 非空时打包受控 umtrack-wx 2.8.0。production、development、H5、分享构建继续关闭，不读取生产Key。
+- 测试API需显式 `JUYA_ANALYTICS_CLIENT_TRANSPORT_ENABLED=true`，并将 `JUYA_PRIVACY_DOCUMENTS_PATH` 指向 `src/juya_api/policies/umeng-20261115-v3.json`（容器使用对应绝对路径）。仅新版privacy/analytics完整发布才返回 `analytics_available=true`；生产配置仍拒绝开启。
+- 账号必须确认当前必要协议，并手动允许新版统计。旧范围许可不能启动SDK。关闭立即废弃实例、取消请求/计时器、清内存队列并删除当前随机访客标识；离线撤回保持关闭。已发出的数据不能收回。
+- 同一设备/账号/许可仅持久保存随机UUID，避免每次冷启动重复计为新访客；SDK其他存储、队列和事件均仅在内存。撤回/退出/许可失效后重新允许使用新标识，不能跨设备识别为同一随机访客。
+- 基础访问、会话、页面和必要设备/网络字段按新版说明处理；自定义事件仅 `page_enter/content_open/audio_play/favorite_change/learning_complete`。沿用后端逐事件成功校验，不向友盟传OpenID、UnionID、手机号、昵称头像、登录凭据、操作校验键或私人输入。
+- 微信后台必须放行request域名 `https://umini.shujupie.com`。对SDK返回不改写，不使用剪切板验证、自动获取OpenID、自动资料上传或自动分享分析。
+- SDK已就绪不等于友盟已接收，事件接口accepted仅表示本次业务事件授权。真机需在友盟测试应用核对实际接收，随后关闭开关并验证后续请求停止；不把单元测试当成远端入库。
+
+本轮仅本地test源码和隔离验证，不部署API、不上传微信包、不修改生产配置。远程测试环境仍需后续部署和新包验收。
+
+---
+
 # CHG-0040 当前行为（2026-11-10）
 
 以下旧版接入规则仅为历史记录。本轮已取消登录协议勾选与友盟许可的联动，所有实际构建硬关闭友盟SDK及分析传输，环境变量和旧设备许可均不能开启。现有隐私说明恢复独立账号统计开关；正式全文未配置时保持未开启、原必要登录可继续。

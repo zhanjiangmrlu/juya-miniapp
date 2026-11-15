@@ -35,7 +35,7 @@ it('settings statistics login does not promise to turn collection on', async () 
     props: { first: false, confirmed: true, busy: false, error: '', action: 'statistics' }
   })
   expect(w.get('.primary').text()).toBe('登录后再选择统计')
-  expect(w.text()).toContain('真实统计未运行')
+  expect(w.text()).toContain('统计配置就绪')
 })
 
 it.each([
@@ -52,7 +52,7 @@ it.each([
   async ({ first, confirmed, action, primary }) => {
     const view = mount(Dialog, { props: { first, confirmed, action, busy: false, error: '' } })
     expect(view.get('.primary').text()).toBe(primary)
-    expect(view.text()).toContain('本版真实统计未运行')
+    expect(view.text()).toContain('设备、系统、网络和随机统计标识')
     expect(view.findAll('button').some((button) => button.text().includes('开启统计'))).toBe(false)
     await view.get('.primary').trigger('click')
     await view.get('.secondary').trigger('click')

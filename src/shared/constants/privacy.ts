@@ -35,7 +35,7 @@ export const CONSENT_ACTION_COPY = {
   },
   [ConsentAction.STATISTICS]: {
     title: '登录后可选择统计许可',
-    foot: '登录成功后，请在隐私说明中再次主动选择；当前统计未运行'
+    foot: '登录成功后，请在隐私说明中再次主动选择'
   },
   [ConsentAction.ACCOUNT]: { title: '登录后保存到你的账号', foot: '登录成功后，请再次进行原操作' },
   [ConsentAction.FAVORITE_SCENE]: {

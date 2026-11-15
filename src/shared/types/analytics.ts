@@ -108,4 +108,5 @@ export interface AnalyticsNativePorts {
   native: () => Record<string, unknown>
   hasConsent: () => boolean
   owner: string
+  identifierKey?: string
 }
