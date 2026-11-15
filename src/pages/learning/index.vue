@@ -21,13 +21,14 @@ import { analytics } from '@/services/analytics'
 // #ifdef JUYA_ANALYTICS
 import { businessAnalytics } from '@/services/analytics-business'
 // #endif
-import { onSessionExpired, session } from '@/services/api'
+import { onSessionExpired, operations, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
 import { listPageSize } from '@/services/list-page-size'
 import { loginReturn } from '@/services/login-return'
 import { openLogin } from '@/services/navigation'
 import { runtimeMode } from '@/services/runtime-mode'
 import { homeShare } from '@/services/share-service'
+import { PENDING_SCENE_COMPLETION_MESSAGE } from '@/shared/constants/learning'
 import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { Routes } from '@/shared/constants/navigation'
 import { AnalyticsEvent } from '@/shared/enums/analytics'
@@ -57,8 +58,39 @@ let listOwner = session.identity(),
   browseGeneration = 0,
   sharedEntry = false,
   visible = false,
-  loginPosition: { tab: LearningTab; top: number } | null = null
+  loginPosition: { tab: LearningTab; top: number } | null = null,
+  completionCheck: { owner: string; job: Promise<boolean> } | null = null
 const activeTab = ref<LearningTab>(LearningTab.ILLUSTRATED)
+/** 返回待学列表前仅查询本人原完成回执，未知结果不能由新列表快照替代 */
+const confirmPendingCompletions = (): Promise<boolean> => {
+  if (runtimeMode.update()) return Promise.resolve(false)
+  if (!session.userId()) return Promise.resolve(true)
+  const owner = session.identity()
+  if (completionCheck?.owner === owner) return completionCheck.job
+  /** 同一身份的两栏共用一次原回执查询，切号后旧回执不能放行新列表 */
+  const check = async () => {
+    while (owner === session.identity()) {
+      const actions = operations.pendingActions('complete:')
+      if (!actions.length) return true
+      for (const action of actions) {
+        if (owner !== session.identity()) return false
+        try {
+          await operations.recover(action, { retry: false })
+        } catch {
+          if (owner !== session.identity()) return false
+          throw new Error(PENDING_SCENE_COMPLETION_MESSAGE)
+        }
+      }
+      // 查询期间可能再次进入详情产生另一项完成，全部原回执查清后才放行列表
+    }
+    return false
+  }
+  const job = check().finally(() => {
+    if (completionCheck?.job === job) completionCheck = null
+  })
+  completionCheck = { owner, job }
+  return job
+}
 /** 为每个分区建立独立可信快照与服务端分页
  * @param path 当前分区的服务端集合查询
  */
@@ -68,7 +100,7 @@ const createList = (path: string) =>
     pageSize: () => listPageSize(268.577, 1050),
     request: session.contentRequest,
     userId: session.identity,
-    ensure: async () => !runtimeMode.update()
+    ensure: confirmPendingCompletions
   })
 const lists = {
   [LearningTab.ILLUSTRATED]: createList(
@@ -91,6 +123,9 @@ const currentList = computed(() => lists[activeTab.value]),
   moreBusy = computed(() => currentList.value.moreBusy.value),
   error = computed(() => currentList.value.error.value),
   moreError = computed(() => currentList.value.moreError.value),
+  completionPending = computed(() =>
+    [error.value, moreError.value].includes(PENDING_SCENE_COMPLETION_MESSAGE)
+  ),
   hasMore = computed(() => currentList.value.hasMore.value),
   done = computed(() => currentList.value.done.value),
   intensive = computed(() => activeTab.value === LearningTab.INTENSIVE),
@@ -146,6 +181,7 @@ const selectTab = async (tab: LearningTab) => {
   syncOwner()
   if (tab === activeTab.value || runtimeMode.update()) return
   position.dispose()
+  currentList.value.dispose()
   browseGeneration++
   // #ifdef JUYA_ANALYTICS
   businessAnalytics.track(AnalyticsEvent.TAB_CHANGE, { content_type: 'scene', tab_id: tab })
@@ -297,6 +333,7 @@ onHide(() => {
   visible = false
   browseGeneration++
   share.hide()
+  dispose()
   position.dispose()
 })
 /** 在列表内下拉刷新场景及统计，结束后收起刷新提示 */
@@ -311,7 +348,7 @@ const pullRefresh = async () => {
 }
 /** 列表触底时追加下一页 */
 const more = () => {
-  if (!runtimeMode.update()) void loadMore()
+  if (!runtimeMode.update() && !completionPending.value) void loadMore()
 }
 onUnload(() => {
   browseGeneration++
@@ -406,6 +443,12 @@ onUnload(() => {
             >{{ total }} 张</text
           >
         </view>
+        <view v-if="completionPending" class="notice error completion-recovery" aria-live="polite">
+          <text>{{ PENDING_SCENE_COMPLETION_MESSAGE }}</text>
+          <button class="text-button" :disabled="busy || moreBusy" @click="refresh">
+            查询结果并刷新
+          </button>
+        </view>
         <view
           v-if="
             LEARNING_FEATURES.authorization &&
@@ -441,8 +484,8 @@ onUnload(() => {
           class="category-state"
           :icon="allLearned ? '/static/design/study-note-learned.svg' : undefined"
           :busy="busy && total === null"
-          :error="error && (total === null || total === 0) ? error : ''"
-          :empty="total === 0 && !error"
+          :error="!completionPending && error && (total === null || total === 0) ? error : ''"
+          :empty="total === 0 && !error && !completionPending"
           :title="allLearned ? '本类词汇已全部学完' : '本类暂无词汇'"
           :description="
             allLearned
@@ -466,10 +509,10 @@ onUnload(() => {
         <SceneListFooter
           :busy="moreBusy"
           :refreshing="busy && total !== null"
-          :refresh-error="total !== null ? error : ''"
-          :error="moreError"
-          :has-more="hasMore"
-          :done="done"
+          :refresh-error="!completionPending && total !== null ? error : ''"
+          :error="completionPending ? '' : moreError"
+          :has-more="hasMore && !completionPending"
+          :done="done && !completionPending"
           @refresh="refresh"
           @more="loadMore"
         />

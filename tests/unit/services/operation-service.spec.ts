@@ -356,3 +356,15 @@ it('rejects an operation result from an earlier session of the same stable accou
   finish({ id: 'old-queue' })
   await expect(pending).rejects.toMatchObject({ code: 'session_changed' })
 })
+
+it('enumerates only the current account pending completion actions without exposing request data', async () => {
+  const { operations, records } = setup()
+  records.set(OPERATIONS_STORAGE_PREFIX + 'user-1', [
+    { action: 'complete:a', path: '/api/mini/v1/cards/a/complete', method: 'POST', key: 'a' },
+    { action: 'favorite:a', path: '/favorite', method: 'PUT', key: 'f' }
+  ])
+  records.set(OPERATIONS_STORAGE_PREFIX + 'user-2', [
+    { action: 'complete:private', path: '/private', method: 'POST', key: 'private' }
+  ])
+  expect(operations.pendingActions('complete:')).toEqual(['complete:a'])
+})

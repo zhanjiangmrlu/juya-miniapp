@@ -45,6 +45,7 @@ vi.mock('@dcloudio/uni-app', () => ({
   }
 }))
 vi.mock('@/services/api', () => ({
+  operations: { pendingActions: () => [], recover: vi.fn() },
   session: {
     contentRequest: ports.request,
     request: ports.request,

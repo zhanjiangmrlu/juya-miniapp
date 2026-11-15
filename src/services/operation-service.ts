@@ -228,11 +228,18 @@ export const createOperationService = (ports: OperationPorts) => {
    * @param action 页面动作
    */
   const pending = (action: string) => context().records.some((row) => row.action === action)
+  /** 仅枚举当前账号指定业务的待确认动作，不暴露操作键或提交正文
+   * @param prefix 本次恢复需要的业务动作前缀
+   */
+  const pendingActions = (prefix: string) =>
+    context()
+      .records.filter((row) => row.action.startsWith(prefix))
+      .map((row) => row.action)
   /** 退出账号时立即释放含个人输入的内存 */
   const clearMemory = () => {
     fingerprints.clear()
     receiptMisses.clear()
   }
   if (ports.session.userId()) context()
-  return { run, recover, rebind, pending, clearMemory }
+  return { run, recover, rebind, pending, pendingActions, clearMemory }
 }
