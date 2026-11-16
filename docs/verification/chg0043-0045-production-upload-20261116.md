@@ -1,3 +1,5 @@
+> 后续状态（2026-11-16 23:33）：release后端与后台已完成生产部署，原数据配置保留；新版分类接口已升级，历史分类仍待人工确认启用。本页22:14的旧API快照是上传时状态，最新以[生产发布报告](https://github.com/zhanjiangmrlu/juya-api/blob/release/docs/verification/chg0043-0045-production-release-20261116.md)为准。本轮没有重新上传微信包。
+
 # CHG0043—0045 release合并及小程序生产包上传
 
 用户本轮要求将test代码合入release，并用release打生产包上传小程序，体验版自行切换。本次完成三仓合并、生产配置构建、OSS核验与微信官方CLI上传；不将分支合并和开发版本上传等同服务器生产部署或正式上线。
