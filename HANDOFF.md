@@ -1,8 +1,8 @@
-# 2026-11-16 所有格与人工来源修正
+# 2026-11-16 所有格与人工来源修复配套
 
-仅同步生成契约，Source/VocabularySource增加可选manual_english人工确认依据；check通过，运行代码未修改，用户最新要求先不部署，本次不上传小程序或OSS。原开发版1.5.0-test.20261116.032311仍为此前运行版本。
+仅同步生成契约ad10a06，Source/VocabularySource增加可选manual_english，check通过，运行代码未改。用户最新已授权合并远程test并部署：APIfd25508及组合后台3e215b9均已发布测试，7服务健康，官方CI1026/3；无迁移，61表指纹和12非目标容器保持。分类ready1/版本16按发布前实际值保留，下方未启用分类为早期历史。
 
-修复与未部署边界见[API验证记录](https://github.com/zhanjiangmrlu/juya-api/blob/test/docs/verification/vocabulary-manual-source-20261116.md)。
+本轮不重复上传小程序或OSS，原开发版1.5.0-test.20261116.032311保持，体验版用户手动切换。授权/查词/动态高亮继续暂停，生产未发布，真机未验。见[API修复与发布记录](https://github.com/zhanjiangmrlu/juya-api/blob/test/docs/verification/vocabulary-manual-source-20261116.md)。
 
 ---
 
