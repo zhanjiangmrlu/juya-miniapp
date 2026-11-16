@@ -15,5 +15,5 @@ export const QueueSource = {
 } as const
 export type QueueSource = (typeof QueueSource)[keyof typeof QueueSource] & string
 
-export const LearningTab = { ALL: 'all', NOTES: 'notes' } as const
+export const LearningTab = { ILLUSTRATED: 'illustrated', INTENSIVE: 'intensive' } as const
 export type LearningTab = (typeof LearningTab)[keyof typeof LearningTab] & string

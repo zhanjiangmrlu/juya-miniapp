@@ -60,7 +60,7 @@ defineEmits<{ login: [enabled: boolean]; close: []; policy: [kind: string] }>()
         <view class="analysis"
           ><text class="section-title">友盟使用统计（可选）</text
           ><text class="muted"
-            >许可范围仅含页面访问、内容打开、播放成功、收藏变更和学习完成五类事件与必要引用。本版真实统计未运行，不装载友盟SDK；允许许可不代表已开启。可在设置的隐私说明中撤回。</text
+            >统计配置就绪且你手动允许后，友盟处理必要的设备、系统、网络和随机统计标识，统计访问、会话和页面，以及内容打开、播放成功、收藏变更和学习完成。不同意不影响登录和学习，可随时在设置的隐私说明中关闭。具体范围请先阅读统计说明。</text
           ><button
             class="consent-button policy-link"
             :disabled="busy"

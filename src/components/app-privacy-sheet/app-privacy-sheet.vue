@@ -27,10 +27,10 @@ onMounted(async () => {
     // 初始化未完成时保持开关关闭，不将内部状态显示为用户操作错误
   }
 })
-/** 独立开关先核对账号，拒绝统计不影响必要业务 */
+/** 开启前核对账号与当前协议，关闭不受协议更新影响 */
 const toggle = async () => {
   if (busy.value) return
-  if (!session.userId()) {
+  if (!session.userId() || (!enabled.value && !privacy.confirmed())) {
     promptLogin(props.sourceTarget || `${Routes.SETTINGS}?privacy=1`, ConsentAction.STATISTICS)
     return
   }
@@ -91,9 +91,11 @@ const toggle = async () => {
           >
             <view class="track"><view class="knob" /></view></button
         ></view>
-        <text class="paragraph muted"
-          >本版真实统计未运行，不装载友盟SDK。许可仅限页面访问、内容打开、播放成功、收藏变更和完成成功五类事件与必要引用，不采集设备型号或自动会话。</text
-        >
+        <text class="paragraph muted">{{
+          analytics.available && privacy.policies.value.analytics_available
+            ? '手动允许后，友盟处理必要的设备、系统、网络和随机统计标识，统计访问、会话及页面使用情况，并记录内容打开、播放成功、收藏变更和完成成功。具体范围请阅读统计说明；不提供微信OpenID、手机号、昵称头像或登录凭证。'
+            : '本版统计暂未运行。只有统计配置就绪、当前协议有效且你手动允许后，才会开始上报；已允许不表示友盟已收到数据。'
+        }}</text>
         <text class="paragraph muted">关闭即停止后续统计，不影响收藏、学习记录和打卡。</text>
         <text v-if="error" class="error" role="alert">{{ error }}</text>
         <button class="privacy-button policy-link" @click="openPolicy('analytics')">

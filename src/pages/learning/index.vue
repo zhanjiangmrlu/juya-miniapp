@@ -21,13 +21,14 @@ import { analytics } from '@/services/analytics'
 // #ifdef JUYA_ANALYTICS
 import { businessAnalytics } from '@/services/analytics-business'
 // #endif
-import { onSessionExpired, session } from '@/services/api'
+import { onSessionExpired, operations, session } from '@/services/api'
 import { feedbackInbox } from '@/services/feedback-service'
 import { listPageSize } from '@/services/list-page-size'
 import { loginReturn } from '@/services/login-return'
 import { openLogin } from '@/services/navigation'
 import { runtimeMode } from '@/services/runtime-mode'
 import { homeShare } from '@/services/share-service'
+import { PENDING_SCENE_COMPLETION_MESSAGE } from '@/shared/constants/learning'
 import { LEARNING_FEATURES } from '@/shared/constants/learning-features'
 import { Routes } from '@/shared/constants/navigation'
 import { AnalyticsEvent } from '@/shared/enums/analytics'
@@ -39,6 +40,8 @@ import { useAccountStore } from '@/stores/account-store'
 import type { CardBrief } from '@/shared/types/learning'
 const account = useAccountStore(),
   statsError = ref(''),
+  completionNotice = ref(''),
+  recovering = ref(false),
   scrollTop = ref(0),
   refreshing = ref(false)
 const browseOnly = runtimeMode.browseOnly,
@@ -56,8 +59,49 @@ onShareTimeline(() => {
 let listOwner = session.identity(),
   browseGeneration = 0,
   sharedEntry = false,
-  visible = false
-const activeTab = ref<LearningTab>(LearningTab.ALL)
+  visible = false,
+  loginPosition: { tab: LearningTab; top: number } | null = null,
+  completionCheck: { owner: string; job: Promise<boolean> } | null = null
+const activeTab = ref<LearningTab>(LearningTab.ILLUSTRATED)
+/** 共用本人原回执查询，手动恢复最多重试点击时选定的一项
+ * @param retryAction 用户明确要求查询并重试的原完成动作，自动进入列表时省略
+ */
+const confirmPendingCompletions = (retryAction?: string): Promise<boolean> => {
+  if (runtimeMode.update()) return Promise.resolve(false)
+  if (!session.userId()) return Promise.resolve(true)
+  const owner = session.identity()
+  if (completionCheck?.owner === owner) return completionCheck.job
+  /** 同一身份的两栏共用一次原回执查询，切号后旧回执不能放行新列表 */
+  const check = async () => {
+    while (owner === session.identity()) {
+      const actions = operations.pendingActions('complete:')
+      if (!actions.length) return true
+      for (const action of actions) {
+        if (owner !== session.identity()) return false
+        try {
+          const retry = action === retryAction
+          if (retry) retryAction = undefined
+          await operations.recover(action, { retry })
+        } catch (reason) {
+          if (owner !== session.identity()) return false
+          if (!operations.pending(action)) {
+            completionNotice.value =
+              reason instanceof Error ? reason.message : '请重新打开卡片核对学习状态'
+            continue
+          }
+          throw new Error(PENDING_SCENE_COMPLETION_MESSAGE)
+        }
+      }
+      // 查询期间可能再次进入详情产生另一项完成，全部原回执查清后才放行列表
+    }
+    return false
+  }
+  const job = check().finally(() => {
+    if (completionCheck?.job === job) completionCheck = null
+  })
+  completionCheck = { owner, job }
+  return job
+}
 /** 为每个分区建立独立可信快照与服务端分页
  * @param path 当前分区的服务端集合查询
  */
@@ -67,11 +111,13 @@ const createList = (path: string) =>
     pageSize: () => listPageSize(268.577, 1050),
     request: session.contentRequest,
     userId: session.identity,
-    ensure: async () => !runtimeMode.update()
+    ensure: confirmPendingCompletions
   })
 const lists = {
-  [LearningTab.ALL]: createList('/api/mini/v1/cards'),
-  [LearningTab.NOTES]: createList('/api/mini/v1/cards?scope=published&has_study_note=true')
+  [LearningTab.ILLUSTRATED]: createList(
+    '/api/mini/v1/cards?scope=uncompleted&content_type=illustrated'
+  ),
+  [LearningTab.INTENSIVE]: createList('/api/mini/v1/cards?scope=uncompleted&content_type=intensive')
 }
 const currentList = computed(() => lists[activeTab.value]),
   cards = computed(() => currentList.value.items.value),
@@ -80,17 +126,24 @@ const currentList = computed(() => lists[activeTab.value]),
   accessContext = computed(
     () =>
       currentList.value.accessContext.value ||
-      lists[LearningTab.ALL].accessContext.value ||
-      lists[LearningTab.NOTES].accessContext.value
+      lists[LearningTab.ILLUSTRATED].accessContext.value ||
+      lists[LearningTab.INTENSIVE].accessContext.value
   ),
   freeRemaining = computed(() => currentList.value.freeRemaining.value),
   busy = computed(() => currentList.value.busy.value),
   moreBusy = computed(() => currentList.value.moreBusy.value),
   error = computed(() => currentList.value.error.value),
   moreError = computed(() => currentList.value.moreError.value),
+  completionPending = computed(() =>
+    [error.value, moreError.value].includes(PENDING_SCENE_COMPLETION_MESSAGE)
+  ),
   hasMore = computed(() => currentList.value.hasMore.value),
   done = computed(() => currentList.value.done.value),
-  notes = computed(() => activeTab.value === LearningTab.NOTES)
+  intensive = computed(() => activeTab.value === LearningTab.INTENSIVE),
+  allLearned = computed(
+    () => Boolean(session.userId()) && total.value === 0 && publishedTotal.value > 0 && !error.value
+  ),
+  otherTab = computed(() => (intensive.value ? LearningTab.ILLUSTRATED : LearningTab.INTENSIVE))
 /** 刷新当前分区已经读取的范围 */
 const refreshList = () => {
   syncOwner()
@@ -103,8 +156,11 @@ const loadMore = () => {
 }
 /** 销毁两个分区的在途响应 */
 const dispose = () => Object.values(lists).forEach((list) => list.dispose())
-/** 账号变化时同时清理两个分区的快照 */
-const resetList = () => Object.values(lists).forEach((list) => list.reset())
+/** 账号变化时同时清理两个分区的快照
+ * @param preserveRange 主动登录返回时是否保留已读范围
+ */
+const resetList = (preserveRange = false) =>
+  Object.values(lists).forEach((list) => list.reset(preserveRange))
 const authorizationLabel = computed(() => {
   if (!accessContext.value) return '权限准备中'
   return accessContext.value.authorization?.status === LearningAuthorizationStatus.ACTIVE
@@ -120,8 +176,8 @@ const restoreScroll = (top: number) => {
   scrollTop.value = top
 }
 const positions = {
-  [LearningTab.ALL]: useListPosition(session.identity, restoreScroll),
-  [LearningTab.NOTES]: useListPosition(session.identity, restoreScroll)
+  [LearningTab.ILLUSTRATED]: useListPosition(session.identity, restoreScroll),
+  [LearningTab.INTENSIVE]: useListPosition(session.identity, restoreScroll)
 }
 const position = {
   scroll: (top: number) => positions[activeTab.value].scroll(top),
@@ -136,6 +192,7 @@ const selectTab = async (tab: LearningTab) => {
   syncOwner()
   if (tab === activeTab.value || runtimeMode.update()) return
   position.dispose()
+  currentList.value.dispose()
   browseGeneration++
   // #ifdef JUYA_ANALYTICS
   businessAnalytics.track(AnalyticsEvent.TAB_CHANGE, { content_type: 'scene', tab_id: tab })
@@ -154,6 +211,24 @@ const onListScroll = (event: { detail: { scrollTop: number } }) => {
 }
 /** 保留详情返回前的滚动位置和已读页 */
 const refresh = () => position.preserve(refreshList)
+/** 用户主动恢复时先查原键；结果确定后重读服务端待学列表 */
+const recoverCompletion = async () => {
+  syncOwner()
+  if (!session.userId() || runtimeMode.update() || recovering.value) return
+  const owner = session.identity()
+  recovering.value = true
+  completionNotice.value = ''
+  try {
+    const [action] = operations.pendingActions('complete:')
+    if (await confirmPendingCompletions(action)) {
+      if (visible && owner === session.identity()) await refresh()
+    }
+  } catch {
+    // 网络或回执仍未知，保留原记录与现有恢复入口
+  } finally {
+    if (owner === session.identity()) recovering.value = false
+  }
+}
 /** 主动下拉成功后清除旧阅读位置，新轮次失败仍保留可信内容 */
 const restart = async () => {
   syncOwner()
@@ -175,9 +250,17 @@ const restart = async () => {
 const reset = () => {
   browseGeneration++
   listOwner = session.identity()
-  resetList()
+  completionNotice.value = ''
+  recovering.value = false
+  if (loginReturn.pending() && !loginPosition)
+    loginPosition = { tab: activeTab.value, top: scrollTop.value }
+  resetList(Boolean(loginPosition))
   position.reset()
-  scrollTop.value = 0
+  if (loginPosition) {
+    activeTab.value = loginPosition.tab
+    positions[activeTab.value].scroll(loginPosition.top)
+    scrollTop.value = loginPosition.top
+  } else scrollTop.value = 0
 }
 /** 任一账号边界先清理两栏，禁止新账号回退到另一栏的旧授权或位置 */
 const syncOwner = () => {
@@ -218,13 +301,6 @@ const records = () => {
   // #endif
   uni.switchTab({ url: Routes.RECORDS })
 }
-/** 当前场景全部学完后仍可从收藏选择复习 */
-const favorites = () => {
-  // #ifdef JUYA_ANALYTICS
-  businessAnalytics.entry('learning_favorites', Routes.FAVORITES)
-  // #endif
-  uni.navigateTo({ url: Routes.FAVORITES })
-}
 /** 分享进入时先重验本人会话，再读取私人列表和统计 */
 const showPage = async () => {
   visible = true
@@ -255,16 +331,20 @@ const showPage = async () => {
   )
   const restored = loginReturn.take(Routes.LEARNING)
   if (restored) {
-    activeTab.value = restored.tab === LearningTab.NOTES ? LearningTab.NOTES : LearningTab.ALL
+    activeTab.value =
+      restored.tab === LearningTab.INTENSIVE ? LearningTab.INTENSIVE : LearningTab.ILLUSTRATED
     scrollTop.value = restored.scroll
+    positions[activeTab.value].scroll(restored.scroll)
   }
   syncOwner()
   await Promise.allSettled([refresh(), refreshStats(), feedbackInbox.refresh()])
+  loginPosition = null
   if (!runtimeMode.update()) accessReady.value = true
 }
 onShow(showPage)
 onLoad((query) => {
-  activeTab.value = query?.tab === LearningTab.NOTES ? LearningTab.NOTES : LearningTab.ALL
+  activeTab.value =
+    query?.tab === LearningTab.INTENSIVE ? LearningTab.INTENSIVE : LearningTab.ILLUSTRATED
   sharedEntry = query?.target === 'learning'
   if (sharedEntry) accessReady.value = false
 })
@@ -284,6 +364,7 @@ onHide(() => {
   visible = false
   browseGeneration++
   share.hide()
+  dispose()
   position.dispose()
 })
 /** 在列表内下拉刷新场景及统计，结束后收起刷新提示 */
@@ -298,7 +379,7 @@ const pullRefresh = async () => {
 }
 /** 列表触底时追加下一页 */
 const more = () => {
-  if (!runtimeMode.update()) void loadMore()
+  if (!runtimeMode.update() && !completionPending.value) void loadMore()
 }
 onUnload(() => {
   browseGeneration++
@@ -325,7 +406,7 @@ onUnload(() => {
           ><text>登录后可同步收藏与学习记录</text
           ><button
             class="guest-login"
-            @click="openLogin(notes ? `${Routes.LEARNING}?tab=notes` : Routes.LEARNING)"
+            @click="openLogin(intensive ? `${Routes.LEARNING}?tab=intensive` : Routes.LEARNING)"
           >
             登录<image src="/static/design/profile-chevron.svg" mode="aspectFit" /></button></view
         ><text v-else class="learner-status"
@@ -363,12 +444,8 @@ onUnload(() => {
             />
           </button>
         </view>
-        <view v-if="account.statistics" class="scene-streak">
-          <text>连续打卡 {{ account.statistics.current_streak }} 天</text>
-          <text>累计打卡 {{ account.statistics.total_checkin_days }} 天</text>
-        </view>
         <AppState
-          v-else-if="account.profile || session.userId()"
+          v-if="!account.statistics && (account.profile || session.userId())"
           :busy="!statsError"
           :error="statsError && '统计暂未获取'"
           @retry="refreshStats"
@@ -378,7 +455,7 @@ onUnload(() => {
         >
         <view class="catalog-tabs" role="tablist" aria-label="场景列表分区">
           <button
-            v-for="tab in [LearningTab.ALL, LearningTab.NOTES]"
+            v-for="tab in [LearningTab.ILLUSTRATED, LearningTab.INTENSIVE]"
             :key="tab"
             role="tab"
             :data-tab="tab"
@@ -386,20 +463,35 @@ onUnload(() => {
             :class="{ selected: activeTab === tab }"
             @click="selectTab(tab)"
           >
-            {{ tab === LearningTab.ALL ? '全部场景' : '含学习笔记' }}
+            {{ tab === LearningTab.ILLUSTRATED ? '图解词汇' : '精读词汇' }}
           </button>
         </view>
         <view class="catalog-heading between">
           <text class="section-title">{{
-            notes ? '含学习笔记' : account.profile || session.userId() ? '待学场景' : '场景列表'
+            account.profile || session.userId() ? '待学词汇' : '词汇列表'
           }}</text>
-          <text v-if="total !== null" class="catalog-count">{{ total }} 张</text>
+          <text v-if="total !== null && !(error && total === 0)" class="catalog-count"
+            >{{ total }} 张</text
+          >
+        </view>
+        <view v-if="completionNotice" class="notice" aria-live="polite">{{
+          completionNotice
+        }}</view>
+        <view v-if="completionPending" class="notice error completion-recovery" aria-live="polite">
+          <text>{{ PENDING_SCENE_COMPLETION_MESSAGE }}</text>
+          <button
+            class="text-button"
+            :disabled="busy || moreBusy || recovering"
+            @click="recoverCompletion"
+          >
+            查询并重试原完成操作
+          </button>
         </view>
         <view
           v-if="
             LEARNING_FEATURES.authorization &&
             (account.profile || session.userId()) &&
-            !notes &&
+            !intensive &&
             accessContext?.enabled &&
             accessContext.authorization?.status !== LearningAuthorizationStatus.ACTIVE
           "
@@ -427,46 +519,38 @@ onUnload(() => {
         @refresherrefresh="pullRefresh"
       >
         <AppState
-          :class="{ 'notes-state': notes }"
-          :icon="notes ? '/static/design/study-note-empty.svg' : undefined"
+          class="category-state"
+          :icon="allLearned ? '/static/design/study-note-learned.svg' : undefined"
           :busy="busy && total === null"
-          :error="total === null ? error : ''"
-          :empty="total === 0"
-          :title="
-            notes
-              ? '暂无学习笔记'
-              : publishedTotal > 0
-                ? '当前场景卡已全部学完'
-                : '暂无可学习的场景卡'
-          "
+          :error="!completionPending && error && (total === null || total === 0) ? error : ''"
+          :empty="total === 0 && !error && !completionPending"
+          :title="allLearned ? '本类词汇已全部学完' : '本类暂无词汇'"
           :description="
-            notes
-              ? '这里会展示带学习笔记的场景卡，\n可以先学习其他场景。'
-              : publishedTotal > 0
-                ? '可以到学习记录复习已学场景。'
-                : '场景卡发布后会在这里展示，历史学习记录会保留。'
+            allLearned
+              ? '学习过的内容已保存在学习记录中。\n可以回去复习，也可以学习另一类词汇。'
+              : '本类词汇发布后会在这里展示，历史学习记录会保留。'
           "
           @retry="refresh"
-          ><view v-if="notes && total === 0" class="notes-empty"
-            ><button @click="selectTab(LearningTab.ALL)">查看全部场景</button></view
-          ><view v-else-if="total === 0 && publishedTotal > 0" class="empty-actions"
+          ><view v-if="allLearned" class="empty-actions"
             ><button class="primary" @click="records">查看学习记录</button
-            ><button @click="favorites">查看收藏</button></view
-          ></AppState
-        >
+            ><button class="other-category" @click="selectTab(otherTab)">
+              去学{{ intensive ? '图解词汇' : '精读词汇'
+              }}<image src="/static/design/profile-chevron.svg" mode="aspectFit" /></button></view
+        ></AppState>
         <SceneCard
           v-for="card in cards"
           :key="card.id"
           :card="card"
-          :source="notes ? QueueSource.LEARNING_NOTES : QueueSource.LEARNING"
+          :source="QueueSource.LEARNING"
+          :content-type="activeTab"
         />
         <SceneListFooter
           :busy="moreBusy"
           :refreshing="busy && total !== null"
-          :refresh-error="total !== null ? error : ''"
-          :error="moreError"
-          :has-more="hasMore"
-          :done="done"
+          :refresh-error="!completionPending && total !== null ? error : ''"
+          :error="completionPending ? '' : moreError"
+          :has-more="hasMore && !completionPending"
+          :done="done && !completionPending"
           @refresh="refresh"
           @more="loadMore"
         />
@@ -561,14 +645,6 @@ onUnload(() => {
   }
 }
 
-.scene-streak {
-  display: flex;
-  justify-content: space-between;
-  padding-bottom: 16px;
-  font-size: 23.077rpx;
-  color: #586c5b;
-}
-
 .feedback-dot {
   width: 7px;
   height: 7px;
@@ -615,14 +691,14 @@ onUnload(() => {
   }
 }
 
-.notes-state {
+.category-state {
   &.empty {
     padding-top: 64px;
   }
 
   :deep(.empty-mark) {
-    width: 57px;
-    height: 65px;
+    width: 40px;
+    height: 40px;
     background: none;
     border-radius: 0;
     margin-bottom: 18px;
@@ -630,11 +706,11 @@ onUnload(() => {
 
   :deep(.empty-icon) {
     width: 40px;
-    height: 48px;
+    height: 40px;
   }
 
   :deep(.empty-title) {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
   }
 
@@ -643,16 +719,6 @@ onUnload(() => {
     white-space: pre-line;
     margin: 0 auto;
     font-size: 13px;
-  }
-}
-
-.notes-empty {
-  button {
-    width: 124px;
-    min-height: 44px;
-    margin: 42px auto 0;
-    padding: 0;
-    background: #e4f0db;
   }
 }
 
@@ -681,7 +747,29 @@ onUnload(() => {
 
 .empty-actions {
   display: flex;
-  justify-content: center;
-  gap: 19.231rpx;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+  margin-top: 25px;
+
+  button {
+    min-height: 44px;
+    font-size: 13px;
+  }
+
+  .other-category {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px;
+    border: 0;
+    background: transparent;
+    color: #41664d;
+
+    image {
+      width: 14px;
+      height: 14px;
+    }
+  }
 }
 </style>

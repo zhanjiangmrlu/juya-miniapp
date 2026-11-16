@@ -49,7 +49,8 @@ const open = () => {
   void openScene(
     props.card.id,
     available.value && !locked.value ? props.source : undefined,
-    props.day
+    props.day,
+    props.contentType
   )
 }
 const available = computed(() => !('available' in props.card) || props.card.available)

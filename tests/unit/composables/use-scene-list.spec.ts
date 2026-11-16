@@ -1,6 +1,7 @@
 import { expect, it, vi } from 'vitest'
 
 import { useSceneList } from '@/composables/use-scene-list'
+import { ApiError } from '@/services/errors'
 
 it('appends only the next page, deduplicates ids, and preserves successful content when more fails', async () => {
   const request = vi
@@ -354,3 +355,144 @@ it.each([0, 1])(
     ])
   }
 )
+
+it('rejects a not-ready category snapshot without inventing an empty collection', async () => {
+  const request = vi.fn().mockResolvedValue({
+    items: [],
+    total: 0,
+    content_types_ready: false,
+    type_published_total: null
+  })
+  const list = useSceneList({
+    path: '/cards?content_type=illustrated',
+    request,
+    ensure: async () => true
+  })
+  await list.refresh()
+  expect(list.total.value).toBe(null)
+  expect(list.error.value).toBe('词汇分类准备中，请稍后重试')
+})
+
+it('uses the category published count rather than the module total', async () => {
+  const request = vi.fn().mockResolvedValue({
+    items: [],
+    total: 0,
+    published_total: 24,
+    type_published_total: 0,
+    content_types_ready: true
+  })
+  const list = useSceneList({
+    path: '/cards?content_type=intensive',
+    request,
+    ensure: async () => true
+  })
+  await list.refresh()
+  expect(list.publishedTotal.value).toBe(0)
+})
+
+it('clears a previously enabled category when the server withdraws readiness', async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce({
+      items: [{ id: 'old' }],
+      total: 1,
+      type_published_total: 1,
+      content_types_ready: true
+    })
+    .mockResolvedValueOnce({
+      items: [],
+      total: 0,
+      type_published_total: null,
+      content_types_ready: false
+    })
+  const list = useSceneList({
+    path: '/cards?content_type=intensive',
+    request,
+    ensure: async () => true
+  })
+  await list.refresh()
+  await list.refresh()
+  expect(list.items.value).toEqual([])
+  expect(list.total.value).toBe(null)
+})
+
+it('retains only the read range during a login identity boundary and reloads every page for the new owner', async () => {
+  let owner = 'guest'
+  const request = vi.fn().mockImplementation(async (path: string) => ({
+    items: [{ id: `${owner}:${path}` }],
+    total: 9,
+    page: Number(new URL(path, 'http://local').searchParams.get('page')),
+    limit: 3
+  }))
+  const list = useSceneList<{ id: string }>({
+    path: '/cards',
+    request,
+    ensure: async () => true,
+    userId: () => owner
+  })
+  await list.refresh()
+  await list.more()
+  owner = 'learner'
+  list.reset(true)
+  expect(list.items.value).toEqual([])
+  expect(list.total.value).toBe(null)
+  await list.refresh()
+  expect(request.mock.calls.slice(-2).map(([path]) => path)).toEqual([
+    '/cards?page=1&limit=3',
+    '/cards?page=2&limit=3'
+  ])
+  expect(list.items.value.every((item) => item.id.startsWith('learner:'))).toBe(true)
+})
+
+it('withdraws stale typed content on an explicit category configuration failure', async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce({
+      items: [{ id: 'stale' }],
+      total: 1,
+      type_published_total: 1,
+      content_types_ready: true
+    })
+    .mockRejectedValueOnce(new ApiError('content_type_bindings_invalid', '词汇分类配置异常', 503))
+  const list = useSceneList<{ id: string }>({
+    path: '/cards?content_type=intensive',
+    request,
+    ensure: async () => true
+  })
+  await list.refresh()
+  await list.refresh()
+  expect(list.items.value).toEqual([])
+  expect(list.total.value).toBe(null)
+  expect(list.error.value).toBe('词汇分类配置异常')
+})
+
+it('offers a full refresh retry when readiness is withdrawn during pagination', async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce({
+      items: [{ id: 'one' }],
+      total: 9,
+      type_published_total: 9,
+      content_types_ready: true,
+      page: 1,
+      limit: 3
+    })
+    .mockResolvedValueOnce({
+      items: [],
+      total: 0,
+      type_published_total: null,
+      content_types_ready: false,
+      page: 2,
+      limit: 3
+    })
+  const list = useSceneList<{ id: string }>({
+    path: '/cards?content_type=intensive',
+    request,
+    ensure: async () => true
+  })
+  await list.refresh()
+  await list.more()
+  expect(list.total.value).toBe(null)
+  expect(list.error.value).toBe('词汇分类准备中，请稍后重试')
+  expect(list.moreError.value).toBe('')
+})

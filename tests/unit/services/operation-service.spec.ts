@@ -356,3 +356,63 @@ it('rejects an operation result from an earlier session of the same stable accou
   finish({ id: 'old-queue' })
   await expect(pending).rejects.toMatchObject({ code: 'session_changed' })
 })
+
+it('enumerates only the current account pending completion actions without exposing request data', async () => {
+  const { operations, records } = setup()
+  records.set(OPERATIONS_STORAGE_PREFIX + 'user-1', [
+    { action: 'complete:a', path: '/api/mini/v1/cards/a/complete', method: 'POST', key: 'a' },
+    { action: 'favorite:a', path: '/favorite', method: 'PUT', key: 'f' }
+  ])
+  records.set(OPERATIONS_STORAGE_PREFIX + 'user-2', [
+    { action: 'complete:private', path: '/private', method: 'POST', key: 'private' }
+  ])
+  expect(operations.pendingActions('complete:')).toEqual(['complete:a'])
+})
+
+it('consumes concurrent completion receipts once and preserves any newer operation with the same action', async () => {
+  const storage = new Map<string, unknown>()
+  const onConfirmed = vi.fn(),
+    request = vi.fn(),
+    action = 'complete:old',
+    path = '/api/mini/v1/cards/old/complete'
+  const ports = {
+    session: { userId: () => 'owner', request },
+    storage: {
+      get: (key: string) => structuredClone(storage.get(key)),
+      set: (key: string, value: unknown) => {
+        storage.set(key, structuredClone(value))
+      },
+      remove: (key: string) => {
+        storage.delete(key)
+      }
+    },
+    key: () => crypto.randomUUID(),
+    onConfirmed
+  }
+  const first = createOperationService(ports)
+  request.mockRejectedValue(new ApiError('network_unknown', '响应丢失'))
+  await expect(
+    first.run(action, path, 'POST', { version_id: 'first' }, { persistBody: true })
+  ).rejects.toThrow()
+  const cold = createOperationService(ports)
+  let finish!: (receipt: unknown) => void
+  const receipt = { status: 'succeeded', result: { first_completion: true } }
+  request
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    )
+    .mockResolvedValueOnce(receipt)
+  const previous = cold.recover(action, { retry: false })
+  await cold.recover(action, { retry: false })
+  expect(onConfirmed).toHaveBeenCalledTimes(1)
+  await expect(
+    cold.run(action, path, 'POST', { version_id: 'new' }, { persistBody: true })
+  ).rejects.toThrow()
+  finish(receipt)
+  await previous
+  expect(onConfirmed).toHaveBeenCalledTimes(1)
+  expect(cold.pending(action)).toBe(true)
+})

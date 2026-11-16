@@ -4,8 +4,9 @@ import { businessAnalytics } from '@/services/analytics-business'
 import { Routes } from '@/shared/constants/navigation'
 // #ifdef JUYA_ANALYTICS
 import { AnalyticsAction } from '@/shared/enums/analytics'
-
 // #endif
+import { LearningTab } from '@/shared/enums/learning'
+
 import type { QueueSource } from '@/shared/enums/learning'
 
 import { session } from './api'
@@ -48,6 +49,8 @@ export const safeTarget = (target: string) => {
       return path
     }
   }
+  if (path === Routes.LEARNING && query.split('&').includes('tab=intensive'))
+    return `${path}?tab=intensive`
   if (path === Routes.LEARNING && query.split('&').includes('tab=notes')) return `${path}?tab=notes`
   if (path === Routes.SCENE || path === Routes.LEARNING) {
     const values: Record<string, string> = {}
@@ -96,9 +99,14 @@ export const safeTarget = (target: string) => {
     } catch {
       return Routes.HOME
     }
-    const source = query.split('&').includes('source=learning_notes')
-      ? '&source=learning_notes'
-      : ''
+    const category = Object.values(LearningTab).find((type) =>
+      query.split('&').includes(`content_type=${type}`)
+    )
+    const source = category
+      ? `&content_type=${category}`
+      : query.split('&').includes('source=learning_notes')
+        ? '&source=learning_notes'
+        : ''
     return /^[A-Za-z0-9-]{1,64}$/.test(id)
       ? `${path}?id=${encodeURIComponent(id)}${path === Routes.SCENE ? source : ''}`
       : Routes.LEARNING
@@ -153,11 +161,17 @@ export const backTo = (fallback: string = Routes.HOME) => {
  * @param id 稳定卡片编号
  * @param source 点击卡片所在的来源列表
  * @param day 打卡来源的日期
+ * @param contentType 待学来源的明确分类
  */
-export const openScene = async (id: string, source?: QueueSource, day?: string) => {
+export const openScene = async (
+  id: string,
+  source?: QueueSource,
+  day?: string,
+  contentType?: LearningTab
+) => {
   if (!source) {
     uni.navigateTo({
-      url: `${Routes.SCENE}?id=${encodeURIComponent(id)}`,
+      url: `${Routes.SCENE}?id=${encodeURIComponent(id)}${contentType ? `&content_type=${contentType}` : ''}`,
       // #ifdef JUYA_ANALYTICS
       fail: (reason: unknown) =>
         businessAnalytics.error(AnalyticsAction.CONTENT_OPEN, reason, {
@@ -169,7 +183,7 @@ export const openScene = async (id: string, source?: QueueSource, day?: string) 
     return
   }
   try {
-    await openSourceScene(source, id, day)
+    await openSourceScene(source, id, day, contentType)
   } catch (reason) {
     // #ifdef JUYA_ANALYTICS
     businessAnalytics.error(AnalyticsAction.CONTENT_OPEN, reason, {

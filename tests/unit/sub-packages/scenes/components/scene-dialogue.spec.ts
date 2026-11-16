@@ -44,6 +44,7 @@ it('emits exact source positions for highlighted and ordinary English words whil
           english: 'mobile',
           meaning: '活动自如的',
           phonetic: '',
+          source_hint: '',
           pronunciation_text: '',
           pronunciation_issue: false,
           source: { line_id: 'line-1', start: 4, end: 10, quote: 'mobile' }

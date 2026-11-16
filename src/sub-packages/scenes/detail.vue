@@ -65,7 +65,7 @@ import {
   AnalyticsEvent
 } from '@/shared/enums/analytics'
 import { AudioStatus } from '@/shared/enums/audio'
-import { QueueSource } from '@/shared/enums/learning'
+import { LearningTab, QueueSource } from '@/shared/enums/learning'
 import { LearningAccessReason } from '@/shared/enums/learning-access'
 import { ConsentAction } from '@/shared/enums/privacy'
 import { ShareTarget } from '@/shared/enums/share'
@@ -120,6 +120,7 @@ const account = useAccountStore(),
   stale = ref(false),
   queueId = ref(''),
   queueSource = ref<QueueSource | null>(null),
+  sourceContentType = ref<LearningTab | null>(null),
   queueEnd = ref(false),
   nextBusy = ref(false),
   nextError = ref(''),
@@ -143,6 +144,9 @@ onShareTimeline(() => {
   analytics.track(AnalyticsEvent.SHARE_TRIGGER, { channel: 'timeline', content_type: 'scene' })
   return { ...publicShare.timeline() }
 })
+/** 生成显式登录的单卡返回目标，只携带公开分类，不恢复私人队列 */
+const loginTarget = () =>
+  `${Routes.SCENE}?id=${encodeURIComponent(id)}${sourceContentType.value ? `&content_type=${sourceContentType.value}` : queueSource.value === QueueSource.LEARNING_NOTES ? '&source=learning_notes' : ''}`
 let analyticsStartedId = ''
 let noteBodyRefresh = false,
   noteIntent = false,
@@ -220,8 +224,7 @@ const note = createStudyNote({
       : null,
   ensure: async () =>
     !runtimeMode.update() &&
-    (!!session.userId() ||
-      account.ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`, ConsentAction.STUDY_NOTE)),
+    (!!session.userId() || account.ensure(loginTarget(), ConsentAction.STUDY_NOTE)),
   request: session.contentRequest,
   refreshBody: async () => {
     noteBodyRefresh = true
@@ -349,7 +352,7 @@ const feedback = () => {
   // #endif
 
   if (!session.userId()) {
-    promptLogin(`${Routes.SCENE}?id=${encodeURIComponent(id)}`)
+    promptLogin(loginTarget())
     return
   }
   if (card.value && !stale.value)
@@ -364,9 +367,11 @@ const returnSource = () =>
       ? Routes.FAVORITES
       : queueSource.value === QueueSource.RECORDS || queueSource.value === QueueSource.DAY
         ? Routes.RECORDS
-        : queueSource.value === QueueSource.LEARNING_NOTES
-          ? `${Routes.LEARNING}?tab=notes`
-          : Routes.LEARNING
+        : sourceContentType.value
+          ? `${Routes.LEARNING}?tab=${sourceContentType.value}`
+          : queueSource.value === QueueSource.LEARNING_NOTES
+            ? `${Routes.LEARNING}?tab=notes`
+            : Routes.LEARNING
   )
 /** 结束或直接单卡完成后回到学习入口 */
 const learn = () => uni.reLaunch({ url: Routes.LEARNING })
@@ -1144,11 +1149,9 @@ const refreshState = async () => {
 /** 已准备好的完整音频同步播放，提前点击只等待受控地址 */
 const playFull = async () => {
   if (!session.userId()) {
-    void account
-      .ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`, ConsentAction.FULL_AUDIO)
-      .catch((reason) => {
-        actionError.value = reason instanceof Error ? reason.message : '登录暂不可用，请重试'
-      })
+    void account.ensure(loginTarget(), ConsentAction.FULL_AUDIO).catch((reason) => {
+      actionError.value = reason instanceof Error ? reason.message : '登录暂不可用，请重试'
+    })
     return
   }
   const run = ++audioClickGeneration,
@@ -1174,11 +1177,9 @@ const playFull = async () => {
  */
 const playWord = (wordId: string) => {
   if (!session.userId()) {
-    void account
-      .ensure(`${Routes.SCENE}?id=${encodeURIComponent(id)}`, ConsentAction.PRESET_PRONUNCIATION)
-      .catch((reason) => {
-        actionError.value = reason instanceof Error ? reason.message : '登录暂不可用，请重试'
-      })
+    void account.ensure(loginTarget(), ConsentAction.PRESET_PRONUNCIATION).catch((reason) => {
+      actionError.value = reason instanceof Error ? reason.message : '登录暂不可用，请重试'
+    })
     return
   }
   if (runtimeMode.update()) return
@@ -1247,12 +1248,7 @@ const toggleFavorite = async () => {
     run = generation,
     owner = session.identity()
   // #endif
-  if (
-    !(await account.ensure(
-      `${Routes.SCENE}?id=${encodeURIComponent(id)}`,
-      ConsentAction.FAVORITE_SCENE
-    ))
-  ) {
+  if (!(await account.ensure(loginTarget(), ConsentAction.FAVORITE_SCENE))) {
     // #ifdef JUYA_ANALYTICS
     if (alive && visible && run === generation && owner === session.identity())
       businessAnalytics.error(
@@ -1336,12 +1332,7 @@ const complete = async () => {
     run = generation,
     owner = session.identity()
   // #endif
-  if (
-    !(await account.ensure(
-      `${Routes.SCENE}?id=${encodeURIComponent(id)}`,
-      ConsentAction.COMPLETE_SCENE
-    ))
-  ) {
+  if (!(await account.ensure(loginTarget(), ConsentAction.COMPLETE_SCENE))) {
     // #ifdef JUYA_ANALYTICS
     if (alive && visible && run === generation && owner === session.identity())
       businessAnalytics.error(
@@ -1381,7 +1372,8 @@ const complete = async () => {
       `complete:${id}`,
       `/api/mini/v1/cards/${id}/complete`,
       'POST',
-      { version_id: card.value.version_id }
+      { version_id: card.value.version_id },
+      { persistBody: true }
     )
     awaitingState.value = true
     message.value = '已计入学习记录'
@@ -1424,7 +1416,9 @@ const recover = async () => {
     await account.refreshStatistics()
     await probeQueueEnd()
   } catch (reason) {
-    await invalid(reason)
+    if (reason instanceof ApiError && reason.code === 'completion_version_missing') {
+      await load()
+    } else await invalid(reason)
     actionError.value = reason instanceof Error ? reason.message : '暂未确认结果，可重试原操作'
   }
 }
@@ -1477,6 +1471,14 @@ const advance = async () => {
         nextScene = await session.request<PublishedScene>(
           `/api/mini/v1/cards/${encodeURIComponent(nextId)}${queueSource.value === QueueSource.LEARNING_NOTES ? '?require_study_note=true' : ''}`
         )
+        if (
+          sourceContentType.value &&
+          (nextScene.content_type !== sourceContentType.value || nextScene.state?.completed)
+        ) {
+          sourceQueue.skip(nextId)
+          nextScene = null
+          continue
+        }
         break
       } catch (reason) {
         if (
@@ -1496,7 +1498,7 @@ const advance = async () => {
     try {
       await new Promise<void>((resolve, reject) =>
         uni.redirectTo({
-          url: `${Routes.SCENE}?id=${encodeURIComponent(nextId)}&queue=${encodeURIComponent(queueId.value)}${queueSource.value === QueueSource.LEARNING_NOTES ? '&source=learning_notes' : ''}`,
+          url: `${Routes.SCENE}?id=${encodeURIComponent(nextId)}&queue=${encodeURIComponent(queueId.value)}${sourceContentType.value ? `&content_type=${sourceContentType.value}` : queueSource.value === QueueSource.LEARNING_NOTES ? '&source=learning_notes' : ''}`,
           success: () => resolve(),
           fail: () => reject(new Error('下一张暂未打开，请重试'))
         })
@@ -1533,15 +1535,36 @@ onLoad((query) => {
   id = String(query?.id || '')
   noteIntent = query?.intent === 'study_note'
   noteRecovery = noteIntent
+  sourceContentType.value =
+    !sharedEntry && Object.values(LearningTab).includes(query?.content_type as LearningTab)
+      ? (query!.content_type as LearningTab)
+      : null
+  if (sourceContentType.value) queueSource.value = QueueSource.LEARNING
   if (query?.source === QueueSource.LEARNING_NOTES) queueSource.value = QueueSource.LEARNING_NOTES
   queueId.value = sharedEntry ? '' : String(query?.queue || '')
-  if (sourceQueue.matches(queueId.value, id)) queueSource.value = sourceQueue.source()
+  if (sourceQueue.matches(queueId.value, id)) {
+    queueSource.value = sourceQueue.source()
+    sourceContentType.value = sourceQueue.contentType?.() || sourceContentType.value
+  }
   if (!/^[A-Za-z0-9-]{1,64}$/.test(id)) {
     error.value = '未找到这张场景卡'
     return
   }
   void load()
 })
+/** 登录及PDF返回时恢复来源分类，不携带旧账号的私人队列
+ * @param tab 登录前冻结的来源标签
+ */
+const restoreSourceType = (tab?: string) => {
+  sourceContentType.value = Object.values(LearningTab).includes(tab as LearningTab)
+    ? (tab as LearningTab)
+    : null
+  queueSource.value = sourceContentType.value
+    ? QueueSource.LEARNING
+    : tab === 'notes'
+      ? QueueSource.LEARNING_NOTES
+      : null
+}
 onShow(() => {
   visible = true
   listenForUserScroll()
@@ -1551,7 +1574,9 @@ onShow(() => {
       page: Routes.SCENE,
       type: 'scene',
       id,
-      tab: queueSource.value === QueueSource.LEARNING_NOTES ? 'notes' : 'all',
+      tab:
+        sourceContentType.value ||
+        (queueSource.value === QueueSource.LEARNING_NOTES ? 'notes' : 'all'),
       category: '',
       scroll: scrollTop,
       translation: dialogueView.value?.translated || false,
@@ -1564,7 +1589,7 @@ onShow(() => {
       restoringSnapshot = loginReturn.take(Routes.SCENE, id)
       noteRecovery = true
       queueId.value = ''
-      queueSource.value = restoringSnapshot?.tab === 'notes' ? QueueSource.LEARNING_NOTES : null
+      restoreSourceType(restoringSnapshot?.tab)
       void load()
     }
   )
@@ -1573,7 +1598,7 @@ onShow(() => {
     restoringSnapshot = restored
     noteRecovery = true
     queueId.value = ''
-    queueSource.value = restored.tab === 'notes' ? QueueSource.LEARNING_NOTES : null
+    restoreSourceType(restored.tab)
     sourceQueue.clear()
     void load()
     return

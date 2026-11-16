@@ -166,3 +166,48 @@ it('blocks backend-rejected events and keeps production uninitialized', async ()
   expect(production.instances()).toBe(0)
   expect(production.calls).toEqual([])
 })
+
+it('starts the current page after manual consent without waiting for another navigation', async () => {
+  const f = analyticsFixture()
+  f.service.foreground({ scene: 1001 })
+  f.update({ owner: 'business-a', enabled: true, policiesReady: true, revision: 1 })
+  vi.advanceTimersByTime(1000)
+  f.service.background()
+  expect(JSON.stringify(f.requests)).toContain('pages/home/index')
+  expect(JSON.stringify(f.requests)).not.toContain('fixture-login-token')
+})
+
+it('retains only the visitor UUID across launches in the same account permission and deletes it on withdrawal', () => {
+  const storage = new Map<string, unknown>()
+  const first = analyticsFixture({ storage })
+  first.service.foreground()
+  first.update({ owner: 'business-a', enabled: true, policiesReady: true, revision: 1 })
+  first.service.background()
+  const uuid = (first.requests[0]?.data.h as { itr: { ud: string } }).itr.ud
+  const next = analyticsFixture({ storage })
+  next.service.foreground()
+  next.update({ owner: 'business-a', enabled: true, policiesReady: true, revision: 1 })
+  expect((next.requests[0]?.data.h as { itr: { ud: string } }).itr.ud).toBe(uuid)
+  expect(storage.size).toBe(1)
+  next.update({ enabled: false, revision: 2 })
+  expect(storage.size).toBe(0)
+  next.update({ enabled: true, revision: 3 })
+  expect((next.requests.at(-1)?.data.h as { itr: { ud: string } }).itr.ud).not.toBe(uuid)
+})
+
+it.each([
+  { owner: 'business-a', enabled: false, policiesReady: true, revision: 2 },
+  { owner: 'business-a', enabled: true, policiesReady: false, revision: 1 },
+  { owner: null, enabled: true, policiesReady: true, revision: 1 }
+])('deletes persisted analysis identifiers on a cold-start invalid permission: %o', (context) => {
+  const storage = new Map<string, unknown>([['business-session', 'private-fixture']])
+  const previous = analyticsFixture({ storage })
+  previous.service.foreground()
+  previous.update({ owner: 'business-a', enabled: true, policiesReady: true, revision: 1 })
+  expect(storage.size).toBe(2)
+  const current = analyticsFixture({ storage })
+  current.update(context)
+  expect([...storage.entries()]).toEqual([['business-session', 'private-fixture']])
+  expect(current.instances()).toBe(0)
+  expect(current.requests).toEqual([])
+})

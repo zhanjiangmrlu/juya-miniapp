@@ -15,6 +15,7 @@ it('splits overlapping manual ranges by vocabulary priority while retaining comp
       english: source.quote,
       meaning: '',
       phonetic: '',
+      source_hint: '',
       pronunciation_text: '',
       pronunciation_issue: false,
       source
@@ -85,6 +86,7 @@ it('retains exact highlight range and source color when every ordinary word beco
       english: 'indoor exercise',
       meaning: '室内运动',
       phonetic: '',
+      source_hint: '',
       pronunciation_text: '',
       pronunciation_issue: false,
       source: { line_id: 'line-1', start: 4, end: 19, quote: 'indoor exercise' }

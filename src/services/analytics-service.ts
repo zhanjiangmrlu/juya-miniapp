@@ -2,7 +2,7 @@ import { ref } from 'vue'
 
 import { createAnalyticsEvents } from '@/services/analytics-events'
 import { createAnalyticsNative } from '@/services/analytics-native'
-import { CONSENT_EVENT_NAMES } from '@/shared/constants/privacy'
+import { CONSENT_EVENT_NAMES, CONSENT_PAGE_PATHS } from '@/shared/constants/privacy'
 
 import type {
   AnalyticsConfigurePorts,
@@ -78,7 +78,7 @@ export const createAnalyticsService = (ports: AnalyticsPorts) => {
     )
   }
   /** 先废弃代际，再取消全部请求、定时器、回调和队列，不调用 pause 补传 */
-  const stop = () => {
+  const dispose = () => {
     const generation = current
     current = undefined
     running.value = false
@@ -89,11 +89,42 @@ export const createAnalyticsService = (ports: AnalyticsPorts) => {
     generation.native.stop()
     generation.sdk = undefined
   }
-  /** 同步可信身份与许可，变化时创建全新 SDK/内存存储，不恢复历史 UUID 或队列 */
+  /** 只清理本统计命名空间的随机标识，不访问或删除业务数据 */
+  const clearIdentifiers = () => {
+    if (!available) return
+    try {
+      const native = ports.native?.(),
+        info = native?.getStorageInfoSync,
+        remove = native?.removeStorageSync
+      if (typeof info !== 'function' || typeof remove !== 'function') return
+      const keys = (info.call(native) as { keys?: unknown }).keys
+      if (!Array.isArray(keys)) return
+      for (const key of keys)
+        if (
+          typeof key === 'string' &&
+          key.startsWith('juya-umeng-test-v3:') &&
+          key.endsWith(':uuid')
+        )
+          remove.call(native, key)
+    } catch {
+      // 微信存储不可用时仍保持统计停止
+    }
+  }
+  /** 显式停止时同步清理跨启动标识，即使本次尚未创建 SDK */
+  const stop = () => {
+    dispose()
+    clearIdentifiers()
+  }
+  /** 同步可信身份与许可，变化时创建独立 SDK，不恢复历史事件队列 */
   const sync = () => {
     const value = context()
-    if (current && !active(current)) stop()
-    if (current || !permitted(value) || !factory || !value || !integration) return
+    if (current && !active(current)) dispose()
+    if (!permitted(value)) {
+      // revision=0 表示启动尚在恢复；可信旧许可失效后才清理，避免冷启动误删有效标识
+      if (value && value.revision > 0) clearIdentifiers()
+      return
+    }
+    if (current || !factory || !value || !integration) return
     let finish!: (ready: boolean) => void
     const ready = new Promise<boolean>((resolve) => {
       finish = resolve
@@ -108,6 +139,7 @@ export const createAnalyticsService = (ports: AnalyticsPorts) => {
     generation.native = createAnalyticsNative({
       native: ports.native || (() => ({})),
       owner: value.owner!,
+      identifierKey: `juya-umeng-test-v3:${value.owner}:${value.revision}:uuid`,
       hasConsent: () => active(generation)
     })
     generation.events = createAnalyticsEvents({
@@ -125,7 +157,7 @@ export const createAnalyticsService = (ports: AnalyticsPorts) => {
         try {
           await integration!.authorize(event)
         } catch {
-          if (current === generation) stop()
+          if (current === generation) dispose()
           return
         }
         if (
@@ -161,7 +193,14 @@ export const createAnalyticsService = (ports: AnalyticsPorts) => {
         sdk.setUserid?.(value.owner)
         running.value = true
         finish(true)
-        if (visible) sdk.resume({ scene })
+        if (visible) {
+          sdk.resume({ scene })
+          const route = pagePath(integration?.currentPage() || '')
+          if (CONSENT_PAGE_PATHS.includes(route as (typeof CONSENT_PAGE_PATHS)[number])) {
+            generation.page = route
+            sdk.trackPageStart(route)
+          }
+        }
       })
       sdk.init({
         appKey: ports.config.appKey,
@@ -172,18 +211,18 @@ export const createAnalyticsService = (ports: AnalyticsPorts) => {
         debug: false
       })
     } catch {
-      stop()
+      dispose()
     }
   }
   /** 配置可信状态和后端授权边界，不静态依赖会话或隐私服务；value 为应用提供的接入端口 */
   const configure = (value: AnalyticsConfigurePorts) => {
-    stop()
+    dispose()
     integration = value
     sync()
   }
   /** 安装可重复创建的官方 SDK 工厂；value 为构建注入的私有作用域工厂 */
   const attach = (value: AnalyticsSDKFactory) => {
-    stop()
+    dispose()
     factory = value
     sync()
   }
@@ -230,7 +269,7 @@ export const createAnalyticsService = (ports: AnalyticsPorts) => {
     if (!generation) return
     generation.events.clear()
     if (!active(generation)) {
-      stop()
+      dispose()
       return
     }
     try {

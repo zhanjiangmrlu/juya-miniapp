@@ -59,6 +59,7 @@ it('preserves native selectable scene text and static colors without emitting in
           english: 'mobile',
           meaning: '移动的',
           phonetic: '',
+          source_hint: '',
           pronunciation_text: 'mobile',
           pronunciation_issue: false,
           source: { line_id: 'one', start: 4, end: 10, quote: 'mobile' }

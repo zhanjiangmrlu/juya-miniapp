@@ -1,0 +1,54 @@
+{
+  "version": "1.5.0-test.20261115.215503",
+  "source_commit": "537a1202a73258bc22c13ff151c5ff75ed983620",
+  "source_branch": "test",
+  "environment": "test",
+  "official_success": true,
+  "official_receipt_sha256": "6577c856924e492e28aceff43bb615e994404915edc8c7f0bca17d5e6afd4f9e",
+  "experience_switched": false,
+  "test_api_only": true,
+  "analytics_sdk_imported": true,
+  "correct_test_app_key": true,
+  "source_input_verified": true,
+  "page_count": 20,
+  "tab_count": 3,
+  "checks": {
+    "tests": 862,
+    "test_files": 142,
+    "check": "passed",
+    "wechat_build": "passed",
+    "main_package_source_bytes": 543429,
+    "main_package_converted_estimate_bytes": 652115
+  },
+  "assets": {
+    "uploaded": 0,
+    "skipped": 13
+  },
+  "api_source_commit": "ecb1c8aeef540e6fe8452427f8cd484b45595fa3",
+  "official_command": "pnpm release:mp-weixin:test",
+  "production_deployed": false,
+  "manual_device_acceptance": "pending",
+  "date": "2026-11-15",
+  "incident": {
+    "disk_pressure_observed": true,
+    "recovered": true,
+    "test_maintenance_removed": true,
+    "production_deployed": false,
+    "production_config_changed": false,
+    "protected_container_identities_and_images_unchanged": true,
+    "protected_automatic_restart_history": [
+      {
+        "name": "/juya-rebuild-production-admin-admin-worker-1",
+        "before_restarts": 0,
+        "after_restarts": 3,
+        "healthy_after": true
+      },
+      {
+        "name": "/juya-rebuild-production-mini-mini-worker-1",
+        "before_restarts": 0,
+        "after_restarts": 3,
+        "healthy_after": true
+      }
+    ]
+  }
+}

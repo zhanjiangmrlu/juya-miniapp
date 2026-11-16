@@ -45,6 +45,7 @@ vi.mock('@dcloudio/uni-app', () => ({
   }
 }))
 vi.mock('@/services/api', () => ({
+  operations: { pendingActions: () => [], recover: vi.fn() },
   session: {
     contentRequest: ports.request,
     request: ports.request,
@@ -88,13 +89,15 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 it.each([
-  [LearningPage, '/api/mini/v1/cards', 2],
+  [LearningPage, '/api/mini/v1/cards?scope=uncompleted&content_type=illustrated', 2],
   [FavoritesPage, '/api/mini/v1/favorites', 4]
 ] as const)(
   'retains the read range and scroll for %s with native refresh and bottom error state',
   async (component, path, limit) => {
     ports.request.mockImplementation(async (url: string) => ({
       items: [{ id: url, name: url }],
+      type_published_total: 99,
+      content_types_ready: true,
       total: 99
     }))
     const page = shallowMount(component, {
@@ -118,8 +121,8 @@ it.each([
     ports.show?.()
     await flushPromises()
     expect(ports.request.mock.calls.slice(-2).map(([url]) => url)).toEqual([
-      `${path}?page=1&limit=${limit}`,
-      `${path}?page=2&limit=${limit}`
+      `${path}${path.includes('?') ? '&' : '?'}page=1&limit=${limit}`,
+      `${path}${path.includes('?') ? '&' : '?'}page=2&limit=${limit}`
     ])
     if (component === LearningPage) {
       expect(page.get('.scene-scroll').attributes('scroll-top')).toBe('820')
@@ -144,7 +147,12 @@ it.each([
 it.each([LearningPage, FavoritesPage])(
   'does not restore an old list scroll while its detail is visible for %s',
   async (component) => {
-    ports.request.mockResolvedValue({ items: [{ id: 'one' }], total: 1 })
+    ports.request.mockResolvedValue({
+      items: [{ id: 'one' }],
+      total: 1,
+      type_published_total: 1,
+      content_types_ready: true
+    })
     const page = shallowMount(component, {
       global: { stubs: { AppPage: { template: '<view><slot/></view>' } } }
     })
@@ -163,7 +171,7 @@ it.each([LearningPage, FavoritesPage])(
     ports.show?.()
     await flushPromises()
     ports.hide?.()
-    finish({ items: [{ id: 'one' }], total: 1 })
+    finish({ items: [{ id: 'one' }], total: 1, type_published_total: 1, content_types_ready: true })
     await flushPromises()
     expect(uni.pageScrollTo).not.toHaveBeenCalled()
     page.unmount()
@@ -171,13 +179,15 @@ it.each([LearningPage, FavoritesPage])(
 )
 
 it.each([
-  [LearningPage, '/api/mini/v1/cards', 3],
+  [LearningPage, '/api/mini/v1/cards?scope=uncompleted&content_type=illustrated', 3],
   [FavoritesPage, '/api/mini/v1/favorites', 5]
 ] as const)(
   'pulls only a new first page while return refresh keeps the read range for %s',
   async (component, path, newLimit) => {
     ports.request.mockImplementation(async (url: string) => ({
       items: [{ id: url, name: url }],
+      type_published_total: 99,
+      content_types_ready: true,
       total: 99
     }))
     const page = shallowMount(component, {
@@ -202,16 +212,20 @@ it.each([
     else await ports.pull?.()
     await flushPromises()
     expect(ports.request.mock.calls.slice(before).map(([url]) => url)).toEqual([
-      `${path}?page=1&limit=${newLimit}`
+      `${path}${path.includes('?') ? '&' : '?'}page=1&limit=${newLimit}`
     ])
     expect(page.findAll('.row')).toHaveLength(1)
     ports.show?.()
     await flushPromises()
-    expect(ports.request.mock.calls.at(-1)?.[0]).toBe(`${path}?page=1&limit=${newLimit}`)
+    expect(ports.request.mock.calls.at(-1)?.[0]).toBe(
+      `${path}${path.includes('?') ? '&' : '?'}page=1&limit=${newLimit}`
+    )
     if (component === LearningPage) await page.get('.scene-scroll').trigger('scrolltolower')
     else ports.more?.()
     await flushPromises()
-    expect(ports.request.mock.calls.at(-1)?.[0]).toBe(`${path}?page=2&limit=${newLimit}`)
+    expect(ports.request.mock.calls.at(-1)?.[0]).toBe(
+      `${path}${path.includes('?') ? '&' : '?'}page=2&limit=${newLimit}`
+    )
     page.unmount()
   }
 )

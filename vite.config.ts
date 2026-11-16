@@ -44,12 +44,15 @@ export default defineConfig(({ mode, command }) => {
          */
         resolveId: (id) =>
           id === 'virtual:juya-umeng-sdk' ? '\0virtual:juya-umeng-sdk' : undefined,
-        /** 各构建固定返回空SDK工厂，旧开关不能装载真实SDK源码
+        /** 为已启用的测试构建注入隔离微信端口，其他构建移除 SDK
          * @param id 当前待加载的模块路径
          */
         load: (id) => {
           if (id === '\0virtual:juya-umeng-sdk') {
-            return 'export default null'
+            if (!analytics.enabled) return 'export default null'
+            const require = createRequire(import.meta.url)
+            const source = readFileSync(require.resolve('umtrack-wx'), 'utf8')
+            return `export default (scope)=>{let {wx,App,Page,Component,setTimeout,clearTimeout,setInterval,clearInterval}=scope;const console={log:()=>{},warn:()=>{},info:()=>{},error:()=>{},debug:()=>{},table:()=>{}};const module={exports:{}};${source};return module.exports;}`
           }
           if (
             !analytics.enabled &&

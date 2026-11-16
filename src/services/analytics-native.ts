@@ -4,7 +4,7 @@ import type {
   AnalyticsSDKScope
 } from '@/shared/types/analytics'
 
-/** 为单个账号许可代际提供内存存储、可销毁定时器及最小微信能力
+/** 为单个账号许可代际提供隔离存储、可销毁定时器及最小微信能力
  * @param ports 原生读取端口、当前代际有效性及可信业务账号
  */
 export const createAnalyticsNative = (ports: AnalyticsNativePorts) => {
@@ -13,9 +13,24 @@ export const createAnalyticsNative = (ports: AnalyticsNativePorts) => {
   const storage = new Map<string, unknown>()
   const requests = new Set<{ abort?: () => void }>()
   const timers = new Map<number, { handle: ReturnType<typeof setTimeout>; interval: boolean }>()
+  /** 仅访问当前许可的随机标识，SDK队列和其他字段不落盘
+   * @param method 微信同步存储方法
+   * @param value 写入时的随机标识
+   */
+  const identifier = (method: string, value?: unknown) => {
+    if (!ports.identifierKey) return
+    try {
+      const native = ports.native(),
+        call = native[method]
+      if (typeof call === 'function') return call.call(native, ports.identifierKey, value)
+    } catch {
+      // 存储不可用时仅使用当前内存，不改变业务流程
+    }
+  }
   /** 永久废弃当前代际，清理请求、计时器和全部内存状态 */
   const stop = () => {
     active = false
+    identifier('removeStorageSync')
     storage.clear()
     for (const { handle, interval } of timers.values()) {
       if (interval) clearInterval(handle)
@@ -36,6 +51,25 @@ export const createAnalyticsNative = (ports: AnalyticsNativePorts) => {
   /** 复制 SDK 数据以隔离可变引用；value 为单次原生数据 */
   const copy = (value: unknown) =>
     value === undefined ? undefined : JSON.parse(JSON.stringify(value))
+  /** 只恢复同一账号和许可的随机标识，不恢复SDK队列
+   * @param key SDK内部存储名
+   */
+  const stored = (key: string) => {
+    if (key === 'um_uuid' && !storage.has(key)) {
+      const value = identifier('getStorageSync')
+      if (typeof value === 'string' && /^[A-Za-z0-9]{1,128}$/.test(value)) storage.set(key, value)
+    }
+    return copy(storage.get(key))
+  }
+  /** 保存SDK内存状态，仅随机标识允许跨重启复用
+   * @param key SDK内部存储名
+   * @param value 当前SDK写入的数据
+   */
+  const save = (key: string, value: unknown) => {
+    storage.set(key, copy(value))
+    if (key === 'um_uuid' && typeof value === 'string' && /^[A-Za-z0-9]{1,128}$/.test(value))
+      identifier('setStorageSync', value)
+  }
   /** 只交付仍属于当前许可的异步回调；callback 为 SDK 回调，values 为原生结果 */
   const deliver = (callback: unknown, ...values: unknown[]) => {
     if (permitted() && typeof callback === 'function') (callback as AnalyticsMethod)(...values)
@@ -128,25 +162,30 @@ export const createAnalyticsNative = (ports: AnalyticsNativePorts) => {
   const wx: Record<string, unknown> = {
     getStorage: (input: { key: string; success?: AnalyticsMethod; fail?: AnalyticsMethod }) => {
       if (!permitted()) return
-      if (storage.has(input.key)) deliver(input.success, { data: copy(storage.get(input.key)) })
+      const value = stored(input.key)
+      if (value !== undefined) deliver(input.success, { data: value })
       else deliver(input.fail, { errMsg: 'not found' })
     },
     setStorage: (input: { key: string; data: unknown; success?: AnalyticsMethod }) => {
       if (!permitted()) return
-      storage.set(input.key, copy(input.data))
+      save(input.key, input.data)
       deliver(input.success, {})
     },
     removeStorage: (input: { key: string; success?: AnalyticsMethod }) => {
       if (!permitted()) return
       storage.delete(input.key)
+      if (input.key === 'um_uuid') identifier('removeStorageSync')
       deliver(input.success, {})
     },
-    getStorageSync: (key: string) => (permitted() ? copy(storage.get(key)) : undefined),
+    getStorageSync: (key: string) => (permitted() ? stored(key) : undefined),
     setStorageSync: (key: string, value: unknown) => {
-      if (permitted()) storage.set(key, copy(value))
+      if (permitted()) save(key, value)
     },
     removeStorageSync: (key: string) => {
-      if (permitted()) storage.delete(key)
+      if (permitted()) {
+        storage.delete(key)
+        if (key === 'um_uuid') identifier('removeStorageSync')
+      }
     },
     getSystemInfo: (input: Record<string, unknown>) => read('getSystemInfo', input),
     getNetworkType: (input: Record<string, unknown>) => read('getNetworkType', input),

@@ -93,3 +93,23 @@ it('guest statistics requests in-place login without closing the original privac
   expect(w.find('[aria-label="隐私说明"]').exists()).toBe(true)
   w.unmount()
 })
+
+it('asks a signed-in account to confirm updated agreements before manually enabling statistics', async () => {
+  const { loginPromptTarget, dismissLoginPrompt } = await import('@/services/login-prompt')
+  vi.spyOn(session, 'userId').mockReturnValue('learner-1')
+  vi.spyOn(privacy, 'published').mockReturnValue(true)
+  vi.spyOn(privacy, 'confirmed').mockReturnValue(false)
+  vi.spyOn(privacy, 'restore').mockResolvedValue(undefined)
+  const choose = vi.spyOn(privacy, 'choose')
+  const w = mount(Component, {
+    props: { sourceTarget: '/sub-packages/account/settings?privacy=1' },
+    global: { stubs: { 'scroll-view': { template: '<div><slot /></div>' } } }
+  })
+  await flushPromises()
+  await w.get('button.statistics-switch').trigger('click')
+  expect(loginPromptTarget.value).toBe('/sub-packages/account/settings?privacy=1')
+  expect(choose).not.toHaveBeenCalled()
+  expect(w.emitted('close')).toBeUndefined()
+  dismissLoginPrompt()
+  w.unmount()
+})

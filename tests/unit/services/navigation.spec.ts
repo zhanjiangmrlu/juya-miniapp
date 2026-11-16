@@ -114,3 +114,15 @@ it('preserves only approved settings queries for in-place privacy login return',
     '/sub-packages/account/settings'
   )
 })
+
+it('preserves only a validated category across login and drops foreign queue identifiers', () => {
+  expect(safeTarget('/pages/learning/index?tab=intensive')).toBe(
+    '/pages/learning/index?tab=intensive'
+  )
+  expect(
+    safeTarget('/sub-packages/scenes/detail?id=card-1&content_type=intensive&queue=foreign')
+  ).toBe('/sub-packages/scenes/detail?id=card-1&content_type=intensive')
+  expect(safeTarget('/sub-packages/scenes/detail?id=card-1&content_type=pdf')).toBe(
+    '/sub-packages/scenes/detail?id=card-1'
+  )
+})
