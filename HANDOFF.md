@@ -1,8 +1,8 @@
 # 2026-11-16 所有格与人工来源修正
 
-仅同步生成契约，Source/VocabularySource增加可选manual_english人工确认依据；check通过，运行代码未修改，本次不重复上传小程序。原开发版1.5.0-test.20261116.032311仍为此前运行版本。
+仅同步生成契约，Source/VocabularySource增加可选manual_english人工确认依据；check通过，运行代码未修改，用户最新要求先不部署，本次不上传小程序或OSS。原开发版1.5.0-test.20261116.032311仍为此前运行版本。
 
-修复和部署结果见[API验证记录](https://github.com/zhanjiangmrlu/juya-api/blob/test/docs/verification/vocabulary-manual-source-20261116.md)。
+修复与未部署边界见[API验证记录](https://github.com/zhanjiangmrlu/juya-api/blob/test/docs/verification/vocabulary-manual-source-20261116.md)。
 
 ---
 
