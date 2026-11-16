@@ -1,3 +1,11 @@
+# 2026-11-16 所有格与人工来源修正
+
+仅同步生成契约，Source/VocabularySource增加可选manual_english人工确认依据；check通过，运行代码未修改，本次不重复上传小程序。原开发版1.5.0-test.20261116.032311仍为此前运行版本。
+
+修复和部署结果见[API验证记录](https://github.com/zhanjiangmrlu/juya-api/blob/test/docs/verification/vocabulary-manual-source-20261116.md)。
+
+---
+
 # 2026-11-16 CHG0043—0045 最终交付
 
 小程序46d9b7e已通过标准test流程上传开发版1.5.0-test.20261116.032311；测试OSS新增0/复用13，总包1538568B/主包948324B。最终905测试/check/H5及微信构建通过，20页面/三Tab及预算检查通过。体验版尚未切换，真实微信/iOS/Android未验。
