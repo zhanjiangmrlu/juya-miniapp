@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isDeepStrictEqual, parseArgs } from 'node:util'
 
 import { publishAssets } from './asset-publish.mjs'
+import { checkProductionContentTypes } from './check-content-types.mjs'
 import { buildProduction, uploadWeChat } from './wechat-release-build.mjs'
 
 const recordPath = 'release/wechat-version.json'
@@ -179,11 +180,12 @@ const finish = (root, journal, journalFile) => {
   console.info(`上传记录已同步：${journal.candidate.version}`)
   return journal.candidate
 }
-/** 执行发布或恢复，options 指定仓库、模式及测试用构建和上传适配器 */
+/** 执行发布或恢复，options 指定仓库、模式、分类检查及构建上传适配器 */
 export const runRelease = async ({
   root,
   mode = 'upload',
   requestedVersion,
+  checkContentTypes = checkProductionContentTypes,
   build = buildProduction,
   publish = publishAssets,
   upload = uploadWeChat
@@ -213,6 +215,7 @@ export const runRelease = async ({
     if (remoteHead(root) !== git(root, 'rev-parse', 'HEAD'))
       throw new Error('请先同步本地与远程 release')
     const candidate = nextVersion(read(path.join(root, recordPath)), requestedVersion)
+    await checkContentTypes()
     console.info(`下一版本：${candidate.version} / ${candidate.versionCode}`)
     return candidate
   }
@@ -251,6 +254,7 @@ export const runRelease = async ({
     if (remoteHead(root) !== sourceCommit) throw new Error('请先同步本地与远程 release')
     const previous = read(path.join(root, recordPath))
     const candidate = nextVersion(previous, requestedVersion)
+    if (mode === 'upload') await checkContentTypes()
     console.info(`本次版本：${candidate.version} / ${candidate.versionCode}`)
     const output = await build({ root, candidate })
     if (mode === 'build-only') return candidate
@@ -264,6 +268,7 @@ export const runRelease = async ({
       environment: 'production',
       manifestFile: path.join(root, 'dist/release/asset-manifest.json')
     })
+    await checkContentTypes()
     checkBranch(root)
     checkClean(root)
     if (git(root, 'rev-parse', 'HEAD') !== sourceCommit || remoteHead(root) !== sourceCommit)

@@ -23,7 +23,7 @@ pnpm release:mp-weixin:test
 微信开发者工具须已登录并开启服务端口；Mac 默认路径为 `/Applications/wechatwebdevtools.app/Contents/MacOS/cli`。其他安装位置或 Windows 通过私有环境变量 `WECHAT_DEVTOOLS_CLI` 指定官方 CLI（支持 `.bat` / `.cmd`）。不要把本机路径、账号或密钥写入版本化配置。Windows 批处理路径不能含双引号、百分号、感叹号、脱字符、&、管道或重定向字符；必要时换到普通安装路径。本轮实际验证平台为 Mac，Windows 分支未做实机验证。
 
 ```sh
-# 只查询记录和下一版本，不写文件、不构建、不上传
+# 查询下一版本并只读检查生产分类，不写文件、不构建、不上传
 pnpm release:mp-weixin --dry-run
 
 # 以候选版本构建并校验，不上传、不推进记录
@@ -39,6 +39,14 @@ pnpm release:mp-weixin --version 1.0.1
 每次最多接受一个模式选项；`--version`可与`--dry-run`或`--build-only`组合，不能重复传入或与恢复命令组合。恢复始终使用原日志保存的候选版本。普通 `build:mp-weixin` 等命令不改变行为。新命令隔离输出到 `dist/release/mp-weixin`，源文件版本不在构建阶段修改；构建清单副本和版本说明位于 `dist/release/input/manifest.json`、`dist/release/build-info.json`。生产 API、静态域名、Mock 和本地登录模式由发布构建明确指定，忽略终端注入的测试配置。
 
 正式 `release:mp-weixin` 在微信上传前自动同步生产OSS及现有静态域名，失败即停止；`--build-only`、`--dry-run` 和恢复模式均不触发资源上传。测试打包 `build:mp-weixin:test` 同步测试OSS。新增资源规范和私有配置见[资源发布说明](asset-publish.md)。
+
+### 生产词汇分类检查
+
+正式上传在构建前，以及生产资源同步完成、微信上传前，各只读检查一次 `https://api.juyayingyu.com` 的图解与精读列表；`--dry-run` 同样检查一次。接口固定使用匿名 `scope=published&page=1&limit=1`，不携带账号 Cookie 或 Token，不读取个人待学状态。每个请求最长 10 秒，拒绝重定向。
+
+两类均须返回 HTTP 200、明确的 `content_types_ready=true` 和有效的分类发布总数；两类总数之和须与全部已发布数量一致，首条内容必须属于请求分类。正常空分类允许通过；未就绪、字段缺失、数量不一致、网络失败或无效响应均停止。构建前失败不构建或同步 OSS；上传前复查失败不上传微信、不创建待确认上传记录、不推进版本，已成功同步的资源保留以供修复后重试。
+
+失败提示要求核对生产历史分类和启用状态。发布命令不会自动归类、启用开关或修改内容。首次引入分类的上线顺序是：完成兼容迁移与管理 API/后台部署，在生产后台核对历史发布内容并启用，再发布小程序 API 与小程序包。仅 `--build-only` 保持离线构建；`--resume`、`--confirm-uploaded`、`--confirm-not-uploaded` 继续只处理原上传日志，避免当前业务状态妨碍已成功上传记录的恢复。测试上传流程保持原行为。
 
 生产构建固定启用远程字体，复用生产静态域名的四个既有 WOFF；字体加载前或失败时使用系统字体，不阻塞启动。字体及资源减包记录见[本地验证](../verification/package-optimization-20261104.md)。
 
