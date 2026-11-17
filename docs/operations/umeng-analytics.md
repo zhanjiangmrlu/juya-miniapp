@@ -1,3 +1,19 @@
+# 当前生产与测试统计方案（2026-11-17）
+
+微信 test/production 构建仅在私有配置 `VITE_UMENG_ENABLED=true` 且对应环境 AppKey 非空时包含 SDK。测试读取 `VITE_UMENG_TEST_APP_KEY`，生产读取 `VITE_UMENG_PROD_APP_KEY`；缺失不回退，development、H5、分享构建关闭。AppKey 从工作区指定账号文件读取并保存于各环境私有文件。
+
+API 两种环境均需显式 `JUYA_ANALYTICS_CLIENT_TRANSPORT_ENABLED=true`；生产 `JUYA_PRIVACY_DOCUMENTS_PATH` 指向 `src/juya_api/policies/umeng-20261117-v4.json`，测试继续使用 `umeng-20261115-v3.json`。容器需使用实际绝对路径。环境不匹配、披露缺失或旧版均不可运行。
+
+配置开关只提供统计能力。用户必须登录、确认当前必要协议，并在隐私说明中独立明确允许当前版本后，SDK 才初始化和上报。打开页面、确认必要协议或恢复登录均不代替统计许可。生产新版披露使旧许可失效，需要重新选择。撤回立即废弃实例、取消请求与计时器、清队列及当前环境随机标识；撤回同步失败保持本地关闭。不补报同意前操作，账号和环境之间不共用 SDK 标识或许可。
+
+保留基础会话和页面统计，以及五类业务事件 `page_enter/content_open/audio_play/favorite_change/learning_complete`；业务事件仍由 API 逐项校验，统计失败不改变业务结果。SDK 版本保持 2.8.0，OpenID、自动获取身份、资料上传及验证剪贴板均关闭。
+
+生产启用需部署上述 API 源码与配置、发布配套披露，再使用标准 `pnpm release:mp-weixin` 打包上传。微信 request 合法域名必须包含 `https://umini.shujupie.com`。配置发布不能替代用户同意，API accepted 和本地请求捕获不能代替友盟入库证明。真机需核对未允许无请求、允许后实际收数、撤回后停止。
+
+本轮完成修改、隔离验证，并按用户后续授权提交推送test；尚未部署或上传。以下内容仅为历史记录，不作为当前接入规则。
+
+---
+
 # 当前恢复方案（2026-11-15）
 
 本轮按用户确认恢复测试版基础统计和五类业务事件，以下旧版硬关闭/32事件记录仅作历史参考。

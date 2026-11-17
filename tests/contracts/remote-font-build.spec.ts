@@ -170,10 +170,10 @@ it.each([
       .filter((file) => file.endsWith('.js'))
       .map((file) => readFileSync(path.join(directory, file), 'utf8'))
       .join('\n')
-    const sdkEnabled = mode === 'test' && enabled
+    const sdkEnabled = enabled
     expect(javascript.includes('um_uuid')).toBe(sdkEnabled)
-    expect(javascript.includes('fixture-umeng-test')).toBe(sdkEnabled)
-    expect(javascript.includes('fixture-umeng-prod')).toBe(false)
+    expect(javascript.includes('fixture-umeng-test')).toBe(mode === 'test' && enabled)
+    expect(javascript.includes('fixture-umeng-prod')).toBe(mode === 'production' && enabled)
     expect(javascript.includes('content_view')).toBe(false)
     expect(javascript.includes('contact_save')).toBe(false)
     expect(javascript.includes('umini.shujupie.com')).toBe(sdkEnabled)

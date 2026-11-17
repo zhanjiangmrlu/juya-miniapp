@@ -3,10 +3,23 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 const script = path.resolve('scripts/release-mp-weixin.mjs')
 const roots: string[] = []
+beforeEach(() => {
+  vi.stubGlobal('fetch', async (input: string) => {
+    const type = new URL(input).searchParams.get('content_type')
+    return Response.json({
+      content_types_ready: true,
+      type_published_total: 1,
+      published_total: 2,
+      total: 1,
+      items: [{ id: `card-${type}`, content_type: type }]
+    })
+  })
+})
+afterEach(() => vi.unstubAllGlobals())
 /** 创建带本地远程仓库的隔离发布夹具，branch 指定测试分支 */
 const fixture = (branch = 'release') => {
   const base = mkdtempSync(path.join(tmpdir(), 'juya-release-'))
@@ -361,4 +374,75 @@ it('checks source edits made during resource synchronization before uploading We
     })
   ).rejects.toThrow()
   expect(uploaded).toBe(false)
+})
+
+it.each(['upload', 'dry-run'])(
+  'rejects unready production categories before %s can proceed',
+  async (mode) => {
+    const { runRelease } = await import(script)
+    const f = fixture()
+    const head = f.git('rev-parse', 'HEAD')
+    const events: string[] = []
+    vi.stubGlobal('fetch', async () => Response.json({ content_types_ready: false }))
+    await expect(
+      runRelease({
+        root: f.root,
+        mode,
+        build: () => events.push('build'),
+        publish: () => events.push('publish'),
+        upload: () => {
+          events.push('upload')
+          return { status: 'success' }
+        }
+      })
+    ).rejects.toThrow(/分类/)
+    expect(events).toEqual([])
+    expect(f.record().version).toBe('1.0.0')
+    expect(f.git('rev-parse', 'HEAD')).toBe(head)
+    expect(() => readFileSync(path.join(f.root, '.git/juya-wechat-release.json'))).toThrow()
+  }
+)
+
+it('rechecks production categories after asset synchronization without recording an upload on failure', async () => {
+  const { runRelease } = await import(script)
+  const f = fixture()
+  const events: string[] = []
+  await expect(
+    runRelease({
+      root: f.root,
+      build: () => events.push('build'),
+      publish: () => {
+        events.push('publish')
+        vi.stubGlobal('fetch', async () => Response.json({ content_types_ready: false }))
+      },
+      upload: () => {
+        events.push('upload')
+        return { status: 'success' }
+      }
+    })
+  ).rejects.toThrow(/分类/)
+  expect(events).toEqual(['build', 'publish'])
+  expect(f.record().versionCode).toBe(100)
+  expect(() => readFileSync(path.join(f.root, '.git/juya-wechat-release.json'))).toThrow()
+})
+
+it('build-only stays offline and successful-upload recovery does not depend on current categories', async () => {
+  const { runRelease } = await import(script)
+  const f = fixture()
+  vi.stubGlobal('fetch', () => {
+    throw new Error('must stay offline')
+  })
+  await runRelease({ root: f.root, mode: 'build-only', build: () => {} })
+  // 建立真实的未知上传日志，恢复时不再查询线上分类
+  await expect(
+    runRelease({
+      root: f.root,
+      checkContentTypes: async () => {},
+      build: () => {},
+      publish: () => {},
+      upload: () => ({ status: 'unknown' })
+    })
+  ).rejects.toThrow(/不明确/)
+  await runRelease({ root: f.root, mode: 'confirm-uploaded' })
+  expect(f.record().version).toBe('1.0.1')
 })
