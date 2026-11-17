@@ -24,7 +24,7 @@ const eventKey = () =>
 const pagePath = (value: string) => value.split(/[?#]/)[0]?.replace(/^\/+/, '') || ''
 
 /** 绑定可信账号与服务器许可，为每个代际创建独立 SDK 并先鉴权手工事件
- * @param ports 测试构建配置、SDK 工厂及微信能力读取端口
+ * @param ports 当前环境构建配置、SDK 工厂及微信能力读取端口
  */
 export const createAnalyticsService = (ports: AnalyticsPorts) => {
   const running = ref(false)
@@ -44,9 +44,11 @@ export const createAnalyticsService = (ports: AnalyticsPorts) => {
     page: string
   }
   let current: Generation | undefined
-  /** 只有显式配置的微信测试构建可以接通 SDK */
+  /** 只有显式配置的微信测试或生产构建可以接通 SDK */
   const available =
-    ports.config.enabled && ports.config.environment === 'test' && !!ports.config.appKey
+    ports.config.enabled &&
+    ['test', 'production'].includes(ports.config.environment) &&
+    !!ports.config.appKey
   /** 读取当前可信上下文，读取失败时关闭 */
   const context = () => {
     try {
@@ -102,7 +104,7 @@ export const createAnalyticsService = (ports: AnalyticsPorts) => {
       for (const key of keys)
         if (
           typeof key === 'string' &&
-          key.startsWith('juya-umeng-test-v3:') &&
+          key.startsWith(`juya-umeng-${ports.config.environment}-v3:`) &&
           key.endsWith(':uuid')
         )
           remove.call(native, key)
@@ -139,7 +141,7 @@ export const createAnalyticsService = (ports: AnalyticsPorts) => {
     generation.native = createAnalyticsNative({
       native: ports.native || (() => ({})),
       owner: value.owner!,
-      identifierKey: `juya-umeng-test-v3:${value.owner}:${value.revision}:uuid`,
+      identifierKey: `juya-umeng-${ports.config.environment}-v3:${value.owner}:${value.revision}:uuid`,
       hasConsent: () => active(generation)
     })
     generation.events = createAnalyticsEvents({

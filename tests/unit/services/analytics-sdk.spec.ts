@@ -148,7 +148,7 @@ it('never replays the previous account offline queue or reuses its UUID', async 
   expect(f.instances()).toBe(2)
 })
 
-it('blocks backend-rejected events and keeps production uninitialized', async () => {
+it('blocks backend-rejected events', async () => {
   const f = analyticsFixture({
     authorize: async () => {
       throw new Error('permission denied')
@@ -160,11 +160,6 @@ it('blocks backend-rejected events and keeps production uninitialized', async ()
   f.service.background()
   expect(f.events()).toEqual([])
   expect(f.service.running).toBe(false)
-  const production = analyticsFixture({ production: true })
-  production.service.foreground()
-  production.update({ owner: 'business-a', enabled: true, policiesReady: true, revision: 1 })
-  expect(production.instances()).toBe(0)
-  expect(production.calls).toEqual([])
 })
 
 it('starts the current page after manual consent without waiting for another navigation', async () => {
@@ -210,4 +205,26 @@ it.each([
   expect([...storage.entries()]).toEqual([['business-session', 'private-fixture']])
   expect(current.instances()).toBe(0)
   expect(current.requests).toEqual([])
+})
+
+it('requires explicit production consent and discards events before consent and after withdrawal', async () => {
+  const f = analyticsFixture({ production: true, storage: new Map() })
+  f.service.foreground()
+  f.update({ owner: 'business-a', policiesReady: true, revision: 1 })
+  await f.service.track('page_enter')
+  expect(f.instances()).toBe(0)
+  expect(f.calls).toEqual([])
+  f.update({ enabled: true, revision: 2 })
+  expect(f.instances()).toBe(1)
+  await f.service.track('page_enter')
+  vi.advanceTimersByTime(15000)
+  expect(f.requests.some((request) => request.url.endsWith('/wxm_logs'))).toBe(true)
+  expect(f.authorized).toHaveLength(1)
+  f.update({ enabled: false, revision: 3 })
+  const count = f.calls.length
+  await f.service.track('page_enter')
+  f.service.foreground()
+  vi.advanceTimersByTime(60000)
+  expect(f.calls).toHaveLength(count)
+  expect(f.service.running).toBe(false)
 })

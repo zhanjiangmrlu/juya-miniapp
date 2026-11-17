@@ -43,9 +43,9 @@ it('builds an isolated production candidate without changing source manifest or 
     const { measureMainPackage } = await import(
       path.join(root, 'scripts/verify-mp-package-budget.mjs')
     )
-    expect(measureMainPackage(output).sourceBytes).toBeLessThan(512 * 1024)
+    expect(measureMainPackage(output).sourceBytes).toBeLessThan(560 * 1024)
     const analytics = readFileSync(path.join(output, 'services/analytics.js'), 'utf8')
-    expect(analytics).not.toContain('fixture-release-prod')
+    expect(analytics).toContain('fixture-release-prod')
     expect(analytics).not.toContain('fixture-umeng-test')
     const compiledImage: { localImageSource?: (url: string) => Promise<string> } = {}
     runInNewContext(readFileSync(path.join(output, 'services/local-image.js'), 'utf8'), {

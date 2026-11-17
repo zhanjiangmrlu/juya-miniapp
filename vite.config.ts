@@ -44,7 +44,7 @@ export default defineConfig(({ mode, command }) => {
          */
         resolveId: (id) =>
           id === 'virtual:juya-umeng-sdk' ? '\0virtual:juya-umeng-sdk' : undefined,
-        /** 为已启用的测试构建注入隔离微信端口，其他构建移除 SDK
+        /** 为已启用的测试或生产构建注入隔离微信端口，其他构建移除 SDK
          * @param id 当前待加载的模块路径
          */
         load: (id) => {
