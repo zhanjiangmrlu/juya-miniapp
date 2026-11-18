@@ -8,6 +8,11 @@ export type ListeningAccess = components['schemas']['LearningPermission']
 export type ListeningSummary = components['schemas']['Summary']
 export type ListeningArticle = components['schemas']['ArticleDetail']
 export type ListeningHome = components['schemas']['Home']
+export interface ListeningQueueNavigation {
+  articleId: string
+  owner: string
+  token: string
+}
 export interface ListeningFrame {
   current: number
   fraction: number

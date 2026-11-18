@@ -2,6 +2,7 @@ import { onHide, onLoad, onPageScroll, onShow, onUnload } from '@dcloudio/uni-ap
 import { computed, nextTick, ref, watch } from 'vue'
 
 import {
+  consumeListeningQueue,
   getListeningArticle,
   listeningMedia,
   openListeningArticle,
@@ -782,12 +783,13 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       actionBusy.value = false
     }
   }
-  /** 单独重试同分类后续查询，不重复提交已确认完成 */
+  /** 通过正文单独重试同分类后续查询，避免长队列进入地址且不重复提交已确认完成 */
   const getNext = async () => {
     lastAction = getNext
     try {
       const result = await session.request<components['schemas']['NextArticle']>(
-        `${LISTENING_API}/articles/${id.value}/next?queue_token=${encodeURIComponent(queueToken.value)}`
+        `${LISTENING_API}/articles/${id.value}/next`,
+        { method: 'POST', body: { queue_token: queueToken.value } }
       )
       nextArticle.value = result.article
       endedTopic.value = result.ended
@@ -1019,12 +1021,17 @@ export const useListeningArticle = (pageShareEntry?: Readonly<Ref<boolean>>) => 
       })
   }
   const unsubscribe = onSessionExpired(reset)
-  /** 还原页面地址中的队列凭证，避免下一篇请求再次编码后破坏签名
-   * @param query 原生页面加载参数，凭证可能仍保留 URL 编码
+  /** 消费内存中的冻结队列，旧页面显式携带凭证时保留原链接语义
+   * @param query 原生页面加载参数，包含目标文章及旧版可选队列凭证
    */
   const initializeRoute = (query?: Record<string, string | undefined>) => {
     id.value = query?.id || ''
+    const transferred = consumeListeningQueue(id.value)
     const token = query?.queue_token || ''
+    if (!token && transferred) {
+      queueToken.value = transferred
+      return
+    }
     try {
       queueToken.value = decodeURIComponent(token)
     } catch {

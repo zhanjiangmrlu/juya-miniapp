@@ -448,7 +448,7 @@ it('replaces the current detail after saving progress and preserves the frozen q
   )
   expect(redirect).toHaveBeenCalledWith(
     expect.objectContaining({
-      url: '/sub-packages/listening/article?id=a2&queue_token=queue-frozen'
+      url: '/sub-packages/listening/article?id=a2'
     })
   )
 })
@@ -459,18 +459,20 @@ it.each(['queue-frozen==', 'queue-frozen%3D%3D'])(
     ports.load?.({ id: 'a2', queue_token: routeToken })
     ports.show?.()
     await flushPromises()
-    ports.request.mockImplementation(async (path: string) =>
-      path.includes('/next?')
-        ? { article: { ...structuredClone(detail), id: 'a3' }, ended: false, category_id: 'c1' }
-        : structuredClone(detail)
+    ports.request.mockImplementation(
+      async (path: string, options?: { body?: { queue_token?: string } }) => {
+        if (!path.endsWith('/next')) return structuredClone(detail)
+        if (options?.body?.queue_token !== 'queue-frozen==')
+          throw new ApiError('access_preview_expired', '队列凭证已失效', 409)
+        return {
+          article: { ...structuredClone(detail), id: 'a3' },
+          ended: false,
+          category_id: 'c1'
+        }
+      }
     )
     await model.getNext()
-    const nextPath = ports.request.mock.calls.find((call) =>
-      String(call[0]).includes('/next?')
-    )?.[0]
-    expect(new URL(String(nextPath), 'https://test.invalid').searchParams.get('queue_token')).toBe(
-      'queue-frozen=='
-    )
+    expect(model.actionError.value).toBe('')
     expect(model.queueToken.value).toBe('queue-frozen==')
     expect(model.nextArticle.value?.id).toBe('a3')
   }
@@ -498,7 +500,7 @@ it('preserves the confirmed completion result for the completion dialog and expo
     statistics: { checkin_days: 7 }
   })
   ports.request.mockImplementation(async (path: string) =>
-    path.includes('/next?') ? { article: null, ended: true } : structuredClone(detail)
+    path.endsWith('/next') ? { article: null, ended: true } : structuredClone(detail)
   )
   await model.complete()
   expect(model.completionResult.value?.first_checkin_today).toBe(true)
@@ -696,6 +698,123 @@ it('releases the page-owned prefetched full audio file on hide', async () => {
   await open()
   ports.hide?.()
   expect(release).toHaveBeenCalledTimes(1)
+})
+
+it('completes and opens the next large-category article while preserving its queue outside URLs', async () => {
+  const queue = 'A'.repeat(25000)
+  let redirectedURL = ''
+  vi.stubGlobal('uni', {
+    pageScrollTo: vi.fn(),
+    showToast: vi.fn(),
+    redirectTo: (options: { url: string; success: () => void; fail: () => void }) => {
+      if (options.url.length > 8192) return options.fail()
+      redirectedURL = options.url
+      options.success()
+    }
+  })
+  ports.request.mockImplementation(
+    async (path: string, options?: { method?: string; body?: { queue_token?: string } }) => {
+      if (path.length > 8192) throw new ApiError('request_failed', '请求暂未成功，请重试', 414)
+      if (path.endsWith('/next')) {
+        if (options?.method !== 'POST' || options.body?.queue_token !== queue)
+          throw new ApiError('access_preview_expired', '队列凭证丢失', 409)
+        return {
+          article: { ...structuredClone(detail), id: 'a2' },
+          ended: false,
+          category_id: 'c1'
+        }
+      }
+      return { ...structuredClone(detail), queue_token: queue }
+    }
+  )
+  const model = await open()
+  ports.run.mockResolvedValueOnce({
+    article_id: 'a1',
+    first_checkin_today: true,
+    first_completion: true,
+    state: { favorite: false, completed: true, today_completed: true },
+    statistics: { checkin_days: 1 }
+  })
+  await model.complete()
+  expect(model.completed.value).toBe(true)
+  expect(model.completionResult.value?.first_checkin_today).toBe(true)
+  expect(model.actionError.value).toBe('')
+  expect(model.nextArticle.value?.id).toBe('a2')
+  await model.advance()
+  expect(model.actionError.value).toBe('')
+  expect(redirectedURL).toBe('/sub-packages/listening/article?id=a2')
+  const following = useListeningArticle()
+  ports.load?.({ id: 'a2' })
+  expect(following.queueToken.value).toBe(queue)
+  // 内存交接只能消费一次，后续页面从详情重新建立自己的队列
+  const unrelated = useListeningArticle()
+  ports.load?.({ id: 'a2' })
+  expect(unrelated.queueToken.value).toBe('')
+})
+
+it('retries a failed next query without resubmitting confirmed completion', async () => {
+  const model = await open()
+  ports.run.mockResolvedValueOnce({
+    article_id: 'a1',
+    first_checkin_today: true,
+    first_completion: true,
+    state: { favorite: false, completed: true, today_completed: true },
+    statistics: { checkin_days: 1 }
+  })
+  let attempts = 0
+  ports.request.mockImplementation(async (path: string) => {
+    if (!path.endsWith('/next')) return structuredClone(detail)
+    if (++attempts === 1) throw new ApiError('request_failed', '下一篇暂不可用', 503)
+    return { article: { ...structuredClone(detail), id: 'a2' }, ended: false, category_id: 'c1' }
+  })
+  ports.run.mockClear()
+  await model.complete()
+  expect(model.completed.value).toBe(true)
+  expect(model.actionError.value).toBe('下一篇暂不可用')
+  await model.getNext()
+  expect(model.nextArticle.value?.id).toBe('a2')
+  expect(model.actionError.value).toBe('')
+  expect(
+    ports.run.mock.calls.filter(([action]) => action === 'listening-complete:a1')
+  ).toHaveLength(1)
+})
+
+it('does not transfer the frozen queue to another account when opening the next page', async () => {
+  vi.stubGlobal('uni', {
+    pageScrollTo: vi.fn(),
+    showToast: vi.fn(),
+    redirectTo: (options: { success: () => void }) => options.success()
+  })
+  const model = await open()
+  model.nextArticle.value = { ...detail, id: 'a2' }
+  await model.advance()
+  ports.owner = 'other-owner'
+  const following = useListeningArticle()
+  ports.load?.({ id: 'a2' })
+  expect(following.queueToken.value).toBe('')
+})
+
+it('clears a failed navigation handoff and preserves the current queue for retry', async () => {
+  let fail = true
+  vi.stubGlobal('uni', {
+    pageScrollTo: vi.fn(),
+    showToast: vi.fn(),
+    redirectTo: (options: { success: () => void; fail: () => void }) =>
+      fail ? options.fail() : options.success()
+  })
+  const model = await open()
+  model.nextArticle.value = { ...detail, id: 'a2' }
+  await model.advance()
+  expect(model.actionError.value).toContain('下一篇')
+  const failed = useListeningArticle()
+  ports.load?.({ id: 'a2' })
+  expect(failed.queueToken.value).toBe('')
+  fail = false
+  await model.advance()
+  expect(model.actionError.value).toBe('')
+  const following = useListeningArticle()
+  ports.load?.({ id: 'a2' })
+  expect(following.queueToken.value).toBe('queue-frozen')
 })
 
 it('reloads a large-category article after hide without sending its frozen queue in the detail URL', async () => {

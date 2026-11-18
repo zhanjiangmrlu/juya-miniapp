@@ -13,8 +13,27 @@ import type {
   ListeningArticle,
   ListeningHome,
   ListeningProgress,
+  ListeningQueueNavigation,
   ListeningSummary
 } from '@/shared/types/listening'
+
+let queueNavigation: ListeningQueueNavigation | null = null
+
+/** 消费绑定当前账号和目标文章的一次性页面队列交接
+ * @param articleId 本次实际打开的目标文章身份
+ */
+export const consumeListeningQueue = (articleId: string) => {
+  const transfer = queueNavigation
+  if (!transfer) return ''
+  if (transfer.owner !== session.identity()) {
+    queueNavigation = null
+    return ''
+  }
+  if (transfer.articleId !== articleId) return ''
+  queueNavigation = null
+  return transfer.token
+}
+
 /** 读取听读双模块首页真实权限与继续学习目标 */
 export const getListeningHome = () => session.contentRequest<ListeningHome>(`${LISTENING_API}/home`)
 /** 按文章身份读取当前正文，冻结队列仅用于下一篇查询，拒绝时不回退缓存正文
@@ -126,13 +145,17 @@ export const listeningMedia = async (article: ListeningArticle, mediaId: string)
       )
   return resourceURL(value.url)
 }
-/** 打开文章详情，受限历史仍可显示安全摘要
+/** 打开文章详情，通过内存交接冻结队列，避免页面地址随文章数量增长
  * @param article 真实服务端文章摘要
  * @param queueToken 本轮冻结的同分类队列凭证
  * @param replace 同队列推进时替换当前详情，保留来源页面
  */
 export const openListeningArticle = (article: ListeningSummary, queueToken = '', replace = false) =>
   new Promise<void>((resolve, reject) => {
+    const transfer = queueToken
+      ? { articleId: article.id, owner: session.identity(), token: queueToken }
+      : null
+    queueNavigation = transfer
     // #ifdef JUYA_ANALYTICS
     if (!replace)
       businessAnalytics.track(AnalyticsEvent.CONTENT_CLICK, {
@@ -142,9 +165,10 @@ export const openListeningArticle = (article: ListeningSummary, queueToken = '',
       })
     // #endif
     const options = {
-      url: `/sub-packages/listening/article?id=${encodeURIComponent(article.id)}${queueToken ? `&queue_token=${encodeURIComponent(queueToken)}` : ''}`,
+      url: `/sub-packages/listening/article?id=${encodeURIComponent(article.id)}`,
       success: () => resolve(),
       fail: (reason: unknown) => {
+        if (queueNavigation === transfer) queueNavigation = null
         // #ifdef JUYA_ANALYTICS
         if (!replace)
           businessAnalytics.error(AnalyticsAction.CONTENT_OPEN, reason, {
