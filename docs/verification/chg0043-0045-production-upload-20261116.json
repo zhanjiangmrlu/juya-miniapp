@@ -1,0 +1,102 @@
+{
+  "status": "success",
+  "verified_at_utc": "2026-11-16T14:16:09.034816+00:00",
+  "command": "pnpm release:mp-weixin",
+  "version": "1.0.2",
+  "versionCode": 106,
+  "uploadedAt": "2026-11-16T14:13:30.037Z",
+  "source_commit": "634841ad973efbf6c50d73fe03ac1f2ea631e5c3",
+  "record_commit": "52f0fb1fb52d1d9b8140a3a33bb3ee8410b17fca",
+  "official_cli_receipt_verified": true,
+  "source_input_files_verified": 277,
+  "output_files_sha256_recorded": 394,
+  "page_count": 20,
+  "tab_count": 3,
+  "production_api_only": true,
+  "real_analytics_sdk_absent": true,
+  "official_size": {
+    "total": 1411217,
+    "packages": [
+      {
+        "name": "TOTAL",
+        "size": 1411217
+      },
+      {
+        "name": "main",
+        "size": 833820
+      },
+      {
+        "name": "/sub-packages/account/",
+        "size": 44488
+      },
+      {
+        "name": "/sub-packages/feedback/",
+        "size": 91737
+      },
+      {
+        "name": "/sub-packages/listening/",
+        "size": 166169
+      },
+      {
+        "name": "/sub-packages/records/",
+        "size": 24978
+      },
+      {
+        "name": "/sub-packages/scenes/",
+        "size": 250025
+      }
+    ]
+  },
+  "production_assets": {
+    "new": 0,
+    "reused": 13
+  },
+  "experience_version_switched": false,
+  "submitted_for_review": false,
+  "officially_released": false,
+  "api_servers_deployed_this_task": false,
+  "production_api_compatibility": {
+    "checked_at_utc": "2026-11-16T14:14:24.675513+00:00",
+    "base_url": "https://api.juyayingyu.com",
+    "server_deployed_this_task": false,
+    "readiness": {
+      "status": "ready",
+      "environment": "production",
+      "service": "mini"
+    },
+    "card_list": {
+      "status": 200,
+      "content_types_ready_field_present": false,
+      "type_published_total_field_present": false
+    },
+    "openapi_status": 404,
+    "category_dependency_ready": false
+  },
+  "release_heads_before_documentation": {
+    "api": "e1d8390fc1521eb0976d37ddbd75065dc05cae24",
+    "admin": "d5dd2d4a67aea2783d5be468eed02cac8f12d273",
+    "miniapp": "52f0fb1fb52d1d9b8140a3a33bb3ee8410b17fca"
+  },
+  "merged_test_heads": {
+    "api": "85415bab9ca42641bd6fdb57aa1501093169c072",
+    "admin": "027c27f8155011866b3d0961d717d0a97c5c1def",
+    "miniapp": "885ba2a2993bd1758043200cbb0df967652b0254"
+  },
+  "checks": {
+    "api": {
+      "all_commands_exit_zero": true,
+      "tests_passed": 971,
+      "skipped": 58
+    },
+    "admin": {
+      "all_commands_exit_zero": true,
+      "tests_passed": 378,
+      "skipped": 0
+    },
+    "miniapp": {
+      "all_commands_exit_zero": true,
+      "tests_passed": 905,
+      "skipped": 0
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "environment": "production",
+  "version": "1.0.2",
+  "versionCode": 104,
+  "source": "a491d6351d735dee18e39d313dfba00ab2e3baef",
+  "record_commit": "d4cff28805bbaa861dbaa28b057113c10473a2b4",
+  "merged_test": "e4b3de15f06e63c8ce5940dc859d96e51d8f4833",
+  "official_upload_success": true,
+  "receipt_sha256": "a16c47d4d85e7306afaa74d7dde4ce0fa998ac1364b8d274e7903713630f6428",
+  "pages": 20,
+  "tabs": 3,
+  "source_snapshot_matches": true,
+  "production_api_present": true,
+  "test_api_present": false,
+  "sdk_network_present": false,
+  "update_manager_present": true,
+  "native_width_fix_present": true,
+  "experience_version_switched": false,
+  "submitted_for_review": false,
+  "formally_published": false,
+  "backend_deployed": false,
+  "database_migrated": false,
+  "tests": {
+    "files": 140,
+    "passed": 844
+  },
+  "check_passed": true,
+  "production_backend_compatibility": {
+    "ready": 200,
+    "guest_scene_list": 200,
+    "guest_listening_list": 200,
+    "new_privacy_catalog": 404,
+    "matching_backend_update_required": true
+  }
+}
