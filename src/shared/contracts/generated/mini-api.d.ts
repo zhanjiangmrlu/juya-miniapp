@@ -1309,7 +1309,11 @@ export interface paths {
      */
     get: operations['next_article_api_mini_v1_listening_articles__article_id__next_get']
     put?: never
-    post?: never
+    /**
+     * 通过请求体查询同分类下一篇听读文章
+     * @description 通过请求体传递冻结队列凭证，避免分类文章增多导致地址过长；逐篇复核本人权限，仅查询而不写入学习完成记录。
+     */
+    post: operations['next_article_from_body_api_mini_v1_listening_articles__article_id__next_post']
     delete?: never
     options?: never
     head?: never
@@ -3368,6 +3372,14 @@ export interface components {
        * @description 当前分类中没有可继续返回的下一篇文章时为 true。
        */
       ended: boolean
+    }
+    /** 分类内下一篇听读文章查询请求 */
+    NextArticleInput: {
+      /**
+       * 听读队列凭据
+       * @description 服务端签发的分类连续学习凭据，读取下一篇时按原值携带。
+       */
+      queue_token?: string | null
     }
     /** 幂等操作查询结果 */
     OperationResponse: {
@@ -12387,6 +12399,124 @@ export interface operations {
       cookie?: never
     }
     requestBody?: never
+    responses: {
+      /** @description 请求成功 */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['NextArticle']
+        }
+      }
+      /** @description 请求不符合业务规则 */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 尚未登录，或登录凭证已失效 */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 当前身份无权执行该操作 */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源不存在，或当前身份不可访问 */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 状态、版本或幂等请求发生冲突，请按错误码处理 */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 资源或功能已不可用 */
+      410: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求参数校验失败，或业务内容不符合要求 */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 请求过于频繁，请稍后重试 */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务器暂未完成请求，请按错误信息处理 */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+      /** @description 服务暂不可用，请稍后重试 */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorResponse']
+        }
+      }
+    }
+  }
+  next_article_from_body_api_mini_v1_listening_articles__article_id__next_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description 业务听读文章的 ID，区别于文章的发布版本 ID。 */
+        article_id: string
+      }
+      cookie?: never
+    }
+    /** @description 请求数据，字段说明和必填约束见下方数据结构。 */
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['NextArticleInput']
+      }
+    }
     responses: {
       /** @description 请求成功 */
       200: {
